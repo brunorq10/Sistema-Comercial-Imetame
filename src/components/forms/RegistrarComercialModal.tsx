@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, AutoInput } from '@/components/ui/Input'
+import { Field, Input, Select, AutoInput, CurrencyInput } from '@/components/ui/Input'
 import { formatDate, formatCurrency } from '@/lib/utils'
 
 interface PropostaTecnica {
@@ -184,15 +184,7 @@ export function RegistrarComercialModal({
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Valor Total Montagem Mecânica (R$)">
-          <Input
-            type="number"
-            placeholder="Ex: 1200000"
-            value={valorMontagem}
-            onChange={(e) => setValorMontagem(e.target.value)}
-          />
-          {numMontagem > 0 && (
-            <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numMontagem)}</p>
-          )}
+          <CurrencyInput value={valorMontagem} onChange={setValorMontagem} />
         </Field>
         <Field label="Data de envio — comercial">
           <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
@@ -223,15 +215,7 @@ export function RegistrarComercialModal({
             { label: 'Outros (R$)', val: valOutros, set: setValOutros },
           ].map(({ label, val, set }) => (
             <Field key={label} label={label}>
-              <Input
-                type="number"
-                placeholder="0"
-                value={val}
-                onChange={(e) => set(e.target.value)}
-              />
-              {Number(val) > 0 && (
-                <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(Number(val))}</p>
-              )}
+              <CurrencyInput value={val} onChange={set} />
             </Field>
           ))}
           <Field label="Total Terceiros (R$)">
@@ -257,15 +241,7 @@ export function RegistrarComercialModal({
       {possuiFabricacao && (
         <div className="mb-2.5 pl-4 border-l-2 border-green-primary/30">
           <Field label="Valor Fabricação (R$)">
-            <Input
-              type="number"
-              placeholder="Ex: 150000"
-              value={valorFabricacao}
-              onChange={(e) => setValorFabricacao(e.target.value)}
-            />
-            {numFabricacao > 0 && (
-              <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numFabricacao)}</p>
-            )}
+            <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
           </Field>
         </div>
       )}

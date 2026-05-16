@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const clientes = await prisma.cliente.findMany({
       where: { ativo: true },
       orderBy: { nome: 'asc' },
-      select: { id: true, nome: true, cidade: true, estado: true },
+      select: { id: true, nome: true, cidade: true, estado: true, ramo_atuacao: true },
     })
     return NextResponse.json({ data: clientes, error: null })
   }

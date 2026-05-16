@@ -3,28 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, AutoInput } from '@/components/ui/Input'
+import { Field, Input, Select, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatDate, formatCurrency, formatRev } from '@/lib/utils'
 import { MOTIVO_PERDA_LABELS } from '@/types'
 import type { PropostasItem, MotivoPerda } from '@/types'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function mascaraMoeda(valor: string): string {
-  const digits = valor.replace(/\D/g, '')
-  if (!digits) return ''
-  return (parseInt(digits, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-function parseMoeda(valor: string): number {
-  if (!valor) return 0
-  return parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0
-}
-function numToMoeda(val: string | number | null | undefined): string {
-  if (val == null) return ''
-  const n = Number(val)
-  if (isNaN(n) || n === 0) return ''
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -159,8 +141,8 @@ export function EditarPropostaModal({
     setPossuiFabricacaoCom(com?.possui_fabricacao ?? false)
     setValorFabricacaoCom(com?.valor_fabricacao != null ? String(Number(com.valor_fabricacao)) : '')
     setDataEnvioCom(com?.data_envio ? com.data_envio.split('T')[0] : today())
-    setValorTotalParada(numToMoeda(com?.valor_total))
-    setValorTerceirosParada(numToMoeda(com?.valor_terceiros))
+    setValorTotalParada(com?.valor_total != null ? String(Number(com.valor_total)) : '')
+    setValorTerceirosParada(com?.valor_terceiros != null ? String(Number(com.valor_terceiros)) : '')
     setDataEnvioComParada(com?.data_envio ? com.data_envio.split('T')[0] : today())
     setResultado(com?.resultado ?? 'AGUARDANDO')
     setMotivoPerda('')
@@ -172,14 +154,14 @@ export function EditarPropostaModal({
         id: i + 1,
         descricao: e.descricao,
         pesoTon: String(Number(e.peso_ton)),
-        valorTotal: numToMoeda(e.valor_total),
+        valorTotal: String(Number(e.valor_total)),
         obs: e.observacoes ?? '',
       }))
       setEquipamentos(equips.length > 0 ? equips : [mkEquip(1)])
       setNextEquipId(equips.length + 1)
       setPossuiTestes(fab.possui_testes)
       setDescTestes(fab.descricao_testes ?? '')
-      setValorTestes(numToMoeda(fab.valor_testes))
+      setValorTestes(fab.valor_testes != null ? String(Number(fab.valor_testes)) : '')
       setDataEnvioFab(fab.data_envio ? fab.data_envio.split('T')[0] : today())
       setResultadoFab(fab.resultado ?? 'AGUARDANDO')
     } else {
@@ -212,16 +194,16 @@ export function EditarPropostaModal({
   const rshhTotal = hhTotalTec > 0 && totalGeral > 0 ? totalGeral / hhTotalTec : null
 
   // Comercial Paradas
-  const numValorTotalParada = parseMoeda(valorTotalParada)
-  const numTerceirosParada = parseMoeda(valorTerceirosParada)
+  const numValorTotalParada = Number(valorTotalParada) || 0
+  const numTerceirosParada = Number(valorTerceirosParada) || 0
   const valorSemTerceiros = numValorTotalParada > 0 ? numValorTotalParada - numTerceirosParada : null
   const rshhSemTerceiros = valorSemTerceiros !== null && hhTotalTec > 0 ? valorSemTerceiros / hhTotalTec : null
   const rshhComTerceiros = numValorTotalParada > 0 && hhTotalTec > 0 ? numValorTotalParada / hhTotalTec : null
 
   // Fabricação
-  const pesoTotalFab = equipamentos.reduce((s, e) => s + (parseFloat(e.pesoTon.replace(',', '.')) || 0), 0)
-  const valorEquipFab = equipamentos.reduce((s, e) => s + parseMoeda(e.valorTotal), 0)
-  const numTestesFab = possuiTestes ? parseMoeda(valorTestes) : 0
+  const pesoTotalFab = equipamentos.reduce((s, e) => s + (Number(e.pesoTon) || 0), 0)
+  const valorEquipFab = equipamentos.reduce((s, e) => s + (Number(e.valorTotal) || 0), 0)
+  const numTestesFab = possuiTestes ? (Number(valorTestes) || 0) : 0
   const totalFab = valorEquipFab + numTestesFab
 
   const hasTecnica = item.propostas_tecnicas.length > 0
@@ -331,15 +313,15 @@ export function EditarPropostaModal({
   }
 
   const handleSaveFabricacao = async () => {
-    const invalidos = equipamentos.filter((e) => !e.descricao || !e.pesoTon || parseMoeda(e.valorTotal) <= 0)
+    const invalidos = equipamentos.filter((e) => !e.descricao || !e.pesoTon || Number(e.valorTotal) <= 0)
     if (invalidos.length > 0) { setErrorFab('Preencha descrição, peso e valor em todos os equipamentos'); return }
     setLoadingFab(true); setErrorFab(null)
     try {
       const body = {
         equipamentos: equipamentos.map((e) => ({
           descricao: e.descricao,
-          peso_ton: parseFloat(e.pesoTon.replace(',', '.')),
-          valor_total: parseMoeda(e.valorTotal),
+          peso_ton: Number(e.pesoTon),
+          valor_total: Number(e.valorTotal),
           observacoes: e.obs || undefined,
         })),
         possui_testes: possuiTestes,
@@ -412,13 +394,13 @@ export function EditarPropostaModal({
               <ModalSection>Horas-Homem</ModalSection>
               <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                 <Field label="HH Direto *">
-                  <Input type="number" placeholder="Ex: 3200" value={hhDireto} onChange={(e) => setHhDireto(e.target.value)} />
+                  <IntegerInput placeholder="Ex: 3.200" value={hhDireto} onChange={setHhDireto} />
                 </Field>
                 <Field label="HH Indireto *">
-                  <Input type="number" placeholder="Ex: 1600" value={hhIndireto} onChange={(e) => setHhIndireto(e.target.value)} />
+                  <IntegerInput placeholder="Ex: 1.600" value={hhIndireto} onChange={setHhIndireto} />
                 </Field>
                 <Field label="HH Total (automático)">
-                  <AutoInput value={hhTotalCalc !== null ? String(hhTotalCalc) : ''} placeholder="—" />
+                  <AutoInput value={hhTotalCalc !== null ? hhTotalCalc.toLocaleString('pt-BR') : ''} placeholder="—" />
                 </Field>
                 <Field label="% Indireto (automático)">
                   <AutoInput value={percIndiretoCalc ?? ''} placeholder="—" />
@@ -430,10 +412,10 @@ export function EditarPropostaModal({
                   <ModalSection>Dados da Parada</ModalSection>
                   <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                     <Field label="Efetivo Pico (pessoas) *">
-                      <Input type="number" placeholder="Ex: 300" value={efetivoPico} onChange={(e) => setEfetivoPico(e.target.value)} />
+                      <IntegerInput placeholder="Ex: 300" value={efetivoPico} onChange={setEfetivoPico} />
                     </Field>
                     <Field label="Dias de Parada *">
-                      <Input type="number" placeholder="Ex: 21" value={diasParada} onChange={(e) => setDiasParada(e.target.value)} />
+                      <IntegerInput placeholder="Ex: 21" value={diasParada} onChange={setDiasParada} />
                     </Field>
                     <Field label="Turno Considerado">
                       <Select value={turno} onChange={(e) => setTurno(e.target.value)}>
@@ -445,7 +427,7 @@ export function EditarPropostaModal({
                       </Select>
                     </Field>
                     <Field label="Peso Total Mont. (t, opcional)">
-                      <Input type="text" inputMode="decimal" placeholder="Ex: 1250,50" value={pesoMontagem} onChange={(e) => setPesoMontagem(e.target.value)} />
+                      <CurrencyInput placeholder="Ex: 1.250,50" value={pesoMontagem} onChange={setPesoMontagem} />
                     </Field>
                   </div>
                   <div className="flex items-center gap-2 mb-2.5">
@@ -456,7 +438,7 @@ export function EditarPropostaModal({
               ) : (
                 <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                   <Field label="Peso Total Mont. (t)">
-                    <Input type="number" placeholder="Ex: 148,5" value={pesoMontagem} onChange={(e) => setPesoMontagem(e.target.value)} />
+                    <CurrencyInput placeholder="Ex: 148,50" value={pesoMontagem} onChange={setPesoMontagem} />
                   </Field>
                 </div>
               )}
@@ -545,14 +527,10 @@ export function EditarPropostaModal({
                   <ModalSection>Valores</ModalSection>
                   <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                     <Field label="Valor Total (R$) *">
-                      <Input type="text" inputMode="numeric" placeholder="Ex: 1.200.000,00"
-                        value={valorTotalParada} onChange={(e) => setValorTotalParada(mascaraMoeda(e.target.value))} />
-                      {numValorTotalParada > 0 && <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numValorTotalParada)}</p>}
+                      <CurrencyInput value={valorTotalParada} onChange={setValorTotalParada} />
                     </Field>
                     <Field label="Valor Terceiros (R$, opcional)">
-                      <Input type="text" inputMode="numeric" placeholder="Ex: 150.000,00"
-                        value={valorTerceirosParada} onChange={(e) => setValorTerceirosParada(mascaraMoeda(e.target.value))} />
-                      {numTerceirosParada > 0 && <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numTerceirosParada)}</p>}
+                      <CurrencyInput value={valorTerceirosParada} onChange={setValorTerceirosParada} />
                     </Field>
                   </div>
                   {numValorTotalParada > 0 && (
@@ -577,8 +555,7 @@ export function EditarPropostaModal({
                   <ModalSection>Valores</ModalSection>
                   <div className="grid grid-cols-2 gap-2.5 mb-3">
                     <Field label="Montagem Mecânica (R$) *">
-                      <Input type="number" placeholder="Ex: 1240000" value={valorMontagem} onChange={(e) => setValorMontagem(e.target.value)} />
-                      {numMontagem > 0 && <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numMontagem)}</p>}
+                      <CurrencyInput value={valorMontagem} onChange={setValorMontagem} />
                     </Field>
                   </div>
                   <div className="mb-3">
@@ -590,7 +567,7 @@ export function EditarPropostaModal({
                       <div className="grid grid-cols-3 gap-2 pl-5">
                         {([['Elétrica', valEletrica, setValEletrica], ['Isolamento', valIsolamento, setValIsolamento], ['Civil', valCivil, setValCivil], ['Fibra', valFibra, setValFibra], ['Outros', valOutros, setValOutros]] as [string, string, (v: string) => void][]).map(([lbl, val, set]) => (
                           <Field key={lbl} label={lbl}>
-                            <Input type="number" placeholder="R$ 0" value={val} onChange={(e) => set(e.target.value)} />
+                            <CurrencyInput value={val} onChange={set} />
                           </Field>
                         ))}
                         {totalTerceiros > 0 && <div className="col-span-3"><p className="text-[10px] text-auto-value">Total Terceiros: {formatCurrency(totalTerceiros)}</p></div>}
@@ -605,7 +582,7 @@ export function EditarPropostaModal({
                     {possuiFabricacaoCom && (
                       <div className="pl-5">
                         <Field label="Valor Fabricação (R$)">
-                          <Input type="number" placeholder="Ex: 300000" value={valorFabricacaoCom} onChange={(e) => setValorFabricacaoCom(e.target.value)} />
+                          <CurrencyInput value={valorFabricacaoCom} onChange={setValorFabricacaoCom} />
                         </Field>
                       </div>
                     )}
@@ -671,13 +648,13 @@ export function EditarPropostaModal({
                   </div>
                   <div className="col-span-2">
                     {idx === 0 && <p className="text-[9px] text-gray-400 uppercase mb-1">Peso (ton)</p>}
-                    <Input type="text" inputMode="decimal" placeholder="0,000" value={eq.pesoTon}
-                      onChange={(e) => setEquipamentos((prev) => prev.map((x) => x.id === eq.id ? { ...x, pesoTon: e.target.value } : x))} />
+                    <CurrencyInput value={eq.pesoTon}
+                      onChange={(v) => setEquipamentos((prev) => prev.map((x) => x.id === eq.id ? { ...x, pesoTon: v } : x))} />
                   </div>
                   <div className="col-span-3">
                     {idx === 0 && <p className="text-[9px] text-gray-400 uppercase mb-1">Valor Total (R$)</p>}
-                    <Input type="text" inputMode="numeric" placeholder="0,00" value={eq.valorTotal}
-                      onChange={(e) => setEquipamentos((prev) => prev.map((x) => x.id === eq.id ? { ...x, valorTotal: mascaraMoeda(e.target.value) } : x))} />
+                    <CurrencyInput value={eq.valorTotal}
+                      onChange={(v) => setEquipamentos((prev) => prev.map((x) => x.id === eq.id ? { ...x, valorTotal: v } : x))} />
                   </div>
                   <div className="col-span-2">
                     {idx === 0 && <p className="text-[9px] text-gray-400 uppercase mb-1">Obs.</p>}
@@ -716,9 +693,7 @@ export function EditarPropostaModal({
                     <Input placeholder="Ex: Teste hidrostático" value={descTestes} onChange={(e) => setDescTestes(e.target.value)} />
                   </Field>
                   <Field label="Valor dos testes (R$)">
-                    <Input type="text" inputMode="numeric" placeholder="0,00" value={valorTestes}
-                      onChange={(e) => setValorTestes(mascaraMoeda(e.target.value))} />
-                    {numTestesFab > 0 && <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numTestesFab)}</p>}
+                    <CurrencyInput value={valorTestes} onChange={setValorTestes} />
                   </Field>
                 </div>
               )}

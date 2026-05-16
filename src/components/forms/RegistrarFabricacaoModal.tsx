@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, AutoInput } from '@/components/ui/Input'
+import { Field, Input, AutoInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency } from '@/lib/utils'
 
 interface Equipamento {
@@ -25,20 +25,8 @@ function rskg(valor: number, pesoTon: number): string {
   return formatCurrency(valor / (pesoTon * 1000)) + '/kg'
 }
 
-function mascaraMoeda(valor: string): string {
-  const nums = valor.replace(/\D/g, '')
-  if (!nums) return ''
-  const n = parseInt(nums, 10) / 100
-  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function parseMoeda(valor: string): number {
-  if (!valor) return 0
-  return Number(valor.replace(/\./g, '').replace(',', '.')) || 0
-}
-
 function formatTon(ton: number): string {
-  return ton.toFixed(2).replace('.', ',')
+  return ton.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 interface Props {
@@ -62,8 +50,7 @@ export function RegistrarFabricacaoModal({
   const [error, setError] = useState<string | null>(null)
 
   const updateEquipamento = (idx: number, field: keyof Equipamento, value: string) => {
-    const formatted = field === 'valor_total' ? mascaraMoeda(value) : value
-    setEquipamentos((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: formatted } : e))
+    setEquipamentos((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e))
   }
 
   const addEquipamento = () => setEquipamentos((prev) => [...prev, equipamentoVazio()])
@@ -72,7 +59,7 @@ export function RegistrarFabricacaoModal({
   // Cálculos por equipamento
   const rows = equipamentos.map((e) => ({
     peso: Number(e.peso_ton) || 0,
-    valor: parseMoeda(e.valor_total),
+    valor: Number(e.valor_total) || 0,
   }))
 
   // Subtotal
@@ -80,7 +67,7 @@ export function RegistrarFabricacaoModal({
   const valorTotalEquip = rows.reduce((a, r) => a + r.valor, 0)
 
   // Testes
-  const numTestes = possuiTestes ? parseMoeda(valorTestes) : 0
+  const numTestes = possuiTestes ? (Number(valorTestes) || 0) : 0
 
   // Total geral
   const valorTotalGeral = valorTotalEquip + numTestes
@@ -106,7 +93,7 @@ export function RegistrarFabricacaoModal({
         equipamentos: equipsValidos.map((e) => ({
           descricao: e.descricao.trim(),
           peso_ton: Number(e.peso_ton),
-          valor_total: parseMoeda(e.valor_total),
+          valor_total: Number(e.valor_total),
           ...(e.observacoes.trim() ? { observacoes: e.observacoes.trim() } : {}),
         })),
         possui_testes: possuiTestes,
@@ -160,7 +147,7 @@ export function RegistrarFabricacaoModal({
       <div className="flex flex-col gap-3 mb-3">
         {equipamentos.map((eq, idx) => {
           const pesoNum = Number(eq.peso_ton) || 0
-          const valorNum = parseMoeda(eq.valor_total)
+          const valorNum = Number(eq.valor_total) || 0
           return (
             <div key={idx} className="border border-gray-200 rounded-md p-3">
               <div className="flex items-center justify-between mb-2">
@@ -186,20 +173,15 @@ export function RegistrarFabricacaoModal({
                   />
                 </Field>
                 <Field label="Peso (ton)">
-                  <Input
-                    type="number"
-                    placeholder="Ex: 12.5"
+                  <CurrencyInput
                     value={eq.peso_ton}
-                    onChange={(e) => updateEquipamento(idx, 'peso_ton', e.target.value)}
+                    onChange={(v) => updateEquipamento(idx, 'peso_ton', v)}
                   />
                 </Field>
                 <Field label="Valor Total (R$)">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0,00"
+                  <CurrencyInput
                     value={eq.valor_total}
-                    onChange={(e) => updateEquipamento(idx, 'valor_total', e.target.value)}
+                    onChange={(v) => updateEquipamento(idx, 'valor_total', v)}
                   />
                 </Field>
               </div>
@@ -289,13 +271,7 @@ export function RegistrarFabricacaoModal({
               />
             </Field>
             <Field label="Valor dos testes (R$)">
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="0,00"
-                value={valorTestes}
-                onChange={(e) => setValorTestes(mascaraMoeda(e.target.value))}
-              />
+              <CurrencyInput value={valorTestes} onChange={setValorTestes} />
             </Field>
           </div>
         </div>

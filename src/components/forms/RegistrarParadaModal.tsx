@@ -3,22 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, AutoInput } from '@/components/ui/Input'
+import { Field, Input, Select, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
-
-// ─── Currency helpers ─────────────────────────────────────────────────────────
-
-function mascaraMoeda(valor: string): string {
-  const digits = valor.replace(/\D/g, '')
-  if (!digits) return ''
-  const cents = parseInt(digits, 10)
-  return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function parseMoeda(valor: string): number {
-  if (!valor) return 0
-  return parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0
-}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -68,8 +54,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const numHhDireto = parseInt(hhDireto) || 0
-  const numHhIndireto = parseInt(hhIndireto) || 0
+  const numHhDireto = Number(hhDireto) || 0
+  const numHhIndireto = Number(hhIndireto) || 0
   const hhTotal = numHhDireto + numHhIndireto
   const percIndireto = hhTotal > 0 ? ((numHhIndireto / hhTotal) * 100).toFixed(1) + '%' : '—'
 
@@ -88,10 +74,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       if (!naoAplicavel) {
         body.hh_direto = numHhDireto
         body.hh_indireto = numHhIndireto
-        body.efetivo_pico = parseInt(efetivoPico)
-        body.dias_parada = parseInt(diasParada)
+        body.efetivo_pico = Number(efetivoPico)
+        body.dias_parada = Number(diasParada)
         body.finais_de_semana = finaisDeSemana
-        if (pesoMontagem) body.peso_montagem = parseFloat(pesoMontagem.replace(',', '.'))
+        if (pesoMontagem) body.peso_montagem = Number(pesoMontagem)
         if (turno) body.turno = turno
       }
 
@@ -140,13 +126,13 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
 
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="HH Direto">
-              <Input type="number" placeholder="Ex: 15000" value={hhDireto} onChange={(e) => setHhDireto(e.target.value)} />
+              <IntegerInput placeholder="Ex: 15.000" value={hhDireto} onChange={setHhDireto} />
             </Field>
             <Field label="HH Indireto">
-              <Input type="number" placeholder="Ex: 4000" value={hhIndireto} onChange={(e) => setHhIndireto(e.target.value)} />
+              <IntegerInput placeholder="Ex: 4.000" value={hhIndireto} onChange={setHhIndireto} />
             </Field>
             <Field label="HH Total">
-              <AutoInput value={hhTotal > 0 ? hhTotal.toString() : '—'} />
+              <AutoInput value={hhTotal > 0 ? hhTotal.toLocaleString('pt-BR') : '—'} />
             </Field>
             <Field label="% Indireto">
               <AutoInput value={percIndireto} />
@@ -157,10 +143,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
 
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Efetivo Pico (pessoas)">
-              <Input type="number" placeholder="Ex: 300" value={efetivoPico} onChange={(e) => setEfetivoPico(e.target.value)} />
+              <IntegerInput placeholder="Ex: 300" value={efetivoPico} onChange={setEfetivoPico} />
             </Field>
             <Field label="Dias de Parada">
-              <Input type="number" placeholder="Ex: 21" value={diasParada} onChange={(e) => setDiasParada(e.target.value)} />
+              <IntegerInput placeholder="Ex: 21" value={diasParada} onChange={setDiasParada} />
             </Field>
             <Field label="Turno Considerado">
               <Select value={turno} onChange={(e) => setTurno(e.target.value)}>
@@ -172,7 +158,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
               </Select>
             </Field>
             <Field label="Peso Montagem (ton, opcional)">
-              <Input type="text" inputMode="decimal" placeholder="Ex: 1250,50" value={pesoMontagem} onChange={(e) => setPesoMontagem(e.target.value)} />
+              <CurrencyInput placeholder="Ex: 1.250,50" value={pesoMontagem} onChange={setPesoMontagem} />
             </Field>
           </div>
 
@@ -231,8 +217,8 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const tecnicaSel = propostasTecnicas.find((pt) => String(pt.id) === tecnicaId) ?? null
   const hhTotal = tecnicaSel?.hh_total ?? null
 
-  const numValorTotal = parseMoeda(valorTotal)
-  const numTerceiros = parseMoeda(valorTerceiros)
+  const numValorTotal = Number(valorTotal) || 0
+  const numTerceiros = Number(valorTerceiros) || 0
   const valorSemTerceiros = numValorTotal > 0 ? numValorTotal - numTerceiros : null
   const rshhSemTerceiros = hhTotal && valorSemTerceiros && hhTotal > 0 ? valorSemTerceiros / hhTotal : null
   const rshhComTerceiros = hhTotal && numValorTotal > 0 && hhTotal > 0 ? numValorTotal / hhTotal : null
@@ -360,28 +346,10 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Valor Total (R$)">
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="Ex: 1.200.000,00"
-            value={valorTotal}
-            onChange={(e) => setValorTotal(mascaraMoeda(e.target.value))}
-          />
-          {numValorTotal > 0 && (
-            <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numValorTotal)}</p>
-          )}
+          <CurrencyInput value={valorTotal} onChange={setValorTotal} />
         </Field>
         <Field label="Valor Terceiros (R$, opcional)">
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="Ex: 150.000,00"
-            value={valorTerceiros}
-            onChange={(e) => setValorTerceiros(mascaraMoeda(e.target.value))}
-          />
-          {numTerceiros > 0 && (
-            <p className="text-[10px] text-auto-value mt-0.5">{formatCurrency(numTerceiros)}</p>
-          )}
+          <CurrencyInput value={valorTerceiros} onChange={setValorTerceiros} />
         </Field>
       </div>
 

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, AutoInput } from '@/components/ui/Input'
+import { Field, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 
 interface Props {
   open: boolean
@@ -48,7 +48,8 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
 
-      setHhDireto(''); setHhIndireto(''); setPesoMontagem(''); setDataEnvio(new Date().toISOString().split('T')[0])
+      setHhDireto(''); setHhIndireto(''); setPesoMontagem('')
+      setDataEnvio(new Date().toISOString().split('T')[0])
       onSuccess()
       onClose()
     } finally {
@@ -75,27 +76,17 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       )}
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="HH Direto">
-          <Input
-            type="number"
-            placeholder="Ex: 3200"
-            value={hhDireto}
-            onChange={(e) => setHhDireto(e.target.value)}
-          />
+        <Field label="HH Direto *">
+          <IntegerInput placeholder="Ex: 3.200" value={hhDireto} onChange={setHhDireto} />
         </Field>
-        <Field label="HH Indireto">
-          <Input
-            type="number"
-            placeholder="Ex: 1600"
-            value={hhIndireto}
-            onChange={(e) => setHhIndireto(e.target.value)}
-          />
+        <Field label="HH Indireto *">
+          <IntegerInput placeholder="Ex: 1.600" value={hhIndireto} onChange={setHhIndireto} />
         </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="HH Total (automático)">
-          <AutoInput value={hhTotal !== null ? String(hhTotal) : ''} placeholder="—" />
+          <AutoInput value={hhTotal !== null ? hhTotal.toLocaleString('pt-BR') : ''} placeholder="—" />
           <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Direto + HH Indireto</p>
         </Field>
         <Field label="% Indireto (automático)">
@@ -106,18 +97,14 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
 
       <div className="grid grid-cols-2 gap-2.5">
         <Field label="Peso Total Montagem (t)">
-          <Input
-            type="number"
-            placeholder="Ex: 148,5"
-            value={pesoMontagem}
-            onChange={(e) => setPesoMontagem(e.target.value)}
-          />
+          <CurrencyInput placeholder="Ex: 148,50" value={pesoMontagem} onChange={setPesoMontagem} />
         </Field>
         <Field label="Data de envio — técnica">
-          <Input
+          <input
             type="date"
             value={dataEnvio}
             onChange={(e) => setDataEnvio(e.target.value)}
+            className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
           />
         </Field>
       </div>

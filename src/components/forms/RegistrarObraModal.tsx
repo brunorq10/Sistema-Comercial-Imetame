@@ -3,23 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, AutoInput } from '@/components/ui/Input'
+import { Field, Input, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function mascaraMoeda(valor: string): string {
-  const digits = valor.replace(/\D/g, '')
-  if (!digits) return ''
-  return (parseInt(digits, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-function parseMoeda(valor: string): number {
-  if (!valor) return 0
-  return parseFloat(valor.replace(/\./g, '').replace(',', '.')) || 0
-}
-function parsePeso(val: string): number {
-  return parseFloat(val.replace(',', '.')) || 0
-}
 function today(): string { return new Date().toISOString().split('T')[0] }
 
 // ─── Categorias de peso ────────────────────────────────────────────────────────
@@ -106,9 +94,9 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const numPesos = CATEGORIAS.map(({ key }) => parsePeso(pesos[key]))
+  const numPesos = CATEGORIAS.map(({ key }) => Number(pesos[key]) || 0)
   const pesoTotal = numPesos.reduce((a, b) => a + b, 0)
-  const numHh = parseInt(hhTotal) || 0
+  const numHh = Number(hhTotal) || 0
   const hhPorTon = pesoTotal > 0 && numHh > 0 ? (numHh / pesoTotal).toFixed(1) : null
   const percents = numPesos.map((p) =>
     pesoTotal > 0 && p > 0 ? ((p / pesoTotal) * 100).toFixed(1) + '%' : '—',
@@ -127,10 +115,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       if (!naoAplicavel) {
         body.hh_total = numHh
         body.peso_montagem = pesoTotal
-        const numEq = parsePeso(pesos.equipamentos)
-        const numTub = parsePeso(pesos.tubulacoes)
-        const numSup = parsePeso(pesos.suportes)
-        const numEst = parsePeso(pesos.estruturas)
+        const numEq = Number(pesos.equipamentos) || 0
+        const numTub = Number(pesos.tubulacoes) || 0
+        const numSup = Number(pesos.suportes) || 0
+        const numEst = Number(pesos.estruturas) || 0
         if (numEq > 0) body.peso_equipamentos = numEq
         if (numTub > 0) body.peso_tubulacoes = numTub
         if (numSup > 0) body.peso_suportes = numSup
@@ -186,12 +174,9 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
                   <tr key={key} className="border-b border-gray-100">
                     <td className="px-3 py-1.5 font-medium text-gray-700">{label}</td>
                     <td className="px-3 py-1.5">
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0,000"
+                      <CurrencyInput
                         value={pesos[key]}
-                        onChange={(e) => setPesos((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onChange={(v) => setPesos((prev) => ({ ...prev, [key]: v }))}
                       />
                     </td>
                     <td className="px-3 py-1.5">
@@ -215,7 +200,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
           <ModalSection>Horas-Homem</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-4">
             <Field label="HH Total *">
-              <Input type="number" placeholder="Ex: 15000" value={hhTotal} onChange={(e) => setHhTotal(e.target.value)} />
+              <IntegerInput placeholder="Ex: 15.000" value={hhTotal} onChange={setHhTotal} />
             </Field>
             <Field label="HH/ton (automático)">
               <AutoInput value={hhPorTon ? `${hhPorTon} HH/t` : '—'} />
@@ -271,14 +256,14 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const hhPorTonRef = pesoTotalRef && hhTotalRef && pesoTotalRef > 0
     ? (hhTotalRef / pesoTotalRef).toFixed(1) : null
 
-  const numMontagem = parseMoeda(valorMontagem)
+  const numMontagem = Number(valorMontagem) || 0
   const rsPorKgMontagem = pesoTotalRef && pesoTotalRef > 0 && numMontagem > 0
     ? numMontagem / (pesoTotalRef * 1000) : null
   const rsPorHhMontagem = hhTotalRef && hhTotalRef > 0 && numMontagem > 0
     ? numMontagem / hhTotalRef : null
 
-  const numTerceiros = TERCEIROS.reduce((sum, { key }) => sum + parseMoeda(terceiros[key]), 0)
-  const numFabricacao = possuiFabricacao ? parseMoeda(valorFabricacao) : 0
+  const numTerceiros = TERCEIROS.reduce((sum, { key }) => sum + (Number(terceiros[key]) || 0), 0)
+  const numFabricacao = possuiFabricacao ? (Number(valorFabricacao) || 0) : 0
   const valorGlobal = numMontagem + (possuiTerceiros ? numTerceiros : 0) + numFabricacao
 
   const rsPorKgGlobal = pesoTotalRef && pesoTotalRef > 0 && valorGlobal > 0
@@ -303,7 +288,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         body.possui_fabricacao = possuiFabricacao
         if (possuiTerceiros) {
           for (const { key, apiKey } of TERCEIROS) {
-            const v = parseMoeda(terceiros[key])
+            const v = Number(terceiros[key]) || 0
             if (v > 0) body[apiKey] = v
           }
         }
@@ -393,13 +378,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
       {/* Montagem */}
       <ModalSection>Montagem</ModalSection>
       <Field label="Valor da Montagem (R$) *" className="mb-2.5">
-        <Input
-          type="text"
-          inputMode="numeric"
-          placeholder="Ex: 1.200.000,00"
-          value={valorMontagem}
-          onChange={(e) => setValorMontagem(mascaraMoeda(e.target.value))}
-        />
+        <CurrencyInput value={valorMontagem} onChange={setValorMontagem} />
       </Field>
       {numMontagem > 0 && (
         <div className="bg-auto-bg border border-auto-value/20 rounded p-3 mb-4 grid grid-cols-2 gap-3 text-[11px]">
@@ -433,12 +412,9 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
                 <tr key={key} className="border-b border-gray-100">
                   <td className="px-3 py-1.5 font-medium text-gray-700">{label}</td>
                   <td className="px-3 py-1.5">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0,00"
+                    <CurrencyInput
                       value={terceiros[key]}
-                      onChange={(e) => setTerceiros((prev) => ({ ...prev, [key]: mascaraMoeda(e.target.value) }))}
+                      onChange={(v) => setTerceiros((prev) => ({ ...prev, [key]: v }))}
                     />
                   </td>
                 </tr>
@@ -461,13 +437,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
       </div>
       {possuiFabricacao && (
         <Field label="Valor das Fabricações (R$)" className="mb-4">
-          <Input
-            type="text"
-            inputMode="numeric"
-            placeholder="0,00"
-            value={valorFabricacao}
-            onChange={(e) => setValorFabricacao(mascaraMoeda(e.target.value))}
-          />
+          <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
         </Field>
       )}
 
