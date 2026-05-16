@@ -14,6 +14,8 @@ const updateSchema = z.object({
   data_inicio: z.string().optional().nullable(),
   data_fim: z.string().optional().nullable(),
   descricao: z.string().optional().nullable(),
+  classificacao: z.enum(['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES']).optional().nullable(),
+  valor_contrato: z.number().nonnegative().optional().nullable(),
   cancel_reason: z.string().optional(),
 })
 
@@ -27,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const contrato = await prisma.contrato.findUnique({
     where: { id },
     include: {
-      cliente: { select: { id: true, nome: true } },
+      cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel: { select: { id: true, nome: true } },
       subindices: {
         orderBy: { ordem: 'asc' },
@@ -68,7 +70,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id },
     data,
     include: {
-      cliente: { select: { id: true, nome: true } },
+      cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel: { select: { id: true, nome: true } },
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
     },
@@ -107,7 +109,10 @@ function serializeContrato(c: any) {
     data_inicio: c.data_inicio?.toISOString() ?? null,
     data_fim: c.data_fim?.toISOString() ?? null,
     descricao: c.descricao,
+    classificacao: c.classificacao ?? null,
+    valor_contrato: c.valor_contrato ? Number(c.valor_contrato) : null,
     cancelled_at: c.cancelled_at?.toISOString() ?? null,
+    prev_anos_seguintes: 0,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     subindices: c.subindices.map((s: any) => serializeSubindice(s)),
   }
@@ -135,10 +140,11 @@ function serializeSubindice(s: any) {
     mar: s.mar ? Number(s.mar) : null, abr: s.abr ? Number(s.abr) : null,
     mai: s.mai ? Number(s.mai) : null, jun: s.jun ? Number(s.jun) : null,
     jul: s.jul ? Number(s.jul) : null, ago: s.ago ? Number(s.ago) : null,
-    set: s.set_col ? Number(s.set_col) : null, out: s.out ? Number(s.out) : null,
+    set: s.set ? Number(s.set) : null, out: s.out ? Number(s.out) : null,
     nov: s.nov ? Number(s.nov) : null, dez: s.dez ? Number(s.dez) : null,
     total_faturado: totalFaturado,
     status_faturamento: status,
+    prev_anos_seguintes: 0,
     notas_fiscais: s.notas_fiscais?.map((nf: any) => ({
       id: nf.id, numero_nf: nf.numero_nf,
       valor_total_nf: Number(nf.valor_total_nf),

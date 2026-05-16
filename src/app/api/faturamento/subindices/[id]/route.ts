@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { set: set_val, ...rest } = parsed.data
   const data: Record<string, unknown> = { ...rest }
-  if (set_val !== undefined) data.set_col = set_val
+  if (set_val !== undefined) data.set = set_val
   if (rest.data_inicio !== undefined) data.data_inicio = rest.data_inicio ? new Date(rest.data_inicio) : null
   if (rest.data_fim !== undefined) data.data_fim = rest.data_fim ? new Date(rest.data_fim) : null
 

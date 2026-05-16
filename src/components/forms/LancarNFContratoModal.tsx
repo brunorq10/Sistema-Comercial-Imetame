@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
-import { formatCurrency } from '@/lib/utils'
-import type { SubIndiceItem, ContratoItem } from '@/types'
+import { Field, Input, CurrencyInput } from '@/components/ui/Input'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import type { SubIndiceItem, ContratoItem, NFContratoItem } from '@/types'
 
 interface Props {
   open: boolean
@@ -15,7 +15,10 @@ interface Props {
   subindice: SubIndiceItem
 }
 
+type Aba = 'lancar' | 'historico'
+
 export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice }: Props) {
+  const [aba, setAba] = useState<Aba>('lancar')
   const [numeroNF, setNumeroNF] = useState('')
   const [dataEmissao, setDataEmissao] = useState('')
   const [dataVencimento, setDataVencimento] = useState('')
@@ -30,6 +33,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
   useEffect(() => {
     if (open) {
+      setAba('lancar')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
       setValorTotal(''); setPercentual('100'); setError(null)
     }
@@ -64,94 +68,237 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   }
 
   const indiceSubindice = `${contrato.indice}.${subindice.ordem}`
+  const nfsAtivas = subindice.notas_fiscais.filter((nf) => nf.ativa)
+  const nfsInativas = subindice.notas_fiscais.filter((nf) => !nf.ativa)
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Lançar NF — ${indiceSubindice}`}
+      title={`NF — ${indiceSubindice} · ${subindice.descricao}`}
+      wide
       footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Lançando...' : 'Lançar NF'}
-          </Button>
-        </>
+        aba === 'lancar' ? (
+          <>
+            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Lançando...' : 'Lançar NF'}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        )
       }
     >
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
+      {/* ── Abas ── */}
+      <div className="flex border-b border-gray-200 mb-4 -mt-1">
+        <button
+          onClick={() => setAba('lancar')}
+          className={`px-4 py-2 text-[12px] font-semibold border-b-2 transition-colors ${
+            aba === 'lancar'
+              ? 'border-green-primary text-green-primary'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Lançar NF
+        </button>
+        <button
+          onClick={() => setAba('historico')}
+          className={`px-4 py-2 text-[12px] font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${
+            aba === 'historico'
+              ? 'border-green-primary text-green-primary'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          NFs lançadas
+          {subindice.notas_fiscais.length > 0 && (
+            <span className="bg-gray-200 text-gray-600 rounded-full text-[10px] px-1.5 py-0.5 leading-none">
+              {subindice.notas_fiscais.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Aba: Lançar NF ── */}
+      {aba === 'lancar' && (
+        <>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
+          )}
+
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 grid grid-cols-2 gap-x-4 gap-y-1">
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Índice</p>
+              <p className="text-[12px] font-bold text-green-dark">{indiceSubindice}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Cliente</p>
+              <p className="text-[12px] font-medium">{contrato.cliente.nome}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Nº OS</p>
+              <p className="text-[12px]">{contrato.num_os ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Evento de medição</p>
+              <p className="text-[12px]">{subindice.descricao}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Valor do evento</p>
+              <p className="text-[12px] font-semibold">{formatCurrency(subindice.valor_total)}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase">Já faturado</p>
+              <p className="text-[12px] font-semibold text-auto-value">{formatCurrency(subindice.total_faturado)}</p>
+            </div>
+          </div>
+
+          <ModalSection>Dados da nota fiscal</ModalSection>
+
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+            <Field label="Número da NF *" className="col-span-2">
+              <Input placeholder="Ex: 000123" value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} />
+            </Field>
+            <Field label="Data de emissão *">
+              <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
+            </Field>
+            <Field label="Data de vencimento *">
+              <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
+            </Field>
+            <Field label="Valor total da NF (R$) *">
+              <CurrencyInput
+                value={valorTotal}
+                onChange={setValorTotal}
+              />
+            </Field>
+            <Field label="% referente a este item">
+              <Input
+                type="number" min="0.01" max="100" step="0.01" placeholder="100"
+                value={percentual}
+                onChange={(e) => setPercentual(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="bg-auto-bg border border-auto-value/30 rounded-md p-3 mb-2">
+            <p className="text-[10px] text-auto-value font-semibold uppercase tracking-wide mb-0.5">
+              Valor atribuído a este item
+            </p>
+            <p className="text-[18px] font-bold text-auto-value">{formatCurrency(valorAtribuido)}</p>
+          </div>
+
+          {Number(percentual) < 100 && Number(percentual) > 0 && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded">
+              ⚠ O percentual restante ({(100 - Number(percentual)).toFixed(2)}%) deve ser lançado em outro item.
+            </div>
+          )}
+        </>
       )}
 
-      {/* Bloco somente leitura com dados do sub-índice */}
-      <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 grid grid-cols-2 gap-x-4 gap-y-1">
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Índice</p>
-          <p className="text-[12px] font-bold text-green-dark">{indiceSubindice}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Cliente</p>
-          <p className="text-[12px] font-medium">{contrato.cliente.nome}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Nº OS</p>
-          <p className="text-[12px]">{contrato.num_os ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Evento de medição</p>
-          <p className="text-[12px]">{subindice.descricao}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Valor do evento</p>
-          <p className="text-[12px] font-semibold">{formatCurrency(subindice.valor_total)}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase">Já faturado</p>
-          <p className="text-[12px] font-semibold text-auto-value">{formatCurrency(subindice.total_faturado)}</p>
-        </div>
-      </div>
-
-      <ModalSection>Dados da nota fiscal</ModalSection>
-
-      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Número da NF *" className="col-span-2">
-          <Input placeholder="Ex: 000123" value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} />
-        </Field>
-        <Field label="Data de emissão *">
-          <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
-        </Field>
-        <Field label="Data de vencimento *">
-          <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
-        </Field>
-        <Field label="Valor total da NF (R$) *">
-          <Input
-            type="number" min="0.01" step="0.01" placeholder="0,00"
-            value={valorTotal}
-            onChange={(e) => setValorTotal(e.target.value)}
-          />
-        </Field>
-        <Field label="% referente a este item">
-          <Input
-            type="number" min="0.01" max="100" step="0.01" placeholder="100"
-            value={percentual}
-            onChange={(e) => setPercentual(e.target.value)}
-          />
-        </Field>
-      </div>
-
-      {/* Valor atribuído calculado em tempo real */}
-      <div className="bg-auto-bg border border-auto-value/30 rounded-md p-3 mb-2">
-        <p className="text-[10px] text-auto-value font-semibold uppercase tracking-wide mb-0.5">
-          Valor atribuído a este item
-        </p>
-        <p className="text-[18px] font-bold text-auto-value">{formatCurrency(valorAtribuido)}</p>
-      </div>
-
-      {Number(percentual) < 100 && Number(percentual) > 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded">
-          ⚠ O percentual restante ({(100 - Number(percentual)).toFixed(2)}%) deve ser lançado em outro item.
-        </div>
+      {/* ── Aba: Histórico de NFs ── */}
+      {aba === 'historico' && (
+        <NFHistoricoTab nfs={subindice.notas_fiscais} valorEvento={subindice.valor_total} />
       )}
     </Modal>
+  )
+}
+
+function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEvento: number }) {
+  if (nfs.length === 0) {
+    return (
+      <div className="text-center text-gray-400 py-10 text-[12px]">
+        Nenhuma NF lançada para este item ainda.
+      </div>
+    )
+  }
+
+  const ativas   = nfs.filter((nf) => nf.ativa)
+  const inativas = nfs.filter((nf) => !nf.ativa)
+  const totalAtribuido = ativas.reduce((a, nf) => a + nf.valor_atribuido, 0)
+
+  return (
+    <div>
+      {/* Resumo */}
+      <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5">
+          <p className="text-[9px] text-gray-400 uppercase mb-0.5">Total faturado (ativas)</p>
+          <p className="text-[14px] font-bold text-auto-value">{formatCurrency(totalAtribuido)}</p>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5">
+          <p className="text-[9px] text-gray-400 uppercase mb-0.5">Valor do evento</p>
+          <p className="text-[14px] font-bold text-green-dark">{formatCurrency(valorEvento)}</p>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5">
+          <p className="text-[9px] text-gray-400 uppercase mb-0.5">A faturar</p>
+          <p className={`text-[14px] font-bold ${valorEvento - totalAtribuido > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+            {formatCurrency(Math.max(0, valorEvento - totalAtribuido))}
+          </p>
+        </div>
+      </div>
+
+      {/* Tabela NFs ativas */}
+      {ativas.length > 0 && (
+        <>
+          <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Notas fiscais ativas</p>
+          <NFTable nfs={ativas} />
+        </>
+      )}
+
+      {/* Tabela NFs inativas */}
+      {inativas.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Notas inativas (não entram no faturamento)</p>
+          <NFTable nfs={inativas} inativa />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean }) {
+  const thCls = 'px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
+  const tdCls = `px-3 py-2 text-[11px] whitespace-nowrap border-b border-gray-100 ${inativa ? 'text-gray-400' : 'text-gray-700'}`
+
+  return (
+    <div className="border border-gray-200 rounded-md overflow-hidden">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className={thCls}>Nº NF</th>
+            <th className={thCls}>Dt. Emissão</th>
+            <th className={thCls}>Dt. Vencimento</th>
+            <th className={thCls}>Vlr. Total NF</th>
+            <th className={thCls}>%</th>
+            <th className={thCls}>Vlr. Atribuído</th>
+            {inativa && <th className={thCls}>Motivo</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {nfs.map((nf) => (
+            <tr key={nf.id} className={inativa ? 'bg-gray-50/50' : 'hover:bg-gray-50'}>
+              <td className={tdCls}>
+                <span className={`font-semibold ${inativa ? 'line-through text-gray-400' : 'text-green-dark'}`}>
+                  {nf.numero_nf}
+                </span>
+              </td>
+              <td className={tdCls}>{formatDate(nf.data_emissao)}</td>
+              <td className={tdCls}>{formatDate(nf.data_vencimento)}</td>
+              <td className={tdCls}>{formatCurrency(nf.valor_total_nf)}</td>
+              <td className={tdCls}>{Number(nf.percentual).toFixed(2)}%</td>
+              <td className={tdCls}>
+                <span className={inativa ? '' : 'font-semibold text-auto-value'}>
+                  {formatCurrency(nf.valor_atribuido)}
+                </span>
+              </td>
+              {inativa && (
+                <td className={tdCls}>
+                  <span className="text-gray-400 italic text-[10px]">{nf.motivo_inativacao ?? '—'}</span>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

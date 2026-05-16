@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ model User {
   contratos_criados           Contrato[]             @relation("ContratoCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
+  consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
 
   @@map("users")
 }
@@ -398,6 +400,8 @@ model Contrato {
   data_inicio    DateTime?
   data_fim       DateTime?
   descricao      String?
+  classificacao  Classificacao?
+  valor_contrato Decimal?       @db.Decimal(15, 2)
   created_at     DateTime          @default(now())
   updated_at     DateTime          @updatedAt
   created_by     Int
@@ -444,6 +448,7 @@ model SubIndiceFaturamento {
   contrato      Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
   criador       User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
   notas_fiscais NotaFiscalContrato[]
+  consolidados  ConsolidadoMesItem[]
 
   @@index([contrato_id])
   @@map("subindices_faturamento")
@@ -469,4 +474,36 @@ model NotaFiscalContrato {
 
   @@index([subindice_id])
   @@map("notas_fiscais_contratos")
+}
+
+// ─── Consolidado Mensal (Previsão x Realizado) ────────────────────────────────
+
+model ConsolidadoMes {
+  id         Int      @id @default(autoincrement())
+  mes        Int      // 1-12
+  ano        Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by Int
+
+  criador User                 @relation("ConsolidadoCriador", fields: [created_by], references: [id])
+  itens   ConsolidadoMesItem[]
+
+  @@unique([mes, ano])
+  @@index([ano])
+  @@map("consolidados_mes")
+}
+
+model ConsolidadoMesItem {
+  id             Int     @id @default(autoincrement())
+  consolidado_id Int
+  subindice_id   Int
+  valor_previsto Decimal @db.Decimal(15, 2)
+
+  consolidado ConsolidadoMes       @relation(fields: [consolidado_id], references: [id], onDelete: Cascade)
+  subindice   SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
+
+  @@index([consolidado_id])
+  @@index([subindice_id])
+  @@map("consolidados_mes_itens")
 }

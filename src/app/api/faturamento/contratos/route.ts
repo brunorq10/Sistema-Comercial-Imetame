@@ -34,6 +34,8 @@ const schema = z.object({
   data_inicio: z.string().optional(),
   data_fim: z.string().optional(),
   descricao: z.string().optional(),
+  classificacao: z.enum(['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES']).optional().nullable(),
+  valor_contrato: z.number().nonnegative().optional().nullable(),
   subindices: z.array(subindiceSchema).min(1),
 })
 
@@ -48,30 +50,52 @@ export async function GET(req: NextRequest) {
   const responsavel_id = searchParams.get('responsavel_id') ?? undefined
   const num_acordo = searchParams.get('num_acordo') ?? undefined
 
-  const contratos = await prisma.contrato.findMany({
-    where: {
-      cancelled_at: null,
-      ...(ano && { ano_referencia: Number(ano) }),
-      ...(cliente_id && { cliente_id: Number(cliente_id) }),
-      ...(status && { status: status as never }),
-      ...(responsavel_id && { responsavel_id: Number(responsavel_id) }),
-      ...(num_acordo && { num_acordo: { contains: num_acordo, mode: 'insensitive' } }),
-    },
-    orderBy: [{ indice: 'asc' }],
-    include: {
-      cliente: { select: { id: true, nome: true } },
-      responsavel: { select: { id: true, nome: true } },
-      subindices: {
-        orderBy: { ordem: 'asc' },
-        include: {
-          notas_fiscais: true,
+  try {
+    const anoNum = ano ? Number(ano) : undefined
+
+    // Contratos que têm ano_referencia = ano OU que possuem sub-índice com data_inicio no ano
+    const whereAnual = anoNum ? {
+      OR: [
+        { ano_referencia: anoNum },
+        {
+          subindices: {
+            some: {
+              data_inicio: {
+                gte: new Date(`${anoNum}-01-01`),
+                lt: new Date(`${anoNum + 1}-01-01`),
+              },
+            },
+          },
+        },
+      ],
+    } : {}
+
+    const contratos = await prisma.contrato.findMany({
+      where: {
+        cancelled_at: null,
+        ...whereAnual,
+        ...(cliente_id && { cliente_id: Number(cliente_id) }),
+        ...(status && { status: status as never }),
+        ...(responsavel_id && { responsavel_id: Number(responsavel_id) }),
+        ...(num_acordo && { num_acordo: { contains: num_acordo, mode: 'insensitive' as const } }),
+      },
+      orderBy: [{ indice: 'asc' }],
+      include: {
+        cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
+        responsavel: { select: { id: true, nome: true } },
+        subindices: {
+          orderBy: { ordem: 'asc' },
+          include: { notas_fiscais: true },
         },
       },
-    },
-  })
+    })
 
-  const data = contratos.map((c) => serializeContrato(c))
-  return NextResponse.json({ data, error: null })
+    const data = contratos.map((c) => serializeContrato(c, anoNum))
+    return NextResponse.json({ data, error: null })
+  } catch (err) {
+    console.error('[GET /api/faturamento/contratos]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -84,6 +108,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  try {
   const count = await prisma.contrato.count()
   const indice = `CT-${String(count + 1).padStart(3, '0')}`
 
@@ -100,6 +125,8 @@ export async function POST(req: NextRequest) {
       data_inicio: parsed.data.data_inicio ? new Date(parsed.data.data_inicio) : null,
       data_fim: parsed.data.data_fim ? new Date(parsed.data.data_fim) : null,
       descricao: parsed.data.descricao ?? null,
+      classificacao: parsed.data.classificacao ?? null,
+      valor_contrato: parsed.data.valor_contrato ?? null,
       created_by: Number(session.user.id),
       subindices: {
         create: parsed.data.subindices.map((s, i) => ({
@@ -111,24 +138,49 @@ export async function POST(req: NextRequest) {
           comentarios: s.comentarios ?? null,
           jan: s.jan ?? null, fev: s.fev ?? null, mar: s.mar ?? null,
           abr: s.abr ?? null, mai: s.mai ?? null, jun: s.jun ?? null,
-          jul: s.jul ?? null, ago: s.ago ?? null, set_col: s.set ?? null,
+          jul: s.jul ?? null, ago: s.ago ?? null, set: s.set ?? null,
           out: s.out ?? null, nov: s.nov ?? null, dez: s.dez ?? null,
           created_by: Number(session.user.id),
         })),
       },
     },
     include: {
-      cliente: { select: { id: true, nome: true } },
+      cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel: { select: { id: true, nome: true } },
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
     },
   })
 
   return NextResponse.json({ data: serializeContrato(contrato), error: null }, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/faturamento/contratos]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeContrato(c: any) {
+function serializeContrato(c: any, anoFiltro?: number) {
+  // Calcula prev_anos_seguintes ANTES de filtrar — soma valor_total dos sub-índices de anos futuros
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prevProxAnos = anoFiltro
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? c.subindices.reduce((acc: number, s: any) => {
+        const ano = s.data_inicio ? s.data_inicio.getUTCFullYear() : c.ano_referencia
+        return ano > anoFiltro ? acc + Number(s.valor_total) : acc
+      }, 0)
+    : 0
+
+  // Filtra sub-índices pelo ano solicitado:
+  // - se tem data_inicio, usa o ano da data; se não tem, usa ano_referencia do contrato
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subsFiltrados: any[] = anoFiltro
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? c.subindices.filter((s: any) => {
+        if (s.data_inicio) return s.data_inicio.getUTCFullYear() === anoFiltro
+        return c.ano_referencia === anoFiltro
+      })
+    : c.subindices
+
   return {
     id: c.id,
     indice: c.indice,
@@ -142,19 +194,36 @@ function serializeContrato(c: any) {
     data_inicio: c.data_inicio?.toISOString() ?? null,
     data_fim: c.data_fim?.toISOString() ?? null,
     descricao: c.descricao,
+    classificacao: c.classificacao ?? null,
+    valor_contrato: c.valor_contrato ? Number(c.valor_contrato) : null,
     cancelled_at: c.cancelled_at?.toISOString() ?? null,
-    subindices: c.subindices.map((s: any) => serializeSubindice(s)),
+    prev_anos_seguintes: prevProxAnos,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    subindices: subsFiltrados.map((s: any) => serializeSubindice(s, c.subindices, anoFiltro)),
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeSubindice(s: any) {
+function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number) {
   const nfsAtivas = s.notas_fiscais?.filter((nf: any) => nf.ativa) ?? []
   const totalFaturado = nfsAtivas.reduce((acc: number, nf: any) => acc + Number(nf.valor_atribuido), 0)
   const status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' =
     totalFaturado === 0 ? 'A_FATURAR'
     : totalFaturado >= Number(s.valor_total) ? 'FATURADO'
     : 'PARCIAL'
+
+  // Calcula previsão de anos seguintes para este sub-índice:
+  // sub-índices de anos futuros com a mesma descrição pertencem ao mesmo evento lógico
+  const prevSubProxAnos = (anoFiltro && allSubindices)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? allSubindices.reduce((acc: number, other: any) => {
+        const outroAno = other.data_inicio ? other.data_inicio.getUTCFullYear() : 0
+        if (outroAno > anoFiltro && other.descricao === s.descricao) {
+          return acc + Number(other.valor_total)
+        }
+        return acc
+      }, 0)
+    : 0
 
   return {
     id: s.id,
@@ -173,12 +242,13 @@ function serializeSubindice(s: any) {
     jun: s.jun ? Number(s.jun) : null,
     jul: s.jul ? Number(s.jul) : null,
     ago: s.ago ? Number(s.ago) : null,
-    set: s.set_col ? Number(s.set_col) : null,
+    set: s.set ? Number(s.set) : null,
     out: s.out ? Number(s.out) : null,
     nov: s.nov ? Number(s.nov) : null,
     dez: s.dez ? Number(s.dez) : null,
     total_faturado: totalFaturado,
     status_faturamento: status,
+    prev_anos_seguintes: prevSubProxAnos,
     notas_fiscais: s.notas_fiscais?.map((nf: any) => ({
       id: nf.id,
       numero_nf: nf.numero_nf,

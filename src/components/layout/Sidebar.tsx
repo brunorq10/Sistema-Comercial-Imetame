@@ -13,9 +13,7 @@ interface NavItem {
 }
 
 const NAV_ACORDOS: NavItem[] = [
-  { label: 'Meu Painel — Acordos', href: '/acordos/painel' },
-  { label: 'Controle de faturamento', href: '/acordos/faturamento', sub: true },
-  { label: 'Registro de NFs', href: '/acordos/nfs', sub: true },
+  { label: 'Controle de faturamento', href: '/acordos/faturamento' },
   { label: 'Previsão vs. realizado', href: '/acordos/previsao', sub: true },
   { label: 'Dashboard Acordos', href: '/acordos/dashboard', sub: true },
 ]

@@ -394,6 +394,7 @@ export interface SubIndiceItem {
   dez: number | null
   total_faturado: number
   status_faturamento: 'A_FATURAR' | 'FATURADO' | 'PARCIAL'
+  prev_anos_seguintes: number
   notas_fiscais: NFContratoItem[]
 }
 
@@ -402,7 +403,7 @@ export interface ContratoItem {
   indice: string
   ano_referencia: number
   status: StatusFaturamento
-  cliente: { id: number; nome: string }
+  cliente: { id: number; nome: string; ramo_atuacao?: string | null }
   responsavel: { id: number; nome: string } | null
   num_os: string | null
   num_acordo: string | null
@@ -410,8 +411,27 @@ export interface ContratoItem {
   data_inicio: string | null
   data_fim: string | null
   descricao: string | null
+  classificacao: Classificacao | null
+  valor_contrato: number | null
   cancelled_at: string | null
+  prev_anos_seguintes: number
   subindices: SubIndiceItem[]
+}
+
+export interface NFContratoListItem {
+  id: number
+  numero_nf: string
+  valor_total_nf: number
+  percentual: number
+  valor_atribuido: number
+  data_emissao: string
+  data_vencimento: string
+  ativa: boolean
+  motivo_inativacao: string | null
+  created_at: string
+  subindice: { id: number; ordem: number; descricao: string }
+  contrato: { id: number; indice: string; num_acordo: string | null; num_proposta: string | null }
+  cliente: { id: number; nome: string }
 }
 
 // ─── API Response ─────────────────────────────────────────────────────────────
