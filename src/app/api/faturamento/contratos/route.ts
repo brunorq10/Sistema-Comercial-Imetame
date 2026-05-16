@@ -1,0 +1,194 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+
+const subindiceSchema = z.object({
+  descricao: z.string().min(1),
+  valor_total: z.number().nonnegative(),
+  data_inicio: z.string().optional(),
+  data_fim: z.string().optional(),
+  comentarios: z.string().optional(),
+  jan: z.number().nonnegative().optional(),
+  fev: z.number().nonnegative().optional(),
+  mar: z.number().nonnegative().optional(),
+  abr: z.number().nonnegative().optional(),
+  mai: z.number().nonnegative().optional(),
+  jun: z.number().nonnegative().optional(),
+  jul: z.number().nonnegative().optional(),
+  ago: z.number().nonnegative().optional(),
+  set: z.number().nonnegative().optional(),
+  out: z.number().nonnegative().optional(),
+  nov: z.number().nonnegative().optional(),
+  dez: z.number().nonnegative().optional(),
+})
+
+const schema = z.object({
+  ano_referencia: z.number().int().min(2000).max(2100),
+  status: z.enum(['A_FATURAR', 'FATURADO', 'PARCIAL', 'CANCELADO']).optional(),
+  cliente_id: z.number().int().positive(),
+  num_os: z.string().optional(),
+  num_acordo: z.string().optional(),
+  num_proposta: z.string().optional(),
+  responsavel_id: z.number().int().positive().optional(),
+  data_inicio: z.string().optional(),
+  data_fim: z.string().optional(),
+  descricao: z.string().optional(),
+  subindices: z.array(subindiceSchema).min(1),
+})
+
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+
+  const { searchParams } = req.nextUrl
+  const ano = searchParams.get('ano') ?? undefined
+  const cliente_id = searchParams.get('cliente_id') ?? undefined
+  const status = searchParams.get('status') ?? undefined
+  const responsavel_id = searchParams.get('responsavel_id') ?? undefined
+  const num_acordo = searchParams.get('num_acordo') ?? undefined
+
+  const contratos = await prisma.contrato.findMany({
+    where: {
+      cancelled_at: null,
+      ...(ano && { ano_referencia: Number(ano) }),
+      ...(cliente_id && { cliente_id: Number(cliente_id) }),
+      ...(status && { status: status as never }),
+      ...(responsavel_id && { responsavel_id: Number(responsavel_id) }),
+      ...(num_acordo && { num_acordo: { contains: num_acordo, mode: 'insensitive' } }),
+    },
+    orderBy: [{ indice: 'asc' }],
+    include: {
+      cliente: { select: { id: true, nome: true } },
+      responsavel: { select: { id: true, nome: true } },
+      subindices: {
+        orderBy: { ordem: 'asc' },
+        include: {
+          notas_fiscais: true,
+        },
+      },
+    },
+  })
+
+  const data = contratos.map((c) => serializeContrato(c))
+  return NextResponse.json({ data, error: null })
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+
+  const body = await req.json()
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
+  }
+
+  const count = await prisma.contrato.count()
+  const indice = `CT-${String(count + 1).padStart(3, '0')}`
+
+  const contrato = await prisma.contrato.create({
+    data: {
+      indice,
+      ano_referencia: parsed.data.ano_referencia,
+      status: parsed.data.status ?? 'A_FATURAR',
+      cliente_id: parsed.data.cliente_id,
+      num_os: parsed.data.num_os ?? null,
+      num_acordo: parsed.data.num_acordo ?? null,
+      num_proposta: parsed.data.num_proposta ?? null,
+      responsavel_id: parsed.data.responsavel_id ?? null,
+      data_inicio: parsed.data.data_inicio ? new Date(parsed.data.data_inicio) : null,
+      data_fim: parsed.data.data_fim ? new Date(parsed.data.data_fim) : null,
+      descricao: parsed.data.descricao ?? null,
+      created_by: Number(session.user.id),
+      subindices: {
+        create: parsed.data.subindices.map((s, i) => ({
+          ordem: i + 1,
+          descricao: s.descricao,
+          valor_total: s.valor_total,
+          data_inicio: s.data_inicio ? new Date(s.data_inicio) : null,
+          data_fim: s.data_fim ? new Date(s.data_fim) : null,
+          comentarios: s.comentarios ?? null,
+          jan: s.jan ?? null, fev: s.fev ?? null, mar: s.mar ?? null,
+          abr: s.abr ?? null, mai: s.mai ?? null, jun: s.jun ?? null,
+          jul: s.jul ?? null, ago: s.ago ?? null, set_col: s.set ?? null,
+          out: s.out ?? null, nov: s.nov ?? null, dez: s.dez ?? null,
+          created_by: Number(session.user.id),
+        })),
+      },
+    },
+    include: {
+      cliente: { select: { id: true, nome: true } },
+      responsavel: { select: { id: true, nome: true } },
+      subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+    },
+  })
+
+  return NextResponse.json({ data: serializeContrato(contrato), error: null }, { status: 201 })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeContrato(c: any) {
+  return {
+    id: c.id,
+    indice: c.indice,
+    ano_referencia: c.ano_referencia,
+    status: c.status,
+    cliente: c.cliente,
+    responsavel: c.responsavel,
+    num_os: c.num_os,
+    num_acordo: c.num_acordo,
+    num_proposta: c.num_proposta,
+    data_inicio: c.data_inicio?.toISOString() ?? null,
+    data_fim: c.data_fim?.toISOString() ?? null,
+    descricao: c.descricao,
+    cancelled_at: c.cancelled_at?.toISOString() ?? null,
+    subindices: c.subindices.map((s: any) => serializeSubindice(s)),
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeSubindice(s: any) {
+  const nfsAtivas = s.notas_fiscais?.filter((nf: any) => nf.ativa) ?? []
+  const totalFaturado = nfsAtivas.reduce((acc: number, nf: any) => acc + Number(nf.valor_atribuido), 0)
+  const status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' =
+    totalFaturado === 0 ? 'A_FATURAR'
+    : totalFaturado >= Number(s.valor_total) ? 'FATURADO'
+    : 'PARCIAL'
+
+  return {
+    id: s.id,
+    contrato_id: s.contrato_id,
+    ordem: s.ordem,
+    descricao: s.descricao,
+    valor_total: Number(s.valor_total),
+    data_inicio: s.data_inicio?.toISOString() ?? null,
+    data_fim: s.data_fim?.toISOString() ?? null,
+    comentarios: s.comentarios,
+    jan: s.jan ? Number(s.jan) : null,
+    fev: s.fev ? Number(s.fev) : null,
+    mar: s.mar ? Number(s.mar) : null,
+    abr: s.abr ? Number(s.abr) : null,
+    mai: s.mai ? Number(s.mai) : null,
+    jun: s.jun ? Number(s.jun) : null,
+    jul: s.jul ? Number(s.jul) : null,
+    ago: s.ago ? Number(s.ago) : null,
+    set: s.set_col ? Number(s.set_col) : null,
+    out: s.out ? Number(s.out) : null,
+    nov: s.nov ? Number(s.nov) : null,
+    dez: s.dez ? Number(s.dez) : null,
+    total_faturado: totalFaturado,
+    status_faturamento: status,
+    notas_fiscais: s.notas_fiscais?.map((nf: any) => ({
+      id: nf.id,
+      numero_nf: nf.numero_nf,
+      valor_total_nf: Number(nf.valor_total_nf),
+      percentual: Number(nf.percentual),
+      valor_atribuido: Number(nf.valor_atribuido),
+      data_emissao: nf.data_emissao.toISOString(),
+      data_vencimento: nf.data_vencimento.toISOString(),
+      ativa: nf.ativa,
+      motivo_inativacao: nf.motivo_inativacao,
+    })) ?? [],
+  }
+}

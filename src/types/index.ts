@@ -355,6 +355,65 @@ export interface NotificacaoItem {
   created_at: string
 }
 
+// ─── Controle de Faturamento ──────────────────────────────────────────────────
+
+export type StatusFaturamento = 'A_FATURAR' | 'FATURADO' | 'PARCIAL' | 'CANCELADO'
+
+export interface NFContratoItem {
+  id: number
+  numero_nf: string
+  valor_total_nf: number
+  percentual: number
+  valor_atribuido: number
+  data_emissao: string
+  data_vencimento: string
+  ativa: boolean
+  motivo_inativacao: string | null
+}
+
+export interface SubIndiceItem {
+  id: number
+  contrato_id: number
+  ordem: number
+  descricao: string
+  valor_total: number
+  data_inicio: string | null
+  data_fim: string | null
+  comentarios: string | null
+  jan: number | null
+  fev: number | null
+  mar: number | null
+  abr: number | null
+  mai: number | null
+  jun: number | null
+  jul: number | null
+  ago: number | null
+  set: number | null
+  out: number | null
+  nov: number | null
+  dez: number | null
+  total_faturado: number
+  status_faturamento: 'A_FATURAR' | 'FATURADO' | 'PARCIAL'
+  notas_fiscais: NFContratoItem[]
+}
+
+export interface ContratoItem {
+  id: number
+  indice: string
+  ano_referencia: number
+  status: StatusFaturamento
+  cliente: { id: number; nome: string }
+  responsavel: { id: number; nome: string } | null
+  num_os: string | null
+  num_acordo: string | null
+  num_proposta: string | null
+  data_inicio: string | null
+  data_fim: string | null
+  descricao: string | null
+  cancelled_at: string | null
+  subindices: SubIndiceItem[]
+}
+
 // ─── API Response ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

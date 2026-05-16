@@ -310,6 +310,7 @@ export default function CadastrosPage() {
             onClose={() => setUsuarioModal(false)}
             onSuccess={() => { setUsuarioModal(false); fetchUsuarios() }}
             editando={editandoUsuario}
+            isAdmin={isAdmin}
           />
         </>
       )}

@@ -86,6 +86,13 @@ enum StatusAcordo {
   CANCELADO
 }
 
+enum StatusFaturamento {
+  A_FATURAR
+  FATURADO
+  PARCIAL
+  CANCELADO
+}
+
 enum RamoAtuacao {
   PAPEL_CELULOSE
   SIDERURGIA
@@ -108,14 +115,18 @@ model User {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  solicitacoes_criadas    Solicitacao[]       @relation("SolicitacaoCriador")
-  solicitacoes_atribuidas Solicitacao[]       @relation("SolicitacaoOrcamentista")
-  propostas_tecnicas      PropostaTecnica[]
-  propostas_comerciais    PropostaComercial[]
-  propostas_fabricacao    PropostaFabricacao[]
-  acordos                 Acordo[]
-  notas_fiscais           NotaFiscal[]
-  notificacoes            Notificacao[]
+  solicitacoes_criadas        Solicitacao[]          @relation("SolicitacaoCriador")
+  solicitacoes_atribuidas     Solicitacao[]          @relation("SolicitacaoOrcamentista")
+  propostas_tecnicas          PropostaTecnica[]
+  propostas_comerciais        PropostaComercial[]
+  propostas_fabricacao        PropostaFabricacao[]
+  acordos                     Acordo[]
+  notas_fiscais               NotaFiscal[]
+  notificacoes                Notificacao[]
+  contratos_responsavel       Contrato[]             @relation("ContratoResponsavel")
+  contratos_criados           Contrato[]             @relation("ContratoCriador")
+  subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
+  nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
 
   @@map("users")
 }
@@ -135,9 +146,10 @@ model Cliente {
   updated_at       DateTime     @updatedAt
   created_by       Int
 
-  solicitacoes           Solicitacao[] @relation("SolicitacaoCliente")
+  solicitacoes            Solicitacao[] @relation("SolicitacaoCliente")
   solicitacoes_como_final Solicitacao[] @relation("SolicitacaoClienteFinal")
-  acordos                Acordo[]
+  acordos                 Acordo[]
+  contratos               Contrato[]
 
   @@map("clientes")
 }
@@ -369,4 +381,92 @@ model NotaFiscal {
 
   @@index([acordo_id])
   @@map("notas_fiscais")
+}
+
+// ─── Módulo Controle de Faturamento ──────────────────────────────────────────
+
+model Contrato {
+  id             Int               @id @default(autoincrement())
+  indice         String            @unique
+  ano_referencia Int
+  status         StatusFaturamento @default(A_FATURAR)
+  cliente_id     Int
+  num_os         String?
+  num_acordo     String?
+  num_proposta   String?
+  responsavel_id Int?
+  data_inicio    DateTime?
+  data_fim       DateTime?
+  descricao      String?
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+  created_by     Int
+  cancelled_at   DateTime?
+  cancel_reason  String?
+
+  cliente      Cliente                @relation(fields: [cliente_id], references: [id])
+  responsavel  User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
+  criador      User                   @relation("ContratoCriador", fields: [created_by], references: [id])
+  subindices   SubIndiceFaturamento[]
+
+  @@index([cliente_id])
+  @@index([ano_referencia])
+  @@index([status])
+  @@index([cancelled_at])
+  @@map("contratos")
+}
+
+model SubIndiceFaturamento {
+  id          Int               @id @default(autoincrement())
+  contrato_id Int
+  ordem       Int
+  descricao   String
+  valor_total Decimal           @db.Decimal(15, 2)
+  data_inicio DateTime?
+  data_fim    DateTime?
+  comentarios String?
+  jan         Decimal?          @db.Decimal(15, 2)
+  fev         Decimal?          @db.Decimal(15, 2)
+  mar         Decimal?          @db.Decimal(15, 2)
+  abr         Decimal?          @db.Decimal(15, 2)
+  mai         Decimal?          @db.Decimal(15, 2)
+  jun         Decimal?          @db.Decimal(15, 2)
+  jul         Decimal?          @db.Decimal(15, 2)
+  ago         Decimal?          @db.Decimal(15, 2)
+  set         Decimal?          @db.Decimal(15, 2) @map("set_col")
+  out         Decimal?          @db.Decimal(15, 2)
+  nov         Decimal?          @db.Decimal(15, 2)
+  dez         Decimal?          @db.Decimal(15, 2)
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @updatedAt
+  created_by  Int
+
+  contrato      Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador       User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
+  notas_fiscais NotaFiscalContrato[]
+
+  @@index([contrato_id])
+  @@map("subindices_faturamento")
+}
+
+model NotaFiscalContrato {
+  id                Int      @id @default(autoincrement())
+  subindice_id      Int
+  numero_nf         String
+  valor_total_nf    Decimal  @db.Decimal(15, 2)
+  percentual        Decimal  @db.Decimal(5, 2) @default(100)
+  valor_atribuido   Decimal  @db.Decimal(15, 2)
+  data_emissao      DateTime
+  data_vencimento   DateTime
+  ativa             Boolean  @default(true)
+  motivo_inativacao String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  created_by        Int
+
+  subindice SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
+  criador   User                 @relation("NFContratoCriador", fields: [created_by], references: [id])
+
+  @@index([subindice_id])
+  @@map("notas_fiscais_contratos")
 }
