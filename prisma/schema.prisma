@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Perfil {
+  ADM_COMERCIAL
+  GESTAO_COMERCIAL
+  ORCAMENTISTA
+  GESTAO_ACORDOS
+  ACORDOS
+  ADM_GERAL
+}
+
+enum StatusAnalise {
+  AGUARDANDO
+  APROVADA
+  REPROVADA
+}
+
+enum StatusSolicitacao {
+  AGUARDANDO_ANALISE
+  EM_ELABORACAO
+  PROPOSTA_ENVIADA
+  CONTRATO_GANHO
+  RECUSADA
+  CANCELADA
+}
+
+enum Classificacao {
+  OBRAS
+  PARADAS
+  OLEO_GAS
+  FABRICACOES
+}
+
+enum Interesse {
+  ALTO
+  MEDIO
+  BAIXO
+}
+
+enum Origem {
+  EMAIL
+  TELEFONE
+  VISITA
+  INDICACAO
+  OUTRO
+}
+
+enum Segmento {
+  PAPEL_CELULOSE
+  SIDERURGIA
+  OLEO_GAS
+  OUTROS
+}
+
+enum MotivoReprovacao {
+  VOLUME_ADJUDICADO
+  FORA_LINHA_FORNECIMENTO
+  INDISPONIBILIDADE_MO
+  SEM_SERVICO_LOCAL
+  LIMITACAO_EQUIPAMENTOS
+  DIFICULDADE_PARCERIA
+  OUTROS
+}
+
+enum MotivoPerda {
+  PRECO
+  PRAZO
+  ESCOPO
+  CONCORRENCIA
+  CLIENTE_DESISTIU
+  OUTRO
+}
+
+enum StatusAcordo {
+  ATIVO
+  ENCERRADO
+  CANCELADO
+}
+
+enum RamoAtuacao {
+  PAPEL_CELULOSE
+  SIDERURGIA
+  MINERACAO
+  OLEO_GAS
+  OUTROS
+}
+
+// ─── Modelos ─────────────────────────────────────────────────────────────────
+
+model User {
+  id            Int      @id @default(autoincrement())
+  nome          String
+  email         String   @unique
+  password_hash       String
+  perfil              Perfil
+  funcao              String?
+  ativo               Boolean  @default(true)
+  is_analista_critico Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  solicitacoes_criadas    Solicitacao[]       @relation("SolicitacaoCriador")
+  solicitacoes_atribuidas Solicitacao[]       @relation("SolicitacaoOrcamentista")
+  propostas_tecnicas      PropostaTecnica[]
+  propostas_comerciais    PropostaComercial[]
+  propostas_fabricacao    PropostaFabricacao[]
+  acordos                 Acordo[]
+  notas_fiscais           NotaFiscal[]
+  notificacoes            Notificacao[]
+
+  @@map("users")
+}
+
+model Cliente {
+  id               Int          @id @default(autoincrement())
+  nome             String
+  cnpj             String?
+  contato_nome     String?
+  contato_email    String?
+  contato_telefone String?
+  cidade           String?
+  estado           String?      @db.VarChar(2)
+  ramo_atuacao     RamoAtuacao?
+  ativo            Boolean      @default(true)
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+  created_by       Int
+
+  solicitacoes           Solicitacao[] @relation("SolicitacaoCliente")
+  solicitacoes_como_final Solicitacao[] @relation("SolicitacaoClienteFinal")
+  acordos                Acordo[]
+
+  @@map("clientes")
+}
+
+model Solicitacao {
+  id              Int               @id @default(autoincrement())
+  numero          String            @unique
+  cliente_id      Int
+  cliente_final_id             Int?
+  data_recebimento             DateTime?
+  segmento                     Segmento?
+  contato         String?
+  referencia_cliente           String?
+  comprador                    String?
+  telefone_comprador           String?
+  email_comprador              String?
+  cidade          String?
+  estado          String?           @db.VarChar(2)
+  origem          Origem?
+  escopo          String?
+  classificacao   Classificacao?
+  interesse       Interesse?
+  status          StatusSolicitacao @default(AGUARDANDO_ANALISE)
+  status_analise  StatusAnalise     @default(AGUARDANDO)
+  prazo_tecnica   DateTime?
+  prazo_tecnica_indeterminado  Boolean @default(false)
+  prazo_comercial DateTime?
+  prazo_comercial_indeterminado Boolean @default(false)
+  orcamentista_id Int?
+  visita_tecnica    Boolean           @default(false)
+  data_visita       DateTime?
+  motivo_recusa     String?
+  motivo_reprovacao            MotivoReprovacao?
+  obs_reprovacao               String?
+  revisao_esperada  Int               @default(1)
+  created_at        DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  created_by      Int
+  cancelled_at    DateTime?
+  cancel_reason   String?
+
+  cliente        Cliente  @relation("SolicitacaoCliente", fields: [cliente_id], references: [id])
+  cliente_final  Cliente? @relation("SolicitacaoClienteFinal", fields: [cliente_final_id], references: [id])
+  orcamentista User?    @relation("SolicitacaoOrcamentista", fields: [orcamentista_id], references: [id])
+  criador      User     @relation("SolicitacaoCriador", fields: [created_by], references: [id])
+
+  propostas_tecnicas   PropostaTecnica[]
+  propostas_comerciais PropostaComercial[]
+  propostas_fabricacao PropostaFabricacao[]
+
+  @@index([cliente_id])
+  @@index([cliente_final_id])
+  @@index([orcamentista_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([cancelled_at])
+  @@index([status_analise])
+  @@map("solicitacoes")
+}
+
+model Notificacao {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  titulo     String
+  mensagem   String
+  lida       Boolean  @default(false)
+  link       String?
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([lida])
+  @@map("notificacoes")
+}
+
+model PropostaTecnica {
+  id               Int      @id @default(autoincrement())
+  solicitacao_id   Int
+  versao           Int
+  hh_direto        Int?
+  hh_indireto      Int?
+  peso_montagem    Decimal? @db.Decimal(10, 2)
+  // Campos exclusivos de Paradas
+  efetivo_pico     Int?
+  dias_parada      Int?
+  hh_total         Int?
+  turno            String?
+  finais_de_semana Boolean?
+  // Campos exclusivos de Obras (pesos por categoria)
+  peso_equipamentos  Decimal? @db.Decimal(10, 3)
+  peso_tubulacoes    Decimal? @db.Decimal(10, 3)
+  peso_suportes      Decimal? @db.Decimal(10, 3)
+  peso_estruturas    Decimal? @db.Decimal(10, 3)
+  nao_aplicavel      Boolean  @default(false)
+  data_envio         DateTime?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+
+  solicitacao          Solicitacao         @relation(fields: [solicitacao_id], references: [id])
+  criador              User                @relation(fields: [created_by], references: [id])
+  propostas_comerciais PropostaComercial[]
+
+  @@unique([solicitacao_id, versao])
+  @@index([solicitacao_id])
+  @@map("propostas_tecnicas")
+}
+
+model PropostaComercial {
+  id                      Int          @id @default(autoincrement())
+  solicitacao_id          Int
+  proposta_tecnica_id     Int?
+  versao                  Int
+  nao_aplicavel           Boolean      @default(false)
+  valor_montagem_mecanica Decimal?     @db.Decimal(15, 2)
+  possui_terceiros        Boolean      @default(false)
+  valor_eletrica          Decimal?     @db.Decimal(15, 2)
+  valor_isolamento        Decimal?     @db.Decimal(15, 2)
+  valor_civil             Decimal?     @db.Decimal(15, 2)
+  valor_hidraulica        Decimal?     @db.Decimal(15, 2)
+  valor_fibra             Decimal?     @db.Decimal(15, 2)
+  valor_tijolo_antiacido  Decimal?     @db.Decimal(15, 2)
+  valor_outros_terceiros  Decimal?     @db.Decimal(15, 2)
+  possui_fabricacao       Boolean      @default(false)
+  valor_fabricacao        Decimal?     @db.Decimal(15, 2)
+  valor_terceiros         Decimal?     @db.Decimal(15, 2)
+  valor_total             Decimal?     @db.Decimal(15, 2)
+  data_envio              DateTime?
+  resultado               String?
+  motivo_perda            MotivoPerda?
+  motivo_perda_outro      String?
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
+  created_by              Int
+
+  solicitacao      Solicitacao      @relation(fields: [solicitacao_id], references: [id])
+  proposta_tecnica PropostaTecnica? @relation(fields: [proposta_tecnica_id], references: [id])
+  criador          User             @relation(fields: [created_by], references: [id])
+
+  @@index([solicitacao_id])
+  @@map("propostas_comerciais")
+}
+
+model PropostaFabricacao {
+  id               Int                    @id @default(autoincrement())
+  solicitacao_id   Int
+  versao           Int
+  possui_testes    Boolean                @default(false)
+  descricao_testes String?
+  valor_testes     Decimal?               @db.Decimal(15, 2)
+  peso_total       Decimal                @db.Decimal(10, 3)
+  valor_total      Decimal                @db.Decimal(15, 2)
+  data_envio       DateTime?
+  resultado        String?
+  motivo_perda     MotivoPerda?
+  created_at       DateTime               @default(now())
+  updated_at       DateTime               @updatedAt
+  created_by       Int
+
+  solicitacao  Solicitacao            @relation(fields: [solicitacao_id], references: [id])
+  criador      User                   @relation(fields: [created_by], references: [id])
+  equipamentos EquipamentoFabricacao[]
+
+  @@unique([solicitacao_id, versao])
+  @@index([solicitacao_id])
+  @@map("propostas_fabricacao")
+}
+
+model EquipamentoFabricacao {
+  id                     Int                @id @default(autoincrement())
+  proposta_fabricacao_id Int
+  ordem                  Int
+  descricao              String
+  peso_ton               Decimal            @db.Decimal(10, 3)
+  valor_total            Decimal            @db.Decimal(15, 2)
+  observacoes            String?
+  created_at             DateTime           @default(now())
+
+  proposta_fabricacao PropostaFabricacao @relation(fields: [proposta_fabricacao_id], references: [id], onDelete: Cascade)
+
+  @@index([proposta_fabricacao_id])
+  @@map("equipamentos_fabricacao")
+}
+
+model Acordo {
+  id                      Int          @id @default(autoincrement())
+  numero                  String       @unique
+  cliente_id              Int
+  descricao               String?
+  valor_total             Decimal      @db.Decimal(15, 2)
+  ano                     Int
+  valor_anos_seguintes    Decimal?     @db.Decimal(15, 2)
+  status                  StatusAcordo @default(ATIVO)
+  data_inicio             DateTime?
+  data_fim                DateTime?
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
+  created_by              Int
+  cancelled_at            DateTime?
+  cancel_reason           String?
+
+  cliente       Cliente      @relation(fields: [cliente_id], references: [id])
+  criador       User         @relation(fields: [created_by], references: [id])
+  notas_fiscais NotaFiscal[]
+
+  @@index([cliente_id])
+  @@index([ano])
+  @@index([status])
+  @@index([cancelled_at])
+  @@map("acordos")
+}
+
+model NotaFiscal {
+  id                Int      @id @default(autoincrement())
+  acordo_id         Int
+  numero_nf         String
+  valor             Decimal  @db.Decimal(15, 2)
+  data_emissao      DateTime
+  data_vencimento   DateTime
+  ativa             Boolean  @default(true)
+  motivo_inativacao String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  created_by        Int
+
+  acordo  Acordo @relation(fields: [acordo_id], references: [id])
+  criador User   @relation(fields: [created_by], references: [id])
+
+  @@index([acordo_id])
+  @@map("notas_fiscais")
+}
