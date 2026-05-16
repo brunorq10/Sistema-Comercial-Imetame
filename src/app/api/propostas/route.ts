@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
   const items = await prisma.solicitacao.findMany({
     where: {
       cancelled_at: null,
+      OR: [
+        { propostas_tecnicas: { some: { data_envio: { not: null } } } },
+        { propostas_comerciais: { some: { data_envio: { not: null } } } },
+        { propostas_fabricacao: { some: { data_envio: { not: null } } } },
+      ],
       ...(classificacao && { classificacao: classificacao as never }),
       ...(status && { status: status as never }),
       ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
