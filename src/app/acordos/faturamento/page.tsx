@@ -370,7 +370,7 @@ export default function FaturamentoPage() {
       </div>{/* fim zona congelada */}
 
       {/* ── Zona de scroll ────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
         {aba === 'controle' && (
           <>
             {loadError && (

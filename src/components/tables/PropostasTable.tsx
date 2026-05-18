@@ -39,9 +39,8 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
   }
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[11px]">
+    <div className="h-full border border-gray-200 rounded-md overflow-auto">
+      <table className="w-full border-collapse text-[11px]">
           <thead className="sticky top-0 z-10">
             <tr>
               <Th>Nº Proposta</Th>
@@ -110,7 +109,6 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
             })}
           </tbody>
         </table>
-      </div>
     </div>
   )
 }

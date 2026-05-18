@@ -345,7 +345,7 @@ export default function SolicitacoesPage() {
       </div>{/* fim zona congelada */}
 
       {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
       {view === 'solicitacoes' && (
         <>
           {loading ? (
@@ -368,7 +368,7 @@ export default function SolicitacoesPage() {
 
       {/* ── VIEW: Análise de Solicitações ──────────────────────────────────── */}
       {view === 'analise' && perms.isAnalistaCritico && (
-        <>
+        <div className="h-full overflow-y-auto">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] text-gray-500">
               Solicitações aguardando aprovação do Analista Crítico
@@ -439,7 +439,7 @@ export default function SolicitacoesPage() {
             onSuccess={() => { fetchPendentes(); fetchData() }}
             solicitacaoId={analiseId}
           />
-        </>
+        </div>
       )}
 
       </div>{/* fim zona de scroll */}

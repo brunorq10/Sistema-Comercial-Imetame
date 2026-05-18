@@ -191,7 +191,7 @@ export default function PropostasPage() {
       </div>{/* fim zona congelada */}
 
       {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
         {loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : (
