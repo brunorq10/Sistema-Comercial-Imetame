@@ -48,7 +48,9 @@ export async function GET(req: NextRequest) {
   const cliente_id = searchParams.get('cliente_id') ?? undefined
   const status = searchParams.get('status') ?? undefined
   const responsavel_id = searchParams.get('responsavel_id') ?? undefined
+  const num_os = searchParams.get('num_os') ?? undefined
   const num_acordo = searchParams.get('num_acordo') ?? undefined
+  const num_proposta = searchParams.get('num_proposta') ?? undefined
 
   try {
     const anoNum = ano ? Number(ano) : undefined
@@ -77,7 +79,9 @@ export async function GET(req: NextRequest) {
         ...(cliente_id && { cliente_id: Number(cliente_id) }),
         ...(status && { status: status as never }),
         ...(responsavel_id && { responsavel_id: Number(responsavel_id) }),
-        ...(num_acordo && { num_acordo: { contains: num_acordo, mode: 'insensitive' as const } }),
+        ...(num_os && { num_os }),
+        ...(num_acordo && { num_acordo }),
+        ...(num_proposta && { num_proposta }),
       },
       orderBy: [{ indice: 'asc' }],
       include: {

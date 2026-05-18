@@ -144,14 +144,15 @@ export interface PropostaComercialItem {
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 
 export interface FiltrosSolicitacao {
-  cliente?: string
+  ano?: string
+  cliente_id?: string
   classificacao?: Classificacao | ''
   interesse?: Interesse | ''
-  status?: StatusSolicitacao | ''
-  orcamentista_id?: string
   data_de?: string
   data_ate?: string
-  busca?: string
+  responsavel_id?: string
+  status?: StatusSolicitacao | ''
+  orcamentista_id?: string
 }
 
 export interface PropostasItem {

@@ -6,6 +6,41 @@ import { gerarNumeroSolicitacao } from '@/lib/utils'
 import { emailNovaSolicitacao } from '@/lib/notifications'
 import type { Classificacao, Interesse, Origem, Segmento, StatusSolicitacao } from '@prisma/client'
 
+// ─── GET /api/solicitacoes?modo=filtros ──────────────────────────────────────
+// Retorna valores distintos para popular os dropdowns de filtro
+
+async function getFiltros() {
+  const rows = await prisma.solicitacao.findMany({
+    select: {
+      cliente:      { select: { id: true, nome: true } },
+      orcamentista: { select: { id: true, nome: true } },
+      criador:      { select: { id: true, nome: true } },
+    },
+  })
+
+  const clientesMap      = new Map<number, string>()
+  const orcamentistasMap = new Map<number, string>()
+  const responsaveisMap  = new Map<number, string>()
+
+  for (const s of rows) {
+    clientesMap.set(s.cliente.id, s.cliente.nome)
+    if (s.orcamentista) orcamentistasMap.set(s.orcamentista.id, s.orcamentista.nome)
+    if (s.criador)      responsaveisMap.set(s.criador.id, s.criador.nome)
+  }
+
+  const sort = (m: Map<number, string>) =>
+    Array.from(m.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
+
+  return NextResponse.json({
+    data: {
+      clientes:      sort(clientesMap),
+      orcamentistas: sort(orcamentistasMap),
+      responsaveis:  sort(responsaveisMap),
+    },
+    error: null,
+  })
+}
+
 // ─── GET /api/solicitacoes ────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -13,32 +48,40 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const { searchParams } = req.nextUrl
-  const cliente = searchParams.get('cliente') ?? undefined
+
+  if (searchParams.get('modo') === 'filtros') return getFiltros()
+  const ano = searchParams.get('ano') ?? undefined
+  const cliente_id = searchParams.get('cliente_id') ? Number(searchParams.get('cliente_id')) : undefined
   const classificacao = (searchParams.get('classificacao') as Classificacao) || undefined
   const interesse = (searchParams.get('interesse') as Interesse) || undefined
   const status = (searchParams.get('status') as StatusSolicitacao) || undefined
-  const orcamentista_id = searchParams.get('orcamentista_id')
-    ? Number(searchParams.get('orcamentista_id'))
-    : undefined
+  const responsavel_id = searchParams.get('responsavel_id') ? Number(searchParams.get('responsavel_id')) : undefined
+  const orcamentista_id = searchParams.get('orcamentista_id') ? Number(searchParams.get('orcamentista_id')) : undefined
   const data_de = searchParams.get('data_de') ?? undefined
   const data_ate = searchParams.get('data_ate') ?? undefined
-  const busca = searchParams.get('busca') ?? undefined
 
   // RN-14: Canceladas permanecem visíveis com seu próprio filtro
   const isCanceladasTab = status === 'CANCELADA'
+
+  const anoNum = ano ? Number(ano) : undefined
 
   const where = {
     ...(isCanceladasTab
       ? { cancelled_at: { not: null as Date | null }, status: 'CANCELADA' as StatusSolicitacao }
       : { cancelled_at: null, ...(status && { status }) }
     ),
+    ...(anoNum && {
+      created_at: {
+        gte: new Date(`${anoNum}-01-01`),
+        lt:  new Date(`${anoNum + 1}-01-01`),
+      },
+    }),
+    ...(cliente_id && { cliente_id }),
     ...(classificacao && { classificacao }),
     ...(interesse && { interesse }),
+    ...(responsavel_id && { created_by: responsavel_id }),
     ...(orcamentista_id && { orcamentista_id }),
-    ...(cliente && {
-      cliente: { nome: { contains: cliente, mode: 'insensitive' as const } },
-    }),
-    ...(data_de || data_ate
+    ...(!anoNum && (data_de || data_ate)
       ? {
           created_at: {
             ...(data_de && { gte: new Date(data_de) }),
@@ -46,13 +89,6 @@ export async function GET(req: NextRequest) {
           },
         }
       : {}),
-    ...(busca && {
-      OR: [
-        { numero: { contains: busca, mode: 'insensitive' as const } },
-        { escopo: { contains: busca, mode: 'insensitive' as const } },
-        { cliente: { nome: { contains: busca, mode: 'insensitive' as const } } },
-      ],
-    }),
   }
 
   const [items, total] = await Promise.all([

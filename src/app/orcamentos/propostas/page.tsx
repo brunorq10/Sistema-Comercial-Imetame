@@ -4,71 +4,96 @@ import { useCallback, useEffect, useState } from 'react'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { HistoricoPropostaModal } from '@/components/forms/HistoricoPropostaModal'
-import { Field, Input, Select } from '@/components/ui/Input'
 import { usePermissions } from '@/hooks/usePermissions'
-import type { PropostasItem, UsuarioListItem } from '@/types'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import type { PropostasItem } from '@/types'
+
+const opClassificacao = [
+  { value: 'OBRAS',       label: 'Obras' },
+  { value: 'PARADAS',     label: 'Paradas' },
+  { value: 'OLEO_GAS',    label: 'Óleo e Gás' },
+  { value: 'FABRICACOES', label: 'Fabricações' },
+]
+const opResultado = [
+  { value: 'AGUARDANDO', label: 'Aguardando' },
+  { value: 'GANHOU',     label: 'Ganhou' },
+  { value: 'PERDEU',     label: 'Perdeu' },
+]
 
 export default function PropostasPage() {
   const { canRegistrarTecnica, canRegistrarComercial, canCancelSolicitacao } = usePermissions()
   const canEditar = canRegistrarTecnica || canRegistrarComercial
 
-  const [items, setItems] = useState<PropostasItem[]>([])
+  const [items, setItems]     = useState<PropostasItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [orcamentistas, setOrcamentistas] = useState<UsuarioListItem[]>([])
-  const [clientes, setClientes] = useState<{ id: number; nome: string }[]>([])
 
-  // Filtros — BRD 3.3.4
-  const [busca, setBusca] = useState('')
-  const [clienteId, setClienteId] = useState('')
-  const [cidade, setCidade] = useState('')
-  const [classificacao, setClassificacao] = useState('')
+  // Opções de filtro (vindas da própria tabela de propostas)
+  const [clientes,      setClientes]      = useState<{ id: number; nome: string }[]>([])
+  const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
+  const [numeros,       setNumeros]       = useState<string[]>([])
+  const [cidades,       setCidades]       = useState<string[]>([])
+  const [escopos,       setEscopos]       = useState<string[]>([])
+
+  // Filtros — estados de edição (o que o usuário vê nos controles)
+  const [numero,         setNumero]         = useState('')
+  const [clienteId,      setClienteId]      = useState('')
+  const [cidade,         setCidade]         = useState('')
+  const [classificacao,  setClassificacao]  = useState('')
   const [orcamentistaId, setOrcamentistaId] = useState('')
-  const [status, setStatus] = useState('')
-  const [resultado, setResultado] = useState('')
-  const [ano, setAno] = useState('')
+  const [resultado,      setResultado]      = useState('')
+  const [escopo,         setEscopo]         = useState('')
 
-  const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
+  // Filtros aplicados (o que fetchData realmente usa)
+  type Aplicados = { numero: string; clienteId: string; cidade: string; classificacao: string; orcamentistaId: string; resultado: string; escopo: string }
+  const [aplicados, setAplicados] = useState<Aplicados>({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
+
+  const [modalEditar,    setModalEditar]    = useState<PropostasItem | null>(null)
   const [modalHistorico, setModalHistorico] = useState<PropostasItem | null>(null)
 
   useEffect(() => {
-    fetch('/api/usuarios')
-      .then((r) => r.json())
-      .then((json) => {
-        const todos: UsuarioListItem[] = json.data ?? []
-        setOrcamentistas(todos.filter((u) => u.perfil === 'ORCAMENTISTA' && u.ativo))
-      })
-    fetch('/api/clientes')
-      .then((r) => r.json())
-      .then((json) => setClientes(json.data ?? []))
+    fetch('/api/propostas?modo=filtros').then(r => r.json()).then(j => {
+      if (j.data) {
+        setClientes(j.data.clientes ?? [])
+        setOrcamentistas(j.data.orcamentistas ?? [])
+        setNumeros(j.data.numeros ?? [])
+        setCidades(j.data.cidades ?? [])
+        setEscopos(j.data.escopos ?? [])
+      }
+    })
   }, [])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (busca) params.set('busca', busca)
-      if (clienteId) params.set('cliente_id', clienteId)
-      if (cidade) params.set('cidade', cidade)
-      if (classificacao) params.set('classificacao', classificacao)
-      if (orcamentistaId) params.set('orcamentista_id', orcamentistaId)
-      if (status) params.set('status', status)
-      if (resultado) params.set('resultado', resultado)
-      if (ano) params.set('ano', ano)
+      if (aplicados.numero)         params.set('numero', aplicados.numero)
+      if (aplicados.clienteId)      params.set('cliente_id', aplicados.clienteId)
+      if (aplicados.cidade)         params.set('cidade', aplicados.cidade)
+      if (aplicados.classificacao)  params.set('classificacao', aplicados.classificacao)
+      if (aplicados.orcamentistaId) params.set('orcamentista_id', aplicados.orcamentistaId)
+      if (aplicados.resultado)      params.set('resultado', aplicados.resultado)
+      if (aplicados.escopo)         params.set('escopo', aplicados.escopo)
       const res = await fetch(`/api/propostas?${params}`)
       const json = await res.json()
       setItems(json.data ?? [])
     } finally {
       setLoading(false)
     }
-  }, [busca, clienteId, cidade, classificacao, orcamentistaId, status, resultado, ano])
+  }, [aplicados])
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const handleFiltrar = () =>
+    setAplicados({ numero, clienteId, cidade, classificacao, orcamentistaId, resultado, escopo })
+
   const limpar = () => {
-    setBusca(''); setClienteId(''); setCidade('')
+    setNumero(''); setClienteId(''); setCidade('')
     setClassificacao(''); setOrcamentistaId('')
-    setStatus(''); setResultado(''); setAno('')
+    setResultado(''); setEscopo('')
+    setAplicados({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
   }
+
+  const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
 
   return (
     <div className="p-4">
@@ -79,83 +104,89 @@ export default function PropostasPage() {
         </span>
       </div>
 
-      {/* ── Filtros (BRD 3.3.4) ──────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
-        <Field label="Busca (nº)" className="min-w-[120px]">
-          <Input placeholder="PROP-0001..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-        </Field>
+      {/* ── Filtros ───────────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
 
-        <Field label="Cliente" className="min-w-[150px] flex-1">
-          <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Todos</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </Select>
-        </Field>
+        <div className="flex-1 min-w-0">
+          <label className={fLbl}>Nº Proposta</label>
+          <SearchableSelect
+            value={numero}
+            onChange={setNumero}
+            options={numeros.map(n => ({ value: n, label: n }))}
+            emptyLabel="Todas"
+          />
+        </div>
 
-        <Field label="Cidade" className="min-w-[120px]">
-          <Input placeholder="Ex: Vitória..." value={cidade} onChange={(e) => setCidade(e.target.value)} />
-        </Field>
+        <div className="flex-[2] min-w-0">
+          <label className={fLbl}>Cliente</label>
+          <SearchableSelect
+            value={clienteId}
+            onChange={setClienteId}
+            options={clientes.map(c => ({ value: String(c.id), label: c.nome }))}
+          />
+        </div>
 
-        <Field label="Classificação" className="min-w-[130px]">
-          <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>
-            <option value="">Todas</option>
-            <option value="OBRAS">Obras</option>
-            <option value="PARADAS">Paradas</option>
-            <option value="OLEO_GAS">Óleo e Gás</option>
-            <option value="FABRICACOES">Fabricações</option>
-          </Select>
-        </Field>
+        <div className="flex-1 min-w-0">
+          <label className={fLbl}>Cidade/UF</label>
+          <SearchableSelect
+            value={cidade}
+            onChange={setCidade}
+            options={cidades.map(c => ({ value: c, label: c }))}
+            emptyLabel="Todas"
+          />
+        </div>
 
-        <Field label="Orçamentista" className="min-w-[140px]">
-          <Select value={orcamentistaId} onChange={(e) => setOrcamentistaId(e.target.value)}>
-            <option value="">Todos</option>
-            {orcamentistas.map((o) => (
-              <option key={o.id} value={o.id}>{o.nome}</option>
-            ))}
-          </Select>
-        </Field>
+        <div className="flex-1 min-w-0">
+          <label className={fLbl}>Classificação</label>
+          <SearchableSelect
+            value={classificacao}
+            onChange={setClassificacao}
+            options={opClassificacao}
+            emptyLabel="Todas"
+          />
+        </div>
 
-        <Field label="Status" className="min-w-[140px]">
-          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="EM_ELABORACAO">Em elaboração</option>
-            <option value="PROPOSTA_ENVIADA">Prop. enviada</option>
-            <option value="CONTRATO_GANHO">Contrato ganho</option>
-            <option value="RECUSADA">Recusada</option>
-          </Select>
-        </Field>
+        <div className="flex-1 min-w-0">
+          <label className={fLbl}>Orçamentista</label>
+          <SearchableSelect
+            value={orcamentistaId}
+            onChange={setOrcamentistaId}
+            options={orcamentistas.map(o => ({ value: String(o.id), label: o.nome }))}
+          />
+        </div>
 
-        <Field label="Resultado" className="min-w-[120px]">
-          <Select value={resultado} onChange={(e) => setResultado(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="AGUARDANDO">Aguardando</option>
-            <option value="GANHOU">Ganhou</option>
-            <option value="PERDEU">Perdeu</option>
-          </Select>
-        </Field>
+        <div className="flex-1 min-w-0">
+          <label className={fLbl}>Resultado</label>
+          <SearchableSelect
+            value={resultado}
+            onChange={setResultado}
+            options={opResultado}
+          />
+        </div>
 
-        <Field label="Ano (env. técnica)" className="min-w-[110px]">
-          <Select value={ano} onChange={(e) => setAno(e.target.value)}>
-            <option value="">Todos</option>
-            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </Select>
-        </Field>
+        <div className="flex-[2] min-w-0">
+          <label className={fLbl}>Escopo</label>
+          <SearchableSelect
+            value={escopo}
+            onChange={setEscopo}
+            options={escopos.map(e => ({ value: e, label: e }))}
+            placeholder="Digite para filtrar…"
+          />
+        </div>
 
-        <div className="flex-shrink-0">
-          <button
-            onClick={limpar}
-            className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
-          >
-            ✕ Limpar
+        <div className="flex-shrink-0 flex items-end gap-1">
+          <button onClick={handleFiltrar}
+            className="bg-green-primary text-white border-none rounded px-2.5 py-[5px] text-[11px] font-semibold cursor-pointer hover:bg-green-dark transition-colors whitespace-nowrap">
+            Filtrar
+          </button>
+          <button onClick={limpar}
+            className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
+            ✕
           </button>
         </div>
       </div>
 
-      {/* ── Tabela ───────────────────────────────────────────────────── */}
+      {/* ── Tabela ────────────────────────────────────────────────────── */}
       {loading ? (
         <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
       ) : (
@@ -167,7 +198,6 @@ export default function PropostasPage() {
         />
       )}
 
-      {/* ── Modal histórico de revisões ──────────────────────────────── */}
       {modalHistorico && (
         <HistoricoPropostaModal
           open={true}
@@ -176,7 +206,6 @@ export default function PropostasPage() {
         />
       )}
 
-      {/* ── Modal de edição ──────────────────────────────────────────── */}
       {modalEditar && (
         <EditarPropostaModal
           open={true}

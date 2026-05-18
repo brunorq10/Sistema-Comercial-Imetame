@@ -77,7 +77,7 @@ export function ConsolidadoMesModal({ open, onClose, onSuccess }: Props) {
       <p className="text-[12px] text-gray-500 mb-4">
         O consolidado captura um <strong>fotografia</strong> dos valores previstos de todos os sub-índices
         para o mês selecionado. O previsto ficará <strong>congelado</strong> — apenas o valor faturado
-        se atualizará dinamicamente na aba Previsão x Realizado.
+        se atualizará dinamicamente na aba Consolidado x Realizado.
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">

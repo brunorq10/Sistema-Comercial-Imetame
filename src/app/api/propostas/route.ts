@@ -2,17 +2,73 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+async function getFiltros() {
+  const rows = await prisma.solicitacao.findMany({
+    where: {
+      cancelled_at: null,
+      OR: [
+        { propostas_tecnicas: { some: { data_envio: { not: null } } } },
+        { propostas_comerciais: { some: { data_envio: { not: null } } } },
+        { propostas_fabricacao: { some: { data_envio: { not: null } } } },
+      ],
+    },
+    select: {
+      numero:       true,
+      cidade:       true,
+      estado:       true,
+      escopo:       true,
+      cliente:      { select: { id: true, nome: true } },
+      orcamentista: { select: { id: true, nome: true } },
+    },
+  })
+
+  const clientesMap      = new Map<number, string>()
+  const orcamentistasMap = new Map<number, string>()
+  const numerosSet       = new Set<string>()
+  const cidadesSet       = new Set<string>()
+  const escoposSet       = new Set<string>()
+
+  for (const s of rows) {
+    clientesMap.set(s.cliente.id, s.cliente.nome)
+    if (s.orcamentista) orcamentistasMap.set(s.orcamentista.id, s.orcamentista.nome)
+    numerosSet.add(s.numero)
+    if (s.cidade) {
+      const label = s.estado ? `${s.cidade}/${s.estado}` : s.cidade
+      cidadesSet.add(label)
+    }
+    if (s.escopo) escoposSet.add(s.escopo)
+  }
+
+  const sort = (m: Map<number, string>) =>
+    Array.from(m.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
+
+  return NextResponse.json({
+    data: {
+      clientes:      sort(clientesMap),
+      orcamentistas: sort(orcamentistasMap),
+      numeros:       Array.from(numerosSet).sort(),
+      cidades:       Array.from(cidadesSet).sort(),
+      escopos:       Array.from(escoposSet).sort(),
+    },
+    error: null,
+  })
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const { searchParams } = req.nextUrl
+
+  if (searchParams.get('modo') === 'filtros') return getFiltros()
+
   const classificacao = searchParams.get('classificacao') ?? undefined
   const status = searchParams.get('status') ?? undefined
   const orcamentista_id = searchParams.get('orcamentista_id') ?? undefined
   const resultado = searchParams.get('resultado') ?? undefined
   const ano = searchParams.get('ano') ?? undefined
-  const busca = searchParams.get('busca') ?? undefined
+  const numero = searchParams.get('numero') ?? undefined
+  const escopo = searchParams.get('escopo') ?? undefined
   const cliente_id = searchParams.get('cliente_id') ?? undefined
   const cidade = searchParams.get('cidade') ?? undefined
 
@@ -28,30 +84,20 @@ export async function GET(req: NextRequest) {
       ...(status && { status: status as never }),
       ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
       ...(cliente_id && { cliente_id: Number(cliente_id) }),
-      ...(cidade && { cidade: { contains: cidade, mode: 'insensitive' } }),
-      ...(resultado
-        ? { propostas_comerciais: { some: { resultado } } }
-        : {}),
-      ...(ano
-        ? {
-            propostas_tecnicas: {
-              some: {
-                data_envio: {
-                  gte: new Date(`${ano}-01-01`),
-                  lte: new Date(`${ano}-12-31T23:59:59`),
-                },
-              },
+      ...(cidade && { cidade: { contains: cidade.split('/')[0].trim(), mode: 'insensitive' as const } }),
+      ...(numero && { numero: { contains: numero, mode: 'insensitive' as const } }),
+      ...(escopo && { escopo: { contains: escopo, mode: 'insensitive' as const } }),
+      ...(resultado && { propostas_comerciais: { some: { resultado } } }),
+      ...(ano && {
+        propostas_tecnicas: {
+          some: {
+            data_envio: {
+              gte: new Date(`${ano}-01-01`),
+              lte: new Date(`${ano}-12-31T23:59:59`),
             },
-          }
-        : {}),
-      ...(busca
-        ? {
-            OR: [
-              { numero: { contains: busca, mode: 'insensitive' } },
-              { cliente: { nome: { contains: busca, mode: 'insensitive' } } },
-            ],
-          }
-        : {}),
+          },
+        },
+      }),
     },
     orderBy: { created_at: 'desc' },
     include: {
