@@ -341,7 +341,7 @@ export default function DashboardAcordosPage() {
   const mesProxLabel = MES_LABEL[data.mesAtual === 12 ? 0 : data.mesAtual]
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold">Dashboard Acordos</h2>
         <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>

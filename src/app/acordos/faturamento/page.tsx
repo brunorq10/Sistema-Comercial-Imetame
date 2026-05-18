@@ -212,7 +212,9 @@ export default function FaturamentoPage() {
   const tabInativo = 'border-transparent text-gray-400 hover:text-gray-600'
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col h-full">
+      {/* ── Zona congelada ──────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 px-4 pt-4">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-bold">Controle de Faturamento</h2>
@@ -234,10 +236,10 @@ export default function FaturamentoPage() {
         </button>
       </div>
 
-      {/* ── ABA: Controle ─────────────────────────────────────────────────────── */}
+      {/* ── filtros por aba (zona congelada) ─────────────────────────────────── */}
       {aba === 'controle' && (
         <>
-          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
+          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mt-1 flex gap-1.5 items-end">
             <div className="flex-1 min-w-0">
               <label className={fLbl}>Ano referência</label>
               <SearchableSelect
@@ -323,86 +325,97 @@ export default function FaturamentoPage() {
             </div>
           )}
 
-          {loadError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 font-mono break-all">
-              Erro ao carregar: {loadError}
-            </div>
-          )}
-          {loading ? (
-            <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-          ) : (
-            <FaturamentoContratoTable
-              contratos={contratos}
-              anoFiltro={ano ? Number(ano) : undefined}
-              onLancarNF={(contrato, subindice) => setModalLancarNF({ contrato, subindice })}
-              onEditarSubindice={(contrato, subindice) => setModalEditarSub({ contrato, subindice })}
-              onEditarContrato={setModalEditar}
-              onCancelarContrato={setCancelando}
-              canEditar={canEditar}
-              canLancarNF={canLancarNF}
-            />
-          )}
         </>
       )}
 
-      {/* ── ABA: Registro de NF ───────────────────────────────────────────────── */}
+      {/* filtro NFs (zona congelada) */}
       {aba === 'nfs' && (
-        <>
-          <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
-            <Field label="Ano (emissão)" className="min-w-[110px]">
-              <SearchableSelect
-                value={nfAno}
-                onChange={setNfAno}
-                options={Array.from({ length: 8 }, (_, i) => anoAtual - 2 + i).map((y) => ({ value: String(y), label: String(y) }))}
-                emptyLabel="Todos os anos"
-              />
-            </Field>
-            <Field label="Cliente" className="min-w-[160px] flex-1">
-              <SearchableSelect
-                value={nfClienteId}
-                onChange={setNfClienteId}
-                options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
-              />
-            </Field>
-            <Field label="Status" className="min-w-[120px]">
-              <SearchableSelect
-                value={nfAtiva}
-                onChange={setNfAtiva}
-                options={[
-                  { value: 'true',  label: 'Ativas' },
-                  { value: 'false', label: 'Inativas' },
-                ]}
-                emptyLabel="Todas"
-              />
-            </Field>
-            <Field label="Nº NF" className="min-w-[140px]">
-              <Input placeholder="Buscar NF..." value={nfBusca} onChange={(e) => setNfBusca(e.target.value)} />
-            </Field>
-            <div className="flex-shrink-0">
-              <button onClick={limparFiltrosNf} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
-                ✕ Limpar
-              </button>
-            </div>
-          </div>
-
-          {nfsError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 font-mono break-all">
-              Erro ao carregar: {nfsError}
-            </div>
-          )}
-          {nfsLoading ? (
-            <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-          ) : (
-            <NfRegistroTable
-              nfs={nfs}
-              canEditar={canEditar}
-              onEditar={setNfEditando}
-              onInativar={(nf) => { setNfAcao({ tipo: 'inativar', nf }); setNfMotivoInativ(''); setNfAcaoError(null) }}
-              onExcluir={(nf)  => { setNfAcao({ tipo: 'excluir',  nf }); setNfAcaoError(null) }}
+        <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mt-1 flex flex-wrap gap-2.5 items-end">
+          <Field label="Ano (emissão)" className="min-w-[110px]">
+            <SearchableSelect
+              value={nfAno}
+              onChange={setNfAno}
+              options={Array.from({ length: 8 }, (_, i) => anoAtual - 2 + i).map((y) => ({ value: String(y), label: String(y) }))}
+              emptyLabel="Todos os anos"
             />
-          )}
-        </>
+          </Field>
+          <Field label="Cliente" className="min-w-[160px] flex-1">
+            <SearchableSelect
+              value={nfClienteId}
+              onChange={setNfClienteId}
+              options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
+            />
+          </Field>
+          <Field label="Status" className="min-w-[120px]">
+            <SearchableSelect
+              value={nfAtiva}
+              onChange={setNfAtiva}
+              options={[
+                { value: 'true',  label: 'Ativas' },
+                { value: 'false', label: 'Inativas' },
+              ]}
+              emptyLabel="Todas"
+            />
+          </Field>
+          <Field label="Nº NF" className="min-w-[140px]">
+            <Input placeholder="Buscar NF..." value={nfBusca} onChange={(e) => setNfBusca(e.target.value)} />
+          </Field>
+          <div className="flex-shrink-0">
+            <button onClick={limparFiltrosNf} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
+              ✕ Limpar
+            </button>
+          </div>
+        </div>
       )}
+      </div>{/* fim zona congelada */}
+
+      {/* ── Zona de scroll ────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-hidden px-4 pb-4">
+        {aba === 'controle' && (
+          <>
+            {loadError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 font-mono break-all">
+                Erro ao carregar: {loadError}
+              </div>
+            )}
+            {loading ? (
+              <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+            ) : (
+              <FaturamentoContratoTable
+                contratos={contratos}
+                anoFiltro={ano ? Number(ano) : undefined}
+                onLancarNF={(contrato, subindice) => setModalLancarNF({ contrato, subindice })}
+                onEditarSubindice={(contrato, subindice) => setModalEditarSub({ contrato, subindice })}
+                onEditarContrato={setModalEditar}
+                onCancelarContrato={setCancelando}
+                canEditar={canEditar}
+                canLancarNF={canLancarNF}
+              />
+            )}
+          </>
+        )}
+
+        {aba === 'nfs' && (
+          <>
+            {nfsError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 font-mono break-all">
+                Erro ao carregar: {nfsError}
+              </div>
+            )}
+            {nfsLoading ? (
+              <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+            ) : (
+              <NfRegistroTable
+                nfs={nfs}
+                canEditar={canEditar}
+                onEditar={setNfEditando}
+                onInativar={(nf) => { setNfAcao({ tipo: 'inativar', nf }); setNfMotivoInativ(''); setNfAcaoError(null) }}
+                onExcluir={(nf)  => { setNfAcao({ tipo: 'excluir',  nf }); setNfAcaoError(null) }}
+              />
+            )}
+          </>
+        )}
+      </div>{/* fim zona de scroll */}
 
       {/* ── Modais ────────────────────────────────────────────────────────────── */}
       <ConsolidadoMesModal

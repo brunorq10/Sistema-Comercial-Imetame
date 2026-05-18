@@ -42,7 +42,7 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
     <div className="border border-gray-200 rounded-md overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[11px]">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr>
               <Th>Nº Proposta</Th>
               <Th>Versão</Th>

@@ -184,7 +184,9 @@ export default function SolicitacoesPage() {
   const fCtrl = 'w-full px-1.5 py-[5px] border border-gray-300 rounded text-[11px] text-gray-900 bg-white outline-none focus:border-green-primary transition-colors'
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col h-full">
+      {/* ── Zona congelada ──────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 px-4 pt-4">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-[15px] font-bold">Solicitações de Orçamento</h2>
@@ -216,7 +218,7 @@ export default function SolicitacoesPage() {
         )}
       </div>
 
-      {/* ── VIEW: Solicitações ─────────────────────────────────────────────── */}
+      {/* ── VIEW: Solicitações — filtros e status tabs (zona congelada) ─────── */}
       {view === 'solicitacoes' && (
         <>
           <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
@@ -338,6 +340,14 @@ export default function SolicitacoesPage() {
             })}
           </div>
 
+        </>
+      )}
+      </div>{/* fim zona congelada */}
+
+      {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto px-4 pb-4">
+      {view === 'solicitacoes' && (
+        <>
           {loading ? (
             <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
           ) : (
@@ -431,6 +441,8 @@ export default function SolicitacoesPage() {
           />
         </>
       )}
+
+      </div>{/* fim zona de scroll */}
 
       {/* ── Modais ────────────────────────────────────────────────────────── */}
       <SolicitacaoForm

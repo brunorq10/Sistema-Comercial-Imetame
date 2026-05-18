@@ -425,7 +425,7 @@ export default function DashboardComercialPage() {
   const gap = 8
 
   return (
-    <div style={{ padding: 16, background: '#f0f0f0', minHeight: '100%', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ padding: 16, background: '#f0f0f0', height: '100%', overflowY: 'auto', fontFamily: 'Arial, sans-serif' }}>
       {/* Cabeçalho */}
       <div style={{ marginBottom: 12 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#111' }}>Dashboard Comercial</h2>

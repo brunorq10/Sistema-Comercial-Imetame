@@ -96,7 +96,9 @@ export default function PropostasPage() {
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
 
   return (
-    <div className="p-4">
+    <div className="flex flex-col h-full">
+      {/* ── Zona congelada ──────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 px-4 pt-4 pb-2">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-[15px] font-bold">Propostas</h2>
         <span className="text-[11px] text-gray-400">
@@ -105,7 +107,7 @@ export default function PropostasPage() {
       </div>
 
       {/* ── Filtros ───────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
+      <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex gap-1.5 items-end">
 
         <div className="flex-1 min-w-0">
           <label className={fLbl}>Nº Proposta</label>
@@ -186,17 +188,21 @@ export default function PropostasPage() {
         </div>
       </div>
 
-      {/* ── Tabela ────────────────────────────────────────────────────── */}
-      {loading ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-      ) : (
-        <PropostasTable
-          data={items}
-          onEditar={setModalEditar}
-          onHistorico={setModalHistorico}
-          canEditar={canEditar}
-        />
-      )}
+      </div>{/* fim zona congelada */}
+
+      {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto px-4 pb-4">
+        {loading ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : (
+          <PropostasTable
+            data={items}
+            onEditar={setModalEditar}
+            onHistorico={setModalHistorico}
+            canEditar={canEditar}
+          />
+        )}
+      </div>
 
       {modalHistorico && (
         <HistoricoPropostaModal
@@ -217,6 +223,5 @@ export default function PropostasPage() {
           canCancelar={canCancelSolicitacao}
         />
       )}
-    </div>
-  )
+    </div>  )
 }

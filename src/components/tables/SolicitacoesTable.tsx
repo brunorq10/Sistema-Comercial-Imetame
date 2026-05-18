@@ -202,7 +202,7 @@ export function SolicitacoesTable({
   return (
     <div className="overflow-x-auto border border-gray-200 rounded-md">
       <table className="w-full border-collapse text-[11px]">
-        <thead>
+        <thead className="sticky top-0 z-10">
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
               {hg.headers.map((header) => (

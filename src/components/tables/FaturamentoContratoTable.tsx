@@ -130,7 +130,7 @@ export function FaturamentoContratoTable({
                 W.prevAnos + W.acoes
 
   return (
-    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: 'calc(100vh - 230px)' }}>
+    <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
       <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: W.indice }} />

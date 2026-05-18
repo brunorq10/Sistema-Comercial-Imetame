@@ -56,7 +56,7 @@ export default function ConsolidadoRealizadoPage() {
   )
 
   return (
-    <div className="p-4">
+    <div className="p-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[15px] font-bold">Consolidado x Realizado</h2>
       </div>

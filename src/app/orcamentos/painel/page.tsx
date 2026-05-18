@@ -93,7 +93,7 @@ export default function PainelOrcamentosPage() {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-[15px] font-bold">Meu Painel — Orçamentos</h2>
       </div>
