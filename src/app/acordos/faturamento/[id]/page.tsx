@@ -9,7 +9,7 @@ import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 
 const ContratoFaturamentoChart = dynamic(
   () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoChart),
-  { ssr: false, loading: () => <div className="h-44 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
 )
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -251,13 +251,11 @@ export default function ContratoVisaoGeralPage() {
             >Todos</button>
           </div>
         </div>
-        <div className="h-52">
-          {anoSel !== null && chartData ? (
-            <ContratoFaturamentoChart modo="mensal" previsto={chartData.previsto} faturado={chartData.faturado} />
-          ) : (
-            <ContratoFaturamentoChart modo="anual" previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
-          )}
-        </div>
+        {anoSel !== null && chartData ? (
+          <ContratoFaturamentoChart modo="mensal" previsto={chartData.previsto} faturado={chartData.faturado} />
+        ) : (
+          <ContratoFaturamentoChart modo="anual" previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+        )}
       </section>
 
       {/* Grid: info + eventos */}
