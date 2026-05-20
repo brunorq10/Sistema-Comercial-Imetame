@@ -28,7 +28,7 @@ export function usePermissions() {
     canCreateSolicitacao: inGroup('comercial') || isAnalistaCritico,
     canEditSolicitacao: inGroup('comercial') || isAnalistaCritico,
     canCancelSolicitacao: is('ADM_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
-    canAtribuirOrcamentista: is('ADM_COMERCIAL', 'GESTAO_COMERCIAL') || isAnalistaCritico,
+    canAtribuirOrcamentista: isAnalistaCritico,
     canRecusarSolicitacao: isAnalistaCritico,
     canVerTodasSolicitacoes: is('ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
     canCriarRevisao: is('ADM_COMERCIAL'),

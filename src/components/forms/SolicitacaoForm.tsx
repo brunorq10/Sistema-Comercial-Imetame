@@ -187,7 +187,6 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
   }
 
   const title = editando ? `Editar Solicitação — ${editando.numero}` : 'Nova Solicitação'
-  const isEdit = !!editando
 
   return (
     <Modal
@@ -199,7 +198,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         <>
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSubmit(onSubmit)} disabled={loading}>
-            {loading ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Criar solicitação'}
+            {loading ? 'Salvando...' : editando ? 'Salvar alterações' : 'Criar solicitação'}
           </Button>
         </>
       }
@@ -315,8 +314,8 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         )}
       </div>
 
-      {/* ── Campos extras (apenas em edição) ────────────────────────────────── */}
-      {isEdit && (
+      {/* ── Campos do Analista Crítico ───────────────────────────────────────── */}
+      {canAtribuir && (
         <>
           <ModalSection>Classificação (opcional)</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
