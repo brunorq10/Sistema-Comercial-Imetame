@@ -56,7 +56,11 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
   }, [open, editando])
 
   const handleSubmit = async () => {
-    if (!nome.trim()) { setError('Razão Social é obrigatória'); return }
+    if (!nome.trim())  { setError('Razão Social é obrigatória'); return }
+    if (!cnpj.trim())  { setError('CNPJ é obrigatório'); return }
+    if (!ramo)         { setError('Ramo de atuação é obrigatório'); return }
+    if (!cidade.trim()) { setError('Cidade é obrigatória'); return }
+    if (!estado)       { setError('UF é obrigatória'); return }
     setLoading(true); setError(null)
     try {
       const url = isEdit ? `/api/clientes/${editando!.id}` : '/api/clientes'
@@ -65,12 +69,12 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome,
-          cnpj: cnpj || null,
+          cnpj,
           contato_nome: contatoNome || null,
           contato_email: contatoEmail || null,
           contato_telefone: contatoTel || null,
-          cidade: cidade || null,
-          estado: estado || null,
+          cidade,
+          estado,
           ramo_atuacao: ramo || null,
         }),
       })
@@ -86,7 +90,7 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `Editar Cliente · ${editando!.nome}` : 'Novo Cliente'}
+      title={isEdit ? `Editar Cliente · ${editando!.codigo ?? ''} ${editando!.nome}` : 'Novo Cliente'}
       wide
       footer={
         <>
@@ -106,19 +110,19 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
         <Field label="Razão Social *" className="col-span-2">
           <Input placeholder="Ex: Petrobras S.A." value={nome} onChange={(e) => setNome(e.target.value)} />
         </Field>
-        <Field label="CNPJ">
+        <Field label="CNPJ *">
           <Input placeholder="00.000.000/0001-00" value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
         </Field>
-        <Field label="Ramo de atuação">
+        <Field label="Ramo de atuação *">
           <Select value={ramo} onChange={(e) => setRamo(e.target.value)}>
             <option value="">Selecione...</option>
             {RAMOS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </Select>
         </Field>
-        <Field label="Cidade">
+        <Field label="Cidade *">
           <Input placeholder="Ex: Rio de Janeiro" value={cidade} onChange={(e) => setCidade(e.target.value)} />
         </Field>
-        <Field label="UF">
+        <Field label="UF *">
           <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
             <option value="">—</option>
             {ESTADOS_BR.map((uf) => <option key={uf} value={uf}>{uf}</option>)}

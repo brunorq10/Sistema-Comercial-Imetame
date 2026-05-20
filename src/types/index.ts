@@ -329,6 +329,7 @@ export const PERFIL_LABELS: Record<Perfil, string> = {
 
 export interface ClienteListItem {
   id: number
+  codigo: string | null
   nome: string
   cnpj: string | null
   contato_nome: string | null

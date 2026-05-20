@@ -133,6 +133,7 @@ export default function CadastrosPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Código</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Razão Social</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">CNPJ</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Contato</th>
@@ -145,13 +146,13 @@ export default function CadastrosPage() {
               <tbody>
                 {loadingClientes ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-gray-400">
+                    <td colSpan={isAdmin ? 8 : 7} className="text-center py-10 text-gray-400">
                       Carregando...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-gray-400">
+                    <td colSpan={isAdmin ? 8 : 7} className="text-center py-10 text-gray-400">
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -160,6 +161,9 @@ export default function CadastrosPage() {
                     key={c.id}
                     className={`border-t border-gray-100 hover:bg-gray-50 transition-colors ${!c.ativo ? 'opacity-50' : ''}`}
                   >
+                    <td className="px-4 py-3">
+                      <span className="text-[11px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{c.codigo ?? '—'}</span>
+                    </td>
                     <td className="px-4 py-3 font-medium text-gray-900">{c.nome}</td>
                     <td className="px-4 py-3 text-gray-600">{c.cnpj ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">

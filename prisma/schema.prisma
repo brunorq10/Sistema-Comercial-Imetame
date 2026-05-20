@@ -138,6 +138,7 @@ model User {
 
 model Cliente {
   id               Int          @id @default(autoincrement())
+  codigo           String?      @unique
   nome             String
   cnpj             String?
   contato_nome     String?

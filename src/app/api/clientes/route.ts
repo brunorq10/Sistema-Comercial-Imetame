@@ -4,14 +4,17 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 const schema = z.object({
-  nome: z.string().min(2),
-  cnpj: z.string().optional(),
+  nome: z.string().min(2, 'Razão Social obrigatória'),
+  cnpj: z.string().min(1, 'CNPJ obrigatório'),
   contato_nome: z.string().optional(),
   contato_email: z.string().email().optional().or(z.literal('')),
   contato_telefone: z.string().optional(),
-  cidade: z.string().optional(),
-  estado: z.string().max(2).optional(),
-  ramo_atuacao: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'MINERACAO', 'OLEO_GAS', 'OUTROS']).optional(),
+  cidade: z.string().min(1, 'Cidade obrigatória'),
+  estado: z.string().length(2, 'UF obrigatória'),
+  ramo_atuacao: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'MINERACAO', 'OLEO_GAS', 'OUTROS'], {
+    required_error: 'Ramo de atuação obrigatório',
+    invalid_type_error: 'Ramo de atuação obrigatório',
+  }),
 })
 
 export async function GET(req: NextRequest) {
@@ -56,6 +59,7 @@ export async function GET(req: NextRequest) {
 
   const data = clientes.map((c) => ({
     id: c.id,
+    codigo: c.codigo ?? null,
     nome: c.nome,
     cnpj: c.cnpj,
     contato_nome: c.contato_nome,
@@ -88,16 +92,19 @@ export async function POST(req: NextRequest) {
   const cliente = await prisma.cliente.create({
     data: {
       nome: d.nome,
-      cnpj: d.cnpj || null,
+      cnpj: d.cnpj,
       contato_nome: d.contato_nome || null,
       contato_email: d.contato_email || null,
       contato_telefone: d.contato_telefone || null,
-      cidade: d.cidade || null,
-      estado: d.estado || null,
-      ramo_atuacao: d.ramo_atuacao ?? null,
+      cidade: d.cidade,
+      estado: d.estado,
+      ramo_atuacao: d.ramo_atuacao,
       created_by: Number(session.user.id),
     },
   })
 
-  return NextResponse.json({ data: cliente, error: null }, { status: 201 })
+  const codigo = `CLI-${String(cliente.id).padStart(4, '0')}`
+  await prisma.cliente.update({ where: { id: cliente.id }, data: { codigo } })
+
+  return NextResponse.json({ data: { ...cliente, codigo }, error: null }, { status: 201 })
 }
