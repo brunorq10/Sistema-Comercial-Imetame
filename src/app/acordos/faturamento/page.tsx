@@ -9,6 +9,7 @@ import { ContratoModal } from '@/components/forms/ContratoModal'
 import { ConsolidadoMesModal } from '@/components/forms/ConsolidadoMesModal'
 import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -76,6 +77,10 @@ export default function FaturamentoPage() {
   const [motivoCancel, setMotivoCancel] = useState('')
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [modalHistorico, setModalHistorico] = useState<{ tipo: 'subindice' | 'contrato'; id: number; titulo: string } | null>(null)
+  const [excluindoSub, setExcluindoSub] = useState<SubIndiceItem | null>(null)
+  const [excluirSubError, setExcluirSubError] = useState<string | null>(null)
+  const [excluirSubLoading, setExcluirSubLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/faturamento/filtros').then((r) => r.json()).then((j) => {
@@ -188,6 +193,20 @@ export default function FaturamentoPage() {
       fetchNfs()
     } finally {
       setNfAcaoLoading(false)
+    }
+  }
+
+  const handleExcluirSubindiceConfirmar = async () => {
+    if (!excluindoSub) return
+    setExcluirSubLoading(true); setExcluirSubError(null)
+    try {
+      const res = await fetch(`/api/faturamento/subindices/${excluindoSub.id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.error) { setExcluirSubError(json.error); return }
+      setExcluindoSub(null)
+      fetchData()
+    } finally {
+      setExcluirSubLoading(false)
     }
   }
 
@@ -388,6 +407,9 @@ export default function FaturamentoPage() {
                 onEditarSubindice={(contrato, subindice) => setModalEditarSub({ contrato, subindice })}
                 onEditarContrato={setModalEditar}
                 onCancelarContrato={setCancelando}
+                onExcluirSubindice={(sub) => { setExcluindoSub(sub); setExcluirSubError(null) }}
+                onHistoricoSubindice={(sub) => setModalHistorico({ tipo: 'subindice', id: sub.id, titulo: sub.descricao })}
+                onHistoricoContrato={(c) => setModalHistorico({ tipo: 'contrato', id: c.id, titulo: c.indice })}
                 canEditar={canEditar}
                 canLancarNF={canLancarNF}
               />
@@ -546,6 +568,42 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {excluindoSub && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
+            <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
+              Excluir Sub-índice
+            </div>
+            <div className="p-[18px]">
+              {excluirSubError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{excluirSubError}</div>
+              )}
+              <p className="text-[12px] text-gray-600">
+                O sub-índice <strong>{excluindoSub.descricao}</strong> será excluído permanentemente junto com todas as suas notas fiscais. Esta ação não pode ser desfeita.
+              </p>
+            </div>
+            <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => { setExcluindoSub(null); setExcluirSubError(null) }} disabled={excluirSubLoading}>
+                Voltar
+              </Button>
+              <Button variant="danger" onClick={handleExcluirSubindiceConfirmar} disabled={excluirSubLoading}>
+                {excluirSubLoading ? 'Excluindo...' : 'Confirmar exclusão'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalHistorico && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setModalHistorico(null)}
+          tipo={modalHistorico.tipo}
+          itemId={modalHistorico.id}
+          titulo={modalHistorico.titulo}
+        />
       )}
     </div>
   )

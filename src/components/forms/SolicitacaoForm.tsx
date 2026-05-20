@@ -29,7 +29,6 @@ const schema = z.object({
   // campos opcionais (edição)
   classificacao:     z.string().optional(),
   interesse:         z.string().optional(),
-  contato:           z.string().optional(),
   comprador:         z.string().optional(),
   telefone_comprador: z.string().optional(),
   email_comprador:   z.string().optional(),
@@ -136,7 +135,6 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         data_visita:        formatDateInput(editando.data_visita),
         classificacao:      editando.classificacao ?? '',
         interesse:          editando.interesse ?? '',
-        contato:            editando.contato ?? '',
         orcamentista_id:    editando.orcamentista ? String(editando.orcamentista.id) : '',
       })
     } else {
@@ -164,7 +162,6 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         data_visita:        values.visita_tecnica === 'SIM' ? values.data_visita : undefined,
         classificacao:      values.classificacao || undefined,
         interesse:          values.interesse || undefined,
-        contato:            values.contato || undefined,
         comprador:          values.comprador || undefined,
         telefone_comprador: values.telefone_comprador || undefined,
         email_comprador:    values.email_comprador || undefined,
@@ -314,10 +311,24 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         )}
       </div>
 
-      {/* ── Campos do Analista Crítico ───────────────────────────────────────── */}
+      {/* ── Contato do comprador (criador, opcional) ────────────────────────── */}
+      <ModalSection>Contato do Comprador (opcional)</ModalSection>
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+        <Field label="Comprador">
+          <Input {...register('comprador')} placeholder="Nome do comprador" />
+        </Field>
+        <Field label="Telefone">
+          <Input {...register('telefone_comprador')} placeholder="(27) 99999-9999" />
+        </Field>
+        <Field label="E-mail" className="col-span-2">
+          <Input {...register('email_comprador')} type="email" placeholder="comprador@empresa.com" />
+        </Field>
+      </div>
+
+      {/* ── Analista Crítico ─────────────────────────────────────────────────── */}
       {canAtribuir && (
         <>
-          <ModalSection>Classificação (opcional)</ModalSection>
+          <ModalSection>Classificação — Analista Crítico</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Classificação">
               <Select {...register('classificacao')}>
@@ -338,27 +349,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
             </Field>
           </div>
 
-          <ModalSection>Contato (opcional)</ModalSection>
-          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-            <Field label="Contato / Comprador">
-              <Input {...register('comprador')} placeholder="Nome do comprador" />
-            </Field>
-            <Field label="Telefone">
-              <Input {...register('telefone_comprador')} placeholder="(27) 99999-9999" />
-            </Field>
-            <Field label="E-mail" className="col-span-2">
-              <Input {...register('email_comprador')} type="email" placeholder="comprador@empresa.com" />
-            </Field>
-            <Field label="Contato interno" className="col-span-2">
-              <Input {...register('contato')} placeholder="Nome do contato interno" />
-            </Field>
-          </div>
-        </>
-      )}
-
-      {canAtribuir && (
-        <>
-          <ModalSection>Atribuição</ModalSection>
+          <ModalSection>Atribuição — Analista Crítico</ModalSection>
           <div className="grid grid-cols-1 gap-2.5 mb-2.5">
             <Field label="Atribuir orçamentista">
               <Select {...register('orcamentista_id')}>

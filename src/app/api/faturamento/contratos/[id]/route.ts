@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { formatCurrency, formatDate } from '@/lib/utils'
+
+const CAMPO_LABELS: Record<string, string> = {
+  num_os: 'Nº OS', num_acordo: 'Nº Acordo', num_proposta: 'Nº Proposta',
+  descricao: 'Descrição', classificacao: 'Classificação', valor_contrato: 'Valor do Contrato',
+  data_inicio: 'Data Início', data_fim: 'Data Fim', ano_referencia: 'Ano Referência',
+  status: 'Status', responsavel_id: 'Responsável',
+}
+
+function formatContratoVal(campo: string, val: unknown): string {
+  if (val == null) return '—'
+  if (campo === 'valor_contrato') return formatCurrency(Number(val))
+  if (campo === 'data_inicio' || campo === 'data_fim')
+    return formatDate(val instanceof Date ? val.toISOString() : String(val)) ?? '—'
+  return String(val)
+}
 
 const updateSchema = z.object({
   ano_referencia: z.number().int().min(2000).max(2100).optional(),
@@ -57,6 +73,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { cancel_reason, ...rest } = parsed.data
 
+  // Busca valores atuais para comparar
+  const atual = await prisma.contrato.findUnique({ where: { id } })
+  if (!atual) return NextResponse.json({ data: null, error: 'Não encontrado' }, { status: 404 })
+
   const data: Record<string, unknown> = { ...rest }
   if (cancel_reason !== undefined) {
     data.cancelled_at = new Date()
@@ -75,6 +95,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
     },
   })
+
+  // Registra campos alterados no histórico
+  const camposVerificar = ['num_os','num_acordo','num_proposta','descricao','classificacao',
+    'valor_contrato','data_inicio','data_fim','ano_referencia','status','responsavel_id'] as const
+  const historico: { contrato_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+
+  for (const campo of camposVerificar) {
+    const antigo = (atual as Record<string, unknown>)[campo]
+    const novo   = (contrato as Record<string, unknown>)[campo]
+    const antigoStr = antigo == null ? null : String(antigo)
+    const novoStr   = novo   == null ? null : String(novo)
+    if (antigoStr !== novoStr) {
+      historico.push({
+        contrato_id: id,
+        campo: CAMPO_LABELS[campo] ?? campo,
+        valor_de:   formatContratoVal(campo, antigo),
+        valor_para: formatContratoVal(campo, novo),
+        created_by: Number(session.user.id),
+      })
+    }
+  }
+  if (historico.length > 0) {
+    await prisma.historicoContrato.createMany({ data: historico })
+  }
 
   return NextResponse.json({ data: serializeContrato(contrato), error: null })
 }

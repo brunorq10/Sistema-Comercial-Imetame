@@ -129,6 +129,8 @@ model User {
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
+  historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
+  historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
 
   @@map("users")
 }
@@ -431,12 +433,29 @@ model Contrato {
   responsavel  User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
   criador      User                   @relation("ContratoCriador", fields: [created_by], references: [id])
   subindices   SubIndiceFaturamento[]
+  historico    HistoricoContrato[]
 
   @@index([cliente_id])
   @@index([ano_referencia])
   @@index([status])
   @@index([cancelled_at])
   @@map("contratos")
+}
+
+model HistoricoContrato {
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  campo       String
+  valor_de    String?
+  valor_para  String?
+  created_at  DateTime @default(now())
+  created_by  Int
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  usuario  User     @relation("HistContratoCriador", fields: [created_by], references: [id])
+
+  @@index([contrato_id])
+  @@map("historico_contratos")
 }
 
 model SubIndiceFaturamento {
@@ -468,9 +487,26 @@ model SubIndiceFaturamento {
   criador       User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
   notas_fiscais NotaFiscalContrato[]
   consolidados  ConsolidadoMesItem[]
+  historico     HistoricoSubIndice[]
 
   @@index([contrato_id])
   @@map("subindices_faturamento")
+}
+
+model HistoricoSubIndice {
+  id           Int      @id @default(autoincrement())
+  subindice_id Int
+  campo        String
+  valor_de     String?
+  valor_para   String?
+  created_at   DateTime @default(now())
+  created_by   Int
+
+  subindice SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
+  usuario   User                 @relation("HistSubIndiceCriador", fields: [created_by], references: [id])
+
+  @@index([subindice_id])
+  @@map("historico_subindices")
 }
 
 model NotaFiscalContrato {
