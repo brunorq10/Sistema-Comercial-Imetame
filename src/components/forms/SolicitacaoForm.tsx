@@ -87,8 +87,14 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
   const cidadeSelecionada = watch('cidade')
 
   // Filiais do cliente final selecionado
+  // Fallback: se não há filiais cadastradas, usa a cidade/estado do próprio cliente
   const clienteFinal = clientes.find((c) => String(c.id) === clienteFinalId)
-  const filiaisDisponiveis: Filial[] = clienteFinal?.filiais ?? []
+  const filiaisDisponiveis: Filial[] = (() => {
+    if (!clienteFinal) return []
+    if (clienteFinal.filiais.length > 0) return clienteFinal.filiais
+    if (clienteFinal.cidade) return [{ id: 0, nome: null, cidade: clienteFinal.cidade, estado: clienteFinal.estado ?? '' }]
+    return []
+  })()
 
   // Auto-fill estado quando cidade muda
   useEffect(() => {
