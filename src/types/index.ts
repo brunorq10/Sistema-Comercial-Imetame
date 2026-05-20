@@ -88,9 +88,13 @@ export interface SolicitacaoListItem {
   cidade: string | null
   estado: string | null
   segmento: Segmento | null
+  origem: Origem | null
   escopo: string | null
   classificacao: Classificacao | null
   interesse: Interesse | null
+  data_recebimento: string | null
+  referencia_cliente: string | null
+  data_visita: string | null
   status: StatusSolicitacao
   status_analise: StatusAnalise
   orcamentista: { id: number; nome: string } | null

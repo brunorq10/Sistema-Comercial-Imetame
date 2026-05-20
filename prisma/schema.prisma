@@ -143,6 +143,7 @@ model Cliente {
   cidade           String?
   estado           String?      @db.VarChar(2)
   ramo_atuacao     RamoAtuacao?
+  segmento         Segmento?
   ativo            Boolean      @default(true)
   created_at       DateTime     @default(now())
   updated_at       DateTime     @updatedAt
@@ -152,8 +153,26 @@ model Cliente {
   solicitacoes_como_final Solicitacao[] @relation("SolicitacaoClienteFinal")
   acordos                 Acordo[]
   contratos               Contrato[]
+  filiais                 Filial[]
 
   @@map("clientes")
+}
+
+model Filial {
+  id         Int      @id @default(autoincrement())
+  cliente_id Int
+  nome       String?
+  cidade     String
+  estado     String   @db.VarChar(2)
+  ativo      Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by Int
+
+  cliente Cliente @relation(fields: [cliente_id], references: [id])
+
+  @@index([cliente_id])
+  @@map("filiais")
 }
 
 model Solicitacao {

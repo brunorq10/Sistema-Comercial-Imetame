@@ -23,12 +23,24 @@ export async function GET(req: NextRequest) {
   const busca = searchParams.get('busca') ?? undefined
   const includeInativo = searchParams.get('inativo') === '1'
 
-  // Modo simples: id + nome + cidade/estado (para selects e auto-fill RN-09)
+  // Modo simples: id + nome + cidade/estado + segmento + filiais (para selects e auto-fill)
   if (!full) {
     const clientes = await prisma.cliente.findMany({
       where: { ativo: true },
       orderBy: { nome: 'asc' },
-      select: { id: true, nome: true, cidade: true, estado: true, ramo_atuacao: true },
+      select: {
+        id: true,
+        nome: true,
+        cidade: true,
+        estado: true,
+        ramo_atuacao: true,
+        segmento: true,
+        filiais: {
+          where: { ativo: true },
+          select: { id: true, nome: true, cidade: true, estado: true },
+          orderBy: { cidade: 'asc' },
+        },
+      },
     })
     return NextResponse.json({ data: clientes, error: null })
   }

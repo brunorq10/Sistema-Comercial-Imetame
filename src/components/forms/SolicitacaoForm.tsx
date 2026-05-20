@@ -13,33 +13,44 @@ import type { SolicitacaoListItem } from '@/types'
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  cliente_id: z.string().min(1, 'Selecione o cliente'),
-  cliente_final_id: z.string().optional(),
-  data_recebimento: z.string().optional(),
-  segmento: z.string().optional(),
-  contato: z.string().optional(),
-  referencia_cliente: z.string().optional(),
-  comprador: z.string().optional(),
+  cliente_id:        z.string().min(1, 'Selecione o cliente'),
+  cliente_final_id:  z.string().min(1, 'Selecione o cliente final'),
+  cidade:            z.string().min(1, 'Selecione a cidade'),
+  estado:            z.string().min(1, 'Estado obrigatório'),
+  data_recebimento:  z.string().min(1, 'Informe a data de recebimento'),
+  segmento:          z.string().min(1, 'Segmento obrigatório'),
+  origem:            z.string().min(1, 'Selecione a origem'),
+  escopo:            z.string().min(1, 'Informe o escopo resumido'),
+  referencia_cliente: z.string().min(1, 'Informe a referência do cliente'),
+  prazo_tecnica:     z.string().min(1, 'Informe a data da proposta técnica'),
+  prazo_comercial:   z.string().min(1, 'Informe a data da proposta comercial'),
+  visita_tecnica:    z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
+  data_visita:       z.string().optional(),
+  // campos opcionais (edição)
+  classificacao:     z.string().optional(),
+  interesse:         z.string().optional(),
+  contato:           z.string().optional(),
+  comprador:         z.string().optional(),
   telefone_comprador: z.string().optional(),
-  email_comprador: z.string().optional(),
-  cidade: z.string().optional(),
-  estado: z.string().max(2).optional(),
-  origem: z.string().optional(),
-  escopo: z.string().optional(),
-  classificacao: z.string().optional(),
-  interesse: z.string().optional(),
-  prazo_tecnica: z.string().optional(),
-  prazo_tecnica_indeterminado: z.boolean().optional(),
-  prazo_comercial: z.string().optional(),
-  prazo_comercial_indeterminado: z.boolean().optional(),
-  orcamentista_id: z.string().optional(),
-  visita_tecnica: z.boolean().optional(),
-  data_visita: z.string().optional(),
-})
+  email_comprador:   z.string().optional(),
+  orcamentista_id:   z.string().optional(),
+}).refine(
+  (d) => d.visita_tecnica !== 'SIM' || (d.data_visita && d.data_visita.length > 0),
+  { message: 'Informe a data da visita', path: ['data_visita'] },
+)
 
 type FormValues = z.infer<typeof schema>
 
-interface Cliente { id: number; nome: string; cidade?: string | null; estado?: string | null }
+interface Filial { id: number; nome: string | null; cidade: string; estado: string }
+interface Cliente {
+  id: number
+  nome: string
+  cidade: string | null
+  estado: string | null
+  segmento: string | null
+  ramo_atuacao: string | null
+  filiais: Filial[]
+}
 interface Orcamentista { id: number; nome: string }
 
 interface Props {
@@ -48,6 +59,13 @@ interface Props {
   onSuccess: () => void
   editando?: SolicitacaoListItem | null
   canAtribuir: boolean
+}
+
+const SEGMENTO_LABELS: Record<string, string> = {
+  PAPEL_CELULOSE: 'Papel e Celulose',
+  SIDERURGIA:     'Siderurgia',
+  OLEO_GAS:       'Óleo e Gás',
+  OUTROS:         'Outros',
 }
 
 export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribuir }: Props) {
@@ -65,41 +83,61 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  const visitaTecnica = watch('visita_tecnica')
-  const prazoTecnicaIndet = watch('prazo_tecnica_indeterminado')
-  const prazoComercialIndet = watch('prazo_comercial_indeterminado')
-  const clienteFinalId = watch('cliente_final_id')
+  const visitaTecnica    = watch('visita_tecnica')
+  const clienteFinalId   = watch('cliente_final_id')
+  const cidadeSelecionada = watch('cidade')
 
-  // RN-09: Auto-fill Cidade/Estado when Cliente Final is selected
+  // Filiais do cliente final selecionado
+  const clienteFinal = clientes.find((c) => String(c.id) === clienteFinalId)
+  const filiaisDisponiveis: Filial[] = clienteFinal?.filiais ?? []
+
+  // Auto-fill estado quando cidade muda
   useEffect(() => {
-    if (!clienteFinalId) return
-    const cf = clientes.find((c) => String(c.id) === clienteFinalId)
-    if (cf) {
-      if (cf.cidade) setValue('cidade', cf.cidade)
-      if (cf.estado) setValue('estado', cf.estado)
-    }
-  }, [clienteFinalId, clientes, setValue])
+    if (!cidadeSelecionada || !filiaisDisponiveis.length) return
+    const filial = filiaisDisponiveis.find((f) => f.cidade === cidadeSelecionada)
+    if (filial) setValue('estado', filial.estado)
+  }, [cidadeSelecionada, filiaisDisponiveis, setValue])
+
+  // Auto-fill segmento quando cliente final muda
+  useEffect(() => {
+    if (!clienteFinal) return
+    const seg = clienteFinal.segmento ?? clienteFinal.ramo_atuacao ?? ''
+    // MINERACAO não existe em Segmento → mapear para OUTROS
+    const mapped = seg === 'MINERACAO' ? 'OUTROS' : seg
+    if (mapped) setValue('segmento', mapped)
+    // Limpa cidade ao trocar cliente final
+    setValue('cidade', '')
+    setValue('estado', '')
+  }, [clienteFinalId, clienteFinal, setValue])
 
   useEffect(() => {
     if (!open) return
-    fetch('/api/clientes').then((r) => r.json()).then((r) => setClientes(r.data ?? []))
-    fetch('/api/users/orcamentistas').then((r) => r.json()).then((r) => setOrcamentistas(r.data ?? []))
+    fetch('/api/clientes')
+      .then((r) => r.json())
+      .then((r) => setClientes(r.data ?? []))
+    fetch('/api/users/orcamentistas')
+      .then((r) => r.json())
+      .then((r) => setOrcamentistas(r.data ?? []))
 
     if (editando) {
       reset({
-        cliente_id: String(editando.cliente.id),
-        cliente_final_id: editando.cliente_final ? String(editando.cliente_final.id) : '',
-        segmento: (editando as unknown as { segmento?: string }).segmento ?? '',
-        contato: editando.contato ?? '',
-        cidade: editando.cidade ?? '',
-        estado: editando.estado ?? '',
-        escopo: editando.escopo ?? '',
-        prazo_tecnica: formatDateInput(editando.prazo_tecnica),
-        prazo_tecnica_indeterminado: editando.prazo_tecnica_indeterminado,
-        prazo_comercial: formatDateInput(editando.prazo_comercial),
-        prazo_comercial_indeterminado: editando.prazo_comercial_indeterminado,
-        orcamentista_id: editando.orcamentista ? String(editando.orcamentista.id) : '',
-        visita_tecnica: editando.visita_tecnica,
+        cliente_id:         String(editando.cliente.id),
+        cliente_final_id:   editando.cliente_final ? String(editando.cliente_final.id) : '',
+        cidade:             editando.cidade ?? '',
+        estado:             editando.estado ?? '',
+        data_recebimento:   formatDateInput(editando.data_recebimento),
+        segmento:           editando.segmento ?? '',
+        origem:             editando.origem ?? '',
+        escopo:             editando.escopo ?? '',
+        referencia_cliente: editando.referencia_cliente ?? '',
+        prazo_tecnica:      formatDateInput(editando.prazo_tecnica),
+        prazo_comercial:    formatDateInput(editando.prazo_comercial),
+        visita_tecnica:     editando.visita_tecnica ? 'SIM' : 'NAO',
+        data_visita:        formatDateInput(editando.data_visita),
+        classificacao:      editando.classificacao ?? '',
+        interesse:          editando.interesse ?? '',
+        contato:            editando.contato ?? '',
+        orcamentista_id:    editando.orcamentista ? String(editando.orcamentista.id) : '',
       })
     } else {
       reset({})
@@ -111,44 +149,35 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     setError(null)
     try {
       const payload = {
-        cliente_id: Number(values.cliente_id),
-        cliente_final_id: values.cliente_final_id ? Number(values.cliente_final_id) : undefined,
-        data_recebimento: values.data_recebimento || undefined,
-        segmento: values.segmento || undefined,
-        contato: values.contato || undefined,
-        referencia_cliente: values.referencia_cliente || undefined,
-        comprador: values.comprador || undefined,
+        cliente_id:         Number(values.cliente_id),
+        cliente_final_id:   Number(values.cliente_final_id),
+        cidade:             values.cidade,
+        estado:             values.estado,
+        data_recebimento:   values.data_recebimento,
+        segmento:           values.segmento,
+        origem:             values.origem,
+        escopo:             values.escopo,
+        referencia_cliente: values.referencia_cliente,
+        prazo_tecnica:      values.prazo_tecnica,
+        prazo_comercial:    values.prazo_comercial,
+        visita_tecnica:     values.visita_tecnica === 'SIM',
+        data_visita:        values.visita_tecnica === 'SIM' ? values.data_visita : undefined,
+        classificacao:      values.classificacao || undefined,
+        interesse:          values.interesse || undefined,
+        contato:            values.contato || undefined,
+        comprador:          values.comprador || undefined,
         telefone_comprador: values.telefone_comprador || undefined,
-        email_comprador: values.email_comprador || undefined,
-        cidade: values.cidade || undefined,
-        estado: values.estado || undefined,
-        origem: values.origem || undefined,
-        escopo: values.escopo || undefined,
-        classificacao: values.classificacao || undefined,
-        interesse: values.interesse || undefined,
-        prazo_tecnica: values.prazo_tecnica_indeterminado ? undefined : (values.prazo_tecnica || undefined),
-        prazo_tecnica_indeterminado: values.prazo_tecnica_indeterminado ?? false,
-        prazo_comercial: values.prazo_comercial_indeterminado ? undefined : (values.prazo_comercial || undefined),
-        prazo_comercial_indeterminado: values.prazo_comercial_indeterminado ?? false,
-        orcamentista_id: values.orcamentista_id ? Number(values.orcamentista_id) : undefined,
-        visita_tecnica: values.visita_tecnica ?? false,
-        data_visita: values.data_visita || undefined,
+        email_comprador:    values.email_comprador || undefined,
+        orcamentista_id:    values.orcamentista_id ? Number(values.orcamentista_id) : undefined,
       }
 
-      const url = editando ? `/api/solicitacoes/${editando.id}` : '/api/solicitacoes'
+      const url    = editando ? `/api/solicitacoes/${editando.id}` : '/api/solicitacoes'
       const method = editando ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const json = await res.json()
 
-      if (!res.ok || json.error) {
-        setError(json.error ?? 'Erro ao salvar')
-        return
-      }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
 
       onSuccess()
       onClose()
@@ -158,6 +187,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
   }
 
   const title = editando ? `Editar Solicitação — ${editando.numero}` : 'Nova Solicitação'
+  const isEdit = !!editando
 
   return (
     <Modal
@@ -167,56 +197,73 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancelar
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSubmit(onSubmit)} disabled={loading}>
-            {loading ? 'Salvando...' : editando ? 'Salvar alterações' : 'Criar solicitação'}
+            {loading ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Criar solicitação'}
           </Button>
         </>
       }
     >
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* Identificação */}
+      {/* ── Identificação ───────────────────────────────────────────────────── */}
       <ModalSection>Identificação</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Cliente *" error={errors.cliente_id?.message}>
           <Select {...register('cliente_id')}>
             <option value="">Selecione...</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </Select>
         </Field>
-        <Field label="Cliente Final">
+        <Field label="Cliente Final *" error={errors.cliente_final_id?.message}>
           <Select {...register('cliente_final_id')}>
             <option value="">Selecione...</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </Select>
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
-        <Field label="Data de Recebimento">
-          <Input type="date" {...register('data_recebimento')} />
-        </Field>
-        <Field label="Segmento">
-          <Select {...register('segmento')}>
-            <option value="">Selecione...</option>
-            <option value="PAPEL_CELULOSE">Papel e Celulose</option>
-            <option value="SIDERURGIA">Siderurgia</option>
-            <option value="OLEO_GAS">Óleo e Gás</option>
-            <option value="OUTROS">Outros</option>
+      {/* ── Localização ─────────────────────────────────────────────────────── */}
+      <ModalSection>Localização</ModalSection>
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+        <Field label="Cidade *" error={errors.cidade?.message}>
+          <Select {...register('cidade')} disabled={!clienteFinalId}>
+            <option value="">{clienteFinalId ? 'Selecione a cidade...' : 'Selecione o cliente final primeiro'}</option>
+            {filiaisDisponiveis.map((f) => (
+              <option key={f.id} value={f.cidade}>
+                {f.cidade}{f.nome ? ` — ${f.nome}` : ''}
+              </option>
+            ))}
           </Select>
         </Field>
-        <Field label="Origem">
+        <Field label="Estado *" error={errors.estado?.message}>
+          <Input
+            {...register('estado')}
+            maxLength={2}
+            className="bg-[#EEF7EE] text-[#1565C0] font-semibold"
+            readOnly
+            placeholder="Preenchido automaticamente"
+          />
+        </Field>
+      </div>
+
+      {/* ── Dados da Solicitação ────────────────────────────────────────────── */}
+      <ModalSection>Dados da Solicitação</ModalSection>
+      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+        <Field label="Data de Recebimento *" error={errors.data_recebimento?.message}>
+          <Input type="date" {...register('data_recebimento')} />
+        </Field>
+        <Field label="Segmento *" error={errors.segmento?.message}>
+          <Select {...register('segmento')} className="bg-[#EEF7EE] text-[#1565C0] font-semibold">
+            <option value="">Selecione...</option>
+            {Object.entries(SEGMENTO_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Origem *" error={errors.origem?.message}>
           <Select {...register('origem')}>
             <option value="">Selecione...</option>
             <option value="EMAIL">E-mail</option>
@@ -228,101 +275,87 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         </Field>
       </div>
 
-      {/* Localização (auto-preenchida pelo Cliente Final) */}
-      <ModalSection>Localização</ModalSection>
-      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
-        <Field label="Cidade">
-          <Input {...register('cidade')} placeholder="Ex: Vitória" />
-        </Field>
-        <Field label="Estado">
-          <Input {...register('estado')} placeholder="Ex: ES" maxLength={2} />
-        </Field>
-        <Field label="Referência do Cliente">
-          <Input {...register('referencia_cliente')} placeholder="Número do processo, etc." />
-        </Field>
-      </div>
-
-      {/* Escopo e Classificação */}
-      <ModalSection>Escopo e Classificação</ModalSection>
       <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-        <Field label="Escopo resumido">
-          <Textarea {...register('escopo')} placeholder="Descreva o escopo..." />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Classificação">
-          <Select {...register('classificacao')}>
-            <option value="">Selecione...</option>
-            <option value="OBRAS">Obras</option>
-            <option value="PARADAS">Paradas</option>
-            <option value="OLEO_GAS">Óleo e Gás</option>
-            <option value="FABRICACOES">Fabricações</option>
-          </Select>
-        </Field>
-        <Field label="Interesse">
-          <Select {...register('interesse')}>
-            <option value="">Selecione...</option>
-            <option value="ALTO">Alto</option>
-            <option value="MEDIO">Médio</option>
-            <option value="BAIXO">Baixo</option>
-          </Select>
+        <Field label="Escopo Resumido *" error={errors.escopo?.message}>
+          <Textarea {...register('escopo')} placeholder="Descreva o escopo da solicitação..." />
         </Field>
       </div>
 
-      {/* Prazos */}
+      <div className="grid grid-cols-1 gap-2.5 mb-2.5">
+        <Field label="Referência do Cliente *" error={errors.referencia_cliente?.message}>
+          <Input {...register('referencia_cliente')} placeholder="Número do processo, RFQ, etc." />
+        </Field>
+      </div>
+
+      {/* ── Prazos ──────────────────────────────────────────────────────────── */}
       <ModalSection>Prazos</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <div>
-          <Field label="Prazo — Proposta Técnica">
-            <Input type="date" {...register('prazo_tecnica')} disabled={prazoTecnicaIndet} />
-          </Field>
-          <label className="flex items-center gap-2 mt-1 cursor-pointer">
-            <input type="checkbox" {...register('prazo_tecnica_indeterminado')} className="w-3.5 h-3.5" />
-            <span className="text-[10px] text-gray-500">Não Determinado</span>
-          </label>
-        </div>
-        <div>
-          <Field label="Prazo — Proposta Comercial">
-            <Input type="date" {...register('prazo_comercial')} disabled={prazoComercialIndet} />
-          </Field>
-          <label className="flex items-center gap-2 mt-1 cursor-pointer">
-            <input type="checkbox" {...register('prazo_comercial_indeterminado')} className="w-3.5 h-3.5" />
-            <span className="text-[10px] text-gray-500">Não Determinado</span>
-          </label>
-        </div>
+        <Field label="Data Proposta Técnica *" error={errors.prazo_tecnica?.message}>
+          <Input type="date" {...register('prazo_tecnica')} />
+        </Field>
+        <Field label="Data Proposta Comercial *" error={errors.prazo_comercial?.message}>
+          <Input type="date" {...register('prazo_comercial')} />
+        </Field>
       </div>
 
-      {/* Visita Técnica */}
+      {/* ── Visita Técnica ──────────────────────────────────────────────────── */}
+      <ModalSection>Visita Técnica</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Visita técnica">
-          <div className="flex items-center gap-2 py-2">
-            <input type="checkbox" id="visita" {...register('visita_tecnica')} className="w-4 h-4" />
-            <label htmlFor="visita" className="text-xs text-gray-700">Sim, haverá visita técnica</label>
-          </div>
+        <Field label="Haverá visita técnica? *" error={errors.visita_tecnica?.message}>
+          <Select {...register('visita_tecnica')}>
+            <option value="">Selecione...</option>
+            <option value="SIM">Sim</option>
+            <option value="NAO">Não</option>
+          </Select>
         </Field>
-        {visitaTecnica && (
-          <Field label="Data da visita">
+        {visitaTecnica === 'SIM' && (
+          <Field label="Data da Visita *" error={errors.data_visita?.message}>
             <Input type="date" {...register('data_visita')} />
           </Field>
         )}
       </div>
 
-      {/* Contato / Comprador (opcionais) */}
-      <ModalSection>Contato (opcional)</ModalSection>
-      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Contato / Comprador">
-          <Input {...register('comprador')} placeholder="Nome do comprador" />
-        </Field>
-        <Field label="Telefone do Comprador">
-          <Input {...register('telefone_comprador')} placeholder="(27) 99999-9999" />
-        </Field>
-        <Field label="E-mail do Comprador" className="col-span-2">
-          <Input {...register('email_comprador')} placeholder="comprador@empresa.com" type="email" />
-        </Field>
-        <Field label="Referência / Contato interno" className="col-span-2">
-          <Input {...register('contato')} placeholder="Nome do contato interno" />
-        </Field>
-      </div>
+      {/* ── Campos extras (apenas em edição) ────────────────────────────────── */}
+      {isEdit && (
+        <>
+          <ModalSection>Classificação (opcional)</ModalSection>
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+            <Field label="Classificação">
+              <Select {...register('classificacao')}>
+                <option value="">Selecione...</option>
+                <option value="OBRAS">Obras</option>
+                <option value="PARADAS">Paradas</option>
+                <option value="OLEO_GAS">Óleo e Gás</option>
+                <option value="FABRICACOES">Fabricações</option>
+              </Select>
+            </Field>
+            <Field label="Nível de Interesse">
+              <Select {...register('interesse')}>
+                <option value="">Selecione...</option>
+                <option value="ALTO">Alto</option>
+                <option value="MEDIO">Médio</option>
+                <option value="BAIXO">Baixo</option>
+              </Select>
+            </Field>
+          </div>
+
+          <ModalSection>Contato (opcional)</ModalSection>
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+            <Field label="Contato / Comprador">
+              <Input {...register('comprador')} placeholder="Nome do comprador" />
+            </Field>
+            <Field label="Telefone">
+              <Input {...register('telefone_comprador')} placeholder="(27) 99999-9999" />
+            </Field>
+            <Field label="E-mail" className="col-span-2">
+              <Input {...register('email_comprador')} type="email" placeholder="comprador@empresa.com" />
+            </Field>
+            <Field label="Contato interno" className="col-span-2">
+              <Input {...register('contato')} placeholder="Nome do contato interno" />
+            </Field>
+          </div>
+        </>
+      )}
 
       {canAtribuir && (
         <>
@@ -331,9 +364,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
             <Field label="Atribuir orçamentista">
               <Select {...register('orcamentista_id')}>
                 <option value="">Sem atribuição</option>
-                {orcamentistas.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nome}</option>
-                ))}
+                {orcamentistas.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </Select>
             </Field>
           </div>
