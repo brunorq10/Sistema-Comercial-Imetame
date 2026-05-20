@@ -90,9 +90,9 @@ export function FaturamentoContratoTable({
 
   // ── Cores das linhas ─────────────────────────────────────────────────────────
   const rowBgContract = (key: string) =>
-    selectedKey === key ? '#A5D6A7' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
+    selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
   const rowBgSub = (key: string) =>
-    selectedKey === key ? '#E8F5E9' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
+    selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
   const TH = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
   const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
