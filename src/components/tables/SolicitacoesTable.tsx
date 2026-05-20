@@ -54,7 +54,7 @@ export function SolicitacoesTable({
       col.accessor('created_at', {
         header: 'Data criação',
         cell: (info) => formatDate(info.getValue()),
-        size: 100,
+        size: 80,
       }),
       col.accessor('versao_atual', {
         header: 'Versão',
@@ -64,12 +64,17 @@ export function SolicitacoesTable({
       col.accessor((row) => row.cliente.nome, {
         id: 'cliente',
         header: 'Cliente',
-        size: 140,
+        size: 130,
+      }),
+      col.accessor((row) => row.cliente_final?.nome ?? '—', {
+        id: 'cliente_final',
+        header: 'Cliente Final',
+        size: 130,
       }),
       col.accessor((row) => [row.cidade, row.estado].filter(Boolean).join(' / '), {
         id: 'local',
         header: 'Cidade / UF',
-        size: 120,
+        size: 110,
       }),
       col.accessor('escopo', {
         header: 'Escopo',
@@ -83,7 +88,7 @@ export function SolicitacoesTable({
       col.accessor('classificacao', {
         header: 'Classif.',
         cell: (info) => <ClassificacaoBadge value={info.getValue()} />,
-        size: 100,
+        size: 80,
       }),
       col.accessor('interesse', {
         header: 'Interesse',
@@ -105,12 +110,12 @@ export function SolicitacoesTable({
             </div>
           )
         },
-        size: 130,
+        size: 100,
       }),
       col.accessor((row) => row.orcamentista?.nome ?? '—', {
         id: 'orcamentista',
         header: 'Orçamentista',
-        size: 130,
+        size: 110,
       }),
       col.display({
         id: 'acoes',
