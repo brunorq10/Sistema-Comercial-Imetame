@@ -181,6 +181,7 @@ export default function ContratoVisaoGeralPage() {
   const statusInfo = STATUS_FAT_MAP[contrato.status] ?? STATUS_FAT_MAP.A_FATURAR
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="p-6 max-w-7xl mx-auto space-y-6">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
@@ -337,6 +338,7 @@ export default function ContratoVisaoGeralPage() {
         )}
       </section>
 
+    </div>
     </div>
   )
 }
