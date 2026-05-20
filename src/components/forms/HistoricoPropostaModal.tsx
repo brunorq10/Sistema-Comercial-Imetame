@@ -84,7 +84,7 @@ function buildRevisoes(item: PropostasItem): RevTC[] {
       const com = item.propostas_comerciais.find((c) => c.proposta_tecnica_id === tec.id) ?? null
       const hd = tec.hh_direto ?? 0
       const hi = tec.hh_indireto ?? 0
-      const ht = hd + hi
+      const ht = tec.hh_total ?? (hd + hi)
       const pesoTotal = tec.peso_montagem ? Number(tec.peso_montagem) : 0
       return {
         tec, com, ht, pesoTotal,

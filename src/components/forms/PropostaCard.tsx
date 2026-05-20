@@ -220,9 +220,10 @@ export function PropostaCard({ item, onEditar, canEditar }: Props) {
                   ) ?? null
 
                   const hhtotal =
-                    tec.hh_direto != null && tec.hh_indireto != null
+                    tec.hh_total ??
+                    (tec.hh_direto != null && tec.hh_indireto != null
                       ? tec.hh_direto + tec.hh_indireto
-                      : null
+                      : null)
 
                   return (
                     <div
