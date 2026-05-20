@@ -50,6 +50,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
 
   if (searchParams.get('modo') === 'filtros') return getFiltros()
+
+  if (searchParams.get('modo') === 'autocomplete') {
+    const busca = searchParams.get('busca') ?? ''
+    const rows = await prisma.solicitacao.findMany({
+      where: { numero: { contains: busca, mode: 'insensitive' }, cancelled_at: null },
+      select: { id: true, numero: true, cliente: { select: { nome: true } } },
+      orderBy: { numero: 'asc' },
+      take: 10,
+    })
+    return NextResponse.json({ data: rows.map((r) => ({ id: r.id, numero: r.numero, cliente: r.cliente.nome })), error: null })
+  }
   const ano = searchParams.get('ano') ?? undefined
   const cliente_id = searchParams.get('cliente_id') ? Number(searchParams.get('cliente_id')) : undefined
   const classificacao = (searchParams.get('classificacao') as Classificacao) || undefined

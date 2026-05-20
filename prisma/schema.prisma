@@ -224,6 +224,7 @@ model Solicitacao {
   propostas_tecnicas   PropostaTecnica[]
   propostas_comerciais PropostaComercial[]
   propostas_fabricacao PropostaFabricacao[]
+  contratos            Contrato[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -419,6 +420,7 @@ model Contrato {
   num_os         String?
   num_acordo     String?
   num_proposta   String?
+  solicitacao_id Int?
   responsavel_id Int?
   data_inicio    DateTime?
   data_fim       DateTime?
@@ -434,10 +436,12 @@ model Contrato {
   cliente      Cliente                @relation(fields: [cliente_id], references: [id])
   responsavel  User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
   criador      User                   @relation("ContratoCriador", fields: [created_by], references: [id])
+  solicitacao  Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
   subindices   SubIndiceFaturamento[]
   historico    HistoricoContrato[]
 
   @@index([cliente_id])
+  @@index([solicitacao_id])
   @@index([ano_referencia])
   @@index([status])
   @@index([cancelled_at])

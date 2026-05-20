@@ -26,6 +26,7 @@ const updateSchema = z.object({
   num_os: z.string().optional().nullable(),
   num_acordo: z.string().optional().nullable(),
   num_proposta: z.string().optional().nullable(),
+  solicitacao_id: z.number().int().positive().optional().nullable(),
   responsavel_id: z.number().int().positive().optional().nullable(),
   data_inicio: z.string().optional().nullable(),
   data_fim: z.string().optional().nullable(),
@@ -34,6 +35,33 @@ const updateSchema = z.object({
   valor_contrato: z.number().nonnegative().optional().nullable(),
   cancel_reason: z.string().optional(),
 })
+
+const SOLICITACAO_INCLUDE = {
+  propostas_tecnicas: {
+    orderBy: { versao: 'desc' as const },
+    select: {
+      id: true, versao: true,
+      hh_direto: true, hh_indireto: true, hh_total: true,
+      peso_montagem: true,
+      peso_equipamentos: true, peso_tubulacoes: true,
+      peso_suportes: true, peso_estruturas: true,
+      data_envio: true,
+    },
+  },
+  propostas_comerciais: {
+    orderBy: { versao: 'desc' as const },
+    select: {
+      id: true, versao: true,
+      proposta_tecnica_id: true,
+      valor_montagem_mecanica: true,
+      valor_eletrica: true, valor_isolamento: true, valor_civil: true,
+      valor_hidraulica: true, valor_fibra: true,
+      valor_tijolo_antiacido: true, valor_outros_terceiros: true,
+      valor_terceiros: true, valor_total: true,
+      data_envio: true, resultado: true,
+    },
+  },
+}
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -50,6 +78,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       subindices: {
         orderBy: { ordem: 'asc' },
         include: { notas_fiscais: true },
+      },
+      solicitacao: {
+        select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
       },
     },
   })
@@ -108,6 +139,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel: { select: { id: true, nome: true } },
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+      solicitacao: {
+        select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
+      },
     },
   })
 
@@ -162,6 +196,8 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}) {
     status: c.status,
     cliente: c.cliente,
     responsavel: c.responsavel,
+    solicitacao_id: c.solicitacao_id ?? null,
+    solicitacao: c.solicitacao ? serializeSolicitacao(c.solicitacao) : null,
     num_os: c.num_os,
     num_acordo: c.num_acordo,
     num_proposta: c.num_proposta,
@@ -175,6 +211,39 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}) {
     prev_anos_seguintes: 0,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     subindices: c.subindices.map((s: any) => serializeSubindice(s, nfTotalMap)),
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serializeSolicitacao(s: any) {
+  return {
+    id: s.id,
+    numero: s.numero,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    propostas_tecnicas: s.propostas_tecnicas.map((pt: any) => ({
+      id: pt.id,
+      versao: pt.versao,
+      hh_direto: pt.hh_direto,
+      hh_indireto: pt.hh_indireto,
+      hh_total: pt.hh_total,
+      peso_montagem: pt.peso_montagem ? Number(pt.peso_montagem) : null,
+      peso_equipamentos: pt.peso_equipamentos ? Number(pt.peso_equipamentos) : null,
+      peso_tubulacoes: pt.peso_tubulacoes ? Number(pt.peso_tubulacoes) : null,
+      peso_suportes: pt.peso_suportes ? Number(pt.peso_suportes) : null,
+      peso_estruturas: pt.peso_estruturas ? Number(pt.peso_estruturas) : null,
+      data_envio: pt.data_envio?.toISOString() ?? null,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    propostas_comerciais: s.propostas_comerciais.map((pc: any) => ({
+      id: pc.id,
+      versao: pc.versao,
+      proposta_tecnica_id: pc.proposta_tecnica_id,
+      valor_montagem_mecanica: pc.valor_montagem_mecanica ? Number(pc.valor_montagem_mecanica) : null,
+      valor_terceiros: pc.valor_terceiros ? Number(pc.valor_terceiros) : null,
+      valor_total: pc.valor_total ? Number(pc.valor_total) : null,
+      data_envio: pc.data_envio?.toISOString() ?? null,
+      resultado: pc.resultado,
+    })),
   }
 }
 
