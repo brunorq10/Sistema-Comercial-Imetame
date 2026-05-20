@@ -131,6 +131,7 @@ model User {
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
   historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
+  subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
 
   @@map("users")
 }
@@ -466,7 +467,9 @@ model SubIndiceFaturamento {
   valor_total Decimal           @db.Decimal(15, 2)
   data_inicio DateTime?
   data_fim    DateTime?
-  comentarios String?
+  comentarios              String?
+  comentario_updated_at    DateTime?
+  comentario_updated_by    Int?
   jan         Decimal?          @db.Decimal(15, 2)
   fev         Decimal?          @db.Decimal(15, 2)
   mar         Decimal?          @db.Decimal(15, 2)
@@ -483,11 +486,12 @@ model SubIndiceFaturamento {
   updated_at  DateTime          @updatedAt
   created_by  Int
 
-  contrato      Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
-  criador       User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
-  notas_fiscais NotaFiscalContrato[]
-  consolidados  ConsolidadoMesItem[]
-  historico     HistoricoSubIndice[]
+  contrato             Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador              User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
+  comentario_autor     User?                @relation("SubIndiceComentarioAutor", fields: [comentario_updated_by], references: [id])
+  notas_fiscais        NotaFiscalContrato[]
+  consolidados         ConsolidadoMesItem[]
+  historico            HistoricoSubIndice[]
 
   @@index([contrato_id])
   @@map("subindices_faturamento")

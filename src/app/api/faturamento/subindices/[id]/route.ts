@@ -65,6 +65,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (set_val !== undefined) data.set = set_val
   if (rest.data_inicio !== undefined) data.data_inicio = rest.data_inicio ? new Date(rest.data_inicio) : null
   if (rest.data_fim !== undefined) data.data_fim = rest.data_fim ? new Date(rest.data_fim) : null
+  if (rest.comentarios !== undefined) {
+    data.comentario_updated_at = new Date()
+    data.comentario_updated_by = Number(session.user.id)
+  }
 
   const subindice = await prisma.subIndiceFaturamento.update({
     where: { id },

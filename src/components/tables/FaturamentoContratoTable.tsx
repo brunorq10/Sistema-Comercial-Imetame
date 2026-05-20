@@ -61,13 +61,14 @@ interface Props {
   onExcluirSubindice: (sub: SubIndiceItem) => void
   onHistoricoSubindice: (sub: SubIndiceItem) => void
   onHistoricoContrato: (contrato: ContratoItem) => void
+  onComentario: (sub: SubIndiceItem) => void
   canEditar: boolean
   canLancarNF: boolean
 }
 
 export function FaturamentoContratoTable({
   contratos, anoFiltro, onLancarNF, onEditarSubindice, onEditarContrato, onCancelarContrato,
-  onExcluirSubindice, onHistoricoSubindice, onHistoricoContrato,
+  onExcluirSubindice, onHistoricoSubindice, onHistoricoContrato, onComentario,
   canEditar, canLancarNF,
 }: Props) {
   const [expandidos, setExpandidos] = useState<Set<number>>(() => new Set(contratos.map((c) => c.id)))
@@ -351,8 +352,19 @@ export function FaturamentoContratoTable({
                     <td className={sBase} style={{ background: subBg }}><StatusBadge status={sub.status_faturamento} /></td>
                     <td className={sBase} style={{ background: subBg }}><span className="text-gray-300">—</span></td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
-                    <td className={sBase} style={{ background: subBg }}>
-                      <span className="text-gray-500 truncate block" style={{ maxWidth: W.comentarios - 16 }} title={sub.comentarios ?? ''}>{sub.comentarios ?? '—'}</span>
+                    <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => onComentario(sub)}
+                        className="text-left w-full group"
+                        title={sub.comentarios ?? 'Clique para adicionar comentário'}
+                      >
+                        <span
+                          className={`truncate block text-[11px] group-hover:text-green-primary transition-colors ${sub.comentarios ? 'text-gray-600' : 'text-gray-300'}`}
+                          style={{ maxWidth: W.comentarios - 16 }}
+                        >
+                          {sub.comentarios ?? '+ comentário'}
+                        </span>
+                      </button>
                     </td>
                     {MESES.map((m, mi) => {
                       const prev = sub[m] ?? 0

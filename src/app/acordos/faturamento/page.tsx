@@ -10,6 +10,7 @@ import { ConsolidadoMesModal } from '@/components/forms/ConsolidadoMesModal'
 import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { ComentarioSubindiceModal } from '@/components/forms/ComentarioSubindiceModal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
@@ -78,6 +79,7 @@ export default function FaturamentoPage() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [modalHistorico, setModalHistorico] = useState<{ tipo: 'subindice' | 'contrato'; id: number; titulo: string } | null>(null)
+  const [modalComentario, setModalComentario] = useState<SubIndiceItem | null>(null)
   const [excluindoSub, setExcluindoSub] = useState<SubIndiceItem | null>(null)
   const [excluirSubError, setExcluirSubError] = useState<string | null>(null)
   const [excluirSubLoading, setExcluirSubLoading] = useState(false)
@@ -410,6 +412,7 @@ export default function FaturamentoPage() {
                 onExcluirSubindice={(sub) => { setExcluindoSub(sub); setExcluirSubError(null) }}
                 onHistoricoSubindice={(sub) => setModalHistorico({ tipo: 'subindice', id: sub.id, titulo: sub.descricao })}
                 onHistoricoContrato={(c) => setModalHistorico({ tipo: 'contrato', id: c.id, titulo: c.indice })}
+                onComentario={setModalComentario}
                 canEditar={canEditar}
                 canLancarNF={canLancarNF}
               />
@@ -603,6 +606,17 @@ export default function FaturamentoPage() {
           tipo={modalHistorico.tipo}
           itemId={modalHistorico.id}
           titulo={modalHistorico.titulo}
+        />
+      )}
+
+      {modalComentario && (
+        <ComentarioSubindiceModal
+          open={true}
+          onClose={() => setModalComentario(null)}
+          subindiceId={modalComentario.id}
+          titulo={modalComentario.descricao}
+          canEditar={canEditar}
+          onSuccess={fetchData}
         />
       )}
     </div>
