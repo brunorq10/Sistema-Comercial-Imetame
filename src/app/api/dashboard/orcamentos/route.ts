@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 
 export interface OrcDashboardData {
   anos_disponiveis: number[]
+  orcamentistas_disponiveis: Array<{ id: number; nome: string }>
+  cidades_disponiveis: Array<{ cidade: string; estado: string }>
   total: number
   aprovadas: number
   reprovadas: number
@@ -20,29 +22,51 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const { searchParams } = req.nextUrl
-  const ano = searchParams.get('ano') ?? undefined
-  const classificacao = searchParams.get('classificacao') ?? undefined
-  const interesse = searchParams.get('interesse') ?? undefined
-  const cliente_id = searchParams.get('cliente_id') ?? undefined
+  const ano             = searchParams.get('ano')             ?? undefined
+  const classificacao   = searchParams.get('classificacao')   ?? undefined
+  const interesse       = searchParams.get('interesse')       ?? undefined
+  const cliente_id      = searchParams.get('cliente_id')      ?? undefined
+  const orcamentista_id = searchParams.get('orcamentista_id') ?? undefined
+  const segmento        = searchParams.get('segmento')        ?? undefined
+  const cidade          = searchParams.get('cidade')          ?? undefined
 
-  // ── Anos disponíveis (para popular o select dinamicamente) ──────────────
-  const anosRaw = await prisma.solicitacao.findMany({
-    where: { cancelled_at: null, data_recebimento: { not: null } },
-    select: { data_recebimento: true },
-    distinct: ['data_recebimento'],
-  })
+  // ── Opções disponíveis (sem filtros, para popular selects) ──────────────
+  const [anosRaw, orcDisp, cidadesDisp] = await Promise.all([
+    prisma.solicitacao.findMany({
+      where: { cancelled_at: null, data_recebimento: { not: null } },
+      select: { data_recebimento: true },
+      distinct: ['data_recebimento'],
+    }),
+    prisma.user.findMany({
+      where: { ativo: true, solicitacoes_atribuidas: { some: {} } },
+      select: { id: true, nome: true },
+      orderBy: { nome: 'asc' },
+    }),
+    prisma.solicitacao.findMany({
+      where: { cancelled_at: null, cidade: { not: null }, estado: { not: null } },
+      select: { cidade: true, estado: true },
+      distinct: ['cidade', 'estado'],
+      orderBy: [{ estado: 'asc' }, { cidade: 'asc' }],
+    }),
+  ])
+
   const anosSet = new Set<number>()
-  anosRaw.forEach((s) => {
-    if (s.data_recebimento) anosSet.add(s.data_recebimento.getFullYear())
-  })
+  anosRaw.forEach((s) => { if (s.data_recebimento) anosSet.add(s.data_recebimento.getFullYear()) })
   const anos_disponiveis = Array.from(anosSet).sort((a, b) => b - a)
+
+  const orcamentistas_disponiveis = orcDisp
+  const cidades_disponiveis = cidadesDisp
+    .filter((c): c is { cidade: string; estado: string } => !!c.cidade && !!c.estado)
 
   // ── Where base (filtros) ─────────────────────────────────────────────────
   const where = {
     cancelled_at: null,
-    ...(classificacao && { classificacao: classificacao as never }),
-    ...(interesse && { interesse: interesse as never }),
-    ...(cliente_id && { cliente_id: Number(cliente_id) }),
+    ...(classificacao   && { classificacao: classificacao as never }),
+    ...(interesse       && { interesse: interesse as never }),
+    ...(segmento        && { segmento: segmento as never }),
+    ...(cliente_id      && { cliente_id: Number(cliente_id) }),
+    ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
+    ...(cidade          && { cidade }),
     ...(ano && {
       data_recebimento: {
         gte: new Date(`${ano}-01-01`),
@@ -169,6 +193,8 @@ export async function GET(req: NextRequest) {
 
   const data: OrcDashboardData = {
     anos_disponiveis,
+    orcamentistas_disponiveis,
+    cidades_disponiveis,
     total: items.length,
     aprovadas,
     reprovadas,

@@ -393,6 +393,9 @@ export default function DashboardComercialPage() {
   const [classificacao, setClassificacao] = useState('')
   const [interesse, setInteresse] = useState('')
   const [clienteId, setClienteId] = useState('')
+  const [orcamentistaId, setOrcamentistaId] = useState('')
+  const [segmento, setSegmento] = useState('')
+  const [cidadeUf, setCidadeUf] = useState('')
 
   useEffect(() => {
     fetch('/api/clientes')
@@ -404,22 +407,26 @@ export default function DashboardComercialPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (ano) params.set('ano', ano)
-      if (classificacao) params.set('classificacao', classificacao)
-      if (interesse) params.set('interesse', interesse)
-      if (clienteId) params.set('cliente_id', clienteId)
+      if (ano)            params.set('ano', ano)
+      if (classificacao)  params.set('classificacao', classificacao)
+      if (interesse)      params.set('interesse', interesse)
+      if (clienteId)      params.set('cliente_id', clienteId)
+      if (orcamentistaId) params.set('orcamentista_id', orcamentistaId)
+      if (segmento)       params.set('segmento', segmento)
+      if (cidadeUf)       params.set('cidade', cidadeUf)
       const res = await fetch(`/api/dashboard/orcamentos?${params}`)
       const json = await res.json()
       setData(json.data ?? null)
     } finally {
       setLoading(false)
     }
-  }, [ano, classificacao, interesse, clienteId])
+  }, [ano, classificacao, interesse, clienteId, orcamentistaId, segmento, cidadeUf])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const limpar = () => {
     setAno(''); setClassificacao(''); setInteresse(''); setClienteId('')
+    setOrcamentistaId(''); setSegmento(''); setCidadeUf('')
   }
 
   const gap = 8
@@ -489,11 +496,47 @@ export default function DashboardComercialPage() {
         ))}
 
         {/* Cliente */}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 160, flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140, flex: 1 }}>
           <span style={labelStyle}>Cliente</span>
           <select style={selectStyle} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
             <option value="">Todos</option>
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+
+        {/* Orçamentista */}
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140, flex: 1 }}>
+          <span style={labelStyle}>Orçamentista</span>
+          <select style={selectStyle} value={orcamentistaId} onChange={(e) => setOrcamentistaId(e.target.value)}>
+            <option value="">Todos</option>
+            {(data?.orcamentistas_disponiveis ?? []).map((o) => (
+              <option key={o.id} value={o.id}>{o.nome}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Mercado (Segmento) */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={labelStyle}>Mercado</span>
+          <select style={selectStyle} value={segmento} onChange={(e) => setSegmento(e.target.value)}>
+            <option value="">Todos</option>
+            <option value="PAPEL_CELULOSE">Papel e Celulose</option>
+            <option value="SIDERURGIA">Siderurgia</option>
+            <option value="OLEO_GAS">Óleo e Gás</option>
+            <option value="OUTROS">Outros</option>
+          </select>
+        </div>
+
+        {/* Cidade / UF */}
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
+          <span style={labelStyle}>Cidade / UF</span>
+          <select style={selectStyle} value={cidadeUf} onChange={(e) => setCidadeUf(e.target.value)}>
+            <option value="">Todas</option>
+            {(data?.cidades_disponiveis ?? []).map((c) => (
+              <option key={`${c.cidade}-${c.estado}`} value={c.cidade}>
+                {c.cidade} — {c.estado}
+              </option>
+            ))}
           </select>
         </div>
 
