@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
@@ -280,6 +281,11 @@ export function FaturamentoContratoTable({
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/acordos/faturamento/${contrato.id}`}
+                      className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
+                      title="Visão geral do contrato"
+                    >👁</Link>
                     {canEditar && contrato.status !== 'CANCELADO' && (
                       <button onClick={() => onEditarContrato(contrato)}
                         className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"

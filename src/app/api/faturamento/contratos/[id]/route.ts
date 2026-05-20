@@ -55,7 +55,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   })
 
   if (!contrato) return NextResponse.json({ data: null, error: 'Não encontrado' }, { status: 404 })
-  return NextResponse.json({ data: serializeContrato(contrato), error: null })
+
+  // Compute total % launched per NF across entire DB
+  const allNFNumbers = Array.from(new Set(
+    contrato.subindices.flatMap((s) => s.notas_fiscais?.map((nf) => nf.numero_nf) ?? [])
+  ))
+  const nfTotals = allNFNumbers.length > 0
+    ? await prisma.notaFiscalContrato.groupBy({
+        by: ['numero_nf'],
+        where: { numero_nf: { in: allNFNumbers } },
+        _sum: { percentual: true },
+      })
+    : []
+  const nfTotalMap: Record<string, number> = {}
+  nfTotals.forEach((t) => { nfTotalMap[t.numero_nf] = Number(t._sum.percentual ?? 0) })
+
+  return NextResponse.json({ data: serializeContrato(contrato, nfTotalMap), error: null })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -139,7 +154,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeContrato(c: any) {
+function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}) {
   return {
     id: c.id,
     indice: c.indice,
@@ -156,14 +171,15 @@ function serializeContrato(c: any) {
     classificacao: c.classificacao ?? null,
     valor_contrato: c.valor_contrato ? Number(c.valor_contrato) : null,
     cancelled_at: c.cancelled_at?.toISOString() ?? null,
+    created_at: c.created_at.toISOString(),
     prev_anos_seguintes: 0,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    subindices: c.subindices.map((s: any) => serializeSubindice(s)),
+    subindices: c.subindices.map((s: any) => serializeSubindice(s, nfTotalMap)),
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeSubindice(s: any) {
+function serializeSubindice(s: any, nfTotalMap: Record<string, number> = {}) {
   const nfsAtivas = s.notas_fiscais?.filter((nf: any) => nf.ativa) ?? []
   const totalFaturado = nfsAtivas.reduce((acc: number, nf: any) => acc + Number(nf.valor_atribuido), 0)
   const status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' =
@@ -193,10 +209,12 @@ function serializeSubindice(s: any) {
       id: nf.id, numero_nf: nf.numero_nf,
       valor_total_nf: Number(nf.valor_total_nf),
       percentual: Number(nf.percentual),
+      percentual_total: nfTotalMap[nf.numero_nf] ?? Number(nf.percentual),
       valor_atribuido: Number(nf.valor_atribuido),
       data_emissao: nf.data_emissao.toISOString(),
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa, motivo_inativacao: nf.motivo_inativacao,
+      created_at: nf.created_at.toISOString(),
     })) ?? [],
   }
 }
