@@ -1,12 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Badge } from '@/components/ui/Badge'
-import { ContratoFaturamentoChart, buildAnualData } from '@/components/faturamento/ContratoFaturamentoChart'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
+
+// Chart.js accesses browser canvas APIs — must be client-only, no SSR
+const ContratoFaturamentoChart = dynamic(
+  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoChart),
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
+)
 
 // ── Extended types for detail page ───────────────────────────────────────────
 interface NFDetalhe extends NFContratoItem { created_at: string }
@@ -27,7 +32,24 @@ interface TimelineEvent {
 }
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
-const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+function buildAnualData(subindices: SubDetalhe[], anoRef: number) {
+  const anosSet = new Set<number>()
+  subindices.forEach((s) => {
+    anosSet.add(s.data_inicio ? parseInt(s.data_inicio.substring(0, 4), 10) : anoRef)
+    s.notas_fiscais.forEach((nf) => anosSet.add(new Date(nf.data_emissao).getFullYear()))
+  })
+  return Array.from(anosSet).sort().map((ano) => ({
+    ano,
+    previsto: subindices
+      .filter((s) => (s.data_inicio ? parseInt(s.data_inicio.substring(0, 4), 10) : anoRef) === ano)
+      .reduce((a, s) => a + MESES.reduce((b, m) => b + (s[m] ?? 0), 0), 0),
+    faturado: subindices
+      .flatMap((s) => s.notas_fiscais)
+      .filter((nf) => nf.ativa && new Date(nf.data_emissao).getFullYear() === ano)
+      .reduce((a, nf) => a + nf.valor_atribuido, 0),
+  }))
+}
 
 const STATUS_FAT_MAP = {
   A_FATURAR: { label: 'A faturar', cls: 'bg-orange-100 text-orange-700' },
