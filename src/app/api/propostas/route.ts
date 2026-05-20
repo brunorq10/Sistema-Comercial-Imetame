@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
     orderBy: { created_at: 'desc' },
     include: {
       cliente: { select: { id: true, nome: true } },
+      cliente_final: { select: { id: true, nome: true } },
       orcamentista: { select: { id: true, nome: true } },
       propostas_tecnicas: { orderBy: { versao: 'desc' } },
       propostas_comerciais: { orderBy: { versao: 'desc' } },
@@ -135,6 +136,7 @@ export async function GET(req: NextRequest) {
         id: s.cliente.id,
         nome: s.cliente.nome,
       },
+      cliente_final: s.cliente_final ? { id: s.cliente_final.id, nome: s.cliente_final.nome } : null,
       cidade: s.cidade ?? null,
       estado: s.estado ?? null,
       escopo: s.escopo ?? null,

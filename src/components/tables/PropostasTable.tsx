@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { formatRev, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { ClassificacaoBadge } from '@/components/ui/Badge'
@@ -34,6 +35,8 @@ function ResultadoCell({ resultado }: { resultado: string | null }) {
 }
 
 export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props) {
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
+
   if (data.length === 0) {
     return <p className="text-center text-gray-400 py-10 text-sm">Nenhuma proposta encontrada.</p>
   }
@@ -46,6 +49,7 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
               <Th>Nº Proposta</Th>
               <Th>Versão</Th>
               <Th>Cliente</Th>
+              <Th>Cliente Final</Th>
               <Th>Cidade / UF</Th>
               <Th>Classificação</Th>
               <Th>Escopo Resumido</Th>
@@ -56,7 +60,9 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
           </thead>
           <tbody>
             {data.map((item, idx) => {
-              const bg = idx % 2 === 0 ? '#ffffff' : '#f9fafb'
+              const isHovered = hoveredId === item.id
+              const baseBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb'
+              const bg = isHovered ? '#EEEEEE' : baseBg
               const isFabricacao = item.classificacao === 'FABRICACOES' || item.classificacao === 'OLEO_GAS'
               const latestVersao = isFabricacao
                 ? (item.propostas_fabricacao[0]?.versao ?? null)
@@ -65,7 +71,13 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
                 ? (item.propostas_fabricacao[0]?.resultado ?? null)
                 : item.resultado
               return (
-                <tr key={item.id} className="border-b border-gray-100" style={{ background: bg }}>
+                <tr
+                  key={item.id}
+                  className="border-b border-gray-100 cursor-default"
+                  style={{ background: bg }}
+                  onMouseEnter={() => setHoveredId(item.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
                   <td className="px-3 py-[6px] whitespace-nowrap">
                     <span className="font-bold text-green-dark">{item.numero}</span>
                   </td>
@@ -79,6 +91,7 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
                     )}
                   </td>
                   <td className="px-3 py-[6px] whitespace-nowrap font-medium">{item.cliente.nome}</td>
+                  <td className="px-3 py-[6px] whitespace-nowrap text-gray-600">{item.cliente_final?.nome ?? '—'}</td>
                   <td className="px-3 py-[6px] whitespace-nowrap text-amber-600 font-medium">
                     {[item.cidade, item.estado].filter(Boolean).join(' / ') || '—'}
                   </td>
