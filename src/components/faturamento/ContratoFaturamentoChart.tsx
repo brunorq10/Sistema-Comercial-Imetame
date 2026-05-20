@@ -5,11 +5,15 @@ import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement,
   PointElement, Title, Tooltip, Legend,
+  BarController, LineController,
 } from 'chart.js'
 import { Chart } from 'react-chartjs-2'
 import { formatCurrency } from '@/lib/utils'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend)
+ChartJS.register(
+  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
+  Title, Tooltip, Legend, BarController, LineController,
+)
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
