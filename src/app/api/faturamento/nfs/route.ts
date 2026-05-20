@@ -51,11 +51,24 @@ export async function GET(req: NextRequest) {
     orderBy: { data_emissao: 'desc' },
   })
 
+  // Compute total % launched per NF number across entire DB
+  const nfNumbers = Array.from(new Set(nfs.map((nf) => nf.numero_nf)))
+  const nfTotals = nfNumbers.length > 0
+    ? await prisma.notaFiscalContrato.groupBy({
+        by: ['numero_nf'],
+        where: { numero_nf: { in: nfNumbers } },
+        _sum: { percentual: true },
+      })
+    : []
+  const nfTotalMap: Record<string, number> = {}
+  nfTotals.forEach((t) => { nfTotalMap[t.numero_nf] = Number(t._sum.percentual ?? 0) })
+
   const data = nfs.map((nf) => ({
     id: nf.id,
     numero_nf: nf.numero_nf,
     valor_total_nf: Number(nf.valor_total_nf),
     percentual: Number(nf.percentual),
+    percentual_total: nfTotalMap[nf.numero_nf] ?? Number(nf.percentual),
     valor_atribuido: Number(nf.valor_atribuido),
     data_emissao: nf.data_emissao.toISOString(),
     data_vencimento: nf.data_vencimento.toISOString(),

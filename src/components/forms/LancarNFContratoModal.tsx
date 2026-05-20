@@ -268,7 +268,8 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
             <th className={thCls}>Dt. Emissão</th>
             <th className={thCls}>Dt. Vencimento</th>
             <th className={thCls}>Vlr. Total NF</th>
-            <th className={thCls}>%</th>
+            <th className={thCls}>% Item</th>
+            <th className={thCls}>% Lançado</th>
             <th className={thCls}>Vlr. Atribuído</th>
             {inativa && <th className={thCls}>Motivo</th>}
           </tr>
@@ -285,6 +286,15 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
               <td className={tdCls}>{formatDate(nf.data_vencimento)}</td>
               <td className={tdCls}>{formatCurrency(nf.valor_total_nf)}</td>
               <td className={tdCls}>{Number(nf.percentual).toFixed(2)}%</td>
+              <td className={tdCls}>
+                {(() => {
+                  const total = Number(nf.percentual_total)
+                  const fmt = total.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                  if (total >= 100) return <span className="font-semibold text-green-700">{fmt}%</span>
+                  if (total > 0)    return <span className="font-semibold text-orange-500">{fmt}%</span>
+                  return <span className="text-gray-300">0%</span>
+                })()}
+              </td>
               <td className={tdCls}>
                 <span className={inativa ? '' : 'font-semibold text-auto-value'}>
                   {formatCurrency(nf.valor_atribuido)}

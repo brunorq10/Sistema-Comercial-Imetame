@@ -94,7 +94,21 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const data = contratos.map((c) => serializeContrato(c, anoNum))
+    // Compute total % launched per NF number across entire DB
+    const allNFNumbers = Array.from(new Set(
+      contratos.flatMap((c) => c.subindices.flatMap((s) => s.notas_fiscais?.map((nf: { numero_nf: string }) => nf.numero_nf) ?? []))
+    ))
+    const nfTotals = allNFNumbers.length > 0
+      ? await prisma.notaFiscalContrato.groupBy({
+          by: ['numero_nf'],
+          where: { numero_nf: { in: allNFNumbers } },
+          _sum: { percentual: true },
+        })
+      : []
+    const nfTotalMap: Record<string, number> = {}
+    nfTotals.forEach((t) => { nfTotalMap[t.numero_nf] = Number(t._sum.percentual ?? 0) })
+
+    const data = contratos.map((c) => serializeContrato(c, anoNum, nfTotalMap))
     return NextResponse.json({ data, error: null })
   } catch (err) {
     console.error('[GET /api/faturamento/contratos]', err)
@@ -155,7 +169,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ data: serializeContrato(contrato), error: null }, { status: 201 })
+  return NextResponse.json({ data: serializeContrato(contrato, undefined, {}), error: null }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/faturamento/contratos]', err)
     return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
@@ -163,7 +177,7 @@ export async function POST(req: NextRequest) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeContrato(c: any, anoFiltro?: number) {
+function serializeContrato(c: any, anoFiltro?: number, nfTotalMap: Record<string, number> = {}) {
   // Calcula prev_anos_seguintes ANTES de filtrar — soma valor_total dos sub-índices de anos futuros
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const prevProxAnos = anoFiltro
@@ -203,12 +217,12 @@ function serializeContrato(c: any, anoFiltro?: number) {
     cancelled_at: c.cancelled_at?.toISOString() ?? null,
     prev_anos_seguintes: prevProxAnos,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    subindices: subsFiltrados.map((s: any) => serializeSubindice(s, c.subindices, anoFiltro)),
+    subindices: subsFiltrados.map((s: any) => serializeSubindice(s, c.subindices, anoFiltro, nfTotalMap)),
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number) {
+function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number, nfTotalMap: Record<string, number> = {}) {
   const nfsAtivas = s.notas_fiscais?.filter((nf: any) => nf.ativa) ?? []
   const totalFaturado = nfsAtivas.reduce((acc: number, nf: any) => acc + Number(nf.valor_atribuido), 0)
   const status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' =
@@ -258,6 +272,7 @@ function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number) {
       numero_nf: nf.numero_nf,
       valor_total_nf: Number(nf.valor_total_nf),
       percentual: Number(nf.percentual),
+      percentual_total: nfTotalMap[nf.numero_nf] ?? Number(nf.percentual),
       valor_atribuido: Number(nf.valor_atribuido),
       data_emissao: nf.data_emissao.toISOString(),
       data_vencimento: nf.data_vencimento.toISOString(),

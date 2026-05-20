@@ -371,6 +371,7 @@ export interface NFContratoItem {
   numero_nf: string
   valor_total_nf: number
   percentual: number
+  percentual_total: number
   valor_atribuido: number
   data_emissao: string
   data_vencimento: string
@@ -430,6 +431,7 @@ export interface NFContratoListItem {
   numero_nf: string
   valor_total_nf: number
   percentual: number
+  percentual_total: number
   valor_atribuido: number
   data_emissao: string
   data_vencimento: string

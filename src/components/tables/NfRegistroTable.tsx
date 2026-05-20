@@ -47,7 +47,7 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
       size: 130,
     }),
     col.accessor('percentual', {
-      header: '%',
+      header: '% Item',
       cell: (info) => {
         const v = info.getValue()
         return v < 100
@@ -55,6 +55,17 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
           : <span className="text-gray-400">100%</span>
       },
       size: 70,
+    }),
+    col.accessor('percentual_total', {
+      header: '% Lançado',
+      cell: (info) => {
+        const v = info.getValue()
+        const fmt = v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+        if (v >= 100) return <span className="text-green-700 font-semibold">{fmt}%</span>
+        if (v > 0)    return <span className="text-orange-500 font-semibold">{fmt}%</span>
+        return <span className="text-gray-300">0%</span>
+      },
+      size: 85,
     }),
     col.accessor('valor_atribuido', {
       header: 'Valor Faturado',
@@ -189,10 +200,11 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
               <span className="font-bold text-[#1B5E20]">{formatCurrency(totalValorNF)}</span>
             </td>
             <td className="px-2 py-[4px]"></td>
+            <td className="px-2 py-[4px]"></td>
             <td className="px-2 py-[4px] whitespace-nowrap">
               <span className="font-bold text-[#1B5E20]">{formatCurrency(totalAtribuido)}</span>
             </td>
-            <td colSpan={colSpan - 6} className="px-2 py-[4px]"></td>
+            <td colSpan={colSpan - 7} className="px-2 py-[4px]"></td>
           </tr>
 
           {/* ── Cabeçalho ── */}
