@@ -21,6 +21,7 @@ interface SubIndiceYearSection {
 
 interface SubIndiceForm {
   descricao: string
+  num_os: string
   data_inicio: string
   data_fim: string
   comentarios: string
@@ -32,7 +33,7 @@ function emptySection(): SubIndiceYearSection {
 }
 
 function emptySubindice(defaultAno: number): SubIndiceForm {
-  return { descricao: '', data_inicio: '', data_fim: '', comentarios: '', anos: { [defaultAno]: emptySection() } }
+  return { descricao: '', num_os: '', data_inicio: '', data_fim: '', comentarios: '', anos: { [defaultAno]: emptySection() } }
 }
 
 function getAnosFromDates(inicio: string, fim: string, fallback: number): number[] {
@@ -71,7 +72,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [anoRef, setAnoRef] = useState(String(anoAtual))
   const [status, setStatus] = useState('A_FATURAR')
   const [clienteId, setClienteId] = useState('')
-  const [numOs, setNumOs] = useState('')
   const [numAcordo, setNumAcordo] = useState('')
   const [numProposta, setNumProposta] = useState('')
   const [responsavelId, setResponsavelId] = useState('')
@@ -95,7 +95,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       setAnoRef(String(editando.ano_referencia))
       setStatus(editando.status)
       setClienteId(String(editando.cliente.id))
-      setNumOs(editando.num_os ?? '')
       setNumAcordo(editando.num_acordo ?? '')
       setNumProposta(editando.num_proposta ?? '')
       setResponsavelId(editando.responsavel ? String(editando.responsavel.id) : '')
@@ -110,6 +109,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
           : editando.ano_referencia
         return {
           descricao: s.descricao,
+          num_os: s.num_os ?? '',
           data_inicio: s.data_inicio ? s.data_inicio.substring(0, 10) : '',
           data_fim: s.data_fim ? s.data_fim.substring(0, 10) : '',
           comentarios: s.comentarios ?? '',
@@ -123,7 +123,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       }))
     } else {
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
-      setNumOs(''); setNumAcordo(''); setNumProposta(''); setResponsavelId('')
+      setNumAcordo(''); setNumProposta(''); setResponsavelId('')
       setDataInicio(''); setDataFim(''); setDescricao(''); setClassificacao(''); setValorContrato('')
       setSubindices([emptySubindice(anoAtual)])
     }
@@ -208,7 +208,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         ano_referencia: Number(anoRef),
         status,
         cliente_id: Number(clienteId),
-        num_os: numOs || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
@@ -225,6 +224,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             const isLast = idx === anos.length - 1
             return {
               descricao: s.descricao,
+              num_os: s.num_os || undefined,
               valor_total: Number(section.valor_total) || 0,
               data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
               data_fim: isLast && s.data_fim ? s.data_fim : `${ano}-12-31`,
@@ -295,17 +295,12 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Cliente">
-          <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Selecione...</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </Select>
-        </Field>
-        <Field label="Nº OS">
-          <Input placeholder="Ex: OS-00443" value={numOs} onChange={(e) => setNumOs(e.target.value)} />
-        </Field>
-      </div>
+      <Field label="Cliente" className="mb-2.5">
+        <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+          <option value="">Selecione...</option>
+          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </Select>
+      </Field>
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Classificação">
@@ -434,9 +429,12 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateAno,
         )}
       </div>
 
-      <div className={`grid gap-2 mb-2 ${multiAno ? 'grid-cols-1' : 'grid-cols-2'}`}>
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <Field label="Descrição / Evento">
           <Input placeholder="Ex: Mobilização" value={data.descricao} onChange={(e) => onUpdate('descricao', e.target.value)} />
+        </Field>
+        <Field label="Nº OS">
+          <Input placeholder="Ex: OS-0001" value={data.num_os} onChange={(e) => onUpdate('num_os', e.target.value)} />
         </Field>
       </div>
 
