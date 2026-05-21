@@ -79,13 +79,18 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         orderBy: { ordem: 'asc' },
         include: { notas_fiscais: true },
       },
-      solicitacao: {
-        select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
-      },
     },
   })
 
   if (!contrato) return NextResponse.json({ data: null, error: 'Não encontrado' }, { status: 404 })
+
+  // Busca solicitação vinculada pelo num_proposta (= Solicitacao.numero na aba Propostas)
+  const solicitacao = contrato.num_proposta
+    ? await prisma.solicitacao.findFirst({
+        where: { numero: contrato.num_proposta, cancelled_at: null },
+        select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
+      })
+    : null
 
   // Compute total % launched per NF across entire DB
   const allNFNumbers = Array.from(new Set(
@@ -101,7 +106,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const nfTotalMap: Record<string, number> = {}
   nfTotals.forEach((t) => { nfTotalMap[t.numero_nf] = Number(t._sum.percentual ?? 0) })
 
-  return NextResponse.json({ data: serializeContrato(contrato, nfTotalMap), error: null })
+  return NextResponse.json({ data: serializeContrato(contrato, nfTotalMap, solicitacao), error: null })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -139,9 +144,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel: { select: { id: true, nome: true } },
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
-      solicitacao: {
-        select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
-      },
     },
   })
 
@@ -188,7 +190,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}) {
+function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, solicitacao: any = null) {
   return {
     id: c.id,
     indice: c.indice,
@@ -196,8 +198,7 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}) {
     status: c.status,
     cliente: c.cliente,
     responsavel: c.responsavel,
-    solicitacao_id: c.solicitacao_id ?? null,
-    solicitacao: c.solicitacao ? serializeSolicitacao(c.solicitacao) : null,
+    solicitacao: solicitacao ? serializeSolicitacao(solicitacao) : null,
     num_os: c.num_os,
     num_acordo: c.num_acordo,
     num_proposta: c.num_proposta,

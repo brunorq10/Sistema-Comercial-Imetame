@@ -282,11 +282,14 @@ export default function ContratoVisaoGeralPage() {
               ))}
             </div>
           )}
-          <VincularSolicitacao
-            contratoId={Number(id)}
-            solicitacaoAtual={contrato.solicitacao}
-            onVinculado={fetchData}
-          />
+          {contrato.num_proposta && (
+            <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5">
+              <span className="text-[10px] text-gray-400">Proposta vinculada:</span>
+              <span className={`text-[10px] font-semibold ${contrato.solicitacao ? 'text-green-700' : 'text-orange-500'}`}>
+                {contrato.num_proposta}{contrato.solicitacao ? '' : ' (não encontrada)'}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4">
@@ -341,21 +344,30 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
 }
 
 function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDetalhe; totalContrato: number }) {
-  const thCls = 'px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
-  const tdCls = 'px-3 py-2.5 text-[12px] whitespace-nowrap border-b border-gray-100'
+  const thCls = 'px-2 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
+  const tdCls = 'px-2 py-2 text-[11px] whitespace-nowrap border-b border-gray-100'
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
-      <table className="w-full border-collapse min-w-[600px]">
+    <div className="border border-gray-200 rounded-md overflow-hidden">
+      <table className="w-full border-collapse table-fixed">
+        <colgroup>
+          <col className="w-[90px]" />
+          <col />
+          <col className="w-[100px]" />
+          <col className="w-[100px]" />
+          <col className="w-[100px]" />
+          <col className="w-[72px]" />
+          <col className="w-[80px]" />
+        </colgroup>
         <thead>
           <tr>
             <th className={thCls}>Índice</th>
             <th className={thCls}>Descrição</th>
-            <th className={thCls}>Valor Total</th>
+            <th className={thCls}>Total</th>
             <th className={thCls}>Faturado</th>
             <th className={thCls}>Saldo</th>
             <th className={thCls}>Status</th>
-            <th className={thCls}>Progresso</th>
+            <th className={thCls}>%</th>
           </tr>
         </thead>
         <tbody>
@@ -366,21 +378,21 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
             return (
               <tr key={s.id} className="hover:bg-gray-50">
                 <td className={tdCls}>
-                  <span className="text-[11px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{contrato.indice}.{s.ordem}</span>
+                  <span className="text-[10px] font-mono bg-gray-100 text-gray-600 px-1 py-0.5 rounded">{contrato.indice}.{s.ordem}</span>
                 </td>
-                <td className={`${tdCls} max-w-[200px]`}>
+                <td className={`${tdCls} overflow-hidden`}>
                   <span className="truncate block font-medium text-gray-800" title={s.descricao}>{s.descricao}</span>
                 </td>
                 <td className={tdCls}><span className="font-semibold text-blue-600">{formatCurrency(s.valor_total)}</span></td>
                 <td className={tdCls}><span className="font-semibold text-green-700">{formatCurrency(s.total_faturado)}</span></td>
                 <td className={tdCls}><span className={saldo > 0 ? 'text-orange-600' : 'text-green-600'}>{formatCurrency(Math.abs(saldo))}</span></td>
-                <td className={tdCls}><span className={`text-[11px] font-semibold ${statusInfo.cls}`}>{statusInfo.label}</span></td>
-                <td className={`${tdCls} min-w-[100px]`}>
-                  <div className="flex items-center gap-2">
+                <td className={tdCls}><span className={`text-[10px] font-semibold ${statusInfo.cls}`}>{statusInfo.label}</span></td>
+                <td className={tdCls}>
+                  <div className="flex items-center gap-1">
                     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div className="h-full bg-green-primary rounded-full" style={{ width: `${Math.min(100, perc)}%` }} />
                     </div>
-                    <span className="text-[10px] text-gray-500 w-8 text-right">{perc.toFixed(0)}%</span>
+                    <span className="text-[10px] text-gray-500 w-6 text-right shrink-0">{perc.toFixed(0)}%</span>
                   </div>
                 </td>
               </tr>
@@ -389,9 +401,9 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
         </tbody>
         <tfoot>
           <tr className="bg-gray-50">
-            <td colSpan={2} className="px-3 py-2 text-[11px] font-bold text-gray-600 border-t border-gray-200">TOTAL</td>
-            <td className="px-3 py-2 text-[12px] font-bold text-blue-600 border-t border-gray-200">{formatCurrency(totalContrato)}</td>
-            <td className="px-3 py-2 text-[12px] font-bold text-green-700 border-t border-gray-200">
+            <td colSpan={2} className="px-2 py-2 text-[11px] font-bold text-gray-600 border-t border-gray-200">TOTAL</td>
+            <td className="px-2 py-2 text-[11px] font-bold text-blue-600 border-t border-gray-200">{formatCurrency(totalContrato)}</td>
+            <td className="px-2 py-2 text-[11px] font-bold text-green-700 border-t border-gray-200">
               {formatCurrency(contrato.subindices.reduce((a, s) => a + s.total_faturado, 0))}
             </td>
             <td colSpan={3} className="border-t border-gray-200" />
