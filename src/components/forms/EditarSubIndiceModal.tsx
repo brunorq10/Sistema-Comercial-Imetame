@@ -49,9 +49,10 @@ interface Props {
   subindice: SubIndiceItem
   indiceLabel: string
   anoRef: number
+  readOnly?: boolean
 }
 
-export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef }: Props) {
+export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef, readOnly }: Props) {
   const [descricao, setDescricao] = useState('')
   const [numOs, setNumOs] = useState('')
   const [dataInicio, setDataInicio] = useState('')
@@ -219,7 +220,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     <Modal
       open={open}
       onClose={onClose}
-      title={`Editar Sub-índice · ${indiceLabel}`}
+      title={readOnly ? `Editar Previsão · ${indiceLabel}` : `Editar Sub-índice · ${indiceLabel}`}
       wide
       footer={
         <>
@@ -238,19 +239,19 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Descrição / Evento *" className="col-span-2">
-          <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+          <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Nº OS">
-          <Input placeholder="Ex: OS-0001" value={numOs} onChange={(e) => setNumOs(e.target.value)} />
+          <Input placeholder="Ex: OS-0001" value={numOs} onChange={(e) => setNumOs(e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Comentários">
-          <Input placeholder="Obs..." value={comentarios} onChange={(e) => setComentarios(e.target.value)} />
+          <Input placeholder="Obs..." value={comentarios} onChange={(e) => setComentarios(e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Período — De">
-          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} />
+          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Até">
-          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} />
+          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} disabled={readOnly} />
         </Field>
       </div>
 
@@ -293,6 +294,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                 <CurrencyInput
                   value={anos[ano]?.valor_total ?? ''}
                   onChange={(v) => updateAnoField(ano, v)}
+                  disabled={readOnly}
                 />
               </Field>
             </div>
@@ -334,8 +336,8 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         )
       })}
 
-      {/* Zona de exclusão */}
-      <div className="border-t border-red-100 pt-3 mt-2">
+      {/* Zona de exclusão — oculta no modo readOnly */}
+      {!readOnly && <div className="border-t border-red-100 pt-3 mt-2">
         {!confirmDelete ? (
           <button
             onClick={() => setConfirmDelete(true)}
@@ -356,7 +358,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </Modal>
   )
 }

@@ -1,28 +1,27 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
-import { ProporAlteracaoModal } from '@/components/forms/ProporAlteracaoModal'
+import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { cn, formatCurrency } from '@/lib/utils'
 import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
 
+const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 type MesKey = typeof MESES[number]
-const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 // ── Column widths ─────────────────────────────────────────────────────────────
 const W = {
   indice: 110, cliente: 120, descricao: 235,
   os: 100, ano: 65, acordo: 115,
   responsavel: 130, status: 90,
-  vlrTotal: 145, faturado: 135, disponivel: 135,
-  mes: 105, acoes: 100,
+  acoes: 120,
 }
 const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
 const FROZEN_W = L.descricao + W.descricao
-const MIN_W = FROZEN_W + W.os + W.ano + W.acordo + W.responsavel + W.status +
-  W.vlrTotal + W.faturado + W.disponivel + 12 * W.mes + W.acoes
+const MIN_W = FROZEN_W + W.os + W.ano + W.acordo + W.responsavel + W.status + W.acoes
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubIndiceComAlteracao extends SubIndiceItem {
@@ -99,7 +98,9 @@ export default function MeuPainelAcordosPage() {
   const [filtroClienteId, setFiltroClienteId] = useState('')
   const [filtroNumOs, setFiltroNumOs] = useState('')
 
-  const [modalPropor, setModalPropor] = useState<{ subindice: SubIndiceItem; indiceLabel: string } | null>(null)
+  const [modalEditar, setModalEditar] = useState<{
+    subindice: SubIndiceItem; indiceLabel: string; anoRef: number
+  } | null>(null)
 
   useEffect(() => {
     if (!isGestao) return
@@ -137,7 +138,6 @@ export default function MeuPainelAcordosPage() {
   const toggleExpand = (id: number) =>
     setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
-  // Options derived from loaded data
   const clienteOptions = useMemo(() => {
     const seen = new Set<string>()
     return contratos
@@ -218,28 +218,17 @@ export default function MeuPainelAcordosPage() {
           )}
           <div className="flex-[2] min-w-0">
             <label className={fLbl}>Cliente</label>
-            <SearchableSelect
-              value={filtroClienteId}
-              onChange={setFiltroClienteId}
-              options={clienteOptions}
-            />
+            <SearchableSelect value={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
           </div>
           <div className="flex-1 min-w-0">
             <label className={fLbl}>Nº OS</label>
-            <SearchableSelect
-              value={filtroNumOs}
-              onChange={setFiltroNumOs}
-              options={osOptions}
-              emptyLabel="Todas"
-            />
+            <SearchableSelect value={filtroNumOs} onChange={setFiltroNumOs} options={osOptions} emptyLabel="Todas" />
           </div>
           <div className="flex-shrink-0 flex items-end">
             <button
               onClick={() => { setFiltroClienteId(''); setFiltroNumOs('') }}
-              className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
-            >
-              ✕
-            </button>
+              className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
+            >✕</button>
           </div>
         </div>
 
@@ -270,18 +259,21 @@ export default function MeuPainelAcordosPage() {
             expandidos={expandidos}
             onToggle={toggleExpand}
             isGestao={isGestao}
-            onPropor={(sub, label) => setModalPropor({ subindice: sub, indiceLabel: label })}
+            onEditar={(sub, label, anoRef) => setModalEditar({ subindice: sub, indiceLabel: label, anoRef })}
           />
         )}
       </div>
 
-      {modalPropor && (
-        <ProporAlteracaoModal
+      {modalEditar && (
+        <EditarSubIndiceModal
           open={true}
-          onClose={() => setModalPropor(null)}
-          onSuccess={() => fetchContratos()}
-          subindice={modalPropor.subindice}
-          indiceLabel={modalPropor.indiceLabel}
+          onClose={() => setModalEditar(null)}
+          onSuccess={() => { fetchContratos(); setModalEditar(null) }}
+          onDelete={() => { fetchContratos(); setModalEditar(null) }}
+          subindice={modalEditar.subindice}
+          indiceLabel={modalEditar.indiceLabel}
+          anoRef={modalEditar.anoRef}
+          readOnly={!isGestao}
         />
       )}
     </div>
@@ -295,24 +287,16 @@ interface PainelTableProps {
   expandidos: Set<number>
   onToggle: (id: number) => void
   isGestao: boolean
-  onPropor: (sub: SubIndiceItem, indiceLabel: string) => void
+  onEditar: (sub: SubIndiceItem, indiceLabel: string, anoRef: number) => void
 }
 
-function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: PainelTableProps) {
+function PainelTable({ contratos, expandidos, onToggle, isGestao, onEditar }: PainelTableProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
-  const TH  = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  // top-0 — sem linha TOTAIS acima
+  const TH  = 'sticky top-0 bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark z-[10]'
   const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
-  const thS = cn(TH, 'z-[10]')
-
-  // Totalizadores
-  const totVlrTotal   = contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0)
-  const totFaturado   = contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + s.total_faturado, 0), 0)
-  const totDisponivel = contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + Math.max(0, s.valor_total - s.total_faturado), 0), 0)
-  const totMeses = MESES.map((m) =>
-    contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + (Number(s[m as MesKey]) || 0), 0), 0)
-  )
 
   const rowBgContract = (key: string) =>
     selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
@@ -326,53 +310,20 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
           <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.descricao }} />
           <col style={{ width: W.os }} /><col style={{ width: W.ano }} /><col style={{ width: W.acordo }} />
           <col style={{ width: W.responsavel }} /><col style={{ width: W.status }} />
-          <col style={{ width: W.vlrTotal }} /><col style={{ width: W.faturado }} /><col style={{ width: W.disponivel }} />
-          {MESES.map((m) => <col key={m} style={{ width: W.mes }} />)}
           <col style={{ width: W.acoes }} />
         </colgroup>
 
         <thead>
-          {/* ── Linha TOTAIS ── */}
-          {(() => {
-            const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
-            const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
-            return (
-              <tr>
-                <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
-                <td className={tcF()} style={{ left: L.cliente }}></td>
-                <td className={tcF(true)} style={{ left: L.descricao }}></td>
-                {/* os, ano, acordo, responsavel, status */}
-                {Array.from({ length: 5 }, (_, i) => <td key={i} className={TC}></td>)}
-                <td className={TC}><span className="font-bold text-[#1565C0]">{formatCurrency(totVlrTotal)}</span></td>
-                <td className={TC}><span className="font-bold text-green-700">{formatCurrency(totFaturado)}</span></td>
-                <td className={TC}><span className="font-bold text-orange-600">{formatCurrency(totDisponivel)}</span></td>
-                {totMeses.map((v, mi) => (
-                  <td key={mi} className={TC}>
-                    {v > 0
-                      ? <span className="font-semibold text-[#1565C0] text-[10px]">{formatCurrency(v)}</span>
-                      : <span className="text-gray-400">—</span>}
-                  </td>
-                ))}
-                <td className={TC}></td>
-              </tr>
-            )
-          })()}
-
-          {/* ── Cabeçalhos ── */}
           <tr>
             <th className={thF()} style={{ left: L.indice }}>Índice</th>
             <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
             <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
-            <th className={thS}>Nº OS</th>
-            <th className={thS}>Ano</th>
-            <th className={thS}>Nº Acordo</th>
-            <th className={thS}>Responsável</th>
-            <th className={thS}>Status Fat.</th>
-            <th className={thS}>Valor Total</th>
-            <th className={thS}>Faturado</th>
-            <th className={thS}>Disponível</th>
-            {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
-            <th className={thS}>Ações</th>
+            <th className={TH}>Nº OS</th>
+            <th className={TH}>Ano</th>
+            <th className={TH}>Nº Acordo</th>
+            <th className={TH}>Responsável</th>
+            <th className={TH}>Status Fat.</th>
+            <th className={TH}>Ações</th>
           </tr>
         </thead>
 
@@ -381,10 +332,6 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
             const expanded = expandidos.has(contrato.id)
             const ctKey    = `ct-${contrato.id}`
             const ctBg     = rowBgContract(ctKey)
-
-            const ctVlrTotal   = contrato.valor_contrato ?? 0
-            const ctFaturado   = contrato.subindices.reduce((a, s) => a + s.total_faturado, 0)
-            const ctDisponivel = Math.max(0, ctVlrTotal - ctFaturado)
 
             const mF = (shadow?: boolean) =>
               cn('px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
@@ -425,33 +372,16 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>{contrato.num_acordo ?? '—'}</td>
                 <td className={mBase} style={{ background: ctBg }}>{contrato.responsavel?.nome ?? '—'}</td>
-                <td className={mBase} style={{ background: ctBg }}><StatusBadge status={contrato.status} /></td>
                 <td className={mBase} style={{ background: ctBg }}>
-                  {ctVlrTotal > 0
-                    ? <span className="font-bold text-[#1565C0]">{formatCurrency(ctVlrTotal)}</span>
-                    : <span className="text-gray-300">—</span>}
+                  <StatusBadge status={contrato.status} />
                 </td>
-                <td className={mBase} style={{ background: ctBg }}>
-                  {ctFaturado > 0
-                    ? <span className="font-bold text-green-700">{formatCurrency(ctFaturado)}</span>
-                    : <span className="text-gray-300">—</span>}
+                <td className={mBase} style={{ background: ctBg }} onClick={(e) => e.stopPropagation()}>
+                  <Link
+                    href={`/acordos/faturamento/${contrato.id}`}
+                    className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
+                    title="Visão geral"
+                  >👁</Link>
                 </td>
-                <td className={mBase} style={{ background: ctBg }}>
-                  {ctVlrTotal > 0
-                    ? <span className="font-bold text-orange-600">{formatCurrency(ctDisponivel)}</span>
-                    : <span className="text-gray-300">—</span>}
-                </td>
-                {MESES.map((m) => {
-                  const prev = contrato.subindices.reduce((a, s) => a + (Number(s[m as MesKey]) || 0), 0)
-                  return (
-                    <td key={m} className={mBase} style={{ background: ctBg }}>
-                      {prev > 0
-                        ? <span className="text-[10px] text-[#1565C0]">{formatCurrency(prev)}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-                  )
-                })}
-                <td className={mBase} style={{ background: ctBg }}></td>
               </tr>,
 
               /* ── Linhas de sub-índices ── */
@@ -460,7 +390,6 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
                 const subKey      = `sub-${sub.id}`
                 const subBg       = rowBgSub(subKey)
                 const subAno      = getSubAno(sub.data_inicio, contrato.ano_referencia)
-                const subDisponivel = Math.max(0, sub.valor_total - sub.total_faturado)
 
                 const sF = (shadow?: boolean) =>
                   cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
@@ -482,7 +411,7 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
                       </span>
                     </td>
                     <td className={sF(true)} style={{ left: L.descricao, background: subBg }}>
-                      <div className="flex items-start gap-1.5 flex-wrap">
+                      <div className="flex items-start gap-1.5">
                         <span className="line-clamp-2 whitespace-normal flex-1" title={sub.descricao}>
                           {sub.descricao}
                         </span>
@@ -504,42 +433,13 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: Pa
                     <td className={sBase} style={{ background: subBg }}>
                       <StatusBadge status={sub.status_faturamento} />
                     </td>
-                    <td className={sBase} style={{ background: subBg }}>
-                      <span className="text-[#1565C0]">{formatCurrency(sub.valor_total)}</span>
-                    </td>
-                    <td className={sBase} style={{ background: subBg }}>
-                      {sub.total_faturado > 0
-                        ? <span className="text-green-700">{formatCurrency(sub.total_faturado)}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className={sBase} style={{ background: subBg }}>
-                      <span className="text-orange-600">{formatCurrency(subDisponivel)}</span>
-                    </td>
-                    {MESES.map((m) => {
-                      const v = Number(sub[m as MesKey]) || 0
-                      const alt = sub.alteracao_pendente
-                      const hasPendingChange = alt != null &&
-                        (alt[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null) !==
-                        (alt[`${m}_de`  as keyof PrevisaoAlteracaoItem] as number | null)
-                      return (
-                        <td key={m} className={sBase} style={{ background: subBg }}>
-                          {v > 0
-                            ? <span className={cn('text-[10px]', hasPendingChange ? 'text-amber-600 font-semibold' : 'text-[#1565C0]')}>
-                                {formatCurrency(v)}
-                              </span>
-                            : <span className="text-gray-300">—</span>}
-                        </td>
-                      )
-                    })}
                     <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
-                      {!isGestao && (
-                        <button
-                          onClick={() => onPropor(sub, indiceLabel)}
-                          className="bg-green-primary text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-green-dark whitespace-nowrap"
-                        >
-                          Editar prev.
-                        </button>
-                      )}
+                      <button
+                        onClick={() => onEditar(sub, indiceLabel, contrato.ano_referencia)}
+                        className="bg-green-primary text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-green-dark whitespace-nowrap"
+                      >
+                        Editar prev.
+                      </button>
                     </td>
                   </tr>
                 )
