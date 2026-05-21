@@ -7,15 +7,44 @@ import {
   PointElement, Title, Tooltip, Legend,
   BarController, LineController,
 } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
+import type { Context } from 'chartjs-plugin-datalabels'
 import { Chart } from 'react-chartjs-2'
-import { formatCurrency } from '@/lib/utils'
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
   Title, Tooltip, Legend, BarController, LineController,
+  ChartDataLabels,
 )
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+// Power BI color palette
+const COLORS = {
+  previsto:       '#A8C7E8',  // azul claro
+  previstoBorder: '#2D7DD2',
+  faturado:       '#5BB974',  // verde
+  faturadoBorder: '#107C10',
+  acumPrevisto:   '#E8A838',  // laranja/âmbar
+  acumFaturado:   '#2D7DD2',  // azul escuro
+}
+
+function fmtLabel(v: number): string {
+  if (v === 0) return ''
+  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
+  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
+  return `R$${v.toFixed(0)}`
+}
+
+function fmtAxis(v: number): string {
+  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
+  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
+  return `R$${v}`
+}
+
+function fmtTooltip(v: number): string {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
 
 interface AnualData {
   ano: number
@@ -25,12 +54,12 @@ interface AnualData {
 
 interface Props {
   modo: 'mensal' | 'anual'
-  previsto: number[]   // 12 values (mensal) ou N values (anual)
+  previsto: number[]
   faturado: number[]
-  labels?: string[]    // for anual mode
+  labels?: string[]
 }
 
-export function ContratoFaturamentoChart({ modo, previsto, faturado, labels }: Props) {
+export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) {
   const xLabels = labels ?? MESES_LABELS
 
   const acumPrevisto = useMemo(() =>
@@ -48,84 +77,160 @@ export function ContratoFaturamentoChart({ modo, previsto, faturado, labels }: P
         type: 'bar' as const,
         label: 'Previsto',
         data: previsto,
-        backgroundColor: '#93C5FD',
-        borderRadius: 3,
+        backgroundColor: COLORS.previsto,
+        borderColor: COLORS.previstoBorder,
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
         yAxisID: 'y',
         order: 2,
+        datalabels: {
+          display: (ctx: Context) =>
+            ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
+          anchor: 'end' as const,
+          align: 'end' as const,
+          offset: 2,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLORS.previstoBorder,
+          formatter: (v: number) => fmtLabel(v),
+        },
       },
       {
         type: 'bar' as const,
         label: 'Faturado',
         data: faturado,
-        backgroundColor: '#86EFAC',
-        borderRadius: 3,
+        backgroundColor: COLORS.faturado,
+        borderColor: COLORS.faturadoBorder,
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
         yAxisID: 'y',
         order: 2,
+        datalabels: {
+          display: (ctx: Context) =>
+            ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
+          anchor: 'end' as const,
+          align: 'end' as const,
+          offset: 2,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLORS.faturadoBorder,
+          formatter: (v: number) => fmtLabel(v),
+        },
       },
       {
         type: 'line' as const,
-        label: 'Acumulado previsto',
+        label: 'Acum. previsto',
         data: acumPrevisto,
-        borderColor: '#F97316',
-        borderDash: [5, 4],
+        borderColor: COLORS.acumPrevisto,
+        borderDash: [6, 3],
         borderWidth: 2,
-        pointRadius: 3,
-        pointBackgroundColor: '#F97316',
+        pointRadius: 4,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: COLORS.acumPrevisto,
+        pointBorderWidth: 2,
         fill: false,
         yAxisID: 'y1',
         order: 1,
-        tension: 0.2,
+        tension: 0.3,
+        datalabels: {
+          display: (ctx: Context) =>
+            ctx.dataIndex === acumPrevisto.length - 1,
+          anchor: 'center' as const,
+          align: 'top' as const,
+          offset: 6,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLORS.acumPrevisto,
+          formatter: (v: number) => fmtLabel(v),
+        },
       },
       {
         type: 'line' as const,
-        label: 'Acumulado faturado',
+        label: 'Acum. faturado',
         data: acumFaturado,
-        borderColor: '#3B82F6',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointBackgroundColor: '#3B82F6',
+        borderColor: COLORS.acumFaturado,
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: COLORS.acumFaturado,
+        pointBorderWidth: 2,
         fill: false,
         yAxisID: 'y1',
         order: 1,
-        tension: 0.2,
+        tension: 0.3,
+        datalabels: {
+          display: (ctx: Context) =>
+            ctx.dataIndex === acumFaturado.length - 1,
+          anchor: 'center' as const,
+          align: 'top' as const,
+          offset: 6,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLORS.acumFaturado,
+          formatter: (v: number) => fmtLabel(v),
+        },
       },
     ],
   }
 
   const options = {
     responsive: true,
+    maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
+    layout: { padding: { top: 24, right: 16, bottom: 0, left: 0 } },
     plugins: {
       legend: {
         position: 'top' as const,
-        labels: { boxWidth: 12, font: { size: 11 } },
+        align: 'start' as const,
+        labels: {
+          boxWidth: 10,
+          boxHeight: 10,
+          borderRadius: 2,
+          useBorderRadius: true,
+          font: { size: 11 },
+          padding: 16,
+          color: '#374151',
+        },
       },
       tooltip: {
+        backgroundColor: '#1F2937',
+        titleColor: '#F9FAFB',
+        bodyColor: '#D1D5DB',
+        borderColor: '#374151',
+        borderWidth: 1,
+        padding: 10,
         callbacks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+          label: (ctx: any) => `  ${ctx.dataset.label}: ${fmtTooltip(ctx.parsed.y)}`,
         },
       },
     },
     scales: {
+      x: {
+        grid: { display: false },
+        border: { display: false },
+        ticks: { font: { size: 11 }, color: '#6B7280' },
+      },
       y: {
         type: 'linear' as const,
         position: 'left' as const,
-        grid: { color: '#F3F4F6' },
+        grid: { color: '#F3F4F6', lineWidth: 1 },
+        border: { display: false, dash: [4, 4] },
         ticks: {
           font: { size: 10 },
+          color: '#9CA3AF',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          callback: (v: any) => `R$ ${Number(v) >= 1000000 ? `${(Number(v) / 1000000).toFixed(1)}M` : `${(Number(v) / 1000).toFixed(0)}k`}`,
+          callback: (v: any) => fmtAxis(Number(v)),
         },
       },
       y1: {
         type: 'linear' as const,
         position: 'right' as const,
         grid: { drawOnChartArea: false },
+        border: { display: false },
         ticks: {
           font: { size: 10 },
+          color: '#9CA3AF',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          callback: (v: any) => `R$ ${Number(v) >= 1000000 ? `${(Number(v) / 1000000).toFixed(1)}M` : `${(Number(v) / 1000).toFixed(0)}k`}`,
+          callback: (v: any) => fmtAxis(Number(v)),
         },
       },
     },
