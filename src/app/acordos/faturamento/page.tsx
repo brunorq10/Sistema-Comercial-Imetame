@@ -15,10 +15,18 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { usePermissions } from '@/hooks/usePermissions'
-import type { ContratoItem, SubIndiceItem, NFContratoListItem } from '@/types'
+import { cn } from '@/lib/utils'
+import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
 
 type AcaoNF = { tipo: 'inativar' | 'excluir'; nf: NFContratoListItem }
-type Aba = 'controle' | 'nfs'
+type Aba = 'controle' | 'nfs' | 'aprovacoes'
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
+const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+function fmt(v: number) {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function FaturamentoPage() {
   const router = useRouter()
@@ -67,6 +75,15 @@ export default function FaturamentoPage() {
   const [nfClienteId, setNfClienteId] = useState('')
   const [nfAtiva, setNfAtiva] = useState('')
   const [nfBusca, setNfBusca] = useState('')
+
+  // ── Aprovações ────────────────────────────────────────────────────────────────
+  const [alteracoes, setAlteracoes] = useState<PrevisaoAlteracaoItem[]>([])
+  const [alteracoesLoading, setAlteracoesLoading] = useState(false)
+  const [alteracoesError, setAlteracoesError] = useState<string | null>(null)
+  const [reprovarModal, setReprovarModal] = useState<PrevisaoAlteracaoItem | null>(null)
+  const [motivoRecusa, setMotivoRecusa] = useState('')
+  const [reprovarLoading, setReprovarLoading] = useState(false)
+  const [reprovarError, setReprovarError] = useState<string | null>(null)
 
   // ── Modais ────────────────────────────────────────────────────────────────────
   const [modalConsolidado, setModalConsolidado] = useState(false)
@@ -144,8 +161,25 @@ export default function FaturamentoPage() {
     }
   }, [nfAno, nfClienteId, nfAtiva, nfBusca])
 
+  // ── Fetch aprovações ──────────────────────────────────────────────────────────
+  const fetchAlteracoes = useCallback(async () => {
+    if (!canEditar) return
+    setAlteracoesLoading(true); setAlteracoesError(null)
+    try {
+      const res = await fetch('/api/faturamento/alteracoes?status=PENDENTE')
+      const json = await res.json()
+      if (json.error) { setAlteracoesError(json.error); return }
+      setAlteracoes(json.data ?? [])
+    } catch (err) {
+      setAlteracoesError(String(err))
+    } finally {
+      setAlteracoesLoading(false)
+    }
+  }, [canEditar])
+
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { if (aba === 'nfs') fetchNfs() }, [aba, fetchNfs])
+  useEffect(() => { if (aba === 'aprovacoes') fetchAlteracoes() }, [aba, fetchAlteracoes])
 
   const handleCancelar = async () => {
     if (!cancelando) return
@@ -212,6 +246,44 @@ export default function FaturamentoPage() {
     }
   }
 
+  const handleAprovar = async (id: number) => {
+    try {
+      const res = await fetch(`/api/faturamento/alteracoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'APROVAR' }),
+      })
+      const json = await res.json()
+      if (json.error) { setAlteracoesError(json.error); return }
+      fetchAlteracoes()
+      fetchData()
+    } catch (err) {
+      setAlteracoesError(String(err))
+    }
+  }
+
+  const handleReprovarConfirmar = async () => {
+    if (!reprovarModal) return
+    if (!motivoRecusa || motivoRecusa.trim().length < 3) {
+      setReprovarError('Informe o motivo da reprovação (mínimo 3 caracteres)')
+      return
+    }
+    setReprovarLoading(true); setReprovarError(null)
+    try {
+      const res = await fetch(`/api/faturamento/alteracoes/${reprovarModal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'REPROVAR', motivo_recusa: motivoRecusa }),
+      })
+      const json = await res.json()
+      if (json.error) { setReprovarError(json.error); return }
+      setReprovarModal(null); setMotivoRecusa('')
+      fetchAlteracoes()
+    } finally {
+      setReprovarLoading(false)
+    }
+  }
+
   const limparFiltros = () => {
     setAno(String(anoAtual)); setClienteId(''); setStatus(''); setResponsavelId('')
     setNumOs(''); setNumAcordo(''); setNumProposta('')
@@ -255,6 +327,16 @@ export default function FaturamentoPage() {
         <button className={`${tabBase} ${aba === 'nfs' ? tabAtivo : tabInativo}`} onClick={() => setAba('nfs')}>
           Registro de NF
         </button>
+        {canEditar && (
+          <button className={`${tabBase} ${aba === 'aprovacoes' ? tabAtivo : tabInativo}`} onClick={() => setAba('aprovacoes')}>
+            Aprovações
+            {alteracoes.length > 0 && aba !== 'aprovacoes' && (
+              <span className="ml-1.5 bg-amber-500 text-white text-[9px] font-bold rounded-full px-1.5 py-0.5">
+                {alteracoes.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ── filtros por aba (zona congelada) ─────────────────────────────────── */}
@@ -440,6 +522,16 @@ export default function FaturamentoPage() {
             )}
           </>
         )}
+
+        {aba === 'aprovacoes' && canEditar && (
+          <AbaAprovacoes
+            alteracoes={alteracoes}
+            loading={alteracoesLoading}
+            error={alteracoesError}
+            onAprovar={handleAprovar}
+            onReprovar={(a) => { setReprovarModal(a); setMotivoRecusa(''); setReprovarError(null) }}
+          />
+        )}
       </div>{/* fim zona de scroll */}
 
       {/* ── Modais ────────────────────────────────────────────────────────────── */}
@@ -618,6 +710,163 @@ export default function FaturamentoPage() {
           canEditar={canEditar}
           onSuccess={fetchData}
         />
+      )}
+
+      {/* Modal reprovar */}
+      {reprovarModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
+            <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
+              Reprovar alteração
+            </div>
+            <div className="p-[18px]">
+              {reprovarError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{reprovarError}</div>
+              )}
+              <p className="text-[12px] text-gray-600 mb-1">
+                Sub-índice: <strong>{reprovarModal.subindice.descricao}</strong>
+              </p>
+              <p className="text-[11px] text-gray-400 mb-3">
+                Responsável: {reprovarModal.responsavel.nome}
+              </p>
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] block mb-1">
+                Motivo da reprovação *
+              </label>
+              <textarea
+                className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40"
+                rows={3}
+                placeholder="Informe o motivo (mínimo 3 caracteres)"
+                value={motivoRecusa}
+                onChange={(e) => setMotivoRecusa(e.target.value)}
+              />
+            </div>
+            <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => { setReprovarModal(null); setMotivoRecusa(''); setReprovarError(null) }} disabled={reprovarLoading}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleReprovarConfirmar} disabled={reprovarLoading}>
+                {reprovarLoading ? 'Reprovando...' : 'Confirmar reprovação'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Aba de Aprovações ────────────────────────────────────────────────────────
+
+interface AbaAprovacoes {
+  alteracoes: PrevisaoAlteracaoItem[]
+  loading: boolean
+  error: string | null
+  onAprovar: (id: number) => void
+  onReprovar: (a: PrevisaoAlteracaoItem) => void
+}
+
+function AbaAprovacoes({ alteracoes, loading, error, onAprovar, onReprovar }: AbaAprovacoes) {
+  if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+  if (error) return (
+    <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>
+  )
+  if (alteracoes.length === 0) return (
+    <div className="text-center py-10 text-gray-400 text-sm">Nenhuma alteração pendente de aprovação.</div>
+  )
+
+  return (
+    <div className="space-y-3 pt-1">
+      <p className="text-[11px] text-gray-500 mb-3">
+        {alteracoes.length} alteração{alteracoes.length !== 1 ? 'ões' : ''} pendente{alteracoes.length !== 1 ? 's' : ''} de aprovação
+      </p>
+      {alteracoes.map((a) => (
+        <AlteracaoAprovacaoRow key={a.id} alteracao={a} onAprovar={onAprovar} onReprovar={onReprovar} />
+      ))}
+    </div>
+  )
+}
+
+interface AlteracaoAprovacaoRowProps {
+  alteracao: PrevisaoAlteracaoItem
+  onAprovar: (id: number) => void
+  onReprovar: (a: PrevisaoAlteracaoItem) => void
+}
+
+function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAprovacaoRowProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  // Detecta quais meses mudaram
+  const mesesMudados = MESES.filter((m) => {
+    const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
+    const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
+    return de !== para
+  })
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold text-green-dark">
+              {alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem}
+            </span>
+            <span className="text-[11px] text-gray-700">{alteracao.subindice.descricao}</span>
+            <span className="text-[10px] text-gray-400">·</span>
+            <span className="text-[10px] text-gray-500">{alteracao.contrato?.cliente.nome ?? '—'}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-[10px] text-gray-400">
+              Resp.: <strong className="text-gray-600">{alteracao.responsavel.nome}</strong>
+            </span>
+            <span className="text-[10px] text-gray-400">
+              {new Date(alteracao.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="text-[10px] text-amber-700">
+              {mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="text-[10px] text-gray-400 hover:text-gray-600 underline"
+          >
+            {expanded ? 'Ocultar' : 'Ver detalhes'}
+          </button>
+          <Button size="sm" variant="outline" onClick={() => onReprovar(alteracao)}>
+            Reprovar
+          </Button>
+          <Button size="sm" onClick={() => onAprovar(alteracao.id)}>
+            Aprovar
+          </Button>
+        </div>
+      </div>
+
+      {/* Detalhes dos meses quando expandido */}
+      {expanded && (
+        <div className="border-t border-gray-100 pt-3 mt-1">
+          <div className="grid grid-cols-12 gap-1">
+            {MESES.map((m, mi) => {
+              const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
+              const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
+              const mudou = de !== para
+              return (
+                <div key={m} className={cn('text-center rounded p-1', mudou ? 'bg-amber-50 border border-amber-200' : '')}>
+                  <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
+                  {mudou ? (
+                    <>
+                      <p className="text-[9px] text-gray-400 line-through">{de != null ? fmt(de) : '—'}</p>
+                      <p className="text-[10px] font-bold text-amber-700">{para != null ? fmt(para) : '—'}</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-gray-400">{para != null ? fmt(para) : '—'}</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
     </div>
   )

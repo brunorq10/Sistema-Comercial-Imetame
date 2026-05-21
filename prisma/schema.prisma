@@ -132,6 +132,9 @@ model User {
   historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
   subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
+  alteracoes_responsavel      PrevisaoAlteracao[]    @relation("AlteracaoResponsavel")
+  alteracoes_revisor          PrevisaoAlteracao[]    @relation("AlteracaoRevisor")
+  alteracoes_criadas          PrevisaoAlteracao[]    @relation("AlteracaoCriador")
 
   @@map("users")
 }
@@ -498,6 +501,7 @@ model SubIndiceFaturamento {
   notas_fiscais        NotaFiscalContrato[]
   consolidados         ConsolidadoMesItem[]
   historico            HistoricoSubIndice[]
+  alteracoes           PrevisaoAlteracao[]
 
   @@index([contrato_id])
   @@map("subindices_faturamento")
@@ -571,4 +575,62 @@ model ConsolidadoMesItem {
   @@index([consolidado_id])
   @@index([subindice_id])
   @@map("consolidados_mes_itens")
+}
+
+// ─── Workflow de aprovação de previsão ────────────────────────────────────────
+
+enum StatusAlteracaoPrevisao {
+  PENDENTE
+  APROVADO
+  REPROVADO
+}
+
+model PrevisaoAlteracao {
+  id             Int                     @id @default(autoincrement())
+  subindice_id   Int
+  responsavel_id Int
+  status         StatusAlteracaoPrevisao @default(PENDENTE)
+  motivo_recusa  String?
+  revisor_id     Int?
+  reviewed_at    DateTime?
+
+  jan_de   Decimal? @db.Decimal(15, 2)
+  fev_de   Decimal? @db.Decimal(15, 2)
+  mar_de   Decimal? @db.Decimal(15, 2)
+  abr_de   Decimal? @db.Decimal(15, 2)
+  mai_de   Decimal? @db.Decimal(15, 2)
+  jun_de   Decimal? @db.Decimal(15, 2)
+  jul_de   Decimal? @db.Decimal(15, 2)
+  ago_de   Decimal? @db.Decimal(15, 2)
+  set_de   Decimal? @db.Decimal(15, 2)
+  out_de   Decimal? @db.Decimal(15, 2)
+  nov_de   Decimal? @db.Decimal(15, 2)
+  dez_de   Decimal? @db.Decimal(15, 2)
+
+  jan_para   Decimal? @db.Decimal(15, 2)
+  fev_para   Decimal? @db.Decimal(15, 2)
+  mar_para   Decimal? @db.Decimal(15, 2)
+  abr_para   Decimal? @db.Decimal(15, 2)
+  mai_para   Decimal? @db.Decimal(15, 2)
+  jun_para   Decimal? @db.Decimal(15, 2)
+  jul_para   Decimal? @db.Decimal(15, 2)
+  ago_para   Decimal? @db.Decimal(15, 2)
+  set_para   Decimal? @db.Decimal(15, 2)
+  out_para   Decimal? @db.Decimal(15, 2)
+  nov_para   Decimal? @db.Decimal(15, 2)
+  dez_para   Decimal? @db.Decimal(15, 2)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by Int
+
+  subindice   SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
+  responsavel User                 @relation("AlteracaoResponsavel", fields: [responsavel_id], references: [id])
+  revisor     User?                @relation("AlteracaoRevisor", fields: [revisor_id], references: [id])
+  criador     User                 @relation("AlteracaoCriador", fields: [created_by], references: [id])
+
+  @@index([subindice_id])
+  @@index([responsavel_id])
+  @@index([status])
+  @@map("previsao_alteracoes")
 }

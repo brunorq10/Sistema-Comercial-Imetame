@@ -26,6 +26,7 @@ const NAV_SECTIONS = [
     basePath: '/acordos',
     icon: IconAcordos,
     items: [
+      { label: 'Meu Painel',              href: '/acordos/painel' },
       { label: 'Controle de faturamento', href: '/acordos/faturamento' },
       { label: 'Previsão x Realizado',    href: '/acordos/previsao' },
       { label: 'Dashboard Acordos',       href: '/acordos/dashboard' },

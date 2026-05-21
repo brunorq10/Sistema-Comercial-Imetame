@@ -444,6 +444,46 @@ export interface NFContratoListItem {
   cliente: { id: number; nome: string }
 }
 
+// ─── Workflow de aprovação de previsão ───────────────────────────────────────
+
+export type StatusAlteracaoPrevisao = 'PENDENTE' | 'APROVADO' | 'REPROVADO'
+
+export interface PrevisaoAlteracaoItem {
+  id: number
+  subindice_id: number
+  responsavel_id: number
+  status: StatusAlteracaoPrevisao
+  motivo_recusa: string | null
+  revisor_id: number | null
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+  created_by: number
+  // Valores DE
+  jan_de: number | null; fev_de: number | null; mar_de: number | null
+  abr_de: number | null; mai_de: number | null; jun_de: number | null
+  jul_de: number | null; ago_de: number | null; set_de: number | null
+  out_de: number | null; nov_de: number | null; dez_de: number | null
+  // Valores PARA
+  jan_para: number | null; fev_para: number | null; mar_para: number | null
+  abr_para: number | null; mai_para: number | null; jun_para: number | null
+  jul_para: number | null; ago_para: number | null; set_para: number | null
+  out_para: number | null; nov_para: number | null; dez_para: number | null
+  // Relações
+  subindice: { id: number; ordem: number; descricao: string; contrato_id: number }
+  responsavel: { id: number; nome: string }
+  revisor: { id: number; nome: string } | null
+  contrato?: { id: number; indice: string; cliente: { id: number; nome: string } }
+}
+
+export interface SubIndiceComAlteracaoPendente extends SubIndiceItem {
+  alteracao_pendente: PrevisaoAlteracaoItem | null
+}
+
+export interface ContratoComAlteracoes extends ContratoItem {
+  subindices: SubIndiceComAlteracaoPendente[]
+}
+
 // ─── API Response ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
