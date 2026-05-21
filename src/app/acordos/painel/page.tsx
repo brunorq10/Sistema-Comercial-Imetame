@@ -2,42 +2,87 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Button } from '@/components/ui/Button'
-import { Input, Select } from '@/components/ui/Input'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { ProporAlteracaoModal } from '@/components/forms/ProporAlteracaoModal'
-import { cn } from '@/lib/utils'
-import type { ContratoItem, SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
+import { cn, formatCurrency } from '@/lib/utils'
+import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 type MesKey = typeof MESES[number]
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// ── Column widths ─────────────────────────────────────────────────────────────
+const W = {
+  indice: 110, cliente: 120, descricao: 235,
+  os: 100, ano: 65, acordo: 115,
+  responsavel: 130, status: 90,
+  vlrTotal: 145, faturado: 135, disponivel: 135,
+  mes: 105, acoes: 100,
 }
+const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
+const FROZEN_W = L.descricao + W.descricao
+const MIN_W = FROZEN_W + W.os + W.ano + W.acordo + W.responsavel + W.status +
+  W.vlrTotal + W.faturado + W.disponivel + 12 * W.mes + W.acoes
 
-function fmtCompact(v: number) {
-  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-  if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`
-  return `R$ ${fmt(v)}`
-}
-
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface SubIndiceComAlteracao extends SubIndiceItem {
   alteracao_pendente: PrevisaoAlteracaoItem | null
 }
 
-interface ContratoComAlteracoes extends Omit<ContratoItem, 'subindices'> {
+interface ContratoComAlteracoes {
+  id: number
+  indice: string
+  ano_referencia: number
+  status: string
+  descricao: string | null
+  num_os: string | null
+  num_acordo: string | null
+  num_proposta: string | null
+  valor_contrato: number | null
+  data_inicio: string | null
+  data_fim: string | null
+  prev_anos_seguintes: number
+  cliente: { id: number; nome: string }
+  responsavel: { id: number; nome: string } | null
   subindices: SubIndiceComAlteracao[]
 }
 
 interface Responsavel { id: number; nome: string }
 
-const STATUS_BADGE = {
-  PENDENTE: { label: 'Aguardando aprovação', cls: 'bg-amber-100 text-amber-800 border-amber-300' },
-  APROVADO: { label: 'Aprovado', cls: 'bg-green-100 text-green-800 border-green-300' },
-  REPROVADO: { label: 'Reprovado', cls: 'bg-red-100 text-red-800 border-red-300' },
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getSubAno(dataInicio: string | null, fallback: number) {
+  if (!dataInicio) return fallback
+  return parseInt(dataInicio.substring(0, 4), 10) || fallback
 }
 
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    A_FATURAR: { label: 'A faturar', cls: 'text-orange-600 font-semibold' },
+    FATURADO:  { label: 'Faturado',  cls: 'text-green-700 font-semibold' },
+    PARCIAL:   { label: 'Parcial',   cls: 'text-blue-600 font-semibold' },
+    CANCELADO: { label: 'Cancelado', cls: 'text-gray-400' },
+  }
+  const m = map[status] ?? map['A_FATURAR']
+  return <span className={cn('text-[11px]', m.cls)}>{m.label}</span>
+}
+
+// ── MetricCard — mesmo estilo do Dashboard Acordos ────────────────────────────
+function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+      <div className="bg-green-dark px-3.5 py-2">
+        <p className="text-[10px] font-semibold text-white/85 leading-snug uppercase tracking-[0.04em]">
+          {label}{sub && <span className="text-white/50 font-normal normal-case"> · {sub}</span>}
+        </p>
+      </div>
+      <div className="bg-white px-3.5 py-3">
+        <p className="text-[20px] font-bold text-gray-900 leading-none">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function MeuPainelAcordosPage() {
   const { data: session } = useSession()
   const perfil = session?.user?.perfil
@@ -47,11 +92,11 @@ export default function MeuPainelAcordosPage() {
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
   const [responsavelId, setResponsavelId] = useState<string>('')
   const [contratos, setContratos] = useState<ContratoComAlteracoes[]>([])
-  const [minhasAlteracoes, setMinhasAlteracoes] = useState<PrevisaoAlteracaoItem[]>([])
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [filtroCliente, setFiltroCliente] = useState('')
+  const [filtroClienteId, setFiltroClienteId] = useState('')
   const [filtroNumOs, setFiltroNumOs] = useState('')
 
   const [modalPropor, setModalPropor] = useState<{ subindice: SubIndiceItem; indiceLabel: string } | null>(null)
@@ -77,7 +122,9 @@ export default function MeuPainelAcordosPage() {
       const res = await fetch(`/api/faturamento/painel-acordos?${params.toString()}`)
       const json = await res.json()
       if (json.error) { setError(json.error); return }
-      setContratos(json.data ?? [])
+      const data: ContratoComAlteracoes[] = json.data ?? []
+      setContratos(data)
+      setExpandidos(new Set(data.map((c) => c.id)))
     } catch (err) {
       setError(String(err))
     } finally {
@@ -85,180 +132,154 @@ export default function MeuPainelAcordosPage() {
     }
   }, [responsavelId, isGestao])
 
-  const fetchMinhasAlteracoes = useCallback(async () => {
-    if (!userId) return
-    try {
-      const res = await fetch('/api/faturamento/alteracoes?status=')
-      const json = await res.json()
-      if (!json.error) setMinhasAlteracoes(json.data ?? [])
-    } catch { /* silencioso */ }
-  }, [userId])
-
   useEffect(() => { fetchContratos() }, [fetchContratos])
-  useEffect(() => { if (!isGestao) fetchMinhasAlteracoes() }, [fetchMinhasAlteracoes, isGestao])
+
+  const toggleExpand = (id: number) =>
+    setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+
+  // Options derived from loaded data
+  const clienteOptions = useMemo(() => {
+    const seen = new Set<string>()
+    return contratos
+      .filter((c) => { const k = String(c.cliente.id); if (seen.has(k)) return false; seen.add(k); return true })
+      .map((c) => ({ value: String(c.cliente.id), label: c.cliente.nome }))
+  }, [contratos])
+
+  const osOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const opts: { value: string; label: string }[] = []
+    contratos.forEach((c) =>
+      c.subindices.forEach((s) => {
+        if (s.num_os && !seen.has(s.num_os)) { seen.add(s.num_os); opts.push({ value: s.num_os, label: s.num_os }) }
+      })
+    )
+    return opts
+  }, [contratos])
 
   const filteredContratos = useMemo(() => {
     return contratos.filter((c) => {
-      if (filtroCliente && !c.cliente.nome.toLowerCase().includes(filtroCliente.toLowerCase())) return false
-      if (filtroNumOs) {
-        const match = c.subindices.some((s) => s.num_os?.toLowerCase().includes(filtroNumOs.toLowerCase()))
-        if (!match) return false
-      }
+      if (filtroClienteId && String(c.cliente.id) !== filtroClienteId) return false
+      if (filtroNumOs && !c.subindices.some((s) => s.num_os === filtroNumOs)) return false
       return true
     })
-  }, [contratos, filtroCliente, filtroNumOs])
+  }, [contratos, filtroClienteId, filtroNumOs])
 
-  const { indicators, mesPassadoLabel, mesAtualLabel, mesProximoLabel } = useMemo(() => {
+  const { totalContratos, totalSubindices, prevPassado, prevAtual, prevProximo,
+          mesPassadoLabel, mesAtualLabel, mesProximoLabel } = useMemo(() => {
     const allSubs = filteredContratos.flatMap((c) => c.subindices)
     const m = new Date().getMonth()
     const mp = m === 0 ? 11 : m - 1
     const mn = m === 11 ? 0 : m + 1
-    const sum = (idx: number) => {
-      const key = MESES[idx] as MesKey
-      return allSubs.reduce((acc, s) => acc + (Number(s[key]) || 0), 0)
-    }
+    const sumMes = (idx: number) => allSubs.reduce((acc, s) => acc + (Number(s[MESES[idx] as MesKey]) || 0), 0)
     return {
-      indicators: {
-        totalContratos: filteredContratos.length,
-        prevPassado: sum(mp),
-        prevAtual: sum(m),
-        prevProximo: sum(mn),
-      },
+      totalContratos: filteredContratos.length,
+      totalSubindices: allSubs.length,
+      prevPassado: sumMes(mp),
+      prevAtual:   sumMes(m),
+      prevProximo: sumMes(mn),
       mesPassadoLabel: MESES_LABELS[mp],
-      mesAtualLabel: MESES_LABELS[m],
+      mesAtualLabel:   MESES_LABELS[m],
       mesProximoLabel: MESES_LABELS[mn],
     }
   }, [filteredContratos])
 
-  const pendentes = minhasAlteracoes.filter((a) => a.status === 'PENDENTE')
-  const reprovadas = minhasAlteracoes.filter((a) => a.status === 'REPROVADO')
+  const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
 
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[15px] font-bold">Meu Painel — Acordos</h2>
-      </div>
-      <p className="text-[11px] text-gray-400 mb-4">
-        {isGestao
-          ? 'Visão de contratos por responsável e gestão de alterações de previsão.'
-          : 'Seus contratos vinculados e proposta de alterações de previsão mensal.'}
-      </p>
+    <div className="flex flex-col h-full">
 
-      {/* Indicadores */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        <IndicatorCard label="Total de contratos" value={String(indicators.totalContratos)} />
-        <IndicatorCard label={`Prev. ${mesPassadoLabel}.`} value={fmtCompact(indicators.prevPassado)} color="gray" />
-        <IndicatorCard label={`Prev. ${mesAtualLabel}. (atual)`} value={fmtCompact(indicators.prevAtual)} color="green" />
-        <IndicatorCard label={`Prev. ${mesProximoLabel}. (próximo)`} value={fmtCompact(indicators.prevProximo)} color="blue" />
-      </div>
+      {/* ── Zona congelada ────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 px-4 pt-4">
 
-      {/* Filtros */}
-      <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 mb-4 flex flex-wrap items-center gap-3">
-        {isGestao && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap">Responsável</span>
-            <Select
-              value={responsavelId}
-              onChange={(e) => setResponsavelId(e.target.value)}
-              className="text-[11px] py-[3px] max-w-[200px]"
-            >
-              <option value="">Todos</option>
-              {responsaveis.map((r) => (
-                <option key={r.id} value={String(r.id)}>{r.nome}</option>
-              ))}
-            </Select>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap">Cliente</span>
-          <Input
-            value={filtroCliente}
-            onChange={(e) => setFiltroCliente(e.target.value)}
-            placeholder="Filtrar..."
-            className="text-[11px] py-[3px] max-w-[180px]"
-          />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[15px] font-bold">Meu Painel — Acordos</h2>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap">Nº OS</span>
-          <Input
-            value={filtroNumOs}
-            onChange={(e) => setFiltroNumOs(e.target.value)}
-            placeholder="Filtrar..."
-            className="text-[11px] py-[3px] max-w-[120px]"
-          />
+
+        {/* Indicadores */}
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          <MetricCard label="Total de contratos" value={String(totalContratos)} />
+          <MetricCard label={`Previsão ${mesPassadoLabel}.`} sub="mês passado" value={formatCurrency(prevPassado)} />
+          <MetricCard label={`Previsão ${mesAtualLabel}.`}   sub="mês atual"   value={formatCurrency(prevAtual)} />
+          <MetricCard label={`Previsão ${mesProximoLabel}.`} sub="próximo mês" value={formatCurrency(prevProximo)} />
         </div>
-        {(filtroCliente || filtroNumOs) && (
-          <button
-            onClick={() => { setFiltroCliente(''); setFiltroNumOs('') }}
-            className="text-[10px] text-gray-400 hover:text-gray-600 underline"
-          >
-            Limpar
-          </button>
-        )}
-      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>
-      )}
-
-      {/* Pendentes / reprovadas */}
-      {!isGestao && (pendentes.length > 0 || reprovadas.length > 0) && (
-        <div className="mb-5">
-          {pendentes.length > 0 && (
-            <div className="mb-3">
-              <p className="text-[11px] font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                {pendentes.length} alteração{pendentes.length > 1 ? 'ões' : ''} aguardando aprovação
-              </p>
-              <div className="space-y-1.5">
-                {pendentes.map((a) => <AlteracaoCard key={a.id} alteracao={a} />)}
-              </div>
+        {/* Filtros */}
+        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
+          {isGestao && (
+            <div className="flex-1 min-w-0">
+              <label className={fLbl}>Responsável</label>
+              <SearchableSelect
+                value={responsavelId}
+                onChange={setResponsavelId}
+                options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))}
+                emptyLabel="Todos os responsáveis"
+              />
             </div>
           )}
-          {reprovadas.length > 0 && (
-            <div>
-              <p className="text-[11px] font-semibold text-red-700 mb-2 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-                {reprovadas.length} alteração{reprovadas.length > 1 ? 'ões' : ''} reprovada{reprovadas.length > 1 ? 's' : ''}
-              </p>
-              <div className="space-y-1.5">
-                {reprovadas.map((a) => <AlteracaoCard key={a.id} alteracao={a} />)}
-              </div>
-            </div>
-          )}
-          <div className="border-t border-gray-200 mt-4 mb-4" />
-        </div>
-      )}
-
-      {/* Lista de contratos */}
-      {loading ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-      ) : filteredContratos.length === 0 ? (
-        <div className="text-center py-10 text-gray-400 text-sm">
-          {isGestao && !responsavelId
-            ? 'Selecione um responsável ou aguarde o carregamento de todos os contratos.'
-            : 'Nenhum contrato vinculado a este responsável.'}
-        </div>
-      ) : (
-        <div className="space-y-3 pb-4">
-          {filteredContratos.map((contrato) => (
-            <ContratoCard
-              key={contrato.id}
-              contrato={contrato}
-              isGestao={isGestao}
-              onPropor={(sub) =>
-                setModalPropor({ subindice: sub, indiceLabel: `${contrato.indice}.${sub.ordem}` })
-              }
+          <div className="flex-[2] min-w-0">
+            <label className={fLbl}>Cliente</label>
+            <SearchableSelect
+              value={filtroClienteId}
+              onChange={setFiltroClienteId}
+              options={clienteOptions}
             />
-          ))}
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Nº OS</label>
+            <SearchableSelect
+              value={filtroNumOs}
+              onChange={setFiltroNumOs}
+              options={osOptions}
+              emptyLabel="Todas"
+            />
+          </div>
+          <div className="flex-shrink-0 flex items-end">
+            <button
+              onClick={() => { setFiltroClienteId(''); setFiltroNumOs('') }}
+              className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
         </div>
-      )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-2">{error}</div>
+        )}
+
+        {!loading && (
+          <p className="text-[11px] text-gray-500 mb-2">
+            {totalContratos} contrato{totalContratos !== 1 ? 's' : ''} · {totalSubindices} sub-índice{totalSubindices !== 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+
+      {/* ── Tabela ────────────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 px-4 pb-4">
+        {loading ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : filteredContratos.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 text-sm">
+            {isGestao && !responsavelId
+              ? 'Selecione um responsável ou aguarde o carregamento de todos os contratos.'
+              : 'Nenhum contrato vinculado a este responsável.'}
+          </div>
+        ) : (
+          <PainelTable
+            contratos={filteredContratos}
+            expandidos={expandidos}
+            onToggle={toggleExpand}
+            isGestao={isGestao}
+            onPropor={(sub, label) => setModalPropor({ subindice: sub, indiceLabel: label })}
+          />
+        )}
+      </div>
 
       {modalPropor && (
         <ProporAlteracaoModal
           open={true}
           onClose={() => setModalPropor(null)}
-          onSuccess={() => { fetchContratos(); fetchMinhasAlteracoes() }}
+          onSuccess={() => fetchContratos()}
           subindice={modalPropor.subindice}
           indiceLabel={modalPropor.indiceLabel}
         />
@@ -267,275 +288,266 @@ export default function MeuPainelAcordosPage() {
   )
 }
 
-// ─── Indicator Card ───────────────────────────────────────────────────────────
+// ── Tabela ────────────────────────────────────────────────────────────────────
 
-interface IndicatorCardProps {
-  label: string
-  value: string
-  color?: 'green' | 'blue' | 'gray'
-}
-
-function IndicatorCard({ label, value, color = 'gray' }: IndicatorCardProps) {
-  const valueCls =
-    color === 'green' ? 'text-green-dark' :
-    color === 'blue' ? 'text-[#1565C0]' :
-    'text-gray-700'
-  return (
-    <div className="bg-white border border-gray-200 rounded-md px-4 py-3 shadow-sm">
-      <p className="text-[10px] text-gray-400 mb-1 leading-tight">{label}</p>
-      <p className={cn('text-[16px] font-bold leading-snug', valueCls)}>{value}</p>
-    </div>
-  )
-}
-
-// ─── Card de contrato ─────────────────────────────────────────────────────────
-
-interface ContratoCardProps {
-  contrato: ContratoComAlteracoes
+interface PainelTableProps {
+  contratos: ContratoComAlteracoes[]
+  expandidos: Set<number>
+  onToggle: (id: number) => void
   isGestao: boolean
-  onPropor: (sub: SubIndiceItem) => void
+  onPropor: (sub: SubIndiceItem, indiceLabel: string) => void
 }
 
-function ContratoCard({ contrato, isGestao, onPropor }: ContratoCardProps) {
-  const [expanded, setExpanded] = useState(false)
+function PainelTable({ contratos, expandidos, onToggle, isGestao, onPropor }: PainelTableProps) {
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
-  // Group subitems by ordem, sort each group by year
-  const subGroups: Array<{ ordem: number; subs: SubIndiceComAlteracao[] }> = []
-  const seen = new Map<number, SubIndiceComAlteracao[]>()
-  for (const s of contrato.subindices) {
-    if (!seen.has(s.ordem)) { seen.set(s.ordem, []); subGroups.push({ ordem: s.ordem, subs: seen.get(s.ordem)! }) }
-    seen.get(s.ordem)!.push(s)
-  }
-  for (const g of subGroups) {
-    g.subs.sort((a, b) => {
-      const ya = a.data_inicio ? new Date(a.data_inicio).getFullYear() : 0
-      const yb = b.data_inicio ? new Date(b.data_inicio).getFullYear() : 0
-      return ya - yb
-    })
-  }
+  const TH  = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
+  const thS = cn(TH, 'z-[10]')
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full bg-gray-50 border-b border-gray-200 px-4 py-2.5 flex items-center justify-between text-left hover:bg-gray-100 transition-colors"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-[12px] font-bold text-green-dark shrink-0">{contrato.indice}</span>
-          {contrato.descricao && (
-            <span className="text-[11px] font-medium text-gray-700 truncate max-w-[200px]">{contrato.descricao}</span>
-          )}
-          <span className="text-[11px] text-gray-500 shrink-0">{contrato.cliente.nome}</span>
-          {contrato.num_acordo && (
-            <span className="text-[10px] text-gray-400 shrink-0">Acordo: {contrato.num_acordo}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 shrink-0 ml-3">
-          {contrato.responsavel && (
-            <span className="text-[10px] text-gray-400">Resp.: {contrato.responsavel.nome}</span>
-          )}
-          <span className="text-[10px] text-gray-400">{contrato.ano_referencia}</span>
-          <span className="text-[10px] text-gray-400">
-            {subGroups.length} subitem{subGroups.length !== 1 ? 's' : ''}
-          </span>
-          <Chevron open={expanded} />
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="divide-y divide-gray-100">
-          {subGroups.map(({ ordem, subs }) => (
-            <SubIndiceRow
-              key={ordem}
-              subs={subs}
-              isGestao={isGestao}
-              indiceLabel={`${contrato.indice}.${ordem}`}
-              onPropor={onPropor}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+  // Totalizadores
+  const totVlrTotal   = contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0)
+  const totFaturado   = contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + s.total_faturado, 0), 0)
+  const totDisponivel = contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + Math.max(0, s.valor_total - s.total_faturado), 0), 0)
+  const totMeses = MESES.map((m) =>
+    contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + (Number(s[m as MesKey]) || 0), 0), 0)
   )
-}
 
-// ─── Chevron ──────────────────────────────────────────────────────────────────
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="12" height="12" viewBox="0 0 12 12" fill="none"
-      className={cn('transition-transform duration-200 text-gray-400', open && 'rotate-180')}
-    >
-      <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-// ─── Linha de sub-índice ──────────────────────────────────────────────────────
-
-interface SubIndiceRowProps {
-  subs: SubIndiceComAlteracao[]
-  isGestao: boolean
-  indiceLabel: string
-  onPropor: (sub: SubIndiceItem) => void
-}
-
-function SubIndiceRow({ subs, isGestao, indiceLabel, onPropor }: SubIndiceRowProps) {
-  const [expanded, setExpanded] = useState(false)
-  const firstSub = subs[0]
-  const isMultiYear = subs.length > 1
-
-  const valorTotal = firstSub.valor_total
-  const totalFaturado = subs.reduce((acc, s) => acc + s.total_faturado, 0)
-  const disponivel = valorTotal - totalFaturado
-  const percFaturado = valorTotal > 0 ? (totalFaturado / valorTotal) * 100 : 0
+  const rowBgContract = (key: string) =>
+    selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
+  const rowBgSub = (key: string) =>
+    selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-gray-700">{indiceLabel}</span>
-            {isMultiYear && (
-              <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">
-                {subs.map((s) => s.data_inicio ? new Date(s.data_inicio).getFullYear() : '?').join('/')}
-              </span>
-            )}
-            <span className="text-[11px] text-gray-600 truncate">{firstSub.descricao}</span>
-            {firstSub.num_os && (
-              <span className="text-[9px] text-gray-400">OS: {firstSub.num_os}</span>
-            )}
-            {firstSub.alteracao_pendente && (
-              <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded border', STATUS_BADGE.PENDENTE.cls)}>
-                {STATUS_BADGE.PENDENTE.label}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 mt-1">
-            <span className="text-[10px] text-gray-400">
-              Total: <strong className="text-gray-700">R$ {fmt(valorTotal)}</strong>
-            </span>
-            <span className="text-[10px] text-gray-400">
-              Faturado: <strong className="text-[#1565C0]">R$ {fmt(totalFaturado)}</strong>
-            </span>
-            <span className="text-[10px] text-gray-400">
-              Disponível: <strong className="text-green-dark">R$ {fmt(Math.max(0, disponivel))}</strong>
-            </span>
-            <span className="text-[10px] text-gray-400">{percFaturado.toFixed(0)}% faturado</span>
-          </div>
-        </div>
+    <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
+      <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.descricao }} />
+          <col style={{ width: W.os }} /><col style={{ width: W.ano }} /><col style={{ width: W.acordo }} />
+          <col style={{ width: W.responsavel }} /><col style={{ width: W.status }} />
+          <col style={{ width: W.vlrTotal }} /><col style={{ width: W.faturado }} /><col style={{ width: W.disponivel }} />
+          {MESES.map((m) => <col key={m} style={{ width: W.mes }} />)}
+          <col style={{ width: W.acoes }} />
+        </colgroup>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-[10px] text-gray-400 hover:text-gray-600 underline"
-          >
-            {expanded ? 'Ocultar meses' : 'Ver meses'}
-          </button>
-          {!isGestao && !isMultiYear && (
-            <Button size="sm" variant="outline" onClick={() => onPropor(firstSub)}>
-              Editar previsão
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="mt-3 pt-3 border-t border-gray-100 space-y-4">
-          {subs.map((sub) => {
-            const year = sub.data_inicio ? new Date(sub.data_inicio).getFullYear() : null
+        <thead>
+          {/* ── Linha TOTAIS ── */}
+          {(() => {
+            const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
+            const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
             return (
-              <div key={sub.id}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-                    {isMultiYear && year ? `Previsão ${year}` : 'Previsão atual'}
-                  </p>
-                  {!isGestao && isMultiYear && (
-                    <Button size="sm" variant="outline" onClick={() => onPropor(sub)}>
-                      Editar {year}
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-12 gap-1">
-                  {MESES.map((m, mi) => {
-                    const valor = sub[m as MesKey]
-                    return (
-                      <div key={m} className="text-center">
-                        <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
-                        <p className="text-[10px] font-medium text-gray-600 bg-gray-50 rounded px-1 py-0.5">
-                          {valor != null ? fmt(valor) : '—'}
-                        </p>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {sub.alteracao_pendente && (
-                  <div className="mt-2 pt-2 border-t border-amber-200 bg-amber-50 rounded p-2">
-                    <p className="text-[9px] font-semibold text-amber-700 uppercase tracking-widest mb-1.5">
-                      Proposta pendente — enviada em {new Date(sub.alteracao_pendente.created_at).toLocaleDateString('pt-BR')}
-                    </p>
-                    <div className="grid grid-cols-12 gap-1">
-                      {MESES.map((m, mi) => {
-                        const alt = sub.alteracao_pendente!
-                        const deProp = alt[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
-                        const paraProp = alt[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
-                        const mudou = deProp !== paraProp
-                        return (
-                          <div key={m} className="text-center">
-                            <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
-                            {mudou ? (
-                              <div>
-                                <p className="text-[9px] text-gray-400 line-through">{deProp != null ? fmt(deProp) : '—'}</p>
-                                <p className="text-[10px] font-bold text-amber-700">{paraProp != null ? fmt(paraProp) : '—'}</p>
-                              </div>
-                            ) : (
-                              <p className="text-[10px] text-gray-400 bg-white rounded px-1 py-0.5">
-                                {paraProp != null ? fmt(paraProp) : '—'}
-                              </p>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <tr>
+                <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
+                <td className={tcF()} style={{ left: L.cliente }}></td>
+                <td className={tcF(true)} style={{ left: L.descricao }}></td>
+                {/* os, ano, acordo, responsavel, status */}
+                {Array.from({ length: 5 }, (_, i) => <td key={i} className={TC}></td>)}
+                <td className={TC}><span className="font-bold text-[#1565C0]">{formatCurrency(totVlrTotal)}</span></td>
+                <td className={TC}><span className="font-bold text-green-700">{formatCurrency(totFaturado)}</span></td>
+                <td className={TC}><span className="font-bold text-orange-600">{formatCurrency(totDisponivel)}</span></td>
+                {totMeses.map((v, mi) => (
+                  <td key={mi} className={TC}>
+                    {v > 0
+                      ? <span className="font-semibold text-[#1565C0] text-[10px]">{formatCurrency(v)}</span>
+                      : <span className="text-gray-400">—</span>}
+                  </td>
+                ))}
+                <td className={TC}></td>
+              </tr>
             )
+          })()}
+
+          {/* ── Cabeçalhos ── */}
+          <tr>
+            <th className={thF()} style={{ left: L.indice }}>Índice</th>
+            <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
+            <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
+            <th className={thS}>Nº OS</th>
+            <th className={thS}>Ano</th>
+            <th className={thS}>Nº Acordo</th>
+            <th className={thS}>Responsável</th>
+            <th className={thS}>Status Fat.</th>
+            <th className={thS}>Valor Total</th>
+            <th className={thS}>Faturado</th>
+            <th className={thS}>Disponível</th>
+            {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
+            <th className={thS}>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {contratos.map((contrato) => {
+            const expanded = expandidos.has(contrato.id)
+            const ctKey    = `ct-${contrato.id}`
+            const ctBg     = rowBgContract(ctKey)
+
+            const ctVlrTotal   = contrato.valor_contrato ?? 0
+            const ctFaturado   = contrato.subindices.reduce((a, s) => a + s.total_faturado, 0)
+            const ctDisponivel = Math.max(0, ctVlrTotal - ctFaturado)
+
+            const mF = (shadow?: boolean) =>
+              cn('px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
+                shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.10)]')
+            const mBase = 'px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap cursor-pointer'
+
+            const trProps = {
+              onClick:      () => setSelectedKey((p) => p === ctKey ? null : ctKey),
+              onMouseEnter: () => setHoveredKey(ctKey),
+              onMouseLeave: () => setHoveredKey(null),
+            }
+
+            return [
+              /* ── Linha do contrato ── */
+              <tr key={ctKey} className="border-b border-gray-200" {...trProps}>
+                <td className={mF()} style={{ left: L.indice, background: ctBg }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onToggle(contrato.id) }}
+                    className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary"
+                  >
+                    <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
+                    {contrato.indice}
+                  </button>
+                </td>
+                <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
+                  <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: W.cliente - 16 }}>
+                    {contrato.cliente.nome}
+                  </span>
+                </td>
+                <td className={mF(true)} style={{ left: L.descricao, background: ctBg }}>
+                  <span className="line-clamp-2 whitespace-normal" title={contrato.descricao ?? ''}>
+                    {contrato.descricao ?? '—'}
+                  </span>
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>—</td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  <span className="bg-gray-200 text-gray-700 rounded px-1 text-[10px]">{contrato.ano_referencia}</span>
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>{contrato.num_acordo ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}>{contrato.responsavel?.nome ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}><StatusBadge status={contrato.status} /></td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrTotal > 0
+                    ? <span className="font-bold text-[#1565C0]">{formatCurrency(ctVlrTotal)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctFaturado > 0
+                    ? <span className="font-bold text-green-700">{formatCurrency(ctFaturado)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrTotal > 0
+                    ? <span className="font-bold text-orange-600">{formatCurrency(ctDisponivel)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                {MESES.map((m) => {
+                  const prev = contrato.subindices.reduce((a, s) => a + (Number(s[m as MesKey]) || 0), 0)
+                  return (
+                    <td key={m} className={mBase} style={{ background: ctBg }}>
+                      {prev > 0
+                        ? <span className="text-[10px] text-[#1565C0]">{formatCurrency(prev)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                  )
+                })}
+                <td className={mBase} style={{ background: ctBg }}></td>
+              </tr>,
+
+              /* ── Linhas de sub-índices ── */
+              ...(expanded ? contrato.subindices.map((sub) => {
+                const indiceLabel = `${contrato.indice}.${sub.ordem}`
+                const subKey      = `sub-${sub.id}`
+                const subBg       = rowBgSub(subKey)
+                const subAno      = getSubAno(sub.data_inicio, contrato.ano_referencia)
+                const subDisponivel = Math.max(0, sub.valor_total - sub.total_faturado)
+
+                const sF = (shadow?: boolean) =>
+                  cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
+                    shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.07)]')
+                const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer'
+
+                return (
+                  <tr key={subKey} className="border-b border-gray-100"
+                    onClick={() => setSelectedKey((p) => p === subKey ? null : subKey)}
+                    onMouseEnter={() => setHoveredKey(subKey)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                  >
+                    <td className={sF()} style={{ left: L.indice, background: subBg }}>
+                      <span className="pl-4 text-[10px] text-gray-500">{indiceLabel}</span>
+                    </td>
+                    <td className={sF()} style={{ left: L.cliente, background: subBg }}>
+                      <span className="text-gray-500 truncate block" style={{ maxWidth: W.cliente - 16 }}>
+                        {contrato.cliente.nome}
+                      </span>
+                    </td>
+                    <td className={sF(true)} style={{ left: L.descricao, background: subBg }}>
+                      <div className="flex items-start gap-1.5 flex-wrap">
+                        <span className="line-clamp-2 whitespace-normal flex-1" title={sub.descricao}>
+                          {sub.descricao}
+                        </span>
+                        {sub.alteracao_pendente && (
+                          <span className="text-[8px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 whitespace-nowrap shrink-0">
+                            Prop. pendente
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="text-gray-600">{sub.num_os ?? '—'}</span>
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="bg-gray-100 text-gray-400 rounded px-1 text-[10px]">{subAno}</span>
+                    </td>
+                    <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
+                    <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <StatusBadge status={sub.status_faturamento} />
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="text-[#1565C0]">{formatCurrency(sub.valor_total)}</span>
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      {sub.total_faturado > 0
+                        ? <span className="text-green-700">{formatCurrency(sub.total_faturado)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="text-orange-600">{formatCurrency(subDisponivel)}</span>
+                    </td>
+                    {MESES.map((m) => {
+                      const v = Number(sub[m as MesKey]) || 0
+                      const alt = sub.alteracao_pendente
+                      const hasPendingChange = alt != null &&
+                        (alt[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null) !==
+                        (alt[`${m}_de`  as keyof PrevisaoAlteracaoItem] as number | null)
+                      return (
+                        <td key={m} className={sBase} style={{ background: subBg }}>
+                          {v > 0
+                            ? <span className={cn('text-[10px]', hasPendingChange ? 'text-amber-600 font-semibold' : 'text-[#1565C0]')}>
+                                {formatCurrency(v)}
+                              </span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                      )
+                    })}
+                    <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
+                      {!isGestao && (
+                        <button
+                          onClick={() => onPropor(sub, indiceLabel)}
+                          className="bg-green-primary text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-green-dark whitespace-nowrap"
+                        >
+                          Editar prev.
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              }) : []),
+            ]
           })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Card de alteração ────────────────────────────────────────────────────────
-
-function AlteracaoCard({ alteracao }: { alteracao: PrevisaoAlteracaoItem }) {
-  const badge = STATUS_BADGE[alteracao.status]
-  return (
-    <div className={cn(
-      'bg-white border rounded-md px-3 py-2.5 flex items-center justify-between gap-3',
-      alteracao.status === 'REPROVADO' ? 'border-red-200' : 'border-amber-200',
-    )}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-gray-700">
-            {alteracao.contrato?.indice}.{alteracao.subindice.ordem} — {alteracao.subindice.descricao}
-          </span>
-          <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded border', badge.cls)}>
-            {badge.label}
-          </span>
-        </div>
-        <p className="text-[10px] text-gray-400 mt-0.5">
-          {alteracao.contrato?.cliente.nome} · Enviado em {new Date(alteracao.created_at).toLocaleDateString('pt-BR')}
-        </p>
-        {alteracao.status === 'REPROVADO' && alteracao.motivo_recusa && (
-          <p className="text-[10px] text-red-600 mt-0.5 font-medium">Motivo: {alteracao.motivo_recusa}</p>
-        )}
-      </div>
+        </tbody>
+      </table>
     </div>
   )
 }
