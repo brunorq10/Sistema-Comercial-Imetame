@@ -18,10 +18,14 @@ function getSubAno(dataInicio: string | null, fallback: number): number {
 function nfFaturadoMes(notas: NFContratoItem[], mesIdx: number, ano: number): number {
   return notas
     .filter((nf) => nf.ativa)
-    .filter((nf) => {
-      const d = new Date(nf.data_emissao)
-      return d.getFullYear() === ano && d.getMonth() === mesIdx
-    })
+    .filter((nf) => { const d = new Date(nf.data_emissao); return d.getFullYear() === ano && d.getMonth() === mesIdx })
+    .reduce((acc, nf) => acc + nf.valor_atribuido, 0)
+}
+
+function nfFaturadoAnual(notas: NFContratoItem[], ano: number | undefined): number {
+  return notas
+    .filter((nf) => nf.ativa)
+    .filter((nf) => !ano || new Date(nf.data_emissao).getFullYear() === ano)
     .reduce((acc, nf) => acc + nf.valor_atribuido, 0)
 }
 
@@ -32,14 +36,19 @@ function fatColorClass(fat: number, prev: number): string {
 
 // ── Larguras ──────────────────────────────────────────────────────────────────
 const W = {
-  indice:    120, cliente:   125, descricao: 240,
+  indice: 120, cliente: 125, descricao: 240,
   classificacao: 110, ramo: 140, os: 110, anoRef: 70, acordo: 120, proposta: 110,
-  dtInicio: 90, dtFim: 90, statusFat: 90, vlrTotal: 160, responsavel: 130,
-  comentarios: 140, mes: 130, totalPrevAno: 145, totalFatAno: 145, aFaturarAno: 140,
-  prevAnos: 130, acoes: 130,
+  dtInicio: 90, dtFim: 90, statusFat: 90,
+  vlrTotal: 155, vlrFat: 150, saldo: 145,
+  responsavel: 130, comentarios: 140,
+  mes: 130, prevAnos: 130, acoes: 130,
 }
 const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
 const FROZEN_TOTAL = L.descricao + W.descricao
+
+const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acordo + W.proposta +
+              W.dtInicio + W.dtFim + W.statusFat + W.vlrTotal + W.vlrFat + W.saldo +
+              W.responsavel + W.comentarios + 12 * W.mes + W.prevAnos + W.acoes
 
 function StatusBadge({ status }: { status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' | 'CANCELADO' }) {
   const map = {
@@ -50,6 +59,12 @@ function StatusBadge({ status }: { status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' 
   }
   const { label, cls } = map[status] ?? map['A_FATURAR']
   return <span className={cn('text-[11px]', cls)}>{label}</span>
+}
+
+function SaldoCell({ saldo, className }: { saldo: number; className?: string }) {
+  if (saldo > 0.01) return <span className={cn('text-orange-600 font-bold', className)}>{formatCurrency(saldo)}</span>
+  if (saldo < -0.01) return <span className={cn('text-blue-600 font-bold', className)}>{formatCurrency(Math.abs(saldo))} acima</span>
+  return <span className={cn('text-green-600 font-bold', className)}>{formatCurrency(0)}</span>
 }
 
 interface Props {
@@ -77,42 +92,36 @@ export function FaturamentoContratoTable({
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
   const toggleExpand = (id: number) =>
-    setExpandidos((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const handleRowClick = (key: string) =>
     setSelectedKey((prev) => (prev === key ? null : key))
 
-  if (contratos.length === 0) {
+  if (contratos.length === 0)
     return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</p>
-  }
 
-  // ── Cores das linhas ─────────────────────────────────────────────────────────
   const rowBgContract = (key: string) =>
     selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
   const rowBgSub = (key: string) =>
     selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
-  const TH = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  const TH  = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
   const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
   const thS = cn(TH, 'z-[10]')
   const thP = cn(TH, 'bg-[#6A1B9A] z-[10]')
 
-  // Totalizadores
+  // ── Totalizadores da linha de cabeçalho ──────────────────────────────────────
+  const totVlrTotal = anoFiltro
+    ? contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => getSubAno(s.data_inicio, c.ano_referencia) === anoFiltro ? b + s.valor_total : b, 0), 0)
+    : contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0)
+
+  const totVlrFat = contratos.reduce((a, c) =>
+    a + c.subindices.reduce((b, s) => b + nfFaturadoAnual(s.notas_fiscais, anoFiltro), 0), 0)
+
   const totMeses = MESES.map((m, mi) => ({
     prev: contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + (s[m] ?? 0), 0), 0),
     fat:  contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + nfFaturadoMes(s.notas_fiscais, mi, getSubAno(s.data_inicio, c.ano_referencia)), 0), 0),
   }))
-  const totPrevAno  = totMeses.reduce((a, t) => a + t.prev, 0)
-  const totFatAno   = totMeses.reduce((a, t) => a + t.fat, 0)
-  const totAFaturar = totPrevAno - totFatAno
-
-  const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acordo + W.proposta + W.dtInicio + W.dtFim +
-                W.statusFat + W.vlrTotal + W.responsavel + W.comentarios +
-                12 * W.mes + W.totalPrevAno + W.totalFatAno + W.aFaturarAno + W.prevAnos + W.acoes
 
   return (
     <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
@@ -122,14 +131,14 @@ export function FaturamentoContratoTable({
           <col style={{ width: W.classificacao }} /><col style={{ width: W.ramo }} /><col style={{ width: W.os }} />
           <col style={{ width: W.anoRef }} /><col style={{ width: W.acordo }} /><col style={{ width: W.proposta }} />
           <col style={{ width: W.dtInicio }} /><col style={{ width: W.dtFim }} /><col style={{ width: W.statusFat }} />
-          <col style={{ width: W.vlrTotal }} /><col style={{ width: W.responsavel }} /><col style={{ width: W.comentarios }} />
+          <col style={{ width: W.vlrTotal }} /><col style={{ width: W.vlrFat }} /><col style={{ width: W.saldo }} />
+          <col style={{ width: W.responsavel }} /><col style={{ width: W.comentarios }} />
           {MESES.map((m) => <col key={m} style={{ width: W.mes }} />)}
-          <col style={{ width: W.totalPrevAno }} /><col style={{ width: W.totalFatAno }} />
-          <col style={{ width: W.aFaturarAno }} /><col style={{ width: W.prevAnos }} /><col style={{ width: W.acoes }} />
+          <col style={{ width: W.prevAnos }} /><col style={{ width: W.acoes }} />
         </colgroup>
 
         <thead>
-          {/* Linha totalizadora */}
+          {/* ── Linha totalizadora ── */}
           {(() => {
             const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
             const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
@@ -138,7 +147,23 @@ export function FaturamentoContratoTable({
                 <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
                 <td className={tcF()} style={{ left: L.cliente }}></td>
                 <td className={tcF(true)} style={{ left: L.descricao }}></td>
-                {Array.from({ length: 12 }, (_, i) => <td key={i} className={TC}></td>)}
+                {/* 9 cells: classificacao, ramo, os, anoRef, acordo, proposta, dtInicio, dtFim, statusFat */}
+                {Array.from({ length: 9 }, (_, i) => <td key={i} className={TC}></td>)}
+                {/* vlrTotal */}
+                <td className={TC}>
+                  <span className="font-bold text-[#1565C0]">{formatCurrency(totVlrTotal)}</span>
+                </td>
+                {/* vlrFat */}
+                <td className={TC}>
+                  <span className="font-bold text-green-700">{formatCurrency(totVlrFat)}</span>
+                </td>
+                {/* saldo */}
+                <td className={TC}>
+                  <SaldoCell saldo={totVlrTotal - totVlrFat} />
+                </td>
+                {/* responsavel, comentarios */}
+                <td className={TC}></td><td className={TC}></td>
+                {/* meses */}
                 {totMeses.map(({ prev, fat }, mi) => (
                   <td key={mi} className={TC}>
                     {prev === 0 && fat === 0 ? <span className="text-gray-400">—</span> : (
@@ -149,13 +174,7 @@ export function FaturamentoContratoTable({
                     )}
                   </td>
                 ))}
-                <td className={TC}>{totPrevAno > 0 ? <span className="text-[#1565C0] font-bold">{formatCurrency(totPrevAno)}</span> : <span className="text-gray-400">—</span>}</td>
-                <td className={TC}>{totFatAno > 0 ? <span className={cn('font-bold', fatColorClass(totFatAno, totPrevAno))}>{formatCurrency(totFatAno)}</span> : <span className="text-gray-400">—</span>}</td>
-                <td className={TC}>
-                  {totAFaturar > 0 ? <span className="text-orange-600 font-bold">{formatCurrency(totAFaturar)}</span>
-                    : totAFaturar === 0 ? <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
-                    : <span className="text-blue-600 font-bold">{formatCurrency(Math.abs(totAFaturar))}</span>}
-                </td>
+                {/* prevAnos */}
                 <td className={TC}>
                   {(() => {
                     const t = contratos.reduce((a, c) => a + c.prev_anos_seguintes, 0)
@@ -166,6 +185,8 @@ export function FaturamentoContratoTable({
               </tr>
             )
           })()}
+
+          {/* ── Cabeçalhos das colunas ── */}
           <tr>
             <th className={thF()} style={{ left: L.indice }}>Índice</th>
             <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
@@ -174,11 +195,13 @@ export function FaturamentoContratoTable({
             <th className={thS}>Nº OS</th><th className={thS}>Ano</th>
             <th className={thS}>Nº Acordo</th><th className={thS}>Nº Proposta</th>
             <th className={thS}>Dt. Início</th><th className={thS}>Dt. Fim</th>
-            <th className={thS}>Status Fat.</th><th className={thS}>Valor Total Contrato</th>
+            <th className={thS}>Status Fat.</th>
+            <th className={thS}>Valor Total Contrato</th>
+            <th className={thS}>Valor Total Faturado</th>
+            <th className={thS}>Saldo a Faturar</th>
             <th className={thS}>Responsável</th><th className={thS}>Comentários</th>
             {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
-            <th className={thS}>Total Prev. ano atual</th><th className={thS}>Total Fat. ano atual</th>
-            <th className={thS}>A Faturar ano atual</th><th className={thP}>Previsão prox. anos</th>
+            <th className={thP}>Previsão prox. anos</th>
             <th className={thS}>Ações</th>
           </tr>
         </thead>
@@ -190,7 +213,16 @@ export function FaturamentoContratoTable({
             const ctKey    = `ct-${contrato.id}`
             const ctBg     = rowBgContract(ctKey)
 
-            // ── Helpers de célula com bg dinâmico ──
+            // Valor Total Contrato (filtrado por ano ou total do contrato)
+            const ctVlrTotal = anoFiltro
+              ? contrato.subindices.reduce((a, s) =>
+                  getSubAno(s.data_inicio, contrato.ano_referencia) === anoFiltro ? a + s.valor_total : a, 0)
+              : (contrato.valor_contrato ?? 0)
+
+            const ctVlrFat = contrato.subindices.reduce((a, s) =>
+              a + nfFaturadoAnual(s.notas_fiscais, anoFiltro), 0)
+            const ctSaldo = ctVlrTotal - ctVlrFat
+
             const mF = (shadow?: boolean) =>
               cn('px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
                 shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.10)]')
@@ -237,8 +269,21 @@ export function FaturamentoContratoTable({
                 <td className={mBase} style={{ background: ctBg }}>{formatDate(contrato.data_inicio)}</td>
                 <td className={mBase} style={{ background: ctBg }}>{formatDate(contrato.data_fim)}</td>
                 <td className={mBase} style={{ background: ctBg }}><StatusBadge status={contrato.status as 'A_FATURAR' | 'FATURADO' | 'PARCIAL' | 'CANCELADO'} /></td>
+                {/* Valor Total Contrato */}
                 <td className={mBase} style={{ background: ctBg }}>
-                  {contrato.valor_contrato != null ? <span className="font-bold">{formatCurrency(contrato.valor_contrato)}</span> : <span className="text-gray-300">—</span>}
+                  {ctVlrTotal > 0
+                    ? <span className="font-bold text-[#1565C0]">{formatCurrency(ctVlrTotal)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                {/* Valor Total Faturado */}
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrFat > 0
+                    ? <span className="font-bold text-green-700">{formatCurrency(ctVlrFat)}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                {/* Saldo a Faturar */}
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrTotal > 0 ? <SaldoCell saldo={ctSaldo} /> : <span className="text-gray-300">—</span>}
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>{contrato.responsavel?.nome ?? '—'}</td>
                 <td className={mBase} style={{ background: ctBg }}>—</td>
@@ -256,24 +301,6 @@ export function FaturamentoContratoTable({
                     </td>
                   )
                 })}
-                {(() => {
-                  const totalPrevAno = MESES.reduce((a, m) => a + contrato.subindices.reduce((b, s) => b + (s[m] ?? 0), 0), 0)
-                  const totalFatAno  = MESES.reduce((a, _, mi) => a + contrato.subindices.reduce((b, s) => b + nfFaturadoMes(s.notas_fiscais, mi, getSubAno(s.data_inicio, contrato.ano_referencia)), 0), 0)
-                  const aFaturarAno  = totalPrevAno - totalFatAno
-                  return (<>
-                    <td className={mBase} style={{ background: ctBg }}>
-                      {totalPrevAno > 0 ? <span className="text-[#1565C0] font-bold">{formatCurrency(totalPrevAno)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className={mBase} style={{ background: ctBg }}>
-                      {totalFatAno > 0 ? <span className={cn('font-bold', fatColorClass(totalFatAno, totalPrevAno))}>{formatCurrency(totalFatAno)}</span> : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className={mBase} style={{ background: ctBg }}>
-                      {aFaturarAno > 0 ? <span className="text-orange-600 font-bold">{formatCurrency(aFaturarAno)}</span>
-                        : aFaturarAno === 0 ? <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
-                        : <span className="text-blue-600 font-bold">{formatCurrency(Math.abs(aFaturarAno))}</span>}
-                    </td>
-                  </>)
-                })()}
                 <td className="px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap cursor-pointer" style={{ background: '#F3E5F5' }}>
                   {contrato.prev_anos_seguintes > 0
                     ? <span className="text-[#6A1B9A] font-bold">{formatCurrency(contrato.prev_anos_seguintes)}</span>
@@ -281,23 +308,21 @@ export function FaturamentoContratoTable({
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Link
-                      href={`/acordos/faturamento/${contrato.id}`}
+                    <Link href={`/acordos/faturamento/${contrato.id}`}
                       className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
-                      title="Visão geral do contrato"
-                    >👁</Link>
+                      title="Visão geral">👁</Link>
                     {canEditar && contrato.status !== 'CANCELADO' && (
                       <button onClick={() => onEditarContrato(contrato)}
                         className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"
-                        title="Editar contrato">✎</button>
+                        title="Editar">✎</button>
                     )}
                     <button onClick={() => onHistoricoContrato(contrato)}
                       className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                      title="Histórico de alterações">📋</button>
+                      title="Histórico">📋</button>
                     {canEditar && contrato.status !== 'CANCELADO' && (
                       <button onClick={() => onCancelarContrato(contrato)}
                         className="border border-red-400 text-red-400 rounded px-1.5 py-0.5 text-[10px] hover:bg-red-50"
-                        title="Cancelar contrato">🗑</button>
+                        title="Cancelar">🗑</button>
                     )}
                   </div>
                 </td>
@@ -308,18 +333,20 @@ export function FaturamentoContratoTable({
                 const indiceLabel = `${contrato.indice}.${sub.ordem}`
                 const subKey      = `sub-${sub.id}`
                 const subBg       = rowBgSub(subKey)
+                const subAno      = getSubAno(sub.data_inicio, contrato.ano_referencia)
                 const sF = (shadow?: boolean) => cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
                   shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.07)]')
                 const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer'
 
-                const subTrProps = {
-                  onClick: () => handleRowClick(subKey),
-                  onMouseEnter: () => setHoveredKey(subKey),
-                  onMouseLeave: () => setHoveredKey(null),
-                }
+                const subVlrFat = nfFaturadoAnual(sub.notas_fiscais, anoFiltro)
+                const subSaldo  = sub.valor_total - subVlrFat
 
                 return (
-                  <tr key={subKey} className="border-b border-gray-100" {...subTrProps}>
+                  <tr key={subKey} className="border-b border-gray-100"
+                    onClick={() => handleRowClick(subKey)}
+                    onMouseEnter={() => setHoveredKey(subKey)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                  >
                     <td className={sF()} style={{ left: L.indice, background: subBg }}>
                       <span className="pl-4 text-[10px] text-gray-500">{indiceLabel}</span>
                     </td>
@@ -341,40 +368,41 @@ export function FaturamentoContratoTable({
                     </td>
                     <td className={sBase} style={{ background: subBg }}><span className="text-gray-600">{sub.num_os ?? '—'}</span></td>
                     <td className={sBase} style={{ background: subBg }}>
-                      {(() => {
-                        const sano = getSubAno(sub.data_inicio, contrato.ano_referencia)
-                        const diferente = sano !== anoRef
-                        return (
-                          <span className={`rounded px-1 text-[10px] ${diferente ? 'bg-[#F3E5F5] text-[#6A1B9A] font-semibold' : 'bg-gray-100 text-gray-400'}`}>
-                            {sano}
-                          </span>
-                        )
-                      })()}
+                      <span className={`rounded px-1 text-[10px] ${subAno !== anoRef ? 'bg-[#F3E5F5] text-[#6A1B9A] font-semibold' : 'bg-gray-100 text-gray-400'}`}>
+                        {subAno}
+                      </span>
                     </td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
                     <td className={sBase} style={{ background: subBg }}><span className="text-gray-400">{formatDate(sub.data_inicio)}</span></td>
                     <td className={sBase} style={{ background: subBg }}><span className="text-gray-400">{formatDate(sub.data_fim)}</span></td>
                     <td className={sBase} style={{ background: subBg }}><StatusBadge status={sub.status_faturamento} /></td>
-                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-300">—</span></td>
+                    {/* Valor Total Subitem */}
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="text-[#1565C0]">{formatCurrency(sub.valor_total)}</span>
+                    </td>
+                    {/* Valor Total Faturado subitem */}
+                    <td className={sBase} style={{ background: subBg }}>
+                      {subVlrFat > 0
+                        ? <span className="text-green-700">{formatCurrency(subVlrFat)}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    {/* Saldo a Faturar subitem */}
+                    <td className={sBase} style={{ background: subBg }}>
+                      <SaldoCell saldo={subSaldo} className="!font-normal" />
+                    </td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
                     <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onComentario(sub)}
-                        className="text-left w-full group"
-                        title={sub.comentarios ?? 'Clique para adicionar comentário'}
-                      >
-                        <span
-                          className={`truncate block text-[11px] group-hover:text-green-primary transition-colors ${sub.comentarios ? 'text-gray-600' : 'text-gray-300'}`}
-                          style={{ maxWidth: W.comentarios - 16 }}
-                        >
+                      <button onClick={() => onComentario(sub)} className="text-left w-full group" title={sub.comentarios ?? 'Adicionar comentário'}>
+                        <span className={`truncate block text-[11px] group-hover:text-green-primary transition-colors ${sub.comentarios ? 'text-gray-600' : 'text-gray-300'}`}
+                          style={{ maxWidth: W.comentarios - 16 }}>
                           {sub.comentarios ?? '+ comentário'}
                         </span>
                       </button>
                     </td>
                     {MESES.map((m, mi) => {
                       const prev = sub[m] ?? 0
-                      const fat  = nfFaturadoMes(sub.notas_fiscais, mi, getSubAno(sub.data_inicio, contrato.ano_referencia))
+                      const fat  = nfFaturadoMes(sub.notas_fiscais, mi, subAno)
                       return (
                         <td key={m} className={sBase} style={{ background: subBg }}>
                           {prev === 0 && fat === 0 ? <span className="text-gray-300">—</span> : (
@@ -386,25 +414,6 @@ export function FaturamentoContratoTable({
                         </td>
                       )
                     })}
-                    {(() => {
-                      const totalPrevAnoSub = MESES.reduce((a, m) => a + (sub[m] ?? 0), 0)
-                      const subAno = getSubAno(sub.data_inicio, contrato.ano_referencia)
-                      const totalFatAnoSub  = MESES.reduce((a, _, mi) => a + nfFaturadoMes(sub.notas_fiscais, mi, subAno), 0)
-                      const aFaturarAnoSub  = totalPrevAnoSub - totalFatAnoSub
-                      return (<>
-                        <td className={sBase} style={{ background: subBg }}>
-                          {totalPrevAnoSub > 0 ? <span className="text-[#1565C0]">{formatCurrency(totalPrevAnoSub)}</span> : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className={sBase} style={{ background: subBg }}>
-                          {totalFatAnoSub > 0 ? <span className={fatColorClass(totalFatAnoSub, totalPrevAnoSub)}>{formatCurrency(totalFatAnoSub)}</span> : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className={sBase} style={{ background: subBg }}>
-                          {aFaturarAnoSub > 0 ? <span className="text-orange-500">{formatCurrency(aFaturarAnoSub)}</span>
-                            : aFaturarAnoSub === 0 ? <span className="text-green-500">{formatCurrency(0)}</span>
-                            : <span className="text-blue-500">{formatCurrency(Math.abs(aFaturarAnoSub))}</span>}
-                        </td>
-                      </>)
-                    })()}
                     <td style={{ background: '#F3E5F5' }} className="px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer">
                       {sub.prev_anos_seguintes > 0
                         ? <span className="text-[#6A1B9A]">{formatCurrency(sub.prev_anos_seguintes)}</span>
@@ -420,15 +429,15 @@ export function FaturamentoContratoTable({
                         {canEditar && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onEditarSubindice(contrato, sub)}
                             className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"
-                            title="Editar sub-índice">✎</button>
+                            title="Editar">✎</button>
                         )}
                         <button onClick={() => onHistoricoSubindice(sub)}
                           className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                          title="Histórico de alterações">📋</button>
+                          title="Histórico">📋</button>
                         {canEditar && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onExcluirSubindice(sub)}
                             className="border border-red-400 text-red-400 rounded px-1.5 py-0.5 text-[10px] hover:bg-red-50"
-                            title="Excluir sub-índice">🗑</button>
+                            title="Excluir">🗑</button>
                         )}
                       </div>
                     </td>

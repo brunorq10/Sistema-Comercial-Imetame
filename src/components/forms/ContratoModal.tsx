@@ -10,6 +10,10 @@ import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
+function fmt(v: number) {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 interface SubIndiceYearSection {
   valor_total: string
   meses: Record<string, string>
@@ -163,6 +167,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const handleSubmit = async () => {
     if (!clienteId) { setError('Selecione o cliente'); return }
     if (!anoRef) { setError('Ano de referência obrigatório'); return }
+    if (!valorContrato || isNaN(Number(valorContrato)) || Number(valorContrato) <= 0) {
+      setError('Valor total do contrato é obrigatório'); return
+    }
     for (let i = 0; i < subindices.length; i++) {
       const s = subindices[i]
       if (!s.descricao.trim()) { setError(`Evento ${i + 1}: descrição obrigatória`); return }
@@ -172,6 +179,26 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         if (!vt || isNaN(Number(vt))) {
           setError(`Evento ${i + 1}: valor total inválido para ${ano}`); return
         }
+        const section = s.anos[ano]!
+        const filledMeses = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
+        if (filledMeses.length > 0) {
+          const somaMeses = filledMeses.reduce((acc, m) => acc + Number(section.meses[m]), 0)
+          const vtNum = Number(vt)
+          if (Math.abs(somaMeses - vtNum) > 0.01) {
+            setError(`Evento ${i + 1} (${ano}): soma dos meses (R$ ${fmt(somaMeses)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
+          }
+        }
+      }
+    }
+
+    if (!isEdit) {
+      const totalSubs = subindices.reduce((acc, s) => {
+        const anos = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
+        return acc + anos.reduce((a, ano) => a + (Number(s.anos[ano]?.valor_total) || 0), 0)
+      }, 0)
+      const vc = Number(valorContrato)
+      if (Math.abs(totalSubs - vc) > 0.01) {
+        setError(`A soma dos eventos (R$ ${fmt(totalSubs)}) deve ser igual ao valor total do contrato (R$ ${fmt(vc)})`); return
       }
     }
 
@@ -353,6 +380,26 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         ))}
       </div>
 
+      {(() => {
+        const totalSubs = subindices.reduce((acc, s) => {
+          const anosS = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
+          return acc + anosS.reduce((a, ano) => a + (Number(s.anos[ano]?.valor_total) || 0), 0)
+        }, 0)
+        const vc = valorContrato ? Number(valorContrato) : 0
+        if (vc <= 0) return null
+        const diff = totalSubs - vc
+        const ok = Math.abs(diff) <= 0.01
+        const over = diff > 0.01
+        return (
+          <div className={`mt-3 rounded px-3 py-2 text-[11px] flex items-center gap-3 ${ok ? 'bg-green-50 border border-green-200 text-green-700' : over ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-orange-50 border border-orange-200 text-orange-700'}`}>
+            <span>Total dos eventos: <strong>R$ {fmt(totalSubs)}</strong></span>
+            <span className="text-gray-300">|</span>
+            <span>Valor contrato: <strong>R$ {fmt(vc)}</strong></span>
+            <span className="ml-auto font-semibold">{ok ? '✓ Conferido' : over ? `Excede R$ ${fmt(diff)}` : `Faltam R$ ${fmt(-diff)}`}</span>
+          </div>
+        )
+      })()}
+
       <button
         onClick={addSubindice}
         className="mt-3 w-full border border-dashed border-green-primary text-green-primary text-[12px] py-2 rounded hover:bg-green-light transition-colors"
@@ -453,6 +500,20 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateAno,
               )
             })}
           </div>
+          {(() => {
+            const section = data.anos[ano]
+            if (!section) return null
+            const filled = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
+            if (filled.length === 0) return null
+            const soma = filled.reduce((a, m) => a + Number(section.meses[m]), 0)
+            const vt = Number(section.valor_total || 0)
+            const ok = vt > 0 && Math.abs(soma - vt) <= 0.01
+            return (
+              <p className={`mt-1 text-[10px] text-right ${ok ? 'text-green-600' : 'text-orange-600'}`}>
+                Soma meses: R$ {fmt(soma)}{ok ? ' ✓' : vt > 0 ? ` · Meta: R$ ${fmt(vt)}` : ''}
+              </p>
+            )
+          })()}
         </div>
       ))}
     </div>

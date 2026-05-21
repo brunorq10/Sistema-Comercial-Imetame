@@ -9,6 +9,10 @@ import type { SubIndiceItem } from '@/types'
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
+function fmt(v: number) {
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 interface YearSection {
   valor_total: string
   meses: Record<string, string>
@@ -112,11 +116,33 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     if (!descricao.trim()) { setError('Descrição obrigatória'); return }
 
     const anosOrdenados = getAnosFromDates(dataInicio, dataFim, subAno)
-    for (const a of anosOrdenados) {
+    for (let idx = 0; idx < anosOrdenados.length; idx++) {
+      const a = anosOrdenados[idx]
       const vt = anos[a]?.valor_total
       if (!vt || isNaN(Number(vt))) {
         setError(`Valor total inválido para ${a}`)
         return
+      }
+      const vtNum = Number(vt)
+      const jaFaturado = idx === 0 ? subindice.total_faturado : 0
+      if (idx === 0 && vtNum < jaFaturado - 0.01) {
+        setError(`O valor total (R$ ${fmt(vtNum)}) não pode ser menor que o já faturado (R$ ${fmt(jaFaturado)})`); return
+      }
+      const disponivel = vtNum - jaFaturado
+      const section = anos[a]
+      if (section) {
+        const filled = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
+        if (filled.length > 0) {
+          const soma = filled.reduce((acc, m) => acc + Number(section.meses[m]), 0)
+          if (Math.abs(soma - disponivel) > 0.01) {
+            const label = anosOrdenados.length > 1 ? ` (${a})` : ''
+            if (idx === 0 && jaFaturado > 0) {
+              setError(`A soma dos meses${label} (R$ ${fmt(soma)}) deve ser igual ao disponível para previsão (R$ ${fmt(disponivel)})`); return
+            } else {
+              setError(`A soma dos meses${label} (R$ ${fmt(soma)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
+            }
+          }
+        }
       }
     }
 
@@ -241,50 +267,72 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
       <ModalSection>Previsão mensal</ModalSection>
 
-      {anosOrdenados.map((ano, idx) => (
-        <div
-          key={ano}
-          className={multiAno ? 'border border-green-primary/30 rounded-md p-3 mb-3 bg-white' : 'mb-4'}
-        >
-          {multiAno && (
-            <p className="text-[11px] font-bold text-green-dark mb-2.5 border-b border-green-primary/20 pb-1.5">
-              Previsão {ano}
-              {idx === 0 && <span className="ml-2 text-[10px] font-normal text-gray-400">(este sub-índice)</span>}
-              {idx > 0 && <span className="ml-2 text-[10px] font-normal text-[#6A1B9A]">(novo sub-índice)</span>}
-            </p>
-          )}
+      {anosOrdenados.map((ano, idx) => {
+        const jaFaturado = idx === 0 ? subindice.total_faturado : 0
+        const vtNum = Number(anos[ano]?.valor_total || 0)
+        const disponivel = vtNum - jaFaturado
+        const section = anos[ano]
+        const filledMeses = section ? MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0) : []
+        const somaMeses = filledMeses.reduce((acc, m) => acc + Number(section!.meses[m]), 0)
+        const mesesOk = filledMeses.length === 0 || Math.abs(somaMeses - disponivel) <= 0.01
+        return (
+          <div
+            key={ano}
+            className={multiAno ? 'border border-green-primary/30 rounded-md p-3 mb-3 bg-white' : 'mb-4'}
+          >
+            {multiAno && (
+              <p className="text-[11px] font-bold text-green-dark mb-2.5 border-b border-green-primary/20 pb-1.5">
+                Previsão {ano}
+                {idx === 0 && <span className="ml-2 text-[10px] font-normal text-gray-400">(este sub-índice)</span>}
+                {idx > 0 && <span className="ml-2 text-[10px] font-normal text-[#6A1B9A]">(novo sub-índice)</span>}
+              </p>
+            )}
 
-          <div className="mb-2.5">
-            <Field label="Valor Total (R$) *">
-              <CurrencyInput
-                value={anos[ano]?.valor_total ?? ''}
-                onChange={(v) => updateAnoField(ano, v)}
-              />
-            </Field>
-          </div>
+            <div className="mb-2.5">
+              <Field label="Valor Total (R$) *">
+                <CurrencyInput
+                  value={anos[ano]?.valor_total ?? ''}
+                  onChange={(v) => updateAnoField(ano, v)}
+                />
+              </Field>
+            </div>
 
-          <div className="grid grid-cols-6 gap-1.5">
-            {MESES.map((m, mi) => {
-              const ativo = isMesAtivo(ano, mi, dataInicio, dataFim)
-              return (
-                <div key={m}>
-                  <p className={`text-[9px] uppercase text-center mb-0.5 ${ativo ? 'text-gray-400' : 'text-gray-200'}`}>
-                    {MESES_LABELS[mi]}
-                  </p>
-                  <CurrencyInput
-                    value={anos[ano]?.meses[m] ?? ''}
-                    onChange={(v) => updateMes(ano, m, v)}
-                    disabled={!ativo}
-                    className={`text-center px-1.5 py-[3px] text-[11px] ${
-                      ativo ? '' : 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
-                    }`}
-                  />
-                </div>
-              )
-            })}
+            {idx === 0 && subindice.total_faturado > 0 && vtNum > 0 && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 text-[11px] px-3 py-2 rounded mb-2.5 flex gap-4">
+                <span>Já faturado: <strong>R$ {fmt(subindice.total_faturado)}</strong></span>
+                <span>Disponível para previsão: <strong>R$ {fmt(Math.max(0, disponivel))}</strong></span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-6 gap-1.5">
+              {MESES.map((m, mi) => {
+                const ativo = isMesAtivo(ano, mi, dataInicio, dataFim)
+                return (
+                  <div key={m}>
+                    <p className={`text-[9px] uppercase text-center mb-0.5 ${ativo ? 'text-gray-400' : 'text-gray-200'}`}>
+                      {MESES_LABELS[mi]}
+                    </p>
+                    <CurrencyInput
+                      value={anos[ano]?.meses[m] ?? ''}
+                      onChange={(v) => updateMes(ano, m, v)}
+                      disabled={!ativo}
+                      className={`text-center px-1.5 py-[3px] text-[11px] ${
+                        ativo ? '' : 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
+                      }`}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            {filledMeses.length > 0 && (
+              <p className={`mt-1.5 text-[10px] text-right ${mesesOk ? 'text-green-600' : 'text-orange-600'}`}>
+                Soma meses: R$ {fmt(somaMeses)}{mesesOk ? ' ✓' : ` · ${idx === 0 && jaFaturado > 0 ? 'Disponível' : 'Meta'}: R$ ${fmt(disponivel)}`}
+              </p>
+            )}
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {/* Zona de exclusão */}
       <div className="border-t border-red-100 pt-3 mt-2">
