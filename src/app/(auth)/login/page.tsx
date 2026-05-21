@@ -39,12 +39,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[380px] mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Topo verde */}
         <div className="bg-[#2E7D32] flex flex-col items-center pt-8 pb-6">
-          {/* Logo SVG Imetame */}
-          <svg viewBox="0 0 80 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[72px] h-auto mb-3">
-            <rect x="0" y="0" width="80" height="56" rx="6" fill="#1B5E20" fillOpacity="0.4" />
-            <text x="40" y="36" textAnchor="middle" fill="white" fontSize="22" fontWeight="800" fontFamily="Arial, sans-serif" letterSpacing="1">IM</text>
-          </svg>
-          <span className="text-white text-[22px] font-extrabold tracking-[0.12em]">IMETAME</span>
+          <span className="text-white text-[28px] font-extrabold tracking-[0.15em]">IMETAME</span>
           <span className="text-white/60 text-[9px] tracking-[0.1em] uppercase mt-0.5">Pessoas que fazem a diferença</span>
         </div>
 
