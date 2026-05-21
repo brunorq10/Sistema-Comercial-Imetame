@@ -15,13 +15,13 @@ function fmt(v: number) {
 }
 
 interface SubIndiceYearSection {
-  valor_total: string
   meses: Record<string, string>
 }
 
 interface SubIndiceForm {
   descricao: string
   num_os: string
+  valor_total: string
   data_inicio: string
   data_fim: string
   comentarios: string
@@ -29,11 +29,11 @@ interface SubIndiceForm {
 }
 
 function emptySection(): SubIndiceYearSection {
-  return { valor_total: '', meses: Object.fromEntries(MESES.map((m) => [m, ''])) }
+  return { meses: Object.fromEntries(MESES.map((m) => [m, ''])) }
 }
 
 function emptySubindice(defaultAno: number): SubIndiceForm {
-  return { descricao: '', num_os: '', data_inicio: '', data_fim: '', comentarios: '', anos: { [defaultAno]: emptySection() } }
+  return { descricao: '', num_os: '', valor_total: '', data_inicio: '', data_fim: '', comentarios: '', anos: { [defaultAno]: emptySection() } }
 }
 
 function getAnosFromDates(inicio: string, fim: string, fallback: number): number[] {
@@ -110,12 +110,12 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         return {
           descricao: s.descricao,
           num_os: s.num_os ?? '',
+          valor_total: String(s.valor_total),
           data_inicio: s.data_inicio ? s.data_inicio.substring(0, 10) : '',
           data_fim: s.data_fim ? s.data_fim.substring(0, 10) : '',
           comentarios: s.comentarios ?? '',
           anos: {
             [ano]: {
-              valor_total: String(s.valor_total),
               meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])),
             },
           },
@@ -151,11 +151,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       return updated
     }))
 
-  const updateAnoField = (i: number, ano: number, value: string) =>
-    setSubindices((prev) => prev.map((s, idx) =>
-      idx !== i ? s : { ...s, anos: { ...s.anos, [ano]: { ...s.anos[ano], valor_total: value } } }
-    ))
-
   const updateMes = (i: number, ano: number, mes: string, value: string) =>
     setSubindices((prev) => prev.map((s, idx) =>
       idx !== i ? s : {
@@ -173,29 +168,30 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     for (let i = 0; i < subindices.length; i++) {
       const s = subindices[i]
       if (!s.descricao.trim()) { setError(`Evento ${i + 1}: descrição obrigatória`); return }
+      if (!s.valor_total || isNaN(Number(s.valor_total))) {
+        setError(`Evento ${i + 1}: valor total obrigatório`); return
+      }
+      const vtNum = Number(s.valor_total)
       const anos = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
+      const allFilled: number[] = []
       for (const ano of anos) {
-        const vt = s.anos[ano]?.valor_total
-        if (!vt || isNaN(Number(vt))) {
-          setError(`Evento ${i + 1}: valor total inválido para ${ano}`); return
-        }
-        const section = s.anos[ano]!
-        const filledMeses = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
-        if (filledMeses.length > 0) {
-          const somaMeses = filledMeses.reduce((acc, m) => acc + Number(section.meses[m]), 0)
-          const vtNum = Number(vt)
-          if (Math.abs(somaMeses - vtNum) > 0.01) {
-            setError(`Evento ${i + 1} (${ano}): soma dos meses (R$ ${fmt(somaMeses)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
+        const section = s.anos[ano]
+        if (section) {
+          for (const m of MESES) {
+            if (section.meses[m] && Number(section.meses[m]) > 0) allFilled.push(Number(section.meses[m]))
           }
+        }
+      }
+      if (allFilled.length > 0) {
+        const somaTodos = allFilled.reduce((a, b) => a + b, 0)
+        if (Math.abs(somaTodos - vtNum) > 0.01) {
+          setError(`Evento ${i + 1}: soma dos meses (R$ ${fmt(somaTodos)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
         }
       }
     }
 
     if (!isEdit) {
-      const totalSubs = subindices.reduce((acc, s) => {
-        const anos = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
-        return acc + anos.reduce((a, ano) => a + (Number(s.anos[ano]?.valor_total) || 0), 0)
-      }, 0)
+      const totalSubs = subindices.reduce((acc, s) => acc + (Number(s.valor_total) || 0), 0)
       const vc = Number(valorContrato)
       if (Math.abs(totalSubs - vc) > 0.01) {
         setError(`A soma dos eventos (R$ ${fmt(totalSubs)}) deve ser igual ao valor total do contrato (R$ ${fmt(vc)})`); return
@@ -218,14 +214,17 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         valor_contrato: valorContrato ? Number(valorContrato) : undefined,
         subindices: subindices.flatMap((s) => {
           const anos = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
+          const vtTotal = Number(s.valor_total) || 0
           return anos.map((ano, idx) => {
             const section = s.anos[ano] ?? emptySection()
             const isFirst = idx === 0
             const isLast = idx === anos.length - 1
+            const sumMeses = MESES.reduce((acc, m) => acc + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+            const vtAno = sumMeses > 0 ? sumMeses : (isFirst ? vtTotal : 0)
             return {
               descricao: s.descricao,
               num_os: s.num_os || undefined,
-              valor_total: Number(section.valor_total) || 0,
+              valor_total: vtAno,
               data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
               data_fim: isLast && s.data_fim ? s.data_fim : `${ano}-12-31`,
               comentarios: s.comentarios || undefined,
@@ -368,7 +367,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             anoRef={Number(anoRef)}
             data={s}
             onUpdate={(field, val) => updateSubindice(i, field, val)}
-            onUpdateAno={(ano, val) => updateAnoField(i, ano, val)}
             onUpdateMes={(ano, mes, val) => updateMes(i, ano, mes, val)}
             onRemove={subindices.length > 1 ? () => removeSubindice(i) : undefined}
           />
@@ -376,10 +374,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       </div>
 
       {(() => {
-        const totalSubs = subindices.reduce((acc, s) => {
-          const anosS = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
-          return acc + anosS.reduce((a, ano) => a + (Number(s.anos[ano]?.valor_total) || 0), 0)
-        }, 0)
+        const totalSubs = subindices.reduce((acc, s) => acc + (Number(s.valor_total) || 0), 0)
         const vc = valorContrato ? Number(valorContrato) : 0
         if (vc <= 0) return null
         const diff = totalSubs - vc
@@ -411,14 +406,22 @@ interface SubindiceCardProps {
   anoRef: number
   data: SubIndiceForm
   onUpdate: (field: keyof Omit<SubIndiceForm, 'anos'>, val: string) => void
-  onUpdateAno: (ano: number, val: string) => void
   onUpdateMes: (ano: number, mes: string, val: string) => void
   onRemove?: () => void
 }
 
-function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateAno, onUpdateMes, onRemove }: SubindiceCardProps) {
+function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateMes, onRemove }: SubindiceCardProps) {
   const anos = getAnosFromDates(data.data_inicio, data.data_fim, anoRef)
   const multiAno = anos.length > 1
+  const vtNum = Number(data.valor_total || 0)
+
+  const somaTodos = anos.reduce((acc, ano) => {
+    const section = data.anos[ano]
+    if (!section) return acc
+    return acc + MESES.reduce((a, m) => a + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+  }, 0)
+  const anyMonthFilled = somaTodos > 0
+  const totalOk = vtNum > 0 && Math.abs(somaTodos - vtNum) <= 0.01
 
   return (
     <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
@@ -438,7 +441,7 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateAno,
         </Field>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-2">
         <Field label="Período — De">
           <Input type="date" value={data.data_inicio} onChange={(e) => onUpdate('data_inicio', e.target.value)} />
         </Field>
@@ -450,70 +453,71 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateAno,
         </Field>
       </div>
 
+      <div className="mb-3">
+        <Field label="Valor Total (R$)">
+          <CurrencyInput value={data.valor_total} onChange={(v) => onUpdate('valor_total', v)} />
+        </Field>
+      </div>
+
       {multiAno && (
         <div className="bg-[#F3E5F5] border border-[#CE93D8] text-[#6A1B9A] text-[11px] px-3 py-2 rounded mb-3">
-          ⚡ Período abrange {anos.length} anos. Preencha a previsão e o valor para cada ano separadamente.
+          ⚡ Período abrange {anos.length} anos. Distribua a previsão mensal entre os anos. O valor total do subitem é único.
         </div>
       )}
 
-      {anos.map((ano) => (
-        <div
-          key={ano}
-          className={multiAno ? 'border border-green-primary/30 rounded-md p-2.5 mb-2.5 bg-white' : ''}
-        >
-          {multiAno && (
-            <p className="text-[11px] font-bold text-green-dark mb-2.5 border-b border-green-primary/20 pb-1.5">
-              Previsão {ano}
-            </p>
-          )}
-
-          <div className="mb-2.5">
-            <Field label="Valor Total (R$)">
-              <CurrencyInput
-                value={data.anos[ano]?.valor_total ?? ''}
-                onChange={(v) => onUpdateAno(ano, v)}
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-6 gap-1">
-            {MESES.map((m, mi) => {
-              const ativo = isMesAtivo(ano, mi, data.data_inicio, data.data_fim)
-              return (
-                <div key={m}>
-                  <p className={`text-[9px] uppercase text-center mb-0.5 ${ativo ? 'text-gray-400' : 'text-gray-200'}`}>
-                    {MESES_LABELS[mi]}
-                  </p>
-                  <CurrencyInput
-                    value={data.anos[ano]?.meses[m] ?? ''}
-                    onChange={(v) => onUpdateMes(ano, m, v)}
-                    disabled={!ativo}
-                    className={`text-center px-1.5 py-[3px] text-[11px] ${
-                      ativo
-                        ? ''
-                        : 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
-                    }`}
-                  />
-                </div>
-              )
-            })}
-          </div>
-          {(() => {
-            const section = data.anos[ano]
-            if (!section) return null
-            const filled = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
-            if (filled.length === 0) return null
-            const soma = filled.reduce((a, m) => a + Number(section.meses[m]), 0)
-            const vt = Number(section.valor_total || 0)
-            const ok = vt > 0 && Math.abs(soma - vt) <= 0.01
-            return (
-              <p className={`mt-1 text-[10px] text-right ${ok ? 'text-green-600' : 'text-orange-600'}`}>
-                Soma meses: R$ {fmt(soma)}{ok ? ' ✓' : vt > 0 ? ` · Meta: R$ ${fmt(vt)}` : ''}
+      {anos.map((ano) => {
+        const section = data.anos[ano]
+        const somaAno = section
+          ? MESES.reduce((a, m) => a + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+          : 0
+        return (
+          <div
+            key={ano}
+            className={multiAno ? 'border border-green-primary/30 rounded-md p-2.5 mb-2.5 bg-white' : ''}
+          >
+            {multiAno && (
+              <p className="text-[11px] font-bold text-green-dark mb-2 border-b border-green-primary/20 pb-1.5">
+                Previsão {ano}
               </p>
-            )
-          })()}
-        </div>
-      ))}
+            )}
+
+            <div className="grid grid-cols-6 gap-1">
+              {MESES.map((m, mi) => {
+                const ativo = isMesAtivo(ano, mi, data.data_inicio, data.data_fim)
+                return (
+                  <div key={m}>
+                    <p className={`text-[9px] uppercase text-center mb-0.5 ${ativo ? 'text-gray-400' : 'text-gray-200'}`}>
+                      {MESES_LABELS[mi]}
+                    </p>
+                    <CurrencyInput
+                      value={data.anos[ano]?.meses[m] ?? ''}
+                      onChange={(v) => onUpdateMes(ano, m, v)}
+                      disabled={!ativo}
+                      className={`text-center px-1.5 py-[3px] text-[11px] ${
+                        ativo
+                          ? ''
+                          : 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
+                      }`}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            {multiAno && somaAno > 0 && (
+              <p className="mt-1 text-[10px] text-right text-gray-400">
+                Subtotal {ano}: R$ {fmt(somaAno)}
+              </p>
+            )}
+          </div>
+        )
+      })}
+
+      {anyMonthFilled && (
+        <p className={`mt-1 text-[10px] text-right ${totalOk ? 'text-green-600' : 'text-orange-600'}`}>
+          Total previsto: R$ {fmt(somaTodos)}{totalOk ? ' ✓' : vtNum > 0 ? ` · Meta: R$ ${fmt(vtNum)}` : ''}
+        </p>
+      )}
     </div>
   )
 }
