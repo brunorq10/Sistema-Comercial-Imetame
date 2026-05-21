@@ -49,6 +49,7 @@ interface Props {
 
 export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef }: Props) {
   const [descricao, setDescricao] = useState('')
+  const [numOs, setNumOs] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [comentarios, setComentarios] = useState('')
@@ -67,6 +68,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       const ini = subindice.data_inicio ? subindice.data_inicio.substring(0, 10) : ''
       const fim = subindice.data_fim ? subindice.data_fim.substring(0, 10) : ''
       setDescricao(subindice.descricao)
+      setNumOs(subindice.num_os ?? '')
       setDataInicio(ini)
       setDataFim(fim)
       setComentarios(subindice.comentarios ?? '')
@@ -131,6 +133,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           descricao,
+          num_os: numOs.trim() || null,
           valor_total: Number(primeiraSecao.valor_total) || 0,
           data_inicio: isFirst && dataInicio ? dataInicio : `${primeiroAno}-01-01`,
           data_fim: isLastFirst && dataFim ? dataFim : `${primeiroAno}-12-31`,
@@ -153,6 +156,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           body: JSON.stringify({
             contrato_id: subindice.contrato_id,
             descricao,
+            num_os: numOs.trim() || null,
             valor_total: Number(secao.valor_total) || 0,
             data_inicio: `${a}-01-01`,
             data_fim: isLast && dataFim ? dataFim : `${a}-12-31`,
@@ -210,7 +214,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         <Field label="Descrição / Evento *" className="col-span-2">
           <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
         </Field>
-        <Field label="Comentários" className="col-span-2">
+        <Field label="Nº OS">
+          <Input placeholder="Ex: OS-0001" value={numOs} onChange={(e) => setNumOs(e.target.value)} />
+        </Field>
+        <Field label="Comentários">
           <Input placeholder="Obs..." value={comentarios} onChange={(e) => setComentarios(e.target.value)} />
         </Field>
         <Field label="Período — De">

@@ -50,29 +50,30 @@ export function Sidebar() {
     : '?'
 
   return (
-    <aside className="flex w-[220px] flex-shrink-0 flex-col overflow-y-auto bg-white border-r border-gray-200">
+    <aside className="flex w-[220px] flex-shrink-0 flex-col overflow-y-auto bg-[#2E7D32]">
 
-      {/* ── Cabeçalho verde ────────────────────────────────────────────── */}
-      <div className="bg-green-primary flex flex-col items-center pt-5 pb-5">
-        {/* Logo */}
-        <span className="text-white text-[18px] font-bold tracking-[0.15em]">IMETAME</span>
-        <span className="text-white/55 text-[7.5px] tracking-[0.08em] uppercase mt-0.5">
-          Pessoas que fazem a diferença
-        </span>
+      {/* ── Logo ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col items-center pt-6 pb-5 px-4">
+        <Link href="/home" className="flex flex-col items-center gap-0.5 mb-4">
+          <span className="text-white text-[19px] font-extrabold tracking-[0.15em]">IMETAME</span>
+          <span className="text-white/50 text-[7.5px] tracking-[0.08em] uppercase">
+            Pessoas que fazem a diferença
+          </span>
+        </Link>
 
         {/* Divider */}
-        <div className="w-full border-t border-white/20 mt-4 mb-4" />
+        <div className="w-full border-t border-white/15 mb-4" />
 
         {/* Usuário */}
         {session?.user && (
-          <div className="flex flex-col items-center gap-1.5 px-4 w-full">
-            <div className="w-[56px] h-[56px] rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center text-white text-[18px] font-bold select-none">
+          <div className="flex flex-col items-center gap-1.5 w-full">
+            <div className="w-[54px] h-[54px] rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center text-white text-[18px] font-bold select-none">
               {initials}
             </div>
-            <p className="text-white text-[11px] font-semibold text-center leading-tight">
+            <p className="text-white text-[11px] font-semibold text-center leading-tight mt-0.5">
               {session.user.nome}
             </p>
-            <p className="text-white/55 text-[9px] text-center truncate w-full px-2">
+            <p className="text-white/50 text-[9px] text-center truncate w-full px-2">
               {session.user.email}
             </p>
           </div>
@@ -80,9 +81,9 @@ export function Sidebar() {
       </div>
 
       {/* ── Navegação ──────────────────────────────────────────────────── */}
-      <nav className="flex-1 py-1.5">
-        <p className="px-4 pt-2 pb-1 text-[9px] font-semibold text-gray-400 uppercase tracking-[0.1em]">
-          Menu
+      <nav className="flex-1 py-1">
+        <p className="px-4 pt-2 pb-1.5 text-[9px] font-semibold text-white/40 uppercase tracking-[0.12em]">
+          Sistema Comercial
         </p>
 
         {NAV_SECTIONS.map((section) => {
@@ -97,8 +98,8 @@ export function Sidebar() {
                 className={cn(
                   'w-full flex items-center justify-between px-4 py-[9px] text-[12px] font-semibold transition-colors',
                   isSection
-                    ? 'text-green-primary'
-                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+                    ? 'text-white bg-white/15'
+                    : 'text-white/75 hover:text-white hover:bg-white/10',
                 )}
               >
                 <span className="flex items-center gap-2.5">
@@ -109,7 +110,7 @@ export function Sidebar() {
               </button>
 
               {isOpen && (
-                <div className="bg-gray-50 border-l-0">
+                <div>
                   {section.items.map((item) => {
                     const active = pathname === item.href || pathname.startsWith(item.href + '/')
                     return (
@@ -119,8 +120,8 @@ export function Sidebar() {
                         className={cn(
                           'block pl-[42px] pr-4 py-[7px] text-[11px] transition-colors border-l-[2px]',
                           active
-                            ? 'text-green-primary font-semibold bg-green-light border-green-primary'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border-transparent',
+                            ? 'text-white font-semibold bg-white/20 border-white'
+                            : 'text-white/60 hover:text-white hover:bg-white/10 border-transparent',
                         )}
                       >
                         {item.label}
@@ -134,16 +135,16 @@ export function Sidebar() {
         })}
 
         {/* Divider */}
-        <div className="border-t border-gray-100 my-1.5" />
+        <div className="border-t border-white/15 my-1.5 mx-4" />
 
-        {/* Cadastros — aba separada */}
+        {/* Cadastros */}
         <Link
           href="/cadastros"
           className={cn(
             'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
             pathname.startsWith('/cadastros')
-              ? 'text-green-primary bg-green-light'
-              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+              ? 'text-white bg-white/15'
+              : 'text-white/75 hover:text-white hover:bg-white/10',
           )}
         >
           <IconCadastros active={pathname.startsWith('/cadastros')} />
@@ -154,7 +155,7 @@ export function Sidebar() {
       {/* ── Sair ───────────────────────────────────────────────────────── */}
       <button
         onClick={() => signOut({ callbackUrl: '/login' })}
-        className="border-t border-gray-200 px-4 py-3 flex items-center gap-2 text-left text-[11px] text-gray-400 transition-colors hover:text-gray-600 hover:bg-gray-50"
+        className="border-t border-white/15 px-4 py-3 flex items-center gap-2 text-left text-[11px] text-white/50 transition-colors hover:text-white hover:bg-white/10"
       >
         <IconSair />
         Sair
@@ -170,7 +171,7 @@ function Chevron({ open }: { open: boolean }) {
       width="12" height="12"
       viewBox="0 0 12 12"
       fill="none"
-      className={cn('transition-transform duration-200 text-gray-400', open && 'rotate-180')}
+      className={cn('transition-transform duration-200 text-white/50', open && 'rotate-180')}
     >
       <path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -180,7 +181,7 @@ function Chevron({ open }: { open: boolean }) {
 // ── Ícones de seção ──────────────────────────────────────────────────────────
 function IconOrcamentos({ active }: { active: boolean }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-green-primary' : 'text-gray-400'}>
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-white' : 'text-white/60'}>
       <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
       <path d="M4 5.5H11M4 7.5H11M4 9.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
@@ -189,7 +190,7 @@ function IconOrcamentos({ active }: { active: boolean }) {
 
 function IconAcordos({ active }: { active: boolean }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-green-primary' : 'text-gray-400'}>
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-white' : 'text-white/60'}>
       <path d="M2 10L5.5 6.5L7.5 8.5L10 5.5L13 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
       <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
     </svg>
@@ -198,7 +199,7 @@ function IconAcordos({ active }: { active: boolean }) {
 
 function IconCadastros({ active }: { active: boolean }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-green-primary' : 'text-gray-400'}>
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={active ? 'text-white' : 'text-white/60'}>
       <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
       <path d="M1.5 13C1.5 10.5 3.5 9 6 9C8.5 9 10.5 10.5 10.5 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M10.5 5.5H13.5M12 4V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -208,7 +209,7 @@ function IconCadastros({ active }: { active: boolean }) {
 
 function IconSair() {
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-gray-400">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-white/50">
       <path d="M5 2H2.5C2 2 1.5 2.5 1.5 3V10C1.5 10.5 2 11 2.5 11H5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       <path d="M8.5 9L11.5 6.5L8.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4.5 6.5H11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />

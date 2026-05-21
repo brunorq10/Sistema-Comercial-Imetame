@@ -248,6 +248,7 @@ function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number, n
     contrato_id: s.contrato_id,
     ordem: s.ordem,
     descricao: s.descricao,
+    num_os: s.num_os ?? null,
     valor_total: Number(s.valor_total),
     data_inicio: s.data_inicio?.toISOString() ?? null,
     data_fim: s.data_fim?.toISOString() ?? null,

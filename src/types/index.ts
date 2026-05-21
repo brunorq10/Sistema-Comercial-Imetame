@@ -384,6 +384,7 @@ export interface SubIndiceItem {
   contrato_id: number
   ordem: number
   descricao: string
+  num_os: string | null
   valor_total: number
   data_inicio: string | null
   data_fim: string | null

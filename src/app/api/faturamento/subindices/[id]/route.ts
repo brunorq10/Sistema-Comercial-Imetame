@@ -7,7 +7,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 
 const CAMPO_LABELS: Record<string, string> = {
-  descricao: 'Descrição', valor_total: 'Valor Total', data_inicio: 'Data Início',
+  descricao: 'Descrição', num_os: 'Nº OS', valor_total: 'Valor Total', data_inicio: 'Data Início',
   data_fim: 'Data Fim', comentarios: 'Comentários',
   jan: 'Janeiro', fev: 'Fevereiro', mar: 'Março', abr: 'Abril',
   mai: 'Maio', jun: 'Junho', jul: 'Julho', ago: 'Agosto',
@@ -25,6 +25,7 @@ function formatVal(campo: string, val: unknown): string {
 
 const schema = z.object({
   descricao: z.string().min(1).optional(),
+  num_os: z.string().optional().nullable(),
   valor_total: z.number().nonnegative().optional(),
   data_inicio: z.string().optional().nullable(),
   data_fim: z.string().optional().nullable(),
@@ -78,7 +79,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   // Registra cada campo alterado no histórico
   const historico: { subindice_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
-  const camposVerificar = ['descricao', 'valor_total', 'data_inicio', 'data_fim', 'comentarios', ...MESES] as const
+  const camposVerificar = ['descricao', 'num_os', 'valor_total', 'data_inicio', 'data_fim', 'comentarios', ...MESES] as const
 
   for (const campo of camposVerificar) {
     const rawKey = campo === 'set' ? 'set' : campo

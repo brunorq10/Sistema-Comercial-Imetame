@@ -26,6 +26,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   const [percentual, setPercentual] = useState('100')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nfAlocado, setNfAlocado] = useState<number | null>(null)
 
   const valorAtribuido = valorTotal && percentual
     ? (Number(valorTotal) * Number(percentual)) / 100
@@ -35,9 +36,25 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
     if (open) {
       setAba('lancar')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
-      setValorTotal(''); setPercentual('100'); setError(null)
+      setValorTotal(''); setPercentual('100'); setError(null); setNfAlocado(null)
     }
   }, [open])
+
+  const handleNumeroNFBlur = async () => {
+    if (!numeroNF.trim()) { setNfAlocado(null); return }
+    try {
+      const res = await fetch(`/api/faturamento/nfs/percentual-total?numero_nf=${encodeURIComponent(numeroNF.trim())}`)
+      if (res.ok) {
+        const json = await res.json()
+        const total = Number(json.data?.total ?? 0)
+        setNfAlocado(total)
+        if (total > 0) {
+          const restante = 100 - total
+          setPercentual(restante > 0 ? String(restante) : '0')
+        }
+      }
+    } catch { /* silencia — não bloqueia o lançamento */ }
+  }
 
   const handleSubmit = async () => {
     if (!numeroNF.trim()) { setError('Número da NF obrigatório'); return }
@@ -137,7 +154,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">Nº OS</p>
-              <p className="text-[12px]">{contrato.num_os ?? '—'}</p>
+              <p className="text-[12px]">{subindice.num_os ?? '—'}</p>
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">Evento de medição</p>
@@ -157,7 +174,19 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Número da NF *" className="col-span-2">
-              <Input placeholder="Ex: 000123" value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} />
+              <Input
+                placeholder="Ex: 000123"
+                value={numeroNF}
+                onChange={(e) => { setNumeroNF(e.target.value); setNfAlocado(null) }}
+                onBlur={handleNumeroNFBlur}
+              />
+              {nfAlocado !== null && nfAlocado > 0 && (
+                <p className={`text-[10px] mt-1 ${nfAlocado >= 100 ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
+                  {nfAlocado >= 100
+                    ? `NF ${numeroNF} já tem 100% alocados — não é possível adicionar novos lançamentos.`
+                    : `NF ${numeroNF} já possui ${nfAlocado.toFixed(2)}% alocados. Disponível: ${(100 - nfAlocado).toFixed(2)}%`}
+                </p>
+              )}
             </Field>
             <Field label="Data de emissão *">
               <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />

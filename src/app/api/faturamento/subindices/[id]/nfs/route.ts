@@ -24,6 +24,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  // Validate total % for this NF across all active records globally
+  const totalExistente = await prisma.notaFiscalContrato.aggregate({
+    where: { numero_nf: parsed.data.numero_nf, ativa: true },
+    _sum: { percentual: true },
+  })
+  const totalAlocado = Number(totalExistente._sum.percentual ?? 0)
+  const restante = 100 - totalAlocado
+  if (totalAlocado + parsed.data.percentual > 100 + 0.001) {
+    return NextResponse.json(
+      { data: null, error: `NF ${parsed.data.numero_nf} já possui ${totalAlocado.toFixed(2)}% alocados. Restam ${restante.toFixed(2)}% disponíveis.` },
+      { status: 422 },
+    )
+  }
+
   const valor_atribuido = (parsed.data.valor_total_nf * parsed.data.percentual) / 100
 
   const nf = await prisma.notaFiscalContrato.create({

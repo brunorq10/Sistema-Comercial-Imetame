@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
 const schema = z.object({
   contrato_id: z.number().int().positive(),
   descricao: z.string().min(1),
+  num_os: z.string().optional().nullable(),
   valor_total: z.number().nonnegative(),
   data_inicio: z.string().optional().nullable(),
   data_fim: z.string().optional().nullable(),
@@ -65,13 +66,14 @@ export async function POST(req: NextRequest) {
   })
   const ordem = (maxOrdem._max.ordem ?? 0) + 1
 
-  const { set: set_val, contrato_id, data_inicio, data_fim, ...rest } = parsed.data
+  const { set: set_val, contrato_id, data_inicio, data_fim, num_os, ...rest } = parsed.data
 
   const subindice = await prisma.subIndiceFaturamento.create({
     data: {
       contrato_id,
       ordem,
       descricao: rest.descricao,
+      num_os: num_os ?? null,
       valor_total: rest.valor_total,
       data_inicio: data_inicio ? new Date(data_inicio) : null,
       data_fim: data_fim ? new Date(data_fim) : null,

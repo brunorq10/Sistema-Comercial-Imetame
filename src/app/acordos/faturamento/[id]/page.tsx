@@ -78,7 +78,6 @@ function buildTimeline(contrato: ContratoDetalhe, historico: HistoricoEntry[]): 
     descricao: [
       contrato.descricao ?? contrato.indice,
       contrato.responsavel ? `Responsável: ${contrato.responsavel.nome}` : null,
-      contrato.num_os ?? null,
     ].filter(Boolean).join(' · '),
   }]
   contrato.subindices.forEach((s) =>
@@ -241,7 +240,6 @@ export default function ContratoVisaoGeralPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Informações</h2>
-          <InfoRow label="Nº OS" value={contrato.num_os} />
           <InfoRow label="Nº Acordo" value={contrato.num_acordo} />
           <InfoRow label="Nº Proposta" value={contrato.num_proposta} />
           <InfoRow label="Responsável" value={contrato.responsavel?.nome} />
@@ -317,18 +315,20 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
     <div className="border border-gray-200 rounded-md overflow-hidden">
       <table className="w-full border-collapse table-fixed">
         <colgroup>
-          <col className="w-[90px]" />
-          <col />
-          <col className="w-[100px]" />
-          <col className="w-[100px]" />
-          <col className="w-[100px]" />
-          <col className="w-[72px]" />
           <col className="w-[80px]" />
+          <col />
+          <col className="w-[90px]" />
+          <col className="w-[90px]" />
+          <col className="w-[90px]" />
+          <col className="w-[90px]" />
+          <col className="w-[66px]" />
+          <col className="w-[76px]" />
         </colgroup>
         <thead>
           <tr>
             <th className={thCls}>Índice</th>
             <th className={thCls}>Descrição</th>
+            <th className={thCls}>Nº OS</th>
             <th className={thCls}>Total</th>
             <th className={thCls}>Faturado</th>
             <th className={thCls}>Saldo</th>
@@ -349,6 +349,9 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
                 <td className={`${tdCls} overflow-hidden`}>
                   <span className="truncate block font-medium text-gray-800" title={s.descricao}>{s.descricao}</span>
                 </td>
+                <td className={tdCls}>
+                  {s.num_os ? <span className="text-gray-700 font-mono text-[10px]">{s.num_os}</span> : <span className="text-gray-300">—</span>}
+                </td>
                 <td className={tdCls}><span className="font-semibold text-blue-600">{formatCurrency(s.valor_total)}</span></td>
                 <td className={tdCls}><span className="font-semibold text-green-700">{formatCurrency(s.total_faturado)}</span></td>
                 <td className={tdCls}><span className={saldo > 0 ? 'text-orange-600' : 'text-green-600'}>{formatCurrency(Math.abs(saldo))}</span></td>
@@ -367,7 +370,7 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
         </tbody>
         <tfoot>
           <tr className="bg-gray-50">
-            <td colSpan={2} className="px-2 py-2 text-[11px] font-bold text-gray-600 border-t border-gray-200">TOTAL</td>
+            <td colSpan={3} className="px-2 py-2 text-[11px] font-bold text-gray-600 border-t border-gray-200">TOTAL</td>
             <td className="px-2 py-2 text-[11px] font-bold text-blue-600 border-t border-gray-200">{formatCurrency(totalContrato)}</td>
             <td className="px-2 py-2 text-[11px] font-bold text-green-700 border-t border-gray-200">
               {formatCurrency(contrato.subindices.reduce((a, s) => a + s.total_faturado, 0))}

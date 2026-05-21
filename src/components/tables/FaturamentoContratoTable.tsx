@@ -228,7 +228,7 @@ export function FaturamentoContratoTable({
                     ? <span className="text-gray-600 text-[10px]">{RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] ?? contrato.cliente.ramo_atuacao}</span>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className={mBase} style={{ background: ctBg }}>{contrato.num_os ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}>—</td>
                 <td className={mBase} style={{ background: ctBg }}>
                   <span className="bg-gray-200 text-gray-700 rounded px-1 text-[10px]">{anoRef}</span>
                 </td>
@@ -339,7 +339,7 @@ export function FaturamentoContratoTable({
                         ? <span className="text-gray-400 text-[10px]">{RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] ?? contrato.cliente.ramo_atuacao}</span>
                         : <span className="text-gray-200">—</span>}
                     </td>
-                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-400">{contrato.num_os ?? '—'}</span></td>
+                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-600">{sub.num_os ?? '—'}</span></td>
                     <td className={sBase} style={{ background: subBg }}>
                       {(() => {
                         const sano = getSubAno(sub.data_inicio, contrato.ano_referencia)

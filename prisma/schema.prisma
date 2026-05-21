@@ -472,6 +472,7 @@ model SubIndiceFaturamento {
   valor_total Decimal           @db.Decimal(15, 2)
   data_inicio DateTime?
   data_fim    DateTime?
+  num_os                   String?
   comentarios              String?
   comentario_updated_at    DateTime?
   comentario_updated_by    Int?
