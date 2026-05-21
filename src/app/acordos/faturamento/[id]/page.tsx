@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -15,29 +15,8 @@ const ContratoFaturamentoChart = dynamic(
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface NFDetalhe extends NFContratoItem { created_at: string }
 interface SubDetalhe extends Omit<SubIndiceItem, 'notas_fiscais'> { notas_fiscais: NFDetalhe[] }
-
-interface PropostaTecnicaInfo {
-  id: number; versao: number
-  hh_direto: number | null; hh_indireto: number | null; hh_total: number | null
-  peso_montagem: number | null
-  peso_equipamentos: number | null; peso_tubulacoes: number | null
-  peso_suportes: number | null; peso_estruturas: number | null
-  data_envio: string | null
-}
-interface PropostaComercialInfo {
-  id: number; versao: number; proposta_tecnica_id: number | null
-  valor_montagem_mecanica: number | null; valor_terceiros: number | null; valor_total: number | null
-  data_envio: string | null; resultado: string | null
-}
-interface SolicitacaoInfo {
-  id: number; numero: string
-  propostas_tecnicas: PropostaTecnicaInfo[]
-  propostas_comerciais: PropostaComercialInfo[]
-}
 interface ContratoDetalhe extends Omit<ContratoItem, 'subindices'> {
   created_at: string
-  solicitacao_id: number | null
-  solicitacao: SolicitacaoInfo | null
   subindices: SubDetalhe[]
 }
 interface HistoricoEntry {
@@ -282,14 +261,6 @@ export default function ContratoVisaoGeralPage() {
               ))}
             </div>
           )}
-          {contrato.num_proposta && (
-            <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5">
-              <span className="text-[10px] text-gray-400">Proposta vinculada:</span>
-              <span className={`text-[10px] font-semibold ${contrato.solicitacao ? 'text-green-700' : 'text-orange-500'}`}>
-                {contrato.num_proposta}{contrato.solicitacao ? '' : ' (não encontrada)'}
-              </span>
-            </div>
-          )}
         </div>
 
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4">
@@ -297,11 +268,6 @@ export default function ContratoVisaoGeralPage() {
           <EventosMedicaoTable contrato={contrato} totalContrato={totalContrato} />
         </div>
       </div>
-
-      {/* Proposta que originou o contrato */}
-      {contrato.solicitacao && (
-        <PropostaSection solicitacao={contrato.solicitacao} />
-      )}
 
       {/* Histórico */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
@@ -410,248 +376,6 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
           </tr>
         </tfoot>
       </table>
-    </div>
-  )
-}
-
-// ── Vincular Solicitação ──────────────────────────────────────────────────────
-function VincularSolicitacao({ contratoId, solicitacaoAtual, onVinculado }: {
-  contratoId: number
-  solicitacaoAtual: SolicitacaoInfo | null
-  onVinculado: () => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [busca, setBusca] = useState('')
-  const [resultados, setResultados] = useState<{ id: number; numero: string; cliente: string }[]>([])
-  const [saving, setSaving] = useState(false)
-  const debounceRef = useRef<NodeJS.Timeout | null>(null)
-
-  const handleBusca = (v: string) => {
-    setBusca(v)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      if (v.length < 2) { setResultados([]); return }
-      const res = await fetch(`/api/solicitacoes?modo=autocomplete&busca=${encodeURIComponent(v)}`)
-      const json = await res.json()
-      setResultados(json.data ?? [])
-    }, 300)
-  }
-
-  const handleVincular = async (solicitacaoId: number | null) => {
-    setSaving(true)
-    await fetch(`/api/faturamento/contratos/${contratoId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ solicitacao_id: solicitacaoId }),
-    })
-    setSaving(false)
-    setEditing(false)
-    setBusca('')
-    setResultados([])
-    onVinculado()
-  }
-
-  if (!editing) {
-    return (
-      <div className="pt-2 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">Solicitação vinculada</span>
-          <button onClick={() => setEditing(true)} className="text-[10px] text-blue-500 hover:underline">
-            {solicitacaoAtual ? 'Alterar' : '+ Vincular'}
-          </button>
-        </div>
-        {solicitacaoAtual ? (
-          <p className="text-xs font-semibold text-gray-700 mt-0.5">{solicitacaoAtual.numero}</p>
-        ) : (
-          <p className="text-xs text-gray-300 mt-0.5">Nenhuma</p>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="pt-2 border-t border-gray-100 space-y-1.5">
-      <p className="text-xs text-gray-400">Buscar solicitação</p>
-      <input
-        autoFocus
-        value={busca}
-        onChange={(e) => handleBusca(e.target.value)}
-        placeholder="Digite o número..."
-        className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-      />
-      {resultados.length > 0 && (
-        <div className="border border-gray-200 rounded divide-y divide-gray-100">
-          {resultados.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => handleVincular(r.id)}
-              disabled={saving}
-              className="w-full text-left px-2 py-1.5 hover:bg-blue-50 flex flex-col"
-            >
-              <span className="text-xs font-semibold text-gray-800">{r.numero}</span>
-              <span className="text-[10px] text-gray-400">{r.cliente}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex gap-2">
-        {solicitacaoAtual && (
-          <button onClick={() => handleVincular(null)} disabled={saving} className="text-[10px] text-red-400 hover:underline">
-            Desvincular
-          </button>
-        )}
-        <button onClick={() => { setEditing(false); setBusca(''); setResultados([]) }} className="text-[10px] text-gray-400 hover:underline ml-auto">
-          Cancelar
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Proposta Section ──────────────────────────────────────────────────────────
-const RESULTADO_LABELS: Record<string, { label: string; cls: string }> = {
-  GANHOU:  { label: 'Ganhou', cls: 'text-green-700 bg-green-50 border-green-200' },
-  PERDEU:  { label: 'Perdeu', cls: 'text-red-600 bg-red-50 border-red-200' },
-  STANDBY: { label: 'Standby', cls: 'text-orange-600 bg-orange-50 border-orange-200' },
-  CANCELADA: { label: 'Cancelada', cls: 'text-gray-500 bg-gray-50 border-gray-200' },
-}
-
-function PropostaSection({ solicitacao }: { solicitacao: SolicitacaoInfo }) {
-  const pt = solicitacao.propostas_tecnicas[0] ?? null
-  const pc = solicitacao.propostas_comerciais[0] ?? null
-
-  const hhTotalRaw = pt?.hh_total ?? ((pt?.hh_direto ?? 0) + (pt?.hh_indireto ?? 0))
-  const hhTotal = hhTotalRaw || null
-  const pesoTotal = pt?.peso_montagem ?? null
-  const hhPorTon = hhTotal && pesoTotal && pesoTotal > 0 ? hhTotal / pesoTotal : null
-
-  const valorMontagem = pc?.valor_montagem_mecanica ?? null
-  const valorTerceiros = pc?.valor_terceiros ?? null
-  const valorTotal = pc?.valor_total ?? null
-  const valorSemTerceiros = valorTotal && valorTerceiros ? valorTotal - valorTerceiros : valorMontagem
-  const rsPorKg = valorMontagem && pesoTotal && pesoTotal > 0 ? (valorMontagem / (pesoTotal * 1000)) : null
-  const rsPorHHSemTerceiros = valorSemTerceiros && hhTotal && hhTotal > 0 ? valorSemTerceiros / hhTotal : null
-  const rsPorHHComTerceiros = valorTotal && hhTotal && hhTotal > 0 ? valorTotal / hhTotal : null
-
-  const categorias = [
-    { label: 'Equipamentos', val: pt?.peso_equipamentos },
-    { label: 'Tubulações', val: pt?.peso_tubulacoes },
-    { label: 'Estruturas', val: pt?.peso_estruturas },
-    { label: 'Suportes', val: pt?.peso_suportes },
-  ].filter((c) => c.val != null && c.val > 0)
-
-  const resultadoInfo = pc?.resultado ? (RESULTADO_LABELS[pc.resultado] ?? null) : null
-
-  const revisoes = [...solicitacao.propostas_tecnicas].sort((a, b) => b.versao - a.versao)
-
-  return (
-    <section className="bg-white border border-gray-200 rounded-lg p-4">
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-        ▦ Proposta que originou o contrato
-        <span className="font-normal text-gray-400 normal-case">— Solicitação {solicitacao.numero}</span>
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        {/* Proposta técnica */}
-        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-800">Proposta técnica</p>
-            {pt && <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">v{pt.versao} atual</span>}
-          </div>
-          {pt ? (
-            <>
-              <PropostaRow label="Data de envio" value={formatDate(pt.data_envio) ?? '—'} />
-              {hhTotal   && <PropostaRow label="HH Total" value={`${hhTotal.toLocaleString('pt-BR')} HH`} highlight />}
-              {pesoTotal && <PropostaRow label="Peso total" value={`${pesoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} t`} highlight />}
-              {hhPorTon  && <PropostaRow label="HH/ton" value={`${hhPorTon.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} HH/t`} highlight />}
-
-              {categorias.length > 0 && (
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1.5">Categorias de montagem</p>
-                  {categorias.map((c) => {
-                    const perc = pesoTotal && pesoTotal > 0 ? (c.val! / pesoTotal) * 100 : 0
-                    return (
-                      <div key={c.label} className="flex justify-between text-xs py-0.5">
-                        <span className="text-gray-600">{c.label}</span>
-                        <span className="font-medium text-gray-800">
-                          {c.val!.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} t
-                          <span className="text-gray-400 ml-1">({perc.toFixed(0)}%)</span>
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {revisoes.length > 0 && (
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1.5">Histórico de revisões</p>
-                  <div className="space-y-1.5">
-                    {revisoes.map((r, i) => (
-                      <div key={r.id} className={`flex items-center gap-2 text-xs ${i === 0 ? 'font-semibold' : 'text-gray-500'}`}>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${i === 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                          v{r.versao}{i === 0 ? ' atual' : ''}
-                        </span>
-                        <span>{formatDate(r.data_envio) ?? 'Sem data'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Nenhuma proposta técnica registrada.</p>
-          )}
-        </div>
-
-        {/* Proposta comercial */}
-        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-800">Proposta comercial</p>
-            {pc && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">v{pc.versao} atual</span>}
-          </div>
-          {pc ? (
-            <>
-              <PropostaRow label="Data de envio" value={formatDate(pc.data_envio) ?? '—'} />
-              {pc.proposta_tecnica_id && (
-                <PropostaRow label="Revisão técnica ref." value={`v${solicitacao.propostas_tecnicas.find((p) => p.id === pc.proposta_tecnica_id)?.versao ?? '?'}`} />
-              )}
-
-              <div className="pt-1 border-t border-gray-100 space-y-1.5">
-                {valorTotal      && <PropostaRow label="Valor total" value={formatCurrency(valorTotal)} bold />}
-                {valorMontagem   && <PropostaRow label="Valor montagem" value={formatCurrency(valorMontagem)} />}
-                {valorTerceiros  && <PropostaRow label="Valor terceiros" value={formatCurrency(valorTerceiros)} />}
-                {valorSemTerceiros && <PropostaRow label="Valor sem terceiros" value={formatCurrency(valorSemTerceiros)} highlight />}
-              </div>
-
-              {(rsPorKg || rsPorHHSemTerceiros || rsPorHHComTerceiros) && (
-                <div className="pt-1 border-t border-gray-100 space-y-1.5">
-                  {rsPorKg              && <PropostaRow label="R$/kg — montagem" value={`R$ ${rsPorKg.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/kg`} highlight />}
-                  {rsPorHHSemTerceiros  && <PropostaRow label="R$/HH — sem terceiros" value={`R$ ${rsPorHHSemTerceiros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} highlight />}
-                  {rsPorHHComTerceiros  && <PropostaRow label="R$/HH — com terceiros" value={`R$ ${rsPorHHComTerceiros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} highlight />}
-                </div>
-              )}
-
-              {resultadoInfo && (
-                <div className={`mt-2 border rounded-lg px-3 py-2.5 ${resultadoInfo.cls}`}>
-                  <p className="text-xs font-bold">{resultadoInfo.label}</p>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Nenhuma proposta comercial registrada.</p>
-          )}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function PropostaRow({ label, value, highlight, bold }: { label: string; value: string; highlight?: boolean; bold?: boolean }) {
-  return (
-    <div className="flex justify-between items-baseline gap-2">
-      <span className="text-xs text-gray-500 shrink-0">{label}</span>
-      <span className={`text-xs text-right ${bold ? 'font-bold text-gray-900' : highlight ? 'font-semibold text-blue-600' : 'font-medium text-gray-800'}`}>{value}</span>
     </div>
   )
 }
