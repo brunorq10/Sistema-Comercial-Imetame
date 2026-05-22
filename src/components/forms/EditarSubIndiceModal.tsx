@@ -248,10 +248,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           <Input placeholder="Obs..." value={comentarios} onChange={(e) => setComentarios(e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Período — De">
-          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} disabled={readOnly} />
+          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} />
         </Field>
         <Field label="Até">
-          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} disabled={readOnly} />
+          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} />
         </Field>
       </div>
 

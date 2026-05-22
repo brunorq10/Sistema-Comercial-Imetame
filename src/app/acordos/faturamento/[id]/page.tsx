@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
@@ -114,6 +114,9 @@ function getDistinctAnos(contrato: ContratoDetalhe): number[] {
 export default function ContratoVisaoGeralPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const backTo = searchParams.get('from') === 'painel' ? '/acordos/painel' : '/acordos/faturamento'
+  const backLabel = searchParams.get('from') === 'painel' ? 'Meu Painel' : 'Controle de faturamento'
   const [contrato, setContrato] = useState<ContratoDetalhe | null>(null)
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -175,8 +178,8 @@ export default function ContratoVisaoGeralPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-gray-400 mb-1">
-            <button onClick={() => router.push('/acordos/faturamento')} className="hover:underline">
-              Controle de faturamento
+            <button onClick={() => router.push(backTo)} className="hover:underline">
+              {backLabel}
             </button>
             {' › '}{contrato.indice}
           </p>
@@ -186,7 +189,7 @@ export default function ContratoVisaoGeralPage() {
         <div className="flex items-center gap-3 shrink-0">
           <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusInfo.cls}`}>{statusInfo.label}</span>
           <button
-            onClick={() => router.push('/acordos/faturamento')}
+            onClick={() => router.push(backTo)}
             className="border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-1.5"
           >
             ← Voltar

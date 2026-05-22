@@ -14,14 +14,14 @@ type MesKey = typeof MESES[number]
 
 // ── Column widths ─────────────────────────────────────────────────────────────
 const W = {
-  indice: 110, cliente: 120, descricao: 235,
+  indice: 110, cliente: 120,
   os: 100, ano: 65, acordo: 115,
   responsavel: 130, status: 90,
-  acoes: 120,
+  acoes: 110,
 }
 const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
-const FROZEN_W = L.descricao + W.descricao
-const MIN_W = FROZEN_W + W.os + W.ano + W.acordo + W.responsavel + W.status + W.acoes
+// descricao é flexível — não tem width fixo, ocupa o espaço restante
+const MIN_W = W.indice + W.cliente + 200 + W.os + W.ano + W.acordo + W.responsavel + W.status + W.acoes
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubIndiceComAlteracao extends SubIndiceItem {
@@ -305,9 +305,9 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onEditar }: Pa
 
   return (
     <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
-      <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
+      <table className="border-collapse text-[11px]" style={{ width: '100%', minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.descricao }} />
+          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col />{/* descricao — flexível */}
           <col style={{ width: W.os }} /><col style={{ width: W.ano }} /><col style={{ width: W.acordo }} />
           <col style={{ width: W.responsavel }} /><col style={{ width: W.status }} />
           <col style={{ width: W.acoes }} />
@@ -377,7 +377,7 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onEditar }: Pa
                 </td>
                 <td className={mBase} style={{ background: ctBg }} onClick={(e) => e.stopPropagation()}>
                   <Link
-                    href={`/acordos/faturamento/${contrato.id}`}
+                    href={`/acordos/faturamento/${contrato.id}?from=painel`}
                     className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
                     title="Visão geral"
                   >👁</Link>
