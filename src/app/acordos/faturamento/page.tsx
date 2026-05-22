@@ -45,6 +45,7 @@ export default function FaturamentoPage() {
   // Opções de filtro (populadas a partir dos contratos existentes)
   const [clientes,     setClientes]     = useState<{ id: number; nome: string }[]>([])
   const [responsaveis, setResponsaveis] = useState<{ id: number; nome: string }[]>([])
+  const [opcoesMercado,  setOpcoesMercado]  = useState<string[]>([])
   const [opcoesOs,       setOpcoesOs]       = useState<string[]>([])
   const [opcoesAcordo,   setOpcoesAcordo]   = useState<string[]>([])
   const [opcoesProposta, setOpcoesProposta] = useState<string[]>([])
@@ -52,6 +53,7 @@ export default function FaturamentoPage() {
   // Filtros controle
   const [ano,          setAno]          = useState(String(anoAtual))
   const [clienteId,    setClienteId]    = useState('')
+  const [mercado,      setMercado]      = useState('')
   const [status,       setStatus]       = useState('')
   const [responsavelId, setResponsavelId] = useState('')
   const [numOs,        setNumOs]        = useState('')
@@ -106,6 +108,7 @@ export default function FaturamentoPage() {
       if (j.data) {
         setClientes(j.data.clientes ?? [])
         setResponsaveis(j.data.responsaveis ?? [])
+        setOpcoesMercado(j.data.mercados ?? [])
         setOpcoesOs(j.data.num_os ?? [])
         setOpcoesAcordo(j.data.num_acordos ?? [])
         setOpcoesProposta(j.data.num_propostas ?? [])
@@ -120,6 +123,7 @@ export default function FaturamentoPage() {
       const params = new URLSearchParams()
       if (ano) params.set('ano', ano)
       if (clienteId) params.set('cliente_id', clienteId)
+      if (mercado) params.set('mercado', mercado)
       if (status) params.set('status', status)
       if (responsavelId) params.set('responsavel_id', responsavelId)
       if (numOs) params.set('num_os', numOs)
@@ -139,7 +143,7 @@ export default function FaturamentoPage() {
     } finally {
       setLoading(false)
     }
-  }, [ano, clienteId, status, responsavelId, numOs, numAcordo, numProposta])
+  }, [ano, clienteId, mercado, status, responsavelId, numOs, numAcordo, numProposta])
 
   // ── Fetch NFs ─────────────────────────────────────────────────────────────────
   const fetchNfs = useCallback(async () => {
@@ -284,8 +288,16 @@ export default function FaturamentoPage() {
     }
   }
 
+  const MERCADO_LABELS: Record<string, string> = {
+    PAPEL_CELULOSE: 'Papel e Celulose',
+    SIDERURGIA:     'Siderurgia',
+    MINERACAO:      'Mineração',
+    OLEO_GAS:       'Óleo e Gás',
+    OUTROS:         'Outros',
+  }
+
   const limparFiltros = () => {
-    setAno(String(anoAtual)); setClienteId(''); setStatus(''); setResponsavelId('')
+    setAno(String(anoAtual)); setClienteId(''); setMercado(''); setStatus(''); setResponsavelId('')
     setNumOs(''); setNumAcordo(''); setNumProposta('')
   }
   const limparFiltrosNf = () => {
@@ -358,6 +370,15 @@ export default function FaturamentoPage() {
                 value={clienteId}
                 onChange={setClienteId}
                 options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className={fLbl}>Mercado</label>
+              <SearchableSelect
+                value={mercado}
+                onChange={setMercado}
+                options={opcoesMercado.map((m) => ({ value: m, label: MERCADO_LABELS[m] ?? m }))}
+                emptyLabel="Todos"
               />
             </div>
             <div className="flex-1 min-w-0">

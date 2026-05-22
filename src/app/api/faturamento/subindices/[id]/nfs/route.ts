@@ -24,6 +24,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  // RN-CF-07: bloquear lançamento quando há alteração de previsão pendente
+  const alteracaoPendente = await prisma.previsaoAlteracao.count({
+    where: { subindice_id: subindiceId, status: 'PENDENTE' },
+  })
+  if (alteracaoPendente > 0) {
+    return NextResponse.json(
+      { data: null, error: 'Não é possível lançar NF: existe uma solicitação de alteração de previsão pendente para este sub-índice. Aguarde a aprovação ou reprovação pelo Gestão Acordos.' },
+      { status: 422 },
+    )
+  }
+
   // Validate total % for this NF across all active records globally
   const totalExistente = await prisma.notaFiscalContrato.aggregate({
     where: { numero_nf: parsed.data.numero_nf, ativa: true },
@@ -53,6 +64,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
   })
 
+  // RN-CF-16: alerta informativo (não bloqueio) quando faturado ultrapassa valor total
+  const subindice = await prisma.subIndiceFaturamento.findUnique({
+    where: { id: subindiceId },
+    select: { valor_total: true },
+  })
+  const totalFaturado = await prisma.notaFiscalContrato.aggregate({
+    where: { subindice_id: subindiceId, ativa: true },
+    _sum: { valor_atribuido: true },
+  })
+  const fatAcumulado = Number(totalFaturado._sum.valor_atribuido ?? 0)
+  const valorTotal   = Number(subindice?.valor_total ?? 0)
+  const warning = fatAcumulado > valorTotal + 0.01
+    ? `Atenção: o faturamento acumulado (R$ ${fatAcumulado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassa o valor total previsto do sub-índice (R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).`
+    : null
+
   return NextResponse.json({
     data: {
       id: nf.id,
@@ -64,6 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa,
     },
+    warning,
     error: null,
   }, { status: 201 })
 }

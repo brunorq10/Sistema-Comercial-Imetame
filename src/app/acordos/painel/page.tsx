@@ -310,6 +310,7 @@ export default function MeuPainelAcordosPage() {
           indiceLabel={modalEditar.indiceLabel}
           anoRef={modalEditar.anoRef}
           readOnly={!(isGestao || responsavelId === String(userId))}
+          blockPastMonths={!isGestao}
         />
       )}
     </div>

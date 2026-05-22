@@ -14,7 +14,7 @@ export async function GET() {
       num_os:       true,
       num_acordo:   true,
       num_proposta: true,
-      cliente:      { select: { id: true, nome: true } },
+      cliente:      { select: { id: true, nome: true, ramo_atuacao: true } },
       responsavel:  { select: { id: true, nome: true } },
     },
   })
@@ -27,13 +27,15 @@ export async function GET() {
   const osSet       = new Set<string>()
   const acordoSet   = new Set<string>()
   const propostaSet = new Set<string>()
+  const mercadoSet  = new Set<string>()
 
   for (const c of contratos) {
     clientesMap.set(c.cliente.id, c.cliente.nome)
     if (c.responsavel) responsaveisMap.set(c.responsavel.id, c.responsavel.nome)
-    if (c.num_os)       osSet.add(c.num_os)
-    if (c.num_acordo)   acordoSet.add(c.num_acordo)
-    if (c.num_proposta) propostaSet.add(c.num_proposta)
+    if (c.num_os)            osSet.add(c.num_os)
+    if (c.num_acordo)        acordoSet.add(c.num_acordo)
+    if (c.num_proposta)      propostaSet.add(c.num_proposta)
+    if (c.cliente.ramo_atuacao) mercadoSet.add(c.cliente.ramo_atuacao)
   }
 
   return NextResponse.json({
@@ -43,6 +45,7 @@ export async function GET() {
       num_os:       Array.from(osSet).sort(),
       num_acordos:  Array.from(acordoSet).sort(),
       num_propostas: Array.from(propostaSet).sort(),
+      mercados:     Array.from(mercadoSet).sort(),
     },
     error: null,
   })

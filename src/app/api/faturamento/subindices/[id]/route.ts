@@ -112,6 +112,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
+  // RN-CF-20: bloquear exclusão quando há NFs ativas vinculadas
+  const nfsAtivas = await prisma.notaFiscalContrato.count({ where: { subindice_id: id, ativa: true } })
+  if (nfsAtivas > 0) {
+    return NextResponse.json(
+      { data: null, error: `Não é possível excluir: existem ${nfsAtivas} NF(s) ativa(s) vinculada(s). Inative-as antes de excluir.` },
+      { status: 422 },
+    )
+  }
+
   await prisma.subIndiceFaturamento.delete({ where: { id } })
   return NextResponse.json({ data: null, error: null })
 }

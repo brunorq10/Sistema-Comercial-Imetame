@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
   const num_os = searchParams.get('num_os') ?? undefined
   const num_acordo = searchParams.get('num_acordo') ?? undefined
   const num_proposta = searchParams.get('num_proposta') ?? undefined
+  const mercado = searchParams.get('mercado') ?? undefined
 
   try {
     const anoNum = ano ? Number(ano) : undefined
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
         ...(num_os && { num_os }),
         ...(num_acordo && { num_acordo }),
         ...(num_proposta && { num_proposta }),
+        ...(mercado && { cliente: { ramo_atuacao: mercado as never } }),
       },
       orderBy: [{ indice: 'asc' }],
       include: {

@@ -26,6 +26,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   const [percentual, setPercentual] = useState('100')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
   const [nfAlocado, setNfAlocado] = useState<number | null>(null)
 
   const valorAtribuido = valorTotal && percentual
@@ -36,7 +37,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
     if (open) {
       setAba('lancar')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
-      setValorTotal(''); setPercentual('100'); setError(null); setNfAlocado(null)
+      setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null)
     }
   }, [open])
 
@@ -63,7 +64,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
     if (!valorTotal || Number(valorTotal) <= 0) { setError('Valor total inválido'); return }
     if (!percentual || Number(percentual) <= 0 || Number(percentual) > 100) { setError('Percentual deve estar entre 0,01 e 100'); return }
 
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setWarning(null)
     try {
       const res = await fetch(`/api/faturamento/subindices/${subindice.id}/nfs`, {
         method: 'POST',
@@ -78,6 +79,8 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar NF'); return }
+      // RN-CF-16: alerta informativo (não bloqueia)
+      if (json.warning) { setWarning(json.warning); onSuccess(); return }
       onSuccess(); onClose()
     } finally {
       setLoading(false)
@@ -141,6 +144,12 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         <>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
+          )}
+          {warning && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-800 text-xs px-3 py-2 rounded mb-4 flex gap-2 items-start">
+              <span className="text-sm">⚠</span>
+              <span>{warning} O lançamento foi registrado normalmente.</span>
+            </div>
           )}
 
           <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 grid grid-cols-2 gap-x-4 gap-y-1">

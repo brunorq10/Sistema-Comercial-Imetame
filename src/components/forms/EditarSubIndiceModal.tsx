@@ -59,9 +59,10 @@ interface Props {
   indiceLabel: string
   anoRef: number
   readOnly?: boolean
+  blockPastMonths?: boolean  // RN-CF-09: Responsável não pode editar meses passados
 }
 
-export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef, readOnly }: Props) {
+export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef, readOnly, blockPastMonths }: Props) {
   const [descricao, setDescricao] = useState('')
   const [numOs, setNumOs] = useState('')
   const [dataInicio, setDataInicio] = useState('')
@@ -179,6 +180,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               setError(`A soma dos meses${label} (R$ ${fmt(soma)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
             }
           }
+        } else if (disponivel > 0.01) {
+          // RN-CF-06: previsão mensal obrigatória quando há valor disponível
+          const label = anosOrdenados.length > 1 ? ` para ${a}` : ''
+          setError(`Previsão mensal obrigatória${label} — preencha ao menos um mês (disponível: R$ ${fmt(disponivel)})`)
+          return
         }
       }
     }
@@ -362,22 +368,27 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               {MESES.map((m, mi) => {
                 const ativo = isMesAtivo(ano, mi, dataInicio, dataFim)
                 const past = isMesPast(ano, mi)
+                const blockedByRole = blockPastMonths && past   // RN-CF-09
                 const current = Number(anos[ano]?.meses[m] || 0)
                 const original = ano === subAno ? Number((subindice as unknown as Record<string, unknown>)[m] ?? 0) : 0
-                const pastChanged = ativo && past && Math.abs(original - current) > 0.01
+                const pastChanged = ativo && past && !blockedByRole && Math.abs(original - current) > 0.01
+                const cellDisabled = !ativo || blockedByRole
                 return (
                   <div key={m}>
                     <p className={`text-[9px] uppercase text-center mb-0.5 ${
-                      !ativo ? 'text-gray-200' : pastChanged ? 'text-amber-600 font-semibold' : 'text-gray-400'
+                      !ativo          ? 'text-gray-200'
+                      : blockedByRole ? 'text-gray-300'
+                      : pastChanged   ? 'text-amber-600 font-semibold'
+                      : 'text-gray-400'
                     }`}>
                       {MESES_LABELS[mi]}
                     </p>
                     <CurrencyInput
                       value={anos[ano]?.meses[m] ?? ''}
                       onChange={(v) => updateMes(ano, m, v)}
-                      disabled={!ativo}
+                      disabled={cellDisabled}
                       className={`text-center px-1.5 py-[3px] text-[11px] ${
-                        !ativo
+                        cellDisabled
                           ? 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
                           : pastChanged
                           ? 'border-amber-400 bg-amber-50'
