@@ -164,22 +164,52 @@ export default function MeuPainelAcordosPage() {
     })
   }, [contratos, filtroClienteId, filtroNumOs])
 
-  const { totalContratos, totalSubindices, prevPassado, prevAtual, prevProximo,
-          mesPassadoLabel, mesAtualLabel, mesProximoLabel } = useMemo(() => {
+  const indicators = useMemo(() => {
     const allSubs = filteredContratos.flatMap((c) => c.subindices)
-    const m = new Date().getMonth()
-    const mp = m === 0 ? 11 : m - 1
-    const mn = m === 11 ? 0 : m + 1
-    const sumMes = (idx: number) => allSubs.reduce((acc, s) => acc + (Number(s[MESES[idx] as MesKey]) || 0), 0)
+    const allNFs  = allSubs.flatMap((s) => s.notas_fiscais ?? [])
+
+    const now = new Date()
+    const m   = now.getMonth()
+    const mp  = m === 0 ? 11 : m - 1
+    const mn  = m === 11 ? 0 : m + 1
+    const anoAtual   = now.getFullYear()
+    const anoProximo = anoAtual + 1
+    const anoMpYear  = m === 0 ? anoAtual - 1 : anoAtual
+    const anoMnYear  = m === 11 ? anoProximo  : anoAtual
+
+    const subsAnoAtual   = allSubs.filter((s) => getSubAno(s.data_inicio, anoAtual) === anoAtual)
+    const subsAnoProximo = allSubs.filter((s) => getSubAno(s.data_inicio, anoProximo) === anoProximo)
+    const subsProxMes    = m === 11 ? subsAnoProximo : subsAnoAtual
+
+    const sumMes = (subs: typeof allSubs, idx: number) =>
+      subs.reduce((a, s) => a + (Number(s[MESES[idx] as MesKey]) || 0), 0)
+    const sumAno = (subs: typeof allSubs) =>
+      subs.reduce((a, s) => a + MESES.reduce((b, mk) => b + (Number(s[mk as MesKey]) || 0), 0), 0)
+    const sumNFMes = (mesIdx: number, ano: number) =>
+      allNFs
+        .filter((nf) => { const d = new Date(nf.data_emissao); return d.getFullYear() === ano && d.getMonth() === mesIdx })
+        .reduce((a, nf) => a + nf.valor_atribuido, 0)
+    const sumNFAno = (ano: number) =>
+      allNFs
+        .filter((nf) => new Date(nf.data_emissao).getFullYear() === ano)
+        .reduce((a, nf) => a + nf.valor_atribuido, 0)
+
     return {
-      totalContratos: filteredContratos.length,
-      totalSubindices: allSubs.length,
-      prevPassado: sumMes(mp),
-      prevAtual:   sumMes(m),
-      prevProximo: sumMes(mn),
+      totalContratos:       filteredContratos.length,
+      totalSubindices:      allSubs.length,
+      valorTotalContratado: filteredContratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0),
+      prevMesAtual:  sumMes(subsAnoAtual, m),
+      fatMesAtual:   sumNFMes(m, anoAtual),
+      fatUltimoMes:  sumNFMes(mp, anoMpYear),
+      prevProxMes:   sumMes(subsProxMes, mn),
+      prevAnoAtual:  sumAno(subsAnoAtual),
+      fatAnoAtual:   sumNFAno(anoAtual),
+      prevProxAno:   sumAno(subsAnoProximo),
+      mesAtualLabel:  MESES_LABELS[m],
       mesPassadoLabel: MESES_LABELS[mp],
-      mesAtualLabel:   MESES_LABELS[m],
       mesProximoLabel: MESES_LABELS[mn],
+      anoAtual,
+      anoProximo,
     }
   }, [filteredContratos])
 
@@ -196,26 +226,35 @@ export default function MeuPainelAcordosPage() {
         </div>
 
         {/* Indicadores */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <MetricCard label="Total de contratos" value={String(totalContratos)} />
-          <MetricCard label={`Previsão ${mesPassadoLabel}.`} sub="mês passado" value={formatCurrency(prevPassado)} />
-          <MetricCard label={`Previsão ${mesAtualLabel}.`}   sub="mês atual"   value={formatCurrency(prevAtual)} />
-          <MetricCard label={`Previsão ${mesProximoLabel}.`} sub="próximo mês" value={formatCurrency(prevProximo)} />
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <MetricCard label="Total de contratos"    value={String(indicators.totalContratos)} />
+          <MetricCard label={`Previsão ${indicators.mesAtualLabel}`}  sub="mês atual"   value={formatCurrency(indicators.prevMesAtual)} />
+          <MetricCard label={`Faturado ${indicators.mesAtualLabel}`}  sub="mês atual"   value={formatCurrency(indicators.fatMesAtual)} />
+          <MetricCard label={`Faturado ${indicators.mesPassadoLabel}`} sub="último mês" value={formatCurrency(indicators.fatUltimoMes)} />
+          <MetricCard label={`Previsão ${indicators.mesProximoLabel}`} sub="próximo mês" value={formatCurrency(indicators.prevProxMes)} />
+          <MetricCard label="Valor total contratado" value={formatCurrency(indicators.valorTotalContratado)} />
+          <MetricCard label={`Previsão ${indicators.anoAtual}`}  sub="faturamento ano" value={formatCurrency(indicators.prevAnoAtual)} />
+          <MetricCard label={`Faturado ${indicators.anoAtual}`}  sub="ano atual"       value={formatCurrency(indicators.fatAnoAtual)} />
+          <MetricCard label={`Previsão ${indicators.anoProximo}`} sub="próximo ano"    value={formatCurrency(indicators.prevProxAno)} />
         </div>
 
         {/* Filtros */}
         <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
-          {isGestao && (
-            <div className="flex-1 min-w-0">
-              <label className={fLbl}>Responsável</label>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Responsável</label>
+            {isGestao ? (
               <SearchableSelect
                 value={responsavelId}
                 onChange={setResponsavelId}
                 options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))}
                 emptyLabel="Todos os responsáveis"
               />
-            </div>
-          )}
+            ) : (
+              <div className="w-full px-2.5 py-[5px] border border-gray-200 rounded text-[11px] text-gray-600 bg-gray-50 truncate">
+                {session?.user?.nome ?? 'Meu perfil'}
+              </div>
+            )}
+          </div>
           <div className="flex-[2] min-w-0">
             <label className={fLbl}>Cliente</label>
             <SearchableSelect value={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
@@ -238,7 +277,7 @@ export default function MeuPainelAcordosPage() {
 
         {!loading && (
           <p className="text-[11px] text-gray-500 mb-2">
-            {totalContratos} contrato{totalContratos !== 1 ? 's' : ''} · {totalSubindices} sub-índice{totalSubindices !== 1 ? 's' : ''}
+            {indicators.totalContratos} contrato{indicators.totalContratos !== 1 ? 's' : ''} · {indicators.totalSubindices} sub-índice{indicators.totalSubindices !== 1 ? 's' : ''}
           </p>
         )}
       </div>
