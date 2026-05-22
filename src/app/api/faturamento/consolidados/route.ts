@@ -118,6 +118,11 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // RN-CF-14: apenas GESTAO_ACORDOS pode gerar consolidado
+  if (session.user.perfil !== 'GESTAO_ACORDOS') {
+    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode gerar consolidados' }, { status: 403 })
+  }
+
   const body   = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) {

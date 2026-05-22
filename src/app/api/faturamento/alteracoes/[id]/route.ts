@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createNotificacao } from '@/lib/notifications'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -111,6 +112,26 @@ export async function PUT(
         revisor: { select: { id: true, nome: true } },
       },
     })
+
+    // RN-CF-40: notificar o responsável sobre o resultado (não-bloqueante)
+    const ctIndice  = updated?.subindice?.contrato?.indice ?? ''
+    const descSub   = updated?.subindice?.descricao ?? ''
+    const linkPainel = '/acordos/painel'
+    if (acao === 'APROVAR') {
+      createNotificacao(
+        alteracao.responsavel_id,
+        'Proposta de alteração aprovada',
+        `Sua proposta para ${ctIndice} · ${descSub} foi aprovada e os valores foram atualizados.`,
+        linkPainel,
+      )
+    } else {
+      createNotificacao(
+        alteracao.responsavel_id,
+        'Proposta de alteração reprovada',
+        `Sua proposta para ${ctIndice} · ${descSub} foi reprovada. Motivo: ${motivo_recusa ?? '—'}`,
+        linkPainel,
+      )
+    }
 
     return NextResponse.json({ data: serializeAlteracao(updated!), error: null })
   } catch (err) {

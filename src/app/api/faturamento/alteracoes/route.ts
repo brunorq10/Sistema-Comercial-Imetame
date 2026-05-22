@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createNotificacao } from '@/lib/notifications'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -150,6 +151,27 @@ export async function POST(req: NextRequest) {
         revisor: { select: { id: true, nome: true } },
       },
     })
+
+    // RN-CF-40: notificar GESTAO_ACORDOS sobre nova proposta (não-bloqueante)
+    const gestores = await prisma.user.findMany({
+      where: { perfil: 'GESTAO_ACORDOS', ativo: true },
+      select: { id: true },
+    })
+    const ctIndice   = alteracao.subindice?.contrato?.indice ?? ''
+    const descSub    = alteracao.subindice?.descricao ?? ''
+    const nomeCliente = alteracao.subindice?.contrato?.cliente?.nome ?? ''
+    const nomeResp   = alteracao.responsavel?.nome ?? 'responsável'
+    const linkContrato = alteracao.subindice?.contrato?.id
+      ? `/acordos/faturamento/${alteracao.subindice.contrato.id}`
+      : undefined
+    for (const gestor of gestores) {
+      createNotificacao(
+        gestor.id,
+        'Nova proposta de alteração de previsão',
+        `${ctIndice} · ${descSub} (${nomeCliente}) — proposta enviada por ${nomeResp}.`,
+        linkContrato,
+      )
+    }
 
     return NextResponse.json({ data: serializeAlteracao(alteracao), error: null }, { status: 201 })
   } catch (err) {

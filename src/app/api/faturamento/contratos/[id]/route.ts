@@ -181,6 +181,17 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
+  // RN-CF-21: não cancelar se houver NFs ativas vinculadas a sub-índices
+  const nfsAtivas = await prisma.notaFiscalContrato.count({
+    where: { subindice: { contrato_id: id }, ativa: true },
+  })
+  if (nfsAtivas > 0) {
+    return NextResponse.json(
+      { data: null, error: `Não é possível cancelar: existem ${nfsAtivas} NF(s) ativa(s) vinculada(s). Inative-as antes de cancelar o contrato.` },
+      { status: 422 },
+    )
+  }
+
   await prisma.contrato.update({
     where: { id },
     data: { cancelled_at: new Date(), cancel_reason: 'Excluído pelo usuário', status: 'CANCELADO' },

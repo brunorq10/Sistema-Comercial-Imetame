@@ -4,12 +4,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
-import type { SubIndiceItem } from '@/types'
+import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
-// Snapshot de ano/mês atual para comparação de meses passados
 const _NOW = new Date()
 const CUR_YEAR = _NOW.getFullYear()
 const CUR_MONTH_IDX = _NOW.getMonth() // 0-indexed
@@ -60,9 +59,10 @@ interface Props {
   anoRef: number
   readOnly?: boolean
   blockPastMonths?: boolean  // RN-CF-09: Responsável não pode editar meses passados
+  useApprovalFlow?: boolean  // RN-CF-09/37: Responsável propõe via fluxo de aprovação
 }
 
-export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef, readOnly, blockPastMonths }: Props) {
+export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subindice, indiceLabel, anoRef, readOnly, blockPastMonths, useApprovalFlow }: Props) {
   const [descricao, setDescricao] = useState('')
   const [numOs, setNumOs] = useState('')
   const [dataInicio, setDataInicio] = useState('')
@@ -73,12 +73,16 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  // Ano do sub-índice atual (determinado pela data_inicio ou pelo fallback)
   const subAno = subindice.data_inicio
     ? parseInt(subindice.data_inicio.substring(0, 4), 10)
     : anoRef
 
-  // Detecta se algum mês passado foi alterado em relação ao valor original
+  // RN-CF-36: alteração pendente para exibir valores "P" nos meses
+  const alteracaoPendente: PrevisaoAlteracaoItem | null =
+    useApprovalFlow && 'alteracao_pendente' in subindice
+      ? (subindice as unknown as { alteracao_pendente: PrevisaoAlteracaoItem | null }).alteracao_pendente
+      : null
+
   const hasPastMonthChanges = useMemo(() => {
     for (const anoStr of Object.keys(anos)) {
       const ano = Number(anoStr)
@@ -89,11 +93,9 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         const m = MESES[mi]
         const current = section.meses[m] ? Number(section.meses[m]) : 0
         if (ano === subAno) {
-          // Para o ano do registro existente: compara com o valor original
           const original = Number((subindice as unknown as Record<string, unknown>)[m] ?? 0)
           if (Math.abs(original - current) > 0.01) return true
         } else {
-          // Para anos extras (novos registros): qualquer valor > 0 em mês passado
           if (current > 0.01) return true
         }
       }
@@ -122,7 +124,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, subindice])
 
-  // Quando as datas mudam, recalcula seções de ano preservando dados já preenchidos
   const handleDataChange = (field: 'dataInicio' | 'dataFim', value: string) => {
     const novoIni = field === 'dataInicio' ? value : dataInicio
     const novoFim = field === 'dataFim' ? value : dataFim
@@ -146,7 +147,52 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       [ano]: { ...prev[ano], meses: { ...prev[ano]?.meses, [mes]: val } },
     }))
 
+  // RN-CF-09/37: salva previsão via fluxo de aprovação (POST /alteracoes)
+  const handleSaveApprovalFlow = async () => {
+    const section = anos[subAno]
+    if (!section) { setError('Seção de ano não encontrada'); return }
+
+    if (hasPastMonthChanges && !comentarios.trim()) {
+      setError('Informe o motivo da alteração em meses passados no campo "Motivo da alteração"')
+      return
+    }
+
+    const hasChanges = MESES.some((m) => {
+      const current = section.meses[m] ? Number(section.meses[m]) : 0
+      const original = Number((subindice as unknown as Record<string, unknown>)[m] ?? 0)
+      return Math.abs(current - original) > 0.01
+    })
+
+    if (!hasChanges) {
+      setError('Nenhuma alteração detectada. Modifique ao menos um valor mensal antes de enviar.')
+      return
+    }
+
+    const valores_para = Object.fromEntries(
+      MESES.map((m) => [m, section.meses[m] ? Number(section.meses[m]) : null])
+    )
+
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch('/api/faturamento/alteracoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subindice_id: subindice.id, valores_para }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao enviar proposta'); return }
+      onSuccess(); onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSave = async () => {
+    if (useApprovalFlow) {
+      await handleSaveApprovalFlow()
+      return
+    }
+
     if (!descricao.trim()) { setError('Descrição obrigatória'); return }
     if (hasPastMonthChanges && !comentarios.trim()) {
       setError('Informe o motivo da alteração em meses passados no campo "Motivo da alteração"')
@@ -181,7 +227,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
             }
           }
         } else if (disponivel > 0.01) {
-          // RN-CF-06: previsão mensal obrigatória quando há valor disponível
           const label = anosOrdenados.length > 1 ? ` para ${a}` : ''
           setError(`Previsão mensal obrigatória${label} — preencha ao menos um mês (disponível: R$ ${fmt(disponivel)})`)
           return
@@ -191,7 +236,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
     setLoading(true); setError(null)
     try {
-      // Primeiro ano → atualiza o registro existente
       const primeiroAno = anosOrdenados[0]
       const primeiraSecao = anos[primeiroAno] ?? emptySection()
       const isFirst = true
@@ -213,7 +257,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       const putJson = await putRes.json()
       if (!putRes.ok || putJson.error) { setError(putJson.error ?? 'Erro ao salvar'); return }
 
-      // Anos adicionais → cria novos registros
       for (let i = 1; i < anosOrdenados.length; i++) {
         const a = anosOrdenados[i]
         const secao = anos[a] ?? emptySection()
@@ -257,24 +300,47 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
   const anosOrdenados = getAnosFromDates(dataInicio, dataFim, subAno)
   const multiAno = anosOrdenados.length > 1
+  const canSave = !readOnly || useApprovalFlow
+
+  const modalTitle = useApprovalFlow
+    ? `Propor Alteração · ${indiceLabel}`
+    : readOnly
+    ? `Previsão · ${indiceLabel}`
+    : `Editar Sub-índice · ${indiceLabel}`
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={readOnly ? `Editar Previsão · ${indiceLabel}` : `Editar Sub-índice · ${indiceLabel}`}
+      title={modalTitle}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? 'Salvando...' : 'Salvar'}
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            {canSave ? 'Cancelar' : 'Fechar'}
           </Button>
+          {canSave && (
+            <Button onClick={handleSave} disabled={loading}>
+              {loading
+                ? (useApprovalFlow ? 'Enviando...' : 'Salvando...')
+                : (useApprovalFlow ? 'Enviar proposta' : 'Salvar')}
+            </Button>
+          )}
         </>
       }
     >
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
+      )}
+
+      {/* RN-CF-36: aviso de proposta pendente */}
+      {useApprovalFlow && alteracaoPendente && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-[11px] px-3 py-2.5 rounded mb-3 flex gap-2 items-start">
+          <span className="text-[14px] leading-none mt-px">⏳</span>
+          <span>
+            <strong>Proposta pendente de aprovação.</strong> Enviar uma nova proposta irá substituir a anterior.
+          </span>
+        </div>
       )}
 
       <ModalSection>Dados do evento</ModalSection>
@@ -296,10 +362,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           />
         </Field>
         <Field label="Período — De">
-          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} />
+          <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Até">
-          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} />
+          <Input type="date" value={dataFim} onChange={(e) => handleDataChange('dataFim', e.target.value)} disabled={readOnly} />
         </Field>
       </div>
 
@@ -373,6 +439,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                 const original = ano === subAno ? Number((subindice as unknown as Record<string, unknown>)[m] ?? 0) : 0
                 const pastChanged = ativo && past && !blockedByRole && Math.abs(original - current) > 0.01
                 const cellDisabled = !ativo || blockedByRole
+                // RN-CF-36: valor pendente de aprovação para mostrar abaixo da célula
+                const pendingRaw = alteracaoPendente
+                  ? (alteracaoPendente as unknown as Record<string, unknown>)[`${m}_para`]
+                  : undefined
+                const pendingVal = pendingRaw != null ? Number(pendingRaw) : null
+                const hasPending = pendingVal != null && Math.abs(pendingVal - original) > 0.01
                 return (
                   <div key={m}>
                     <p className={`text-[9px] uppercase text-center mb-0.5 ${
@@ -395,6 +467,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                           : ''
                       }`}
                     />
+                    {hasPending && (
+                      <p className="text-[9px] text-center text-gray-400 mt-0.5 leading-none" title="Valor pendente de aprovação">
+                        P: {fmt(pendingVal!)}
+                      </p>
+                    )}
                   </div>
                 )
               })}
@@ -409,8 +486,8 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         )
       })}
 
-      {/* Zona de exclusão — oculta no modo readOnly */}
-      {!readOnly && <div className="border-t border-red-100 pt-3 mt-2">
+      {/* Zona de exclusão — oculta no modo readOnly ou useApprovalFlow */}
+      {!readOnly && !useApprovalFlow && <div className="border-t border-red-100 pt-3 mt-2">
         {!confirmDelete ? (
           <button
             onClick={() => setConfirmDelete(true)}

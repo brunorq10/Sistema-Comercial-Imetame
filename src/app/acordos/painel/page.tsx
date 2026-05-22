@@ -309,8 +309,9 @@ export default function MeuPainelAcordosPage() {
           subindice={modalEditar.subindice}
           indiceLabel={modalEditar.indiceLabel}
           anoRef={modalEditar.anoRef}
-          readOnly={!(isGestao || responsavelId === String(userId))}
+          readOnly={!isGestao}
           blockPastMonths={!isGestao}
+          useApprovalFlow={!isGestao && responsavelId === String(userId)}
         />
       )}
     </div>
