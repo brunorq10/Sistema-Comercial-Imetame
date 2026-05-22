@@ -103,11 +103,10 @@ export default function MeuPainelAcordosPage() {
   } | null>(null)
 
   useEffect(() => {
-    if (!isGestao) return
     fetch('/api/faturamento/filtros')
       .then((r) => r.json())
       .then((j) => { if (j.data?.responsaveis) setResponsaveis(j.data.responsaveis) })
-  }, [isGestao])
+  }, [])
 
   useEffect(() => {
     if (userId && !isGestao) setResponsavelId(String(userId))
@@ -197,7 +196,7 @@ export default function MeuPainelAcordosPage() {
     return {
       totalContratos:       filteredContratos.length,
       totalSubindices:      allSubs.length,
-      valorTotalContratado: filteredContratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0),
+      valorTotalContratado: contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0),
       prevMesAtual:  sumMes(subsAnoAtual, m),
       fatMesAtual:   sumNFMes(m, anoAtual),
       fatUltimoMes:  sumNFMes(mp, anoMpYear),
@@ -211,7 +210,7 @@ export default function MeuPainelAcordosPage() {
       anoAtual,
       anoProximo,
     }
-  }, [filteredContratos])
+  }, [filteredContratos, contratos])
 
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
 
@@ -246,18 +245,12 @@ export default function MeuPainelAcordosPage() {
         <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
           <div className="flex-1 min-w-0">
             <label className={fLbl}>Responsável</label>
-            {isGestao ? (
-              <SearchableSelect
-                value={responsavelId}
-                onChange={setResponsavelId}
-                options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))}
-                emptyLabel="Todos os responsáveis"
-              />
-            ) : (
-              <div className="w-full px-2.5 py-[5px] border border-gray-200 rounded text-[11px] text-gray-600 bg-gray-50 truncate">
-                {session?.user?.nome ?? 'Meu perfil'}
-              </div>
-            )}
+            <SearchableSelect
+              value={responsavelId}
+              onChange={setResponsavelId}
+              options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))}
+              emptyLabel={isGestao ? 'Todos os responsáveis' : 'Selecione um responsável'}
+            />
           </div>
           <div className="flex-[2] min-w-0">
             <label className={fLbl}>Cliente</label>
@@ -301,7 +294,7 @@ export default function MeuPainelAcordosPage() {
             contratos={filteredContratos}
             expandidos={expandidos}
             onToggle={toggleExpand}
-            isGestao={isGestao}
+            canEdit={isGestao || responsavelId === String(userId)}
             onEditar={(sub, label, anoRef) => setModalEditar({ subindice: sub, indiceLabel: label, anoRef })}
           />
         )}
@@ -316,7 +309,7 @@ export default function MeuPainelAcordosPage() {
           subindice={modalEditar.subindice}
           indiceLabel={modalEditar.indiceLabel}
           anoRef={modalEditar.anoRef}
-          readOnly={!isGestao}
+          readOnly={!(isGestao || responsavelId === String(userId))}
         />
       )}
     </div>
@@ -329,11 +322,11 @@ interface PainelTableProps {
   contratos: ContratoComAlteracoes[]
   expandidos: Set<number>
   onToggle: (id: number) => void
-  isGestao: boolean
+  canEdit: boolean
   onEditar: (sub: SubIndiceItem, indiceLabel: string, anoRef: number) => void
 }
 
-function PainelTable({ contratos, expandidos, onToggle, isGestao, onEditar }: PainelTableProps) {
+function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: PainelTableProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
@@ -479,9 +472,14 @@ function PainelTable({ contratos, expandidos, onToggle, isGestao, onEditar }: Pa
                     <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onEditar(sub, indiceLabel, contrato.ano_referencia)}
-                        className="bg-green-primary text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-green-dark whitespace-nowrap"
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap',
+                          canEdit
+                            ? 'bg-green-primary text-white hover:bg-green-dark'
+                            : 'border border-gray-300 text-gray-500 hover:bg-gray-50',
+                        )}
                       >
-                        Editar prev.
+                        {canEdit ? 'Editar prev.' : 'Ver prev.'}
                       </button>
                     </td>
                   </tr>
