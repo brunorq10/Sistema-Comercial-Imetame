@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
@@ -8,6 +8,15 @@ import type { SubIndiceItem } from '@/types'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+
+// Snapshot de ano/mês atual para comparação de meses passados
+const _NOW = new Date()
+const CUR_YEAR = _NOW.getFullYear()
+const CUR_MONTH_IDX = _NOW.getMonth() // 0-indexed
+
+function isMesPast(ano: number, mesIdx: number): boolean {
+  return ano < CUR_YEAR || (ano === CUR_YEAR && mesIdx < CUR_MONTH_IDX)
+}
 
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -68,6 +77,29 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     ? parseInt(subindice.data_inicio.substring(0, 4), 10)
     : anoRef
 
+  // Detecta se algum mês passado foi alterado em relação ao valor original
+  const hasPastMonthChanges = useMemo(() => {
+    for (const anoStr of Object.keys(anos)) {
+      const ano = Number(anoStr)
+      const section = anos[ano]
+      if (!section) continue
+      for (let mi = 0; mi < MESES.length; mi++) {
+        if (!isMesPast(ano, mi)) continue
+        const m = MESES[mi]
+        const current = section.meses[m] ? Number(section.meses[m]) : 0
+        if (ano === subAno) {
+          // Para o ano do registro existente: compara com o valor original
+          const original = Number((subindice as unknown as Record<string, unknown>)[m] ?? 0)
+          if (Math.abs(original - current) > 0.01) return true
+        } else {
+          // Para anos extras (novos registros): qualquer valor > 0 em mês passado
+          if (current > 0.01) return true
+        }
+      }
+    }
+    return false
+  }, [anos, subAno, subindice])
+
   useEffect(() => {
     if (open && subindice) {
       const ini = subindice.data_inicio ? subindice.data_inicio.substring(0, 10) : ''
@@ -115,6 +147,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
   const handleSave = async () => {
     if (!descricao.trim()) { setError('Descrição obrigatória'); return }
+    if (hasPastMonthChanges && !comentarios.trim()) {
+      setError('Informe o motivo da alteração em meses passados no campo "Motivo da alteração"')
+      return
+    }
 
     const anosOrdenados = getAnosFromDates(dataInicio, dataFim, subAno)
     for (let idx = 0; idx < anosOrdenados.length; idx++) {
@@ -244,8 +280,14 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         <Field label="Nº OS">
           <Input placeholder="Ex: OS-0001" value={numOs} onChange={(e) => setNumOs(e.target.value)} disabled={readOnly} />
         </Field>
-        <Field label="Comentários">
-          <Input placeholder="Obs..." value={comentarios} onChange={(e) => setComentarios(e.target.value)} disabled={readOnly} />
+        <Field label={hasPastMonthChanges ? 'Motivo da alteração *' : 'Comentários'}>
+          <Input
+            placeholder={hasPastMonthChanges ? 'Obrigatório: informe o motivo da alteração em meses passados' : 'Obs...'}
+            value={comentarios}
+            onChange={(e) => setComentarios(e.target.value)}
+            disabled={readOnly && !hasPastMonthChanges}
+            className={hasPastMonthChanges ? 'border-amber-400 focus:ring-amber-400' : ''}
+          />
         </Field>
         <Field label="Período — De">
           <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('dataInicio', e.target.value)} />
@@ -263,6 +305,16 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               Serão criados {anosOrdenados.length - 1} novo(s) sub-índice(s) para os anos adicionais.
             </span>
           )}
+        </div>
+      )}
+
+      {hasPastMonthChanges && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-[11px] px-3 py-2.5 rounded mb-3 flex gap-2 items-start">
+          <span className="text-[14px] leading-none mt-px">⚠</span>
+          <span>
+            <strong>Alteração em meses passados detectada.</strong> Preencha o campo{' '}
+            <strong>Motivo da alteração</strong> antes de salvar.
+          </span>
         </div>
       )}
 
@@ -309,9 +361,15 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
             <div className="grid grid-cols-6 gap-1.5">
               {MESES.map((m, mi) => {
                 const ativo = isMesAtivo(ano, mi, dataInicio, dataFim)
+                const past = isMesPast(ano, mi)
+                const current = Number(anos[ano]?.meses[m] || 0)
+                const original = ano === subAno ? Number((subindice as unknown as Record<string, unknown>)[m] ?? 0) : 0
+                const pastChanged = ativo && past && Math.abs(original - current) > 0.01
                 return (
                   <div key={m}>
-                    <p className={`text-[9px] uppercase text-center mb-0.5 ${ativo ? 'text-gray-400' : 'text-gray-200'}`}>
+                    <p className={`text-[9px] uppercase text-center mb-0.5 ${
+                      !ativo ? 'text-gray-200' : pastChanged ? 'text-amber-600 font-semibold' : 'text-gray-400'
+                    }`}>
                       {MESES_LABELS[mi]}
                     </p>
                     <CurrencyInput
@@ -319,7 +377,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                       onChange={(v) => updateMes(ano, m, v)}
                       disabled={!ativo}
                       className={`text-center px-1.5 py-[3px] text-[11px] ${
-                        ativo ? '' : 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
+                        !ativo
+                          ? 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
+                          : pastChanged
+                          ? 'border-amber-400 bg-amber-50'
+                          : ''
                       }`}
                     />
                   </div>
