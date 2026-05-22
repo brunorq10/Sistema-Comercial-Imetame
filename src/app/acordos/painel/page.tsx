@@ -68,14 +68,14 @@ function StatusBadge({ status }: { status: string }) {
 // ── MetricCard — mesmo estilo do Dashboard Acordos ────────────────────────────
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-      <div className="bg-green-dark px-3.5 py-2">
-        <p className="text-[10px] font-semibold text-white/85 leading-snug uppercase tracking-[0.04em]">
+    <div className="rounded-md overflow-hidden border border-gray-200 shadow-sm">
+      <div className="bg-green-dark px-2.5 py-1.5">
+        <p className="text-[9px] font-semibold text-white/85 leading-snug uppercase tracking-[0.04em]">
           {label}{sub && <span className="text-white/50 font-normal normal-case"> · {sub}</span>}
         </p>
       </div>
-      <div className="bg-white px-3.5 py-3">
-        <p className="text-[20px] font-bold text-gray-900 leading-none">{value}</p>
+      <div className="bg-white px-2.5 py-2">
+        <p className="text-[14px] font-bold text-gray-900 leading-none">{value}</p>
       </div>
     </div>
   )
@@ -226,16 +226,20 @@ export default function MeuPainelAcordosPage() {
         </div>
 
         {/* Indicadores */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <MetricCard label="Total de contratos"    value={String(indicators.totalContratos)} />
-          <MetricCard label={`Previsão ${indicators.mesAtualLabel}`}  sub="mês atual"   value={formatCurrency(indicators.prevMesAtual)} />
-          <MetricCard label={`Faturado ${indicators.mesAtualLabel}`}  sub="mês atual"   value={formatCurrency(indicators.fatMesAtual)} />
-          <MetricCard label={`Faturado ${indicators.mesPassadoLabel}`} sub="último mês" value={formatCurrency(indicators.fatUltimoMes)} />
-          <MetricCard label={`Previsão ${indicators.mesProximoLabel}`} sub="próximo mês" value={formatCurrency(indicators.prevProxMes)} />
-          <MetricCard label="Valor total contratado" value={formatCurrency(indicators.valorTotalContratado)} />
-          <MetricCard label={`Previsão ${indicators.anoAtual}`}  sub="faturamento ano" value={formatCurrency(indicators.prevAnoAtual)} />
-          <MetricCard label={`Faturado ${indicators.anoAtual}`}  sub="ano atual"       value={formatCurrency(indicators.fatAnoAtual)} />
-          <MetricCard label={`Previsão ${indicators.anoProximo}`} sub="próximo ano"    value={formatCurrency(indicators.prevProxAno)} />
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="grid grid-cols-5 gap-2">
+            <MetricCard label="Total de contratos"                                                value={String(indicators.totalContratos)} />
+            <MetricCard label={`Previsão ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.prevMesAtual)} />
+            <MetricCard label={`Faturado ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.fatMesAtual)} />
+            <MetricCard label={`Faturado ${indicators.mesPassadoLabel}`} sub="último mês"        value={formatCurrency(indicators.fatUltimoMes)} />
+            <MetricCard label={`Previsão ${indicators.mesProximoLabel}`} sub="próximo mês"       value={formatCurrency(indicators.prevProxMes)} />
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <MetricCard label="Valor total contratado"                                            value={formatCurrency(indicators.valorTotalContratado)} />
+            <MetricCard label={`Previsão ${indicators.anoAtual}`}        sub="faturamento ano"   value={formatCurrency(indicators.prevAnoAtual)} />
+            <MetricCard label={`Faturado ${indicators.anoAtual}`}        sub="ano atual"         value={formatCurrency(indicators.fatAnoAtual)} />
+            <MetricCard label={`Previsão ${indicators.anoProximo}`}      sub="próximo ano"       value={formatCurrency(indicators.prevProxAno)} />
+          </div>
         </div>
 
         {/* Filtros */}
