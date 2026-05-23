@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { formatDate, formatCurrency, formatRev, cn } from '@/lib/utils'
 import { RESULTADO_LABELS } from '@/types'
@@ -546,10 +547,10 @@ function HistoricoFabricacao({ item }: { item: PropostasItem }) {
           <tr>
             <th className="px-2 py-1 bg-gray-100 border border-gray-200 text-gray-600 font-semibold text-[9px] text-left">Equipamento</th>
             {revisoes.map((r) => (
-              <th key={`${r.versao}-p`} className="px-2 py-1 bg-gray-100 border border-gray-200 text-gray-500 font-medium text-right text-[9px]">Peso (t)</th>
-            ))}
-            {revisoes.map((r) => (
-              <th key={`${r.versao}-v`} className="px-2 py-1 bg-gray-100 border border-gray-200 text-gray-500 font-medium text-right text-[9px]">Valor</th>
+              <Fragment key={r.versao}>
+                <th className="px-2 py-1 bg-gray-100 border border-gray-200 text-gray-500 font-medium text-right text-[9px]">Peso (t)</th>
+                <th className="px-2 py-1 bg-gray-100 border border-gray-200 text-gray-500 font-medium text-right text-[9px]">Valor</th>
+              </Fragment>
             ))}
           </tr>
         </thead>
@@ -560,17 +561,14 @@ function HistoricoFabricacao({ item }: { item: PropostasItem }) {
               {revisoes.map((r) => {
                 const eq = r.equipamentos.find((e) => e.descricao === desc)
                 return (
-                  <td key={`${r.versao}-p`} className="px-2 py-1.5 text-right text-gray-700 border border-gray-200">
-                    {eq ? Number(eq.peso_ton).toFixed(2).replace('.', ',') : '—'}
-                  </td>
-                )
-              })}
-              {revisoes.map((r) => {
-                const eq = r.equipamentos.find((e) => e.descricao === desc)
-                return (
-                  <td key={`${r.versao}-v`} className="px-2 py-1.5 text-right text-gray-700 border border-gray-200">
-                    {eq ? formatCurrency(Number(eq.valor_total)) : '—'}
-                  </td>
+                  <Fragment key={r.versao}>
+                    <td className="px-2 py-1.5 text-right text-gray-700 border border-gray-200">
+                      {eq ? Number(eq.peso_ton).toFixed(2).replace('.', ',') : '—'}
+                    </td>
+                    <td className="px-2 py-1.5 text-right text-gray-700 border border-gray-200">
+                      {eq ? formatCurrency(Number(eq.valor_total)) : '—'}
+                    </td>
+                  </Fragment>
                 )
               })}
             </tr>
