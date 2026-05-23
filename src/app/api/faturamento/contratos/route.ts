@@ -128,6 +128,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  // RN-CF-03: soma dos sub-índices deve coincidir com valor_contrato (quando informado)
+  if (parsed.data.valor_contrato != null) {
+    const soma = parsed.data.subindices.reduce((acc, s) => acc + s.valor_total, 0)
+    if (Math.abs(soma - parsed.data.valor_contrato) > 0.01) {
+      return NextResponse.json({
+        data: null,
+        error: `Soma dos sub-índices (R$ ${soma.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) não corresponde ao Valor do Contrato (R$ ${parsed.data.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+      }, { status: 400 })
+    }
+  }
+
   try {
   const count = await prisma.contrato.count()
   const indice = `CT-${String(count + 1).padStart(3, '0')}`
@@ -201,11 +212,28 @@ function serializeContrato(c: any, anoFiltro?: number, nfTotalMap: Record<string
       })
     : c.subindices
 
+  // RN-CF-19: status calculado dinamicamente a partir dos sub-índices filtrados
+  const computedStatus = (() => {
+    if (c.cancelled_at) return 'CANCELADO'
+    if (subsFiltrados.length === 0) return c.status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const statuses = subsFiltrados.map((s: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fat = (s.notas_fiscais ?? []).filter((nf: any) => nf.ativa).reduce((a: number, nf: any) => a + Number(nf.valor_atribuido), 0)
+      if (fat === 0) return 'A_FATURAR'
+      if (fat >= Number(s.valor_total)) return 'FATURADO'
+      return 'PARCIAL'
+    })
+    if (statuses.every((s: string) => s === 'FATURADO')) return 'FATURADO'
+    if (statuses.some((s: string) => s === 'FATURADO' || s === 'PARCIAL')) return 'PARCIAL'
+    return 'A_FATURAR'
+  })()
+
   return {
     id: c.id,
     indice: c.indice,
     ano_referencia: c.ano_referencia,
-    status: c.status,
+    status: computedStatus,
     cliente: c.cliente,
     responsavel: c.responsavel,
     num_os: c.num_os,

@@ -32,13 +32,17 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const statusParam = searchParams.get('status') ?? undefined
+  const historyParam = searchParams.get('history')
   const perfil = session.user.perfil
   const isGestao = perfil === 'GESTAO_ACORDOS'
   const userId = Number(session.user.id)
 
   try {
+    // RN-CF-39: suporte a history=true para retornar APROVADO+REPROVADO
     const where = isGestao
-      ? { ...(statusParam ? { status: statusParam as never } : { status: 'PENDENTE' as const }) }
+      ? historyParam === 'true'
+        ? { status: { in: ['APROVADO', 'REPROVADO'] as ['APROVADO', 'REPROVADO'] } }
+        : { ...(statusParam ? { status: statusParam as never } : { status: 'PENDENTE' as const }) }
       : { responsavel_id: userId, ...(statusParam ? { status: statusParam as never } : {}) }
 
     const alteracoes = await prisma.previsaoAlteracao.findMany({

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import { FaturamentoContratoTable } from '@/components/tables/FaturamentoContratoTable'
 import { NfRegistroTable } from '@/components/tables/NfRegistroTable'
 import { EditarNFModal } from '@/components/forms/EditarNFModal'
@@ -82,6 +83,8 @@ export default function FaturamentoPage() {
   const [alteracoes, setAlteracoes] = useState<PrevisaoAlteracaoItem[]>([])
   const [alteracoesLoading, setAlteracoesLoading] = useState(false)
   const [alteracoesError, setAlteracoesError] = useState<string | null>(null)
+  const [historico, setHistorico] = useState<PrevisaoAlteracaoItem[]>([])
+  const [historicoLoading, setHistoricoLoading] = useState(false)
   const [reprovarModal, setReprovarModal] = useState<PrevisaoAlteracaoItem | null>(null)
   const [motivoRecusa, setMotivoRecusa] = useState('')
   const [reprovarLoading, setReprovarLoading] = useState(false)
@@ -170,20 +173,25 @@ export default function FaturamentoPage() {
     if (!canEditar) return
     setAlteracoesLoading(true); setAlteracoesError(null)
     try {
-      const res = await fetch('/api/faturamento/alteracoes?status=PENDENTE')
-      const json = await res.json()
-      if (json.error) { setAlteracoesError(json.error); return }
-      setAlteracoes(json.data ?? [])
+      const [resPend, resHist] = await Promise.all([
+        fetch('/api/faturamento/alteracoes?status=PENDENTE'),
+        fetch('/api/faturamento/alteracoes?history=true'),
+      ])
+      const [jsonPend, jsonHist] = await Promise.all([resPend.json(), resHist.json()])
+      if (jsonPend.error) { setAlteracoesError(jsonPend.error); return }
+      setAlteracoes(jsonPend.data ?? [])
+      setHistorico(jsonHist.data ?? [])
     } catch (err) {
       setAlteracoesError(String(err))
     } finally {
       setAlteracoesLoading(false)
+      setHistoricoLoading(false)
     }
   }, [canEditar])
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { if (aba === 'nfs') fetchNfs() }, [aba, fetchNfs])
-  useEffect(() => { if (aba === 'aprovacoes') fetchAlteracoes() }, [aba, fetchAlteracoes])
+  useEffect(() => { if (aba === 'aprovacoes') { setHistoricoLoading(true); fetchAlteracoes() } }, [aba, fetchAlteracoes])
 
   const handleCancelar = async () => {
     if (!cancelando) return
@@ -311,6 +319,58 @@ export default function FaturamentoPage() {
     c.subindices.some((s) => s.data_fim && new Date(s.data_fim).getUTCFullYear() > (anoFiltroNum ?? c.ano_referencia))
   )
 
+  // RN-CF-27: exportar planilha Excel com dados filtrados
+  const exportarExcel = () => {
+    const mesesLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    const mesKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
+
+    const cabecalho = [
+      'Índice', 'Cliente', 'Descrição', 'Responsável', 'Status', 'Ano', 'Nº OS', 'Nº Acordo', 'Nº Proposta',
+      'Valor Contrato', 'Vlr. Total Sub-índice', 'Faturado', 'Saldo',
+      ...mesesLabels.flatMap((m) => [`P ${m}`, `F ${m}`]),
+    ]
+
+    const linhas: (string | number | null)[][] = [cabecalho]
+
+    for (const ct of contratos) {
+      for (const sub of ct.subindices) {
+        const anoNum = anoFiltroNum ?? ct.ano_referencia
+        const mesesRow: (number | null)[] = []
+        for (const mk of mesKeys) {
+          mesesRow.push(sub[mk] ?? null)
+          // Faturado do mês: soma das NFs ativas emitidas nesse mês
+          const mesIdx = mesKeys.indexOf(mk)
+          const fat = sub.notas_fiscais
+            .filter((nf) => nf.ativa)
+            .filter((nf) => { const d = new Date(nf.data_emissao); return d.getFullYear() === anoNum && d.getMonth() === mesIdx })
+            .reduce((acc, nf) => acc + nf.valor_atribuido, 0)
+          mesesRow.push(fat || null)
+        }
+        linhas.push([
+          ct.indice,
+          ct.cliente.nome,
+          sub.descricao,
+          ct.responsavel?.nome ?? '',
+          ct.status,
+          ct.ano_referencia,
+          ct.num_os ?? '',
+          ct.num_acordo ?? '',
+          ct.num_proposta ?? '',
+          ct.valor_contrato ?? '',
+          sub.valor_total,
+          sub.total_faturado,
+          sub.valor_total - sub.total_faturado,
+          ...mesesRow,
+        ])
+      }
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(linhas)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Faturamento')
+    XLSX.writeFile(wb, `faturamento_${ano || 'todos'}_${new Date().toISOString().slice(0,10)}.xlsx`)
+  }
+
   const fLbl    = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
   const tabBase = 'px-4 py-2 text-[12px] font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap'
   const tabAtivo  = 'border-green-primary text-green-primary'
@@ -323,10 +383,17 @@ export default function FaturamentoPage() {
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-bold">Controle de Faturamento</h2>
-        {canCriar && aba === 'controle' && (
+        {aba === 'controle' && (
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => setModalNovo(true)}>+ Novo lançamento</Button>
-            <Button size="sm" onClick={() => setModalConsolidado(true)}>Consolidado mês</Button>
+            {!loading && contratos.length > 0 && (
+              <Button size="sm" variant="outline" onClick={exportarExcel}>Exportar Excel</Button>
+            )}
+            {canCriar && (
+              <>
+                <Button size="sm" onClick={() => setModalNovo(true)}>+ Novo lançamento</Button>
+                <Button size="sm" onClick={() => setModalConsolidado(true)}>Consolidado mês</Button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -547,7 +614,9 @@ export default function FaturamentoPage() {
         {aba === 'aprovacoes' && canEditar && (
           <AbaAprovacoes
             alteracoes={alteracoes}
+            historico={historico}
             loading={alteracoesLoading}
+            historicoLoading={historicoLoading}
             error={alteracoesError}
             onAprovar={handleAprovar}
             onReprovar={(a) => { setReprovarModal(a); setMotivoRecusa(''); setReprovarError(null) }}
@@ -780,29 +849,65 @@ export default function FaturamentoPage() {
 
 interface AbaAprovacoes {
   alteracoes: PrevisaoAlteracaoItem[]
+  historico: PrevisaoAlteracaoItem[]
   loading: boolean
+  historicoLoading: boolean
   error: string | null
   onAprovar: (id: number) => void
   onReprovar: (a: PrevisaoAlteracaoItem) => void
 }
 
-function AbaAprovacoes({ alteracoes, loading, error, onAprovar, onReprovar }: AbaAprovacoes) {
+function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error, onAprovar, onReprovar }: AbaAprovacoes) {
+  const [showHistorico, setShowHistorico] = useState(false)
+
   if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
   if (error) return (
     <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>
   )
-  if (alteracoes.length === 0) return (
-    <div className="text-center py-10 text-gray-400 text-sm">Nenhuma alteração pendente de aprovação.</div>
-  )
 
   return (
-    <div className="space-y-3 pt-1">
-      <p className="text-[11px] text-gray-500 mb-3">
-        {alteracoes.length} alteração{alteracoes.length !== 1 ? 'ões' : ''} pendente{alteracoes.length !== 1 ? 's' : ''} de aprovação
-      </p>
-      {alteracoes.map((a) => (
-        <AlteracaoAprovacaoRow key={a.id} alteracao={a} onAprovar={onAprovar} onReprovar={onReprovar} />
-      ))}
+    <div className="space-y-4 pt-1">
+      {/* Pendentes */}
+      {alteracoes.length === 0 ? (
+        <div className="text-center py-6 text-gray-400 text-sm">Nenhuma alteração pendente de aprovação.</div>
+      ) : (
+        <>
+          <p className="text-[11px] text-gray-500">
+            {alteracoes.length} alteração{alteracoes.length !== 1 ? 'ões' : ''} pendente{alteracoes.length !== 1 ? 's' : ''} de aprovação
+          </p>
+          {alteracoes.map((a) => (
+            <AlteracaoAprovacaoRow key={a.id} alteracao={a} onAprovar={onAprovar} onReprovar={onReprovar} />
+          ))}
+        </>
+      )}
+
+      {/* RN-CF-39: Histórico de decisões */}
+      <div className="border-t border-gray-100 pt-3">
+        <button
+          onClick={() => setShowHistorico((v) => !v)}
+          className="flex items-center gap-2 text-[11px] text-gray-500 hover:text-gray-700 font-semibold"
+        >
+          <span>{showHistorico ? '▾' : '▸'}</span>
+          Histórico de decisões
+          {historico.length > 0 && (
+            <span className="text-gray-400 font-normal">({historico.length})</span>
+          )}
+        </button>
+
+        {showHistorico && (
+          <div className="mt-3 space-y-2">
+            {historicoLoading ? (
+              <p className="text-center text-gray-400 py-4 text-sm">Carregando...</p>
+            ) : historico.length === 0 ? (
+              <p className="text-center text-gray-400 py-4 text-sm">Nenhum histórico encontrado.</p>
+            ) : (
+              historico.map((a) => (
+                <AlteracaoHistoricoRow key={a.id} alteracao={a} />
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -811,6 +916,74 @@ interface AlteracaoAprovacaoRowProps {
   alteracao: PrevisaoAlteracaoItem
   onAprovar: (id: number) => void
   onReprovar: (a: PrevisaoAlteracaoItem) => void
+}
+
+// ─── Linha de histórico (RN-CF-39) ───────────────────────────────────────────
+
+function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem }) {
+  const [expanded, setExpanded] = useState(false)
+  const aprovado = alteracao.status === 'APROVADO'
+  const mesesMudados = MESES.filter((m) => {
+    const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
+    const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
+    return de !== para
+  })
+  return (
+    <div className={cn('border rounded-md p-3 text-[11px]', aprovado ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200')}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn('font-bold text-[10px] px-1.5 py-0.5 rounded uppercase', aprovado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+              {aprovado ? 'Aprovado' : 'Reprovado'}
+            </span>
+            <span className="font-semibold text-gray-700">
+              {alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem} · {alteracao.subindice.descricao}
+            </span>
+            <span className="text-gray-400">·</span>
+            <span className="text-gray-500">{alteracao.contrato?.cliente.nome ?? '—'}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-[10px] text-gray-400">
+            <span>Resp.: <strong className="text-gray-600">{alteracao.responsavel.nome}</strong></span>
+            {alteracao.revisor && <span>Revisor: <strong className="text-gray-600">{alteracao.revisor.nome}</strong></span>}
+            {alteracao.reviewed_at && (
+              <span>{new Date(alteracao.reviewed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+            )}
+            {!aprovado && alteracao.motivo_recusa && (
+              <span className="text-red-600">Motivo: {alteracao.motivo_recusa}</span>
+            )}
+            <span className="text-amber-600">{mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <button onClick={() => setExpanded((v) => !v)} className="text-[10px] text-gray-400 hover:text-gray-600 underline flex-shrink-0">
+          {expanded ? 'Ocultar' : 'Detalhes'}
+        </button>
+      </div>
+      {expanded && (
+        <div className="border-t border-gray-100 pt-2 mt-2">
+          <div className="grid grid-cols-12 gap-1">
+            {MESES.map((m, mi) => {
+              const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
+              const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
+              const mudou = de !== para
+              return (
+                <div key={m} className={cn('text-center rounded p-1', mudou ? (aprovado ? 'bg-green-100 border border-green-200' : 'bg-red-100 border border-red-200') : '')}>
+                  <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
+                  {mudou ? (
+                    <>
+                      <p className="text-[9px] text-gray-400 line-through">{de != null ? fmt(de) : '—'}</p>
+                      <p className={cn('text-[10px] font-bold', aprovado ? 'text-green-800' : 'text-red-700')}>{para != null ? fmt(para) : '—'}</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-gray-400">{para != null ? fmt(para) : '—'}</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAprovacaoRowProps) {

@@ -178,16 +178,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem cancelar contratos
+  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
+    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode cancelar contratos' }, { status: 403 })
+  }
+
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  // RN-CF-21: não cancelar se houver NFs ativas vinculadas a sub-índices
-  const nfsAtivas = await prisma.notaFiscalContrato.count({
-    where: { subindice: { contrato_id: id }, ativa: true },
-  })
-  if (nfsAtivas > 0) {
+  // RN-CF-21: só pode cancelar macro se não houver sub-índices vinculados
+  const qtSubindices = await prisma.subIndiceFaturamento.count({ where: { contrato_id: id } })
+  if (qtSubindices > 0) {
     return NextResponse.json(
-      { data: null, error: `Não é possível cancelar: existem ${nfsAtivas} NF(s) ativa(s) vinculada(s). Inative-as antes de cancelar o contrato.` },
+      { data: null, error: `Não é possível cancelar: o contrato ainda possui ${qtSubindices} sub-índice(s). Exclua-os antes de cancelar o contrato.` },
       { status: 422 },
     )
   }
@@ -201,12 +204,29 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function computeContratoStatus(c: any): string {
+  if (c.cancelled_at) return 'CANCELADO'
+  if (!c.subindices || c.subindices.length === 0) return c.status
+  // RN-CF-19: status calculado dinamicamente a partir dos sub-índices
+  const statuses = c.subindices.map((s: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fat = (s.notas_fiscais ?? []).filter((nf: any) => nf.ativa).reduce((a: number, nf: any) => a + Number(nf.valor_atribuido), 0)
+    if (fat === 0) return 'A_FATURAR'
+    if (fat >= Number(s.valor_total)) return 'FATURADO'
+    return 'PARCIAL'
+  })
+  if (statuses.every((s: string) => s === 'FATURADO')) return 'FATURADO'
+  if (statuses.some((s: string) => s === 'FATURADO' || s === 'PARCIAL')) return 'PARCIAL'
+  return 'A_FATURAR'
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, solicitacao: any = null) {
   return {
     id: c.id,
     indice: c.indice,
     ano_referencia: c.ano_referencia,
-    status: c.status,
+    status: computeContratoStatus(c),
     cliente: c.cliente,
     responsavel: c.responsavel,
     solicitacao: solicitacao ? serializeSolicitacao(solicitacao) : null,

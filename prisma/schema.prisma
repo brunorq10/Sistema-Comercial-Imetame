@@ -548,17 +548,18 @@ model NotaFiscalContrato {
 // ─── Consolidado Mensal (Previsão x Realizado) ────────────────────────────────
 
 model ConsolidadoMes {
-  id         Int      @id @default(autoincrement())
-  mes        Int      // 1-12
-  ano        Int
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  created_by Int
+  id           Int       @id @default(autoincrement())
+  mes          Int       // 1-12
+  ano          Int
+  arquivado_at DateTime? // RN-CF-12: null = ativo; preenchido = arquivado
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  created_by   Int
 
   criador User                 @relation("ConsolidadoCriador", fields: [created_by], references: [id])
   itens   ConsolidadoMesItem[]
 
-  @@unique([mes, ano])
+  @@index([mes, ano])
   @@index([ano])
   @@map("consolidados_mes")
 }

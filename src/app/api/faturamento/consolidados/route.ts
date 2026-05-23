@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   // ── Lista de consolidados disponíveis ─────────────────────────────────────
   if (!mesParam || !anoParam) {
     const lista = await prisma.consolidadoMes.findMany({
+      where: { arquivado_at: null },
       select: {
         id: true, mes: true, ano: true, created_at: true,
         _count: { select: { itens: true } },
@@ -44,8 +45,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: null, error: 'Parâmetros inválidos' }, { status: 400 })
   }
 
-  const consolidado = await prisma.consolidadoMes.findUnique({
-    where: { mes_ano: { mes, ano } },
+  const consolidado = await prisma.consolidadoMes.findFirst({
+    where: { mes, ano, arquivado_at: null },
+    orderBy: { created_at: 'desc' },
     include: {
       itens: {
         include: {
@@ -132,9 +134,9 @@ export async function POST(req: NextRequest) {
   const { mes, ano, force } = parsed.data
   const mesKey = MESES_KEYS[mes - 1]
 
-  // Verifica se já existe
-  const existente = await prisma.consolidadoMes.findUnique({
-    where: { mes_ano: { mes, ano } },
+  // Verifica se já existe consolidado ativo para este mês/ano
+  const existente = await prisma.consolidadoMes.findFirst({
+    where: { mes, ano, arquivado_at: null },
     select: { id: true },
   })
 
@@ -165,9 +167,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: 'Nenhum sub-índice com previsão para este mês' }, { status: 400 })
   }
 
-  // Cria ou recria o consolidado
+  // RN-CF-12: arquiva o consolidado anterior em vez de excluir
   if (existente) {
-    await prisma.consolidadoMes.delete({ where: { id: existente.id } })
+    await prisma.consolidadoMes.update({
+      where: { id: existente.id },
+      data: { arquivado_at: new Date() },
+    })
   }
 
   const consolidado = await prisma.consolidadoMes.create({

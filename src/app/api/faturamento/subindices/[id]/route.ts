@@ -48,6 +48,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem editar sub-índices diretamente
+  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
+    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode editar sub-índices diretamente' }, { status: 403 })
+  }
+
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
@@ -108,6 +113,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+
+  // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem excluir sub-índices
+  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
+    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode excluir sub-índices' }, { status: 403 })
+  }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
