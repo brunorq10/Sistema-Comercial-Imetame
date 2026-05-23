@@ -86,6 +86,45 @@ const MOTIVO_LABELS: Record<string, string> = {
   OUTROS: 'Outros',
 }
 
+// PATCH /api/analise/:id → edita motivo de reprovação (apenas REPROVADA)
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  if (!session.user.is_analista_critico) {
+    return NextResponse.json({ data: null, error: 'Acesso negado' }, { status: 403 })
+  }
+
+  const id = Number(params.id)
+  if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+
+  const sol = await prisma.solicitacao.findUnique({ where: { id } })
+  if (!sol) return NextResponse.json({ data: null, error: 'Não encontrada' }, { status: 404 })
+  if (sol.status_analise !== 'REPROVADA') {
+    return NextResponse.json({ data: null, error: 'Só é possível editar o motivo de solicitações reprovadas' }, { status: 409 })
+  }
+
+  const body = await req.json()
+  const parsed = reprovarSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' },
+      { status: 400 },
+    )
+  }
+
+  const motivoLabel = MOTIVO_LABELS[parsed.data.motivo_reprovacao]
+  await prisma.solicitacao.update({
+    where: { id },
+    data: {
+      motivo_reprovacao: parsed.data.motivo_reprovacao as MotivoReprovacao,
+      obs_reprovacao: parsed.data.obs_reprovacao ?? null,
+      motivo_recusa: motivoLabel,
+    },
+  })
+
+  return NextResponse.json({ data: null, error: null })
+}
+
 // POST /api/analise/:id → body: { acao: 'aprovar' | 'reprovar', ...dados }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()

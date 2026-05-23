@@ -6,17 +6,7 @@ import { ClassificacaoBadge, InteresseBadge, StatusAnaliseBadge, VersaoBadge } f
 import { CLASSIFICACAO_LABELS, INTERESSE_LABELS, ORIGEM_LABELS, MOTIVO_REPROVACAO_LABELS } from '@/types'
 import type { Classificacao, Interesse, Origem, MotivoReprovacao } from '@/types'
 
-interface CicloRevisao {
-  versao: number
-  tecnica_data: string | null
-  tecnica_na: boolean
-  comercial_data: string | null
-  comercial_na: boolean
-  fabricacao_data: string | null
-  fabricacao_na: boolean
-}
-
-interface Detalhe {
+export interface DetalheInline {
   id: number
   numero: string
   created_at: string
@@ -48,13 +38,23 @@ interface Detalhe {
   propostas_fabricacao: { versao: number; data_envio: string | null }[]
 }
 
+interface CicloRevisao {
+  versao: number
+  tecnica_data: string | null
+  tecnica_na: boolean
+  comercial_data: string | null
+  comercial_na: boolean
+  fabricacao_data: string | null
+  fabricacao_na: boolean
+}
+
+type Detalhe = DetalheInline
+
 function buildCiclos(detalhe: Detalhe): CicloRevisao[] {
   const versoes = new Set<number>()
   detalhe.propostas_tecnicas.forEach((p) => versoes.add(p.versao))
   detalhe.propostas_comerciais.forEach((p) => versoes.add(p.versao))
   detalhe.propostas_fabricacao.forEach((p) => versoes.add(p.versao))
-  if (detalhe.status_analise === 'APROVADA') versoes.add(1)
-
   return Array.from(versoes)
     .sort((a, b) => a - b)
     .map((versao) => {
@@ -73,15 +73,27 @@ function buildCiclos(detalhe: Detalhe): CicloRevisao[] {
     })
 }
 
-export function SolicitacaoDetalheInline({ id }: { id: number }) {
-  const [detalhe, setDetalhe] = useState<Detalhe | null>(null)
-  const [loading, setLoading] = useState(true)
+interface InlineProps {
+  id: number
+  onEditarReprovacao?: () => void
+  initialData?: DetalheInline
+  onLoaded?: (id: number, data: DetalheInline) => void
+}
+
+export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, onLoaded }: InlineProps) {
+  const [detalhe, setDetalhe] = useState<Detalhe | null>(initialData ?? null)
+  const [loading, setLoading] = useState(!initialData)
 
   useEffect(() => {
+    if (initialData) return
     fetch(`/api/solicitacoes/${id}`)
       .then((r) => r.json())
-      .then((j) => setDetalhe(j.data))
+      .then((j) => {
+        setDetalhe(j.data)
+        if (j.data) onLoaded?.(id, j.data)
+      })
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   if (loading) {
@@ -135,12 +147,23 @@ export function SolicitacaoDetalheInline({ id }: { id: number }) {
         <Field label="Criado por">{detalhe.criador.nome} em {formatDate(detalhe.created_at)}</Field>
 
         {detalhe.motivo_recusa && (
-          <Field label="Motivo reprovação" className="col-span-4 text-red-700">
-            {detalhe.motivo_recusa}
-            {detalhe.obs_reprovacao && (
-              <span className="block text-[10px] text-red-500 mt-0.5">Obs: {detalhe.obs_reprovacao}</span>
+          <div className="col-span-4">
+            <p className="text-[9px] text-gray-400 uppercase tracking-[0.04em] mb-0.5">Motivo reprovação</p>
+            <p className="text-[11px] font-medium text-red-700">
+              {detalhe.motivo_recusa}
+              {detalhe.obs_reprovacao && (
+                <span className="block text-[10px] text-red-500 mt-0.5">Obs: {detalhe.obs_reprovacao}</span>
+              )}
+            </p>
+            {onEditarReprovacao && (
+              <button
+                onClick={onEditarReprovacao}
+                className="mt-1 text-[10px] text-blue-600 hover:underline font-medium"
+              >
+                Editar motivo
+              </button>
             )}
-          </Field>
+          </div>
         )}
         {detalhe.cancel_reason && (
           <Field label="Motivo cancelamento" className="col-span-4 text-red-700">

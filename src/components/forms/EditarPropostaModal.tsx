@@ -145,7 +145,7 @@ export function EditarPropostaModal({
     setValorTerceirosParada(com?.valor_terceiros != null ? String(Number(com.valor_terceiros)) : '')
     setDataEnvioComParada(com?.data_envio ? com.data_envio.split('T')[0] : today())
     setResultado(com?.resultado ?? 'AGUARDANDO')
-    setMotivoPerda('')
+    setMotivoPerda((com?.motivo_perda ?? '') as MotivoPerda | '')
 
     // Fabricação
     const fab = item.propostas_fabricacao[0]
@@ -164,12 +164,13 @@ export function EditarPropostaModal({
       setValorTestes(fab.valor_testes != null ? String(Number(fab.valor_testes)) : '')
       setDataEnvioFab(fab.data_envio ? fab.data_envio.split('T')[0] : today())
       setResultadoFab(fab.resultado ?? 'AGUARDANDO')
+      setMotivoPerdaFab((fab.motivo_perda ?? '') as MotivoPerda | '')
     } else {
       setEquipamentos([mkEquip(1)]); setNextEquipId(2)
       setPossuiTestes(false); setDescTestes(''); setValorTestes(''); setDataEnvioFab(today())
       setResultadoFab('AGUARDANDO')
+      setMotivoPerdaFab('')
     }
-    setMotivoPerdaFab('')
   }, [open, item])
 
   // ── Cálculos automáticos ──────────────────────────────────────────────────
@@ -366,12 +367,11 @@ export function EditarPropostaModal({
     >
 
       {/* ════ SEÇÃO TÉCNICA (Obras + Paradas) ════════════════════════════ */}
-      {!isFabricacao && (
+      {!isFabricacao && canRegistrarTecnica && (
         <div className="border border-gray-200 rounded-lg mb-3 overflow-hidden">
           <button
-            onClick={() => canRegistrarTecnica && toggle('tecnica')}
-            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors
-              ${canRegistrarTecnica ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-not-allowed opacity-60'}
+            onClick={() => toggle('tecnica')}
+            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50 cursor-pointer
               ${openSection === 'tecnica' ? 'bg-gray-50' : 'bg-white'}`}
           >
             <div className="flex items-center gap-2">
@@ -461,12 +461,12 @@ export function EditarPropostaModal({
       )}
 
       {/* ════ SEÇÃO COMERCIAL ════════════════════════════════════════════ */}
-      {!isFabricacao && (
+      {!isFabricacao && canRegistrarComercial && (
         <div className="border border-gray-200 rounded-lg mb-3 overflow-hidden">
           <button
-            onClick={() => (canRegistrarComercial && item.propostas_tecnicas.length > 0) && toggle('comercial')}
+            onClick={() => item.propostas_tecnicas.length > 0 && toggle('comercial')}
             className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors
-              ${canRegistrarComercial && item.propostas_tecnicas.length > 0 ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-not-allowed opacity-60'}
+              ${item.propostas_tecnicas.length > 0 ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-not-allowed opacity-60'}
               ${openSection === 'comercial' ? 'bg-gray-50' : 'bg-white'}`}
           >
             <div className="flex items-center gap-2">

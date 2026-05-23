@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { usePermissions } from '@/hooks/usePermissions'
-import { cn } from '@/lib/utils'
+import { cn, formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
 
 type AcaoNF = { tipo: 'inativar' | 'excluir'; nf: NFContratoListItem }
@@ -25,9 +25,6 @@ type Aba = 'controle' | 'nfs' | 'aprovacoes'
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
 
 export default function FaturamentoPage() {
   const router = useRouter()
@@ -946,7 +943,7 @@ function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem
             <span>Resp.: <strong className="text-gray-600">{alteracao.responsavel.nome}</strong></span>
             {alteracao.revisor && <span>Revisor: <strong className="text-gray-600">{alteracao.revisor.nome}</strong></span>}
             {alteracao.reviewed_at && (
-              <span>{new Date(alteracao.reviewed_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+              <span>{formatDate(alteracao.reviewed_at)}</span>
             )}
             {!aprovado && alteracao.motivo_recusa && (
               <span className="text-red-600">Motivo: {alteracao.motivo_recusa}</span>
@@ -970,11 +967,11 @@ function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem
                   <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
                   {mudou ? (
                     <>
-                      <p className="text-[9px] text-gray-400 line-through">{de != null ? fmt(de) : '—'}</p>
-                      <p className={cn('text-[10px] font-bold', aprovado ? 'text-green-800' : 'text-red-700')}>{para != null ? fmt(para) : '—'}</p>
+                      <p className="text-[9px] text-gray-400 line-through">{de != null ? formatCurrency(de) : '—'}</p>
+                      <p className={cn('text-[10px] font-bold', aprovado ? 'text-green-800' : 'text-red-700')}>{para != null ? formatCurrency(para) : '—'}</p>
                     </>
                   ) : (
-                    <p className="text-[10px] text-gray-400">{para != null ? fmt(para) : '—'}</p>
+                    <p className="text-[10px] text-gray-400">{para != null ? formatCurrency(para) : '—'}</p>
                   )}
                 </div>
               )
@@ -1014,7 +1011,7 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
               Resp.: <strong className="text-gray-600">{alteracao.responsavel.nome}</strong>
             </span>
             <span className="text-[10px] text-gray-400">
-              {new Date(alteracao.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {formatDateTime(alteracao.created_at)}
             </span>
             <span className="text-[10px] text-amber-700">
               {mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}
@@ -1050,11 +1047,11 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
                   <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
                   {mudou ? (
                     <>
-                      <p className="text-[9px] text-gray-400 line-through">{de != null ? fmt(de) : '—'}</p>
-                      <p className="text-[10px] font-bold text-amber-700">{para != null ? fmt(para) : '—'}</p>
+                      <p className="text-[9px] text-gray-400 line-through">{de != null ? formatCurrency(de) : '—'}</p>
+                      <p className="text-[10px] font-bold text-amber-700">{para != null ? formatCurrency(para) : '—'}</p>
                     </>
                   ) : (
-                    <p className="text-[10px] text-gray-400">{para != null ? fmt(para) : '—'}</p>
+                    <p className="text-[10px] text-gray-400">{para != null ? formatCurrency(para) : '—'}</p>
                   )}
                 </div>
               )

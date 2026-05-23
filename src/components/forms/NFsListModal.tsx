@@ -19,6 +19,7 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
   const [loading, setLoading] = useState(true)
   const [inativando, setInativando] = useState<number | null>(null)
   const [motivoMap, setMotivoMap] = useState<Record<number, string>>({})
+  const [error, setError] = useState<string | null>(null)
 
   const fetchNFs = useCallback(async () => {
     setLoading(true)
@@ -32,15 +33,16 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
   }, [acordo.id])
 
   useEffect(() => {
-    if (open) fetchNFs()
+    if (open) { setError(null); fetchNFs() }
   }, [open, fetchNFs])
 
   const handleInativar = async (nf: NotaFiscalItem) => {
     const motivo = motivoMap[nf.id]
     if (!motivo || motivo.length < 5) {
-      alert('Informe o motivo (mínimo 5 caracteres)')
+      setError('Informe o motivo da inativação (mínimo 5 caracteres)')
       return
     }
+    setError(null)
     try {
       const res = await fetch(`/api/acordos/${acordo.id}/nfs/${nf.id}`, {
         method: 'PUT',
@@ -48,15 +50,16 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
         body: JSON.stringify({ ativa: false, motivo_inativacao: motivo }),
       })
       const json = await res.json()
-      if (json.error) { alert(json.error); return }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao inativar NF'); return }
       setInativando(null)
       fetchNFs()
     } catch {
-      alert('Erro ao inativar NF')
+      setError('Erro ao inativar NF — verifique sua conexão')
     }
   }
 
   const handleReativar = async (nf: NotaFiscalItem) => {
+    setError(null)
     try {
       const res = await fetch(`/api/acordos/${acordo.id}/nfs/${nf.id}`, {
         method: 'PUT',
@@ -64,10 +67,10 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
         body: JSON.stringify({ ativa: true }),
       })
       const json = await res.json()
-      if (json.error) { alert(json.error); return }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao reativar NF'); return }
       fetchNFs()
     } catch {
-      alert('Erro ao reativar NF')
+      setError('Erro ao reativar NF — verifique sua conexão')
     }
   }
 
@@ -99,6 +102,13 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-center text-gray-400 py-6 text-sm">Carregando...</p>

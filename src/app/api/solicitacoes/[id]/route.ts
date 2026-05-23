@@ -68,6 +68,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // CRÍTICO-3: apenas perfis do grupo comercial ou analista crítico podem editar
+  const EDIT_PERFIS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA']
+  if (!EDIT_PERFIS.includes(session.user.perfil as string) && !session.user.is_analista_critico) {
+    return NextResponse.json({ data: null, error: 'Sem permissão para editar solicitações' }, { status: 403 })
+  }
+
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
@@ -141,8 +147,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     include: { orcamentista: { select: { email: true } } },
   })
 
-  if (data.status && data.status !== existing.status && updated.orcamentista?.email) {
-    emailStatusAlterado(updated.orcamentista.email, existing.numero, data.status)
+  // ALTO-7: notifica por e-mail o orçamentista; se não houver, notifica todos ADM_COMERCIAL
+  if (data.status && data.status !== existing.status) {
+    if (updated.orcamentista?.email) {
+      emailStatusAlterado(updated.orcamentista.email, existing.numero, data.status)
+    } else {
+      prisma.user.findMany({ where: { perfil: 'ADM_COMERCIAL', ativo: true }, select: { email: true } })
+        .then((admins) => { for (const a of admins) emailStatusAlterado(a.email, existing.numero, data.status!) })
+        .catch(() => null)
+    }
   }
 
   return NextResponse.json({ data: updated, error: null })

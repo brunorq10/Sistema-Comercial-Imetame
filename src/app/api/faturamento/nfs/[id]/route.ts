@@ -20,6 +20,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // CRÍTICO-3: apenas perfis com permissão de faturamento podem modificar NFs
+  const NF_PERFIS = ['ACORDOS', 'GESTAO_ACORDOS', 'ADM_COMERCIAL', 'ADM_GERAL']
+  if (!NF_PERFIS.includes(session.user.perfil as string)) {
+    return NextResponse.json({ data: null, error: 'Sem permissão para modificar NFs' }, { status: 403 })
+  }
+
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 

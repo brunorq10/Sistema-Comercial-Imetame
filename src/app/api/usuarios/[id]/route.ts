@@ -18,6 +18,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  // CRÍTICO-3: apenas admins podem modificar usuários
+  const ADMIN_PERFIS = ['ADM_COMERCIAL', 'ADM_GERAL']
+  if (!ADMIN_PERFIS.includes(session.user.perfil as string)) {
+    return NextResponse.json({ data: null, error: 'Apenas administradores podem modificar usuários' }, { status: 403 })
+  }
+
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 

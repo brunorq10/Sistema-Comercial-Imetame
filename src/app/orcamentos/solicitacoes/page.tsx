@@ -89,6 +89,9 @@ export default function SolicitacoesPage() {
   const [transferindoLoading, setTransferindoLoading] = useState(false)
   const [reenviandoId, setReenviandoId] = useState<number | null>(null)
   const [reativandoId, setReativandoId] = useState<number | null>(null)
+  const [confirmReenviar, setConfirmReenviar] = useState<SolicitacaoListItem | null>(null)
+  const [confirmReativar, setConfirmReativar] = useState<SolicitacaoListItem | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
 
   // ── Estado: Análise ───────────────────────────────────────────────────────
   const [pendentes, setPendentes] = useState<SolicitacaoPendente[]>([])
@@ -162,16 +165,17 @@ export default function SolicitacoesPage() {
     setPage(1)
   }
 
-  const handleEdit        = (item: SolicitacaoListItem) => { setEditando(item); setModalForm(true) }
-  const handleNova        = () => { setEditando(null); setModalForm(true) }
-  const handleCancel      = (item: SolicitacaoListItem) => { setCancelando(item); setModalCancelar(true) }
-  const handleNovaRevisao = (item: SolicitacaoListItem) => { setRevisando(item); setModalNovaRevisao(true) }
-  const handleTransferir  = (item: SolicitacaoListItem) => { setTransferindo(item); setNovoOrcamentistaId(''); setModalTransferir(true) }
+  const handleEdit             = (item: SolicitacaoListItem) => { setEditando(item); setModalForm(true) }
+  const handleNova             = () => { setEditando(null); setModalForm(true) }
+  const handleCancel           = (item: SolicitacaoListItem) => { setCancelando(item); setModalCancelar(true) }
+  const handleNovaRevisao      = (item: SolicitacaoListItem) => { setRevisando(item); setModalNovaRevisao(true) }
+  const handleTransferir       = (item: SolicitacaoListItem) => { setTransferindo(item); setNovoOrcamentistaId(''); setModalTransferir(true) }
+  const handleEditarReprovacao = (id: number) => { setAnaliseId(id); setAnaliseModal(true) }
 
   const exportarExcel = () => {
     const rows = items.map((i) => ({
       'Número': i.numero,
-      'Data Criação': i.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : '',
+      'Data Criação': formatDate(i.created_at),
       'Versão': `Rev${String(i.versao_atual - 1).padStart(2, '0')}`,
       'Cliente': i.cliente.nome,
       'Cliente Final': i.cliente_final?.nome ?? '',
@@ -200,7 +204,7 @@ export default function SolicitacoesPage() {
         body: JSON.stringify({ novo_orcamentista_id: Number(novoOrcamentistaId) }),
       })
       const json = await res.json()
-      if (json.error) { alert(json.error); return }
+      if (!res.ok || json.error) { setPageError(json.error ?? 'Erro ao transferir orçamentista'); return }
       setModalTransferir(false)
       fetchData()
     } finally {
@@ -208,24 +212,29 @@ export default function SolicitacoesPage() {
     }
   }
 
-  const handleReenviar = async (item: SolicitacaoListItem) => {
+  const handleReenviar = (item: SolicitacaoListItem) => setConfirmReenviar(item)
+  const handleReativar = (item: SolicitacaoListItem) => setConfirmReativar(item)
+
+  const executarReenvio = async (item: SolicitacaoListItem) => {
     if (reenviandoId) return
     setReenviandoId(item.id)
+    setConfirmReenviar(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/reenviar`, { method: 'POST' })
       const json = await res.json()
-      if (json.error) { alert(json.error); return }
+      if (!res.ok || json.error) { setPageError(json.error ?? 'Erro ao reenviar solicitação'); return }
       fetchData()
     } finally { setReenviandoId(null) }
   }
 
-  const handleReativar = async (item: SolicitacaoListItem) => {
+  const executarReativacao = async (item: SolicitacaoListItem) => {
     if (reativandoId) return
     setReativandoId(item.id)
+    setConfirmReativar(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/reativar`, { method: 'POST' })
       const json = await res.json()
-      if (json.error) { alert(json.error); return }
+      if (!res.ok || json.error) { setPageError(json.error ?? 'Erro ao reativar solicitação'); return }
       fetchData()
     } finally { setReativandoId(null) }
   }
@@ -241,6 +250,14 @@ export default function SolicitacoesPage() {
     <div className="flex flex-col h-full">
       {/* ── Zona congelada ──────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 px-4 pt-4">
+      {/* Banner de erro page-level */}
+      {pageError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 flex items-center justify-between">
+          <span>{pageError}</span>
+          <button onClick={() => setPageError(null)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
+        </div>
+      )}
+
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-[15px] font-bold">Solicitações de Orçamento</h2>
@@ -388,7 +405,7 @@ export default function SolicitacoesPage() {
               return (
                 <button
                   key={t.label}
-                  onClick={() => { setTab(t.status); setFiltros(f => ({ ...f, status: t.status ?? '' })); setFiltrosAplicados(fa => ({ ...fa, status: t.status ?? '' })) }}
+                  onClick={() => { setTab(t.status); setFiltros(f => ({ ...f, status: t.status ?? '' })); setFiltrosAplicados(fa => ({ ...fa, status: t.status ?? '' })); setPage(1) }}
                   className={`px-3.5 py-2 text-xs font-semibold whitespace-nowrap border-b-2 -mb-0.5 transition-colors ${
                     active ? 'text-green-primary border-green-primary' : 'text-gray-500 border-transparent hover:text-gray-700'
                   }`}
@@ -420,6 +437,7 @@ export default function SolicitacoesPage() {
                   onReenviar={perms.canCreateSolicitacao ? handleReenviar : undefined}
                   onReativar={perms.canCreateSolicitacao ? handleReativar : undefined}
                   onTransferir={perms.canTransferirOrcamentista ? handleTransferir : undefined}
+                  onEditarReprovacao={perms.isAnalistaCritico ? handleEditarReprovacao : undefined}
                   canEdit={perms.canEditSolicitacao}
                   canCancel={perms.canCancelSolicitacao}
                   canRevisao={perms.canCriarRevisao}
@@ -529,6 +547,60 @@ export default function SolicitacoesPage() {
         onSuccess={fetchData}
         solicitacao={revisando}
       />
+
+      {/* Modal confirmação — reenviar */}
+      {confirmReenviar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+            <h3 className="text-[14px] font-bold mb-1">Reenviar para análise</h3>
+            <p className="text-[12px] text-gray-600 mb-4">
+              A solicitação <strong>{confirmReenviar.numero}</strong> será reenviada ao Analista Crítico. Confirmar?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmReenviar(null)}
+                className="px-3 py-1.5 text-[11px] border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => executarReenvio(confirmReenviar)}
+                disabled={reenviandoId === confirmReenviar.id}
+                className="px-3 py-1.5 text-[11px] bg-green-primary text-white rounded hover:bg-green-dark disabled:opacity-50"
+              >
+                {reenviandoId === confirmReenviar.id ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmação — reativar */}
+      {confirmReativar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+            <h3 className="text-[14px] font-bold mb-1">Reativar solicitação</h3>
+            <p className="text-[12px] text-gray-600 mb-4">
+              A solicitação <strong>{confirmReativar.numero}</strong> será reativada e voltará ao status anterior ao cancelamento. Confirmar?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmReativar(null)}
+                className="px-3 py-1.5 text-[11px] border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => executarReativacao(confirmReativar)}
+                disabled={reativandoId === confirmReativar.id}
+                className="px-3 py-1.5 text-[11px] bg-green-primary text-white rounded hover:bg-green-dark disabled:opacity-50"
+              >
+                {reativandoId === confirmReativar.id ? 'Reativando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal transferência de orçamentista — RN-23 */}
       {modalTransferir && transferindo && (

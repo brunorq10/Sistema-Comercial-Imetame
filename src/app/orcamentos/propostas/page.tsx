@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
+import { formatDate } from '@/lib/utils'
 import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
@@ -108,7 +109,7 @@ export default function PropostasPage() {
   const exportarExcel = () => {
     const rows = items.map((p) => ({
       'Número': p.numero,
-      'Data Criação': p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '',
+      'Data Criação': formatDate(p.created_at),
       'Cliente': p.cliente.nome,
       'Cliente Final': p.cliente_final?.nome ?? '',
       'Cidade/UF': [p.cidade, p.estado].filter(Boolean).join(' / '),
@@ -116,9 +117,9 @@ export default function PropostasPage() {
       'Classificação': p.classificacao ?? '',
       'Interesse': p.interesse ?? '',
       'Orçamentista': p.orcamentista?.nome ?? '',
-      'Rev. Técnica': p.versao_tecnica != null ? `Rev${String(p.versao_tecnica - 1).padStart(2, '0')}` : '',
+      'Versão Técnica': p.versao_tecnica != null ? p.versao_tecnica - 1 : '',
       'HH Total': p.hh_total ?? '',
-      'Rev. Comercial': p.versao_comercial != null ? `Rev${String(p.versao_comercial - 1).padStart(2, '0')}` : '',
+      'Versão Comercial': p.versao_comercial != null ? p.versao_comercial - 1 : '',
       'Valor Total (R$)': p.valor_total ?? '',
       'Resultado': p.resultado ?? '',
       'Status': p.status,

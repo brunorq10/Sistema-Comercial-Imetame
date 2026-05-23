@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,7 +12,7 @@ import {
 import { StatusAnaliseBadge, ClassificacaoBadge, InteresseBadge, VersaoBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDate } from '@/lib/utils'
-import { SolicitacaoDetalheInline } from '@/components/painel/SolicitacaoDetalheInline'
+import { SolicitacaoDetalheInline, type DetalheInline } from '@/components/painel/SolicitacaoDetalheInline'
 import { MOTIVO_REPROVACAO_LABELS } from '@/types'
 import type { SolicitacaoListItem } from '@/types'
 
@@ -24,6 +24,7 @@ interface Props {
   onReenviar?: (item: SolicitacaoListItem) => void
   onReativar?: (item: SolicitacaoListItem) => void
   onTransferir?: (item: SolicitacaoListItem) => void
+  onEditarReprovacao?: (id: number) => void
   canEdit: boolean
   canCancel: boolean
   canRevisao: boolean
@@ -39,12 +40,18 @@ export function SolicitacoesTable({
   onReenviar,
   onReativar,
   onTransferir,
+  onEditarReprovacao,
   canEdit,
   canCancel,
   canRevisao,
 }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [detalheCache, setDetalheCache] = useState<Map<number, DetalheInline>>(new Map())
+
+  const handleDetalheLoaded = useCallback((id: number, data: DetalheInline) => {
+    setDetalheCache((prev) => new Map(prev).set(id, data))
+  }, [])
 
   const columns = useMemo(
     () => [
@@ -194,7 +201,7 @@ export function SolicitacoesTable({
         size: 120,
       }),
     ],
-    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onReenviar, onReativar, onTransferir],
+    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onReenviar, onReativar, onTransferir, onEditarReprovacao],
   )
 
   const table = useReactTable({
@@ -258,7 +265,12 @@ export function SolicitacoesTable({
                 {isExpanded && (
                   <tr key={`${row.id}-detail`} className="bg-white border-b border-gray-200">
                     <td colSpan={colSpan} className="p-0">
-                      <SolicitacaoDetalheInline id={row.original.id} />
+                      <SolicitacaoDetalheInline
+                    id={row.original.id}
+                    initialData={detalheCache.get(row.original.id)}
+                    onLoaded={handleDetalheLoaded}
+                    onEditarReprovacao={onEditarReprovacao ? () => onEditarReprovacao(row.original.id) : undefined}
+                  />
                     </td>
                   </tr>
                 )}

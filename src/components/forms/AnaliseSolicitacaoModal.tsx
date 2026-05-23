@@ -26,6 +26,8 @@ interface SolicitacaoAnalise {
   prazo_tecnica: string | null
   prazo_comercial: string | null
   status_analise: 'AGUARDANDO' | 'APROVADA' | 'REPROVADA'
+  motivo_reprovacao: MotivoReprovacao | null
+  obs_reprovacao: string | null
   cliente: { id: number; nome: string }
   cliente_final: { id: number; nome: string } | null
   criador: { id: number; nome: string }
@@ -94,6 +96,11 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
         setPrazoComercial(d.prazo_comercial ? d.prazo_comercial.slice(0, 10) : '')
         setVisitaTecnica(d.visita_tecnica)
         setDataVisita(d.data_visita ? d.data_visita.slice(0, 10) : '')
+        if (d.status_analise === 'REPROVADA') {
+          setModo('reprovar')
+          setMotivoReprovacao((d.motivo_reprovacao ?? '') as MotivoReprovacao | '')
+          setObsReprovacao(d.obs_reprovacao ?? '')
+        }
       }
       if (orcJson.data) setOrcamentistas(orcJson.data)
     }).finally(() => setLoading(false))
@@ -122,6 +129,29 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao aprovar'); return }
+      onSuccess(); onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!motivoReprovacao) {
+      setError('Selecione o motivo da reprovação')
+      return
+    }
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch(`/api/analise/${solicitacaoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          motivo_reprovacao: motivoReprovacao,
+          obs_reprovacao: obsReprovacao || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
       onSuccess(); onClose()
     } finally {
       setLoading(false)
@@ -160,7 +190,14 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
       onClose={onClose}
       title={sol ? `Análise — ${sol.numero}` : 'Carregando...'}
       footer={
-        modo === 'reprovar' ? (
+        sol?.status_analise === 'REPROVADA' ? (
+          <>
+            <Button variant="outline" onClick={onClose} disabled={loading}>Fechar</Button>
+            <Button variant="danger" onClick={handleSalvarEdicao} disabled={loading}>
+              {loading ? 'Salvando...' : 'Salvar alterações'}
+            </Button>
+          </>
+        ) : modo === 'reprovar' ? (
           <>
             <Button variant="outline" onClick={() => { setModo('visualizar'); setError(null) }} disabled={loading}>
               Voltar

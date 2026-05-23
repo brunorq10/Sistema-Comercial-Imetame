@@ -50,11 +50,18 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
   // Carrega subitems
   useEffect(() => {
     if (!open) return
+    const controller = new AbortController()
     setLoadingSubs(true)
-    fetch('/api/faturamento/subindices')
+    fetch('/api/faturamento/subindices', { signal: controller.signal })
       .then((r) => r.json())
-      .then((j) => setSubitems(j.data ?? []))
-      .finally(() => setLoadingSubs(false))
+      .then((j) => {
+        setSubitems(j.data ?? [])
+        setLoadingSubs(false)
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') setLoadingSubs(false)
+      })
+    return () => controller.abort()
   }, [open])
 
   const numValorTotal = Number(valorTotal) || 0

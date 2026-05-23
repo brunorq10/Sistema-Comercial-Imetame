@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { emailNovaRevisao } from '@/lib/notifications'
+import { emailNovaRevisao, createNotificacao } from '@/lib/notifications'
 
 const schema = z.object({
   prazo_tecnica: z.string().nullable().optional(),
@@ -45,19 +45,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const ultimaVersao = sol.propostas_tecnicas[0]?.versao ?? 0
   const novaRevisao = Math.max(sol.revisao_esperada, ultimaVersao) + 1
 
-  // RN-46: Encerra propostas comerciais pendentes do ciclo atual antes de abrir nova revisão
+  const d = parsed.data
+
+  // Conta pendentes antes de fechar — necessário para a notificação (ALTO-6)
+  const pendenteCount = await prisma.propostaComercial.count({
+    where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
+  })
+
+  // RN-46: Encerra propostas comerciais pendentes do ciclo atual
   await prisma.propostaComercial.updateMany({
     where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
     data: { resultado: 'PERDEU', motivo_perda: 'OUTRO' },
   })
 
-  const d = parsed.data
-  const updated = await prisma.solicitacao.update({
-    where: { id },
+  // CRÍTICO-2: atualização atômica — WHERE em revisao_esperada age como compare-and-swap.
+  // Se outro processo já incrementou, count=0 e retornamos 409.
+  const updateResult = await prisma.solicitacao.updateMany({
+    where: { id, revisao_esperada: sol.revisao_esperada },
     data: {
       revisao_esperada: novaRevisao,
       status: 'EM_ELABORACAO',
-      // RN-44: atualiza prazos se fornecidos
       ...(d.prazo_tecnica !== undefined && {
         prazo_tecnica: d.prazo_tecnica ? new Date(d.prazo_tecnica) : null,
       }),
@@ -73,9 +80,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
   })
 
+  if (updateResult.count === 0) {
+    return NextResponse.json(
+      { data: null, error: 'Revisão já foi criada. Recarregue a página e tente novamente.' },
+      { status: 409 },
+    )
+  }
+
+  // ALTO-6: notifica orçamentista se havia propostas pendentes que foram encerradas
+  if (pendenteCount > 0 && sol.orcamentista_id) {
+    createNotificacao(
+      sol.orcamentista_id,
+      `Nova revisão criada — ${sol.numero}`,
+      `A revisão Rev${String(novaRevisao - 1).padStart(2, '0')} foi aberta. ${pendenteCount} proposta(s) pendente(s) foram encerradas automaticamente.`,
+      '/orcamentos/painel',
+    )
+  }
+
   if (sol.orcamentista?.email) {
     emailNovaRevisao(sol.orcamentista.email, sol.numero, novaRevisao)
   }
 
+  const updated = await prisma.solicitacao.findUnique({ where: { id } })
   return NextResponse.json({ data: updated, error: null }, { status: 200 })
 }

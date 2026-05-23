@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NFsTable } from '@/components/tables/NFsTable'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { Pagination } from '@/components/ui/Pagination'
 import { formatCurrency } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
@@ -10,12 +11,27 @@ import type { NFListItem } from '@/types'
 
 type FiltroVenc = 'todas' | 'vencidas' | 'proximas' | 'ok' | 'inativas'
 
+interface Contagens {
+  total: number
+  vencidas: number
+  proximas: number
+  ok: number
+  inativas: number
+  totalValor: number
+  totalVencidas: number
+}
+
 export default function RegistroNFsPage() {
   const { canLancarNF } = usePermissions()
 
   const [items, setItems] = useState<NFListItem[]>([])
+  const [contagens, setContagens] = useState<Contagens>({ total: 0, vencidas: 0, proximas: 0, ok: 0, inativas: 0, totalValor: 0, totalVencidas: 0 })
   const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState<string | null>(null)
   const [filtroVenc, setFiltroVenc] = useState<FiltroVenc>('todas')
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const [busca, setBusca] = useState('')
   const [status, setStatus] = useState('')
@@ -23,24 +39,47 @@ export default function RegistroNFsPage() {
   const [vencDe, setVencDe] = useState('')
   const [vencAte, setVencAte] = useState('')
 
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams()
+    if (busca) params.set('busca', busca)
+    if (status) params.set('status', status)
+    if (ano) params.set('ano', ano)
+    if (vencDe) params.set('vencimento_de', vencDe)
+    if (vencAte) params.set('vencimento_ate', vencAte)
+    return params
+  }, [busca, status, ano, vencDe, vencAte])
+
+  const fetchContagens = useCallback(async () => {
+    const params = buildParams()
+    params.set('modo', 'contagens')
+    const res = await fetch(`/api/nfs?${params}`)
+    const json = await res.json()
+    if (json.data) setContagens(json.data)
+  }, [buildParams])
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (busca) params.set('busca', busca)
-      if (status) params.set('status', status)
-      if (ano) params.set('ano', ano)
-      if (vencDe) params.set('vencimento_de', vencDe)
-      if (vencAte) params.set('vencimento_ate', vencAte)
-      const res = await fetch(`/api/nfs?${params.toString()}`)
+      const params = buildParams()
+      if (filtroVenc !== 'todas') params.set('venc_status', filtroVenc)
+      params.set('page', String(page))
+      const res = await fetch(`/api/nfs?${params}`)
       const json = await res.json()
       setItems(json.data ?? [])
+      setTotal(json.total ?? 0)
+      setPages(json.pages ?? 1)
     } finally {
       setLoading(false)
     }
-  }, [busca, status, ano, vencDe, vencAte])
+  }, [buildParams, filtroVenc, page])
 
+  useEffect(() => { fetchContagens() }, [fetchContagens])
   useEffect(() => { fetchData() }, [fetchData])
+
+  const handleFiltroVenc = (f: FiltroVenc) => {
+    setFiltroVenc(f)
+    setPage(1)
+  }
 
   const handleToggleAtiva = useCallback(async (nf: NFListItem, motivo?: string) => {
     const body = nf.ativa
@@ -52,110 +91,98 @@ export default function RegistroNFsPage() {
       body: JSON.stringify(body),
     })
     const json = await res.json()
-    if (json.error) { alert(json.error); return }
+    if (json.error) { setPageError(json.error); return }
     fetchData()
-  }, [fetchData])
+    fetchContagens()
+  }, [fetchData, fetchContagens])
 
-  const hoje = new Date()
-  hoje.setHours(0, 0, 0, 0)
-  const em30 = new Date(hoje)
-  em30.setDate(em30.getDate() + 30)
-
-  const contagens = useMemo(() => {
-    const ativas = items.filter((i) => i.ativa)
-    return {
-      total: items.length,
-      vencidas: ativas.filter((i) => new Date(i.data_vencimento) < hoje).length,
-      proximas: ativas.filter((i) => {
-        const v = new Date(i.data_vencimento)
-        return v >= hoje && v <= em30
-      }).length,
-      ok: ativas.filter((i) => new Date(i.data_vencimento) > em30).length,
-      inativas: items.filter((i) => !i.ativa).length,
-      totalValor: ativas.reduce((acc, i) => acc + i.valor, 0),
-      totalVencidas: ativas.filter((i) => new Date(i.data_vencimento) < hoje).reduce((acc, i) => acc + i.valor, 0),
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items])
-
-  const itemsFiltrados = useMemo(() => {
-    const ativas = (i: NFListItem) => i.ativa
-    if (filtroVenc === 'vencidas') return items.filter((i) => ativas(i) && new Date(i.data_vencimento) < hoje)
-    if (filtroVenc === 'proximas') return items.filter((i) => {
-      const v = new Date(i.data_vencimento)
-      return ativas(i) && v >= hoje && v <= em30
-    })
-    if (filtroVenc === 'ok') return items.filter((i) => ativas(i) && new Date(i.data_vencimento) > em30)
-    if (filtroVenc === 'inativas') return items.filter((i) => !i.ativa)
-    return items
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, filtroVenc])
+  const limpar = () => {
+    setBusca(''); setStatus(''); setAno(String(new Date().getFullYear()))
+    setVencDe(''); setVencAte('')
+    setFiltroVenc('todas'); setPage(1)
+  }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[15px] font-bold">Registro de Notas Fiscais</h2>
-        <span className="text-[11px] text-gray-400">{items.length} NF{items.length !== 1 ? 's' : ''}</span>
-      </div>
-      <p className="text-[11px] text-gray-400 mb-3">
-        Visão consolidada de todas as NFs. Colunas NF Nº, Acordo e Cliente são fixas.
-      </p>
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 px-4 pt-4 pb-2">
+        {pageError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3 flex items-center justify-between">
+            <span>{pageError}</span>
+            <button onClick={() => setPageError(null)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
+          </div>
+        )}
 
-      {/* Indicadores filtráveis */}
-      <div className="grid grid-cols-5 gap-2 mb-3">
-        <IndicadorCard label="Total de NFs" valor={contagens.total} sub={formatCurrency(contagens.totalValor)}
-          variant="green" active={filtroVenc === 'todas'} onClick={() => setFiltroVenc('todas')} />
-        <IndicadorCard label="Vencidas" valor={contagens.vencidas} sub={formatCurrency(contagens.totalVencidas)}
-          variant="red" active={filtroVenc === 'vencidas'} onClick={() => setFiltroVenc('vencidas')} />
-        <IndicadorCard label="Vencem em 30 dias" valor={contagens.proximas} sub="atenção"
-          variant="amber" active={filtroVenc === 'proximas'} onClick={() => setFiltroVenc('proximas')} />
-        <IndicadorCard label="Em dia" valor={contagens.ok} sub="venc. > 30 dias"
-          variant="blue" active={filtroVenc === 'ok'} onClick={() => setFiltroVenc('ok')} />
-        <IndicadorCard label="Inativas" valor={contagens.inativas} sub="fora do faturamento"
-          variant="gray" active={filtroVenc === 'inativas'} onClick={() => setFiltroVenc('inativas')} />
-      </div>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-[15px] font-bold">Registro de Notas Fiscais</h2>
+          <span className="text-[11px] text-gray-400">{contagens.total} NF{contagens.total !== 1 ? 's' : ''}</span>
+        </div>
+        <p className="text-[11px] text-gray-400 mb-3">
+          Visão consolidada de todas as NFs. Colunas NF Nº, Acordo e Cliente são fixas.
+        </p>
 
-      {/* Filtros */}
-      <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
-        <Field label="Busca (NF, acordo ou cliente)" className="min-w-[180px] flex-1">
-          <Input placeholder="000123 ou ACD-0001 ou Petrobras..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-        </Field>
-        <Field label="Status" className="min-w-[110px]">
-          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Todas</option>
-            <option value="ativa">Ativas</option>
-            <option value="inativa">Inativas</option>
-          </Select>
-        </Field>
-        <Field label="Ano do acordo" className="min-w-[80px]">
-          <Input type="number" value={ano} onChange={(e) => setAno(e.target.value)} placeholder="2026" />
-        </Field>
-        <Field label="Vencimento — de" className="min-w-[120px]">
-          <Input type="date" value={vencDe} onChange={(e) => setVencDe(e.target.value)} />
-        </Field>
-        <Field label="até" className="min-w-[120px]">
-          <Input type="date" value={vencAte} onChange={(e) => setVencAte(e.target.value)} />
-        </Field>
-        <div className="flex-shrink-0">
-          <button
-            onClick={() => { setBusca(''); setStatus(''); setAno(String(new Date().getFullYear())); setVencDe(''); setVencAte('') }}
-            className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
-          >
-            ✕ Limpar
-          </button>
+        {/* Indicadores filtráveis */}
+        <div className="grid grid-cols-5 gap-2 mb-3">
+          <IndicadorCard label="Total de NFs" valor={contagens.total} sub={formatCurrency(contagens.totalValor)}
+            variant="green" active={filtroVenc === 'todas'} onClick={() => handleFiltroVenc('todas')} />
+          <IndicadorCard label="Vencidas" valor={contagens.vencidas} sub={formatCurrency(contagens.totalVencidas)}
+            variant="red" active={filtroVenc === 'vencidas'} onClick={() => handleFiltroVenc('vencidas')} />
+          <IndicadorCard label="Vencem em 30 dias" valor={contagens.proximas} sub="atenção"
+            variant="amber" active={filtroVenc === 'proximas'} onClick={() => handleFiltroVenc('proximas')} />
+          <IndicadorCard label="Em dia" valor={contagens.ok} sub="venc. > 30 dias"
+            variant="blue" active={filtroVenc === 'ok'} onClick={() => handleFiltroVenc('ok')} />
+          <IndicadorCard label="Inativas" valor={contagens.inativas} sub="fora do faturamento"
+            variant="gray" active={filtroVenc === 'inativas'} onClick={() => handleFiltroVenc('inativas')} />
+        </div>
+
+        {/* Filtros */}
+        <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
+          <Field label="Busca (NF, acordo ou cliente)" className="min-w-[180px] flex-1">
+            <Input placeholder="000123 ou ACD-0001 ou Petrobras..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </Field>
+          <Field label="Status" className="min-w-[110px]">
+            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Todas</option>
+              <option value="ativa">Ativas</option>
+              <option value="inativa">Inativas</option>
+            </Select>
+          </Field>
+          <Field label="Ano do acordo" className="min-w-[80px]">
+            <Input type="number" value={ano} onChange={(e) => setAno(e.target.value)} placeholder="2026" />
+          </Field>
+          <Field label="Vencimento — de" className="min-w-[120px]">
+            <Input type="date" value={vencDe} onChange={(e) => setVencDe(e.target.value)} />
+          </Field>
+          <Field label="até" className="min-w-[120px]">
+            <Input type="date" value={vencAte} onChange={(e) => setVencAte(e.target.value)} />
+          </Field>
+          <div className="flex-shrink-0">
+            <button
+              onClick={limpar}
+              className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
+            >
+              ✕ Limpar
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tabela */}
-      {loading ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-      ) : (
-        <NFsTable
-          data={itemsFiltrados}
-          onToggleAtiva={handleToggleAtiva}
-          canInativar={canLancarNF}
-        />
-      )}
+      {/* Tabela com scroll */}
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 flex flex-col">
+        {loading ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : (
+          <>
+            <div className="flex-1 min-h-0">
+              <NFsTable
+                data={items}
+                onToggleAtiva={handleToggleAtiva}
+                canInativar={canLancarNF}
+              />
+            </div>
+            <Pagination page={page} pages={pages} total={total} limit={50} onPage={setPage} />
+          </>
+        )}
+      </div>
     </div>
   )
 }
