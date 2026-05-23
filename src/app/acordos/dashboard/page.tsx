@@ -212,30 +212,60 @@ function Treemap({ data }: { data: { nome: string; valor: number; percentual: nu
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ height: 440 }}>
-      {rects.map((rect, i) => (
-        <div
-          key={rect.nome}
-          className="absolute flex flex-col items-center justify-center overflow-hidden rounded"
-          style={{
-            left:   rect.x + 1,
-            top:    rect.y + 1,
-            width:  Math.max(0, rect.w - 2),
-            height: Math.max(0, rect.h - 2),
-            backgroundColor: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
-          }}
-        >
-          {rect.w > 48 && rect.h > 22 && (
-            <>
-              <span className="text-white text-[9px] font-semibold text-center leading-tight line-clamp-2 px-1">
+      {rects.map((rect, i) => {
+        const cellW = Math.max(0, rect.w - 2)
+        const cellH = Math.max(0, rect.h - 2)
+        const nameSize = cellW < 70 ? 8 : 9
+        const pctSize  = cellW < 70 ? 9 : 11
+        return (
+          <div
+            key={rect.nome}
+            className="absolute flex flex-col items-center justify-center rounded"
+            style={{
+              left:   rect.x + 1,
+              top:    rect.y + 1,
+              width:  cellW,
+              height: cellH,
+              backgroundColor: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
+              overflow: 'visible',
+              zIndex: 0,
+            }}
+          >
+            <div
+              className="flex flex-col items-center justify-center text-center px-1 pointer-events-none"
+              style={{
+                maxWidth: Math.max(cellW, 80),
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              <span
+                className="text-white font-semibold leading-tight"
+                style={{
+                  fontSize: nameSize,
+                  display: '-webkit-box',
+                  WebkitLineClamp: cellH < 32 ? 1 : 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+                }}
+              >
                 {rect.nome}
               </span>
-              <span className="text-white text-[11px] font-bold mt-0.5">
+              <span
+                className="text-white font-bold mt-0.5"
+                style={{
+                  fontSize: pctSize,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.4)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {rect.percentual.toFixed(1)}%
               </span>
-            </>
-          )}
-        </div>
-      ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
