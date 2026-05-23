@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
+import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { HistoricoPropostaModal } from '@/components/forms/HistoricoPropostaModal'
@@ -25,6 +27,9 @@ export default function PropostasPage() {
   const canEditar = canRegistrarTecnica || canRegistrarComercial
 
   const [items, setItems]     = useState<PropostasItem[]>([])
+  const [total, setTotal]     = useState(0)
+  const [page, setPage]       = useState(1)
+  const [pages, setPages]     = useState(1)
   const [loading, setLoading] = useState(true)
 
   // Opções de filtro (vindas da própria tabela de propostas)
@@ -73,24 +78,55 @@ export default function PropostasPage() {
       if (aplicados.orcamentistaId) params.set('orcamentista_id', aplicados.orcamentistaId)
       if (aplicados.resultado)      params.set('resultado', aplicados.resultado)
       if (aplicados.escopo)         params.set('escopo', aplicados.escopo)
+      params.set('page', String(page))
+      params.set('limit', '20')
       const res = await fetch(`/api/propostas?${params}`)
       const json = await res.json()
       setItems(json.data ?? [])
+      setTotal(json.total ?? 0)
+      setPages(json.pages ?? 1)
     } finally {
       setLoading(false)
     }
-  }, [aplicados])
+  }, [aplicados, page])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const handleFiltrar = () =>
+  const handleFiltrar = () => {
     setAplicados({ numero, clienteId, cidade, classificacao, orcamentistaId, resultado, escopo })
+    setPage(1)
+  }
 
   const limpar = () => {
     setNumero(''); setClienteId(''); setCidade('')
     setClassificacao(''); setOrcamentistaId('')
     setResultado(''); setEscopo('')
     setAplicados({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
+    setPage(1)
+  }
+
+  const exportarExcel = () => {
+    const rows = items.map((p) => ({
+      'Número': p.numero,
+      'Data Criação': p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '',
+      'Cliente': p.cliente.nome,
+      'Cliente Final': p.cliente_final?.nome ?? '',
+      'Cidade/UF': [p.cidade, p.estado].filter(Boolean).join(' / '),
+      'Escopo': p.escopo ?? '',
+      'Classificação': p.classificacao ?? '',
+      'Interesse': p.interesse ?? '',
+      'Orçamentista': p.orcamentista?.nome ?? '',
+      'Rev. Técnica': p.versao_tecnica != null ? `Rev${String(p.versao_tecnica - 1).padStart(2, '0')}` : '',
+      'HH Total': p.hh_total ?? '',
+      'Rev. Comercial': p.versao_comercial != null ? `Rev${String(p.versao_comercial - 1).padStart(2, '0')}` : '',
+      'Valor Total (R$)': p.valor_total ?? '',
+      'Resultado': p.resultado ?? '',
+      'Status': p.status,
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Propostas')
+    XLSX.writeFile(wb, `propostas_${new Date().toISOString().slice(0,10)}.xlsx`)
   }
 
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
@@ -101,9 +137,19 @@ export default function PropostasPage() {
       <div className="flex-shrink-0 px-4 pt-4 pb-2">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-[15px] font-bold">Propostas</h2>
-        <span className="text-[11px] text-gray-400">
-          {items.length} proposta{items.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-2">
+          {!loading && items.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] font-medium hover:bg-gray-50 transition-colors"
+            >
+              Exportar Excel
+            </button>
+          )}
+          <span className="text-[11px] text-gray-400">
+            {items.length} proposta{items.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* ── Filtros ───────────────────────────────────────────────────── */}
@@ -191,16 +237,21 @@ export default function PropostasPage() {
       </div>{/* fim zona congelada */}
 
       {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 flex flex-col">
         {loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : (
-          <PropostasTable
-            data={items}
-            onEditar={setModalEditar}
-            onHistorico={setModalHistorico}
-            canEditar={canEditar}
-          />
+          <>
+            <div className="flex-1 min-h-0">
+              <PropostasTable
+                data={items}
+                onEditar={setModalEditar}
+                onHistorico={setModalHistorico}
+                canEditar={canEditar}
+              />
+            </div>
+            <Pagination page={page} pages={pages} total={total} limit={20} onPage={setPage} />
+          </>
         )}
       </div>
 

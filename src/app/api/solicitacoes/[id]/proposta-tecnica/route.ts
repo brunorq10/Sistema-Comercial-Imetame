@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createNotificacao } from '@/lib/notifications'
 
 const schema = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -105,6 +106,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const novoStatus = sol.status === 'AGUARDANDO_ANALISE' ? 'EM_ELABORACAO' : undefined
   if (novoStatus) {
     await prisma.solicitacao.update({ where: { id }, data: { status: novoStatus } })
+  }
+
+  // RN-50: Notificar ADM_COMERCIAL sobre nova proposta técnica (não-bloqueante)
+  const admins = await prisma.user.findMany({
+    where: { perfil: 'ADM_COMERCIAL', ativo: true },
+    select: { id: true },
+  })
+  const linkSol = `/orcamentos/solicitacoes/${id}`
+  for (const admin of admins) {
+    createNotificacao(
+      admin.id,
+      `Proposta técnica enviada — ${sol.numero}`,
+      `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
+      linkSol,
+    )
   }
 
   return NextResponse.json({ data: proposta, error: null }, { status: 201 })

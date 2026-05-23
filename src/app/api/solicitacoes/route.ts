@@ -61,6 +61,10 @@ export async function GET(req: NextRequest) {
     })
     return NextResponse.json({ data: rows.map((r) => ({ id: r.id, numero: r.numero, cliente: r.cliente.nome })), error: null })
   }
+  const page  = Math.max(1, Number(searchParams.get('page')  ?? 1))
+  const limit = Math.min(100, Number(searchParams.get('limit') ?? 20))
+  const skip  = (page - 1) * limit
+
   const ano = searchParams.get('ano') ?? undefined
   const cliente_id = searchParams.get('cliente_id') ? Number(searchParams.get('cliente_id')) : undefined
   const classificacao = (searchParams.get('classificacao') as Classificacao) || undefined
@@ -106,6 +110,8 @@ export async function GET(req: NextRequest) {
     prisma.solicitacao.findMany({
       where,
       orderBy: { created_at: 'desc' },
+      skip,
+      take: limit,
       select: {
         id: true,
         numero: true,
@@ -151,7 +157,7 @@ export async function GET(req: NextRequest) {
     versao_atual: s.propostas_tecnicas[0]?.versao ?? 1,
   }))
 
-  return NextResponse.json({ data, total, error: null })
+  return NextResponse.json({ data, total, page, limit, pages: Math.ceil(total / limit), error: null })
 }
 
 // ─── POST /api/solicitacoes ───────────────────────────────────────────────────

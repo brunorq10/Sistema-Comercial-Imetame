@@ -25,13 +25,14 @@ export function usePermissions() {
     isAnalistaCritico,
 
     // Solicitações
-    canCreateSolicitacao: inGroup('comercial') || isAnalistaCritico,
+    canCreateSolicitacao: is('ADM_COMERCIAL'),
     canEditSolicitacao: inGroup('comercial') || isAnalistaCritico,
     canCancelSolicitacao: is('ADM_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
     canAtribuirOrcamentista: isAnalistaCritico,
     canRecusarSolicitacao: isAnalistaCritico,
     canVerTodasSolicitacoes: is('ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
     canCriarRevisao: is('ADM_COMERCIAL'),
+    canTransferirOrcamentista: is('ADM_COMERCIAL'),
     canAnalisarSolicitacao: isAnalistaCritico,
 
     // Propostas

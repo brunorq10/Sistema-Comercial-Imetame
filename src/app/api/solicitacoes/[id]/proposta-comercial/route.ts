@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createNotificacao } from '@/lib/notifications'
 
 const schemaPost = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -80,6 +81,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     return comercial
   })
+
+  // RN-50: Notificar GESTAO_ACORDOS quando resultado = GANHOU (não-bloqueante)
+  if (parsed.data.resultado === 'GANHOU') {
+    const sol = await prisma.solicitacao.findUnique({
+      where: { id },
+      select: { numero: true, cliente: { select: { nome: true } } },
+    })
+    const gestores = await prisma.user.findMany({
+      where: { perfil: 'GESTAO_ACORDOS', ativo: true },
+      select: { id: true },
+    })
+    for (const g of gestores) {
+      createNotificacao(
+        g.id,
+        `Contrato ganho — ${sol?.numero ?? id}`,
+        `Solicitação ${sol?.numero ?? id} (${sol?.cliente?.nome ?? ''}) marcada como Ganhou. Acesse Acordos para iniciar o contrato.`,
+        `/orcamentos/solicitacoes/${id}`,
+      )
+    }
+  }
 
   return NextResponse.json({ data: result, error: null })
 }
@@ -181,6 +202,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       data: { status: 'PROPOSTA_ENVIADA' },
     }),
   ])
+
+  // RN-50: Notificar ADM_COMERCIAL sobre nova proposta comercial (não-bloqueante)
+  const admins = await prisma.user.findMany({
+    where: { perfil: 'ADM_COMERCIAL', ativo: true },
+    select: { id: true },
+  })
+  const linkSol = `/orcamentos/solicitacoes/${id}`
+  for (const admin of admins) {
+    createNotificacao(
+      admin.id,
+      `Proposta comercial enviada — ${sol.numero}`,
+      `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
+      linkSol,
+    )
+  }
 
   return NextResponse.json({ data: proposta, error: null }, { status: 201 })
 }

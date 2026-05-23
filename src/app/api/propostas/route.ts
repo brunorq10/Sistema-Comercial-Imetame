@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
 
   if (searchParams.get('modo') === 'filtros') return getFiltros()
 
+  const page  = Math.max(1, Number(searchParams.get('page')  ?? 1))
+  const limit = Math.min(100, Number(searchParams.get('limit') ?? 20))
+  const skip  = (page - 1) * limit
+
   const classificacao = searchParams.get('classificacao') ?? undefined
   const status = searchParams.get('status') ?? undefined
   const orcamentista_id = searchParams.get('orcamentista_id') ?? undefined
@@ -72,34 +76,39 @@ export async function GET(req: NextRequest) {
   const cliente_id = searchParams.get('cliente_id') ?? undefined
   const cidade = searchParams.get('cidade') ?? undefined
 
-  const items = await prisma.solicitacao.findMany({
-    where: {
-      cancelled_at: null,
-      OR: [
-        { propostas_tecnicas: { some: { data_envio: { not: null } } } },
-        { propostas_comerciais: { some: { data_envio: { not: null } } } },
-        { propostas_fabricacao: { some: { data_envio: { not: null } } } },
-      ],
-      ...(classificacao && { classificacao: classificacao as never }),
-      ...(status && { status: status as never }),
-      ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
-      ...(cliente_id && { cliente_id: Number(cliente_id) }),
-      ...(cidade && { cidade: { contains: cidade.split('/')[0].trim(), mode: 'insensitive' as const } }),
-      ...(numero && { numero: { contains: numero, mode: 'insensitive' as const } }),
-      ...(escopo && { escopo: { contains: escopo, mode: 'insensitive' as const } }),
-      ...(resultado && { propostas_comerciais: { some: { resultado } } }),
-      ...(ano && {
-        propostas_tecnicas: {
-          some: {
-            data_envio: {
-              gte: new Date(`${ano}-01-01`),
-              lte: new Date(`${ano}-12-31T23:59:59`),
-            },
+  const wherePropostas = {
+    cancelled_at: null,
+    OR: [
+      { propostas_tecnicas: { some: { data_envio: { not: null } } } },
+      { propostas_comerciais: { some: { data_envio: { not: null } } } },
+      { propostas_fabricacao: { some: { data_envio: { not: null } } } },
+    ],
+    ...(classificacao && { classificacao: classificacao as never }),
+    ...(status && { status: status as never }),
+    ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
+    ...(cliente_id && { cliente_id: Number(cliente_id) }),
+    ...(cidade && { cidade: { contains: cidade.split('/')[0].trim(), mode: 'insensitive' as const } }),
+    ...(numero && { numero: { contains: numero, mode: 'insensitive' as const } }),
+    ...(escopo && { escopo: { contains: escopo, mode: 'insensitive' as const } }),
+    ...(resultado && { propostas_comerciais: { some: { resultado } } }),
+    ...(ano && {
+      propostas_tecnicas: {
+        some: {
+          data_envio: {
+            gte: new Date(`${ano}-01-01`),
+            lte: new Date(`${ano}-12-31T23:59:59`),
           },
         },
-      }),
-    },
+      },
+    }),
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.solicitacao.findMany({
+    where: wherePropostas,
     orderBy: { created_at: 'desc' },
+    skip,
+    take: limit,
     include: {
       cliente: { select: { id: true, nome: true } },
       cliente_final: { select: { id: true, nome: true } },
@@ -108,7 +117,9 @@ export async function GET(req: NextRequest) {
       propostas_comerciais: { orderBy: { versao: 'desc' } },
       propostas_fabricacao: { orderBy: { versao: 'desc' }, include: { equipamentos: { orderBy: { ordem: 'asc' } } } },
     },
-  })
+  }),
+  prisma.solicitacao.count({ where: wherePropostas }),
+  ])
 
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
@@ -223,5 +234,5 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  return NextResponse.json({ data, error: null })
+  return NextResponse.json({ data, total, page, limit, pages: Math.ceil(total / limit), error: null })
 }

@@ -195,6 +195,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     )
   }
 
+  // RN-13: Encerra propostas comerciais pendentes (AGUARDANDO) antes de cancelar
+  await prisma.propostaComercial.updateMany({
+    where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
+    data: { resultado: 'PERDEU', motivo_perda: 'OUTRO' },
+  })
+
   const updated = await prisma.solicitacao.update({
     where: { id },
     data: {
@@ -207,7 +213,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   // RN-13: Notificar orçamentista se houver ciclo em aberto
   if (existing.orcamentista) {
-    await createNotificacao(
+    createNotificacao(
       existing.orcamentista.id,
       `Solicitação cancelada — ${existing.numero}`,
       `A solicitação ${existing.numero} foi cancelada. Propostas pendentes foram encerradas automaticamente.`,

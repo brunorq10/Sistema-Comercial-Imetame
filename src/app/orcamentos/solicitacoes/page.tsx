@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
+import { Pagination } from '@/components/ui/Pagination'
 import { SolicitacoesTable } from '@/components/tables/SolicitacoesTable'
 import { SolicitacaoForm } from '@/components/forms/SolicitacaoForm'
 import { CancelarSolicitacaoModal } from '@/components/forms/CancelarSolicitacaoModal'
@@ -64,6 +66,8 @@ export default function SolicitacoesPage() {
   // ── Estado: Solicitações ──────────────────────────────────────────────────
   const [items, setItems] = useState<SolicitacaoListItem[]>([])
   const [total, setTotal] = useState(0)
+  const [page, setPage]   = useState(1)
+  const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<StatusSolicitacao | null>(null)
   const [filtros, setFiltros] = useState<FiltrosSolicitacao>({})
@@ -76,9 +80,13 @@ export default function SolicitacoesPage() {
   const [modalForm, setModalForm] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
   const [modalNovaRevisao, setModalNovaRevisao] = useState(false)
+  const [modalTransferir, setModalTransferir] = useState(false)
   const [editando, setEditando] = useState<SolicitacaoListItem | null>(null)
   const [cancelando, setCancelando] = useState<SolicitacaoListItem | null>(null)
   const [revisando, setRevisando] = useState<SolicitacaoListItem | null>(null)
+  const [transferindo, setTransferindo] = useState<SolicitacaoListItem | null>(null)
+  const [novoOrcamentistaId, setNovoOrcamentistaId] = useState('')
+  const [transferindoLoading, setTransferindoLoading] = useState(false)
   const [reenviandoId, setReenviandoId] = useState<number | null>(null)
   const [reativandoId, setReativandoId] = useState<number | null>(null)
 
@@ -114,14 +122,17 @@ export default function SolicitacoesPage() {
       if (filtrosAplicados.data_ate) params.set('data_ate', filtrosAplicados.data_ate)
       if (filtrosAplicados.responsavel_id) params.set('responsavel_id', filtrosAplicados.responsavel_id)
       if (filtrosAplicados.orcamentista_id) params.set('orcamentista_id', filtrosAplicados.orcamentista_id)
+      params.set('page', String(page))
+      params.set('limit', '20')
       const res = await fetch(`/api/solicitacoes?${params.toString()}`)
       const json = await res.json()
       setItems(json.data ?? [])
       setTotal(json.total ?? 0)
+      setPages(json.pages ?? 1)
     } finally {
       setLoading(false)
     }
-  }, [tab, filtrosAplicados])
+  }, [tab, filtrosAplicados, page])
 
   // ── Fetch pendentes de análise ────────────────────────────────────────────
   const fetchPendentes = useCallback(async () => {
@@ -142,17 +153,60 @@ export default function SolicitacoesPage() {
     const applied = { ...filtros }
     setFiltrosAplicados(applied)
     setTab(applied.status ? (applied.status as StatusSolicitacao) : null)
+    setPage(1)
   }
   const handleLimparFiltros = () => {
     setFiltros({})
     setFiltrosAplicados({})
     setTab(null)
+    setPage(1)
   }
 
   const handleEdit        = (item: SolicitacaoListItem) => { setEditando(item); setModalForm(true) }
   const handleNova        = () => { setEditando(null); setModalForm(true) }
   const handleCancel      = (item: SolicitacaoListItem) => { setCancelando(item); setModalCancelar(true) }
   const handleNovaRevisao = (item: SolicitacaoListItem) => { setRevisando(item); setModalNovaRevisao(true) }
+  const handleTransferir  = (item: SolicitacaoListItem) => { setTransferindo(item); setNovoOrcamentistaId(''); setModalTransferir(true) }
+
+  const exportarExcel = () => {
+    const rows = items.map((i) => ({
+      'Número': i.numero,
+      'Data Criação': i.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : '',
+      'Versão': `Rev${String(i.versao_atual - 1).padStart(2, '0')}`,
+      'Cliente': i.cliente.nome,
+      'Cliente Final': i.cliente_final?.nome ?? '',
+      'Cidade': i.cidade ?? '',
+      'UF': i.estado ?? '',
+      'Escopo': i.escopo ?? '',
+      'Classificação': i.classificacao ?? '',
+      'Interesse': i.interesse ?? '',
+      'Orçamentista': i.orcamentista?.nome ?? '',
+      'Status': i.status,
+      'Status Análise': i.status_analise,
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Solicitações')
+    XLSX.writeFile(wb, `solicitacoes_${new Date().toISOString().slice(0,10)}.xlsx`)
+  }
+
+  const handleConfirmarTransferencia = async () => {
+    if (!transferindo || !novoOrcamentistaId || transferindoLoading) return
+    setTransferindoLoading(true)
+    try {
+      const res = await fetch(`/api/solicitacoes/${transferindo.id}/transferir-orcamentista`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ novo_orcamentista_id: Number(novoOrcamentistaId) }),
+      })
+      const json = await res.json()
+      if (json.error) { alert(json.error); return }
+      setModalTransferir(false)
+      fetchData()
+    } finally {
+      setTransferindoLoading(false)
+    }
+  }
 
   const handleReenviar = async (item: SolicitacaoListItem) => {
     if (reenviandoId) return
@@ -190,9 +244,14 @@ export default function SolicitacoesPage() {
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-[15px] font-bold">Solicitações de Orçamento</h2>
-        {perms.canCreateSolicitacao && view === 'solicitacoes' && (
-          <Button onClick={handleNova}>+ Nova solicitação</Button>
-        )}
+        <div className="flex gap-2 items-center">
+          {!loading && items.length > 0 && view === 'solicitacoes' && (
+            <Button variant="outline" onClick={exportarExcel}>Exportar Excel</Button>
+          )}
+          {perms.canCreateSolicitacao && view === 'solicitacoes' && (
+            <Button onClick={handleNova}>+ Nova solicitação</Button>
+          )}
+        </div>
       </div>
 
       {/* Abas de view */}
@@ -351,17 +410,23 @@ export default function SolicitacoesPage() {
           {loading ? (
             <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
           ) : (
-            <SolicitacoesTable
-              data={items}
-              onEdit={handleEdit}
-              onCancel={handleCancel}
-              onNovaRevisao={handleNovaRevisao}
-              onReenviar={perms.canCreateSolicitacao ? handleReenviar : undefined}
-              onReativar={perms.canCreateSolicitacao ? handleReativar : undefined}
-              canEdit={perms.canEditSolicitacao}
-              canCancel={perms.canCancelSolicitacao}
-              canRevisao={perms.canCriarRevisao}
-            />
+            <div className="flex flex-col h-full">
+              <div className="flex-1 min-h-0">
+                <SolicitacoesTable
+                  data={items}
+                  onEdit={handleEdit}
+                  onCancel={handleCancel}
+                  onNovaRevisao={handleNovaRevisao}
+                  onReenviar={perms.canCreateSolicitacao ? handleReenviar : undefined}
+                  onReativar={perms.canCreateSolicitacao ? handleReativar : undefined}
+                  onTransferir={perms.canTransferirOrcamentista ? handleTransferir : undefined}
+                  canEdit={perms.canEditSolicitacao}
+                  canCancel={perms.canCancelSolicitacao}
+                  canRevisao={perms.canCriarRevisao}
+                />
+              </div>
+              <Pagination page={page} pages={pages} total={total} limit={20} onPage={setPage} />
+            </div>
           )}
         </>
       )}
@@ -464,6 +529,46 @@ export default function SolicitacoesPage() {
         onSuccess={fetchData}
         solicitacao={revisando}
       />
+
+      {/* Modal transferência de orçamentista — RN-23 */}
+      {modalTransferir && transferindo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+            <h3 className="text-[14px] font-bold mb-1">Transferir orçamentista</h3>
+            <p className="text-[11px] text-gray-500 mb-3">
+              Solicitação <strong>{transferindo.numero}</strong> — atual: <strong>{transferindo.orcamentista?.nome ?? '—'}</strong>
+            </p>
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Novo orçamentista</label>
+            <select
+              className="w-full px-2 py-1.5 border border-gray-300 rounded text-[12px] mb-4 outline-none focus:border-green-primary"
+              value={novoOrcamentistaId}
+              onChange={(e) => setNovoOrcamentistaId(e.target.value)}
+            >
+              <option value="">Selecione...</option>
+              {orcamentistas
+                .filter((o) => o.id !== transferindo.orcamentista?.id)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>{o.nome}</option>
+                ))}
+            </select>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setModalTransferir(false)}
+                className="px-3 py-1.5 text-[11px] border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarTransferencia}
+                disabled={!novoOrcamentistaId || transferindoLoading}
+                className="px-3 py-1.5 text-[11px] bg-green-primary text-white rounded hover:bg-green-dark disabled:opacity-50"
+              >
+                {transferindoLoading ? 'Transferindo...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -23,6 +23,7 @@ interface Props {
   onNovaRevisao?: (item: SolicitacaoListItem) => void
   onReenviar?: (item: SolicitacaoListItem) => void
   onReativar?: (item: SolicitacaoListItem) => void
+  onTransferir?: (item: SolicitacaoListItem) => void
   canEdit: boolean
   canCancel: boolean
   canRevisao: boolean
@@ -37,6 +38,7 @@ export function SolicitacoesTable({
   onNovaRevisao,
   onReenviar,
   onReativar,
+  onTransferir,
   canEdit,
   canCancel,
   canRevisao,
@@ -126,6 +128,16 @@ export function SolicitacoesTable({
           const isReprovada = item.status_analise === 'REPROVADA'
           return (
             <div className="flex gap-1">
+              {onTransferir && !isCancelada && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); onTransferir(item) }}
+                  title="Transferir orçamentista"
+                >
+                  ⇄
+                </Button>
+              )}
               {canRevisao && !isCancelada && (
                 <Button
                   variant="warning"
@@ -182,7 +194,7 @@ export function SolicitacoesTable({
         size: 120,
       }),
     ],
-    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onReenviar, onReativar],
+    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onReenviar, onReativar, onTransferir],
   )
 
   const table = useReactTable({

@@ -27,6 +27,8 @@ interface Props {
 export function RegistrarComercialModal({
   open, onClose, onSuccess, solicitacaoId, numero, propostasTecnicas,
 }: Props) {
+  // RN-36: pré-seleciona N/A quando não há técnica disponível
+  const [naoAplicavel, setNaoAplicavel] = useState(() => propostasTecnicas.length === 0)
   const [tecnicaId, setTecnicaId] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
 
@@ -66,6 +68,7 @@ export function RegistrarComercialModal({
   const rshhTotal = hhTotalTec && hhTotalTec > 0 && totalGeral > 0 ? totalGeral / hhTotalTec : null
 
   const resetForm = () => {
+    setNaoAplicavel(propostasTecnicas.length === 0)
     setTecnicaId('')
     setDataEnvio(new Date().toISOString().split('T')[0])
     setValorMontagem('')
@@ -77,6 +80,22 @@ export function RegistrarComercialModal({
   }
 
   const handleSubmit = async () => {
+    if (naoAplicavel) {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/solicitacoes/${solicitacaoId}/proposta-comercial`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nao_aplicavel: true, data_envio: dataEnvio }),
+        })
+        const json = await res.json()
+        if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
+        resetForm(); onSuccess(); onClose()
+      } finally { setLoading(false) }
+      return
+    }
+
     if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
     if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor Total da Montagem Mecânica'); return }
 
@@ -134,6 +153,25 @@ export function RegistrarComercialModal({
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
+      {/* RN-36: toggle N/A — pré-selecionado quando sem técnica */}
+      <div className={`flex items-center gap-2 mb-3 p-2.5 rounded border ${naoAplicavel ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+        <input
+          id="nao-aplicavel-com"
+          type="checkbox"
+          checked={naoAplicavel}
+          onChange={(e) => setNaoAplicavel(e.target.checked)}
+          className="accent-amber-500"
+        />
+        <label htmlFor="nao-aplicavel-com" className="text-[12px] font-medium cursor-pointer">
+          Proposta Comercial N/A
+          {propostasTecnicas.length === 0 && (
+            <span className="ml-1.5 text-[10px] text-amber-600 font-normal">(nenhuma técnica disponível)</span>
+          )}
+        </label>
+      </div>
+
+      {!naoAplicavel && (
+      <>
       <ModalSection>1. Revisão técnica de referência</ModalSection>
 
       <Field label="Revisão técnica referente a esta comercial">
@@ -266,6 +304,14 @@ export function RegistrarComercialModal({
             </p>
           </div>
         </div>
+      )}
+      </>
+      )}
+
+      {naoAplicavel && (
+        <Field label="Data de envio — comercial">
+          <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
+        </Field>
       )}
     </Modal>
   )
