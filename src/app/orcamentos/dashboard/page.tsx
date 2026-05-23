@@ -13,7 +13,7 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import ChartDataLabels, { type Context as DLContext } from 'chartjs-plugin-datalabels'
-import type { OrcDashboardData } from '@/app/api/dashboard/orcamentos/route'
+import type { OrcDashboardData, SolicitacaoAberta } from '@/app/api/dashboard/orcamentos/route'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
@@ -361,6 +361,143 @@ function GraficoOrcamentistas({ porOrc }: { porOrc: Array<{ nome: string; total:
   )
 }
 
+// ── Cards de abertas ─────────────────────────────────────────────────────────
+type FiltroAbertas = 'todas' | 'no_prazo' | 'em_atraso'
+
+function CardsAbertas({
+  counts,
+  filtro,
+  onChange,
+}: {
+  counts: { total: number; no_prazo: number; em_atraso: number }
+  filtro: FiltroAbertas
+  onChange: (f: FiltroAbertas) => void
+}) {
+  const cards: { key: FiltroAbertas; label: string; value: number; cor: string; bg: string; borda: string }[] = [
+    { key: 'todas',    label: 'Total em Aberto',  value: counts.total,    cor: '#0A6E39', bg: '#E8F5E9', borda: '#0A6E39' },
+    { key: 'no_prazo', label: 'No Prazo',         value: counts.no_prazo, cor: '#1E5FA8', bg: '#E3F2FD', borda: '#1E5FA8' },
+    { key: 'em_atraso',label: 'Em Atraso',        value: counts.em_atraso,cor: '#C62828', bg: '#FFEBEE', borda: '#C62828' },
+  ]
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 8 }}>
+      {cards.map((c) => (
+        <div
+          key={c.key}
+          onClick={() => onChange(c.key)}
+          style={{
+            border: `0.5px solid ${filtro === c.key ? c.borda : '#ccc'}`,
+            borderLeft: `3px solid ${c.borda}`,
+            borderRadius: 4,
+            background: filtro === c.key ? c.bg : '#fff',
+            padding: '10px 14px',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            boxShadow: filtro === c.key ? `0 0 0 2px ${c.borda}33` : 'none',
+            fontFamily: 'Arial, sans-serif',
+          }}
+        >
+          <p style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+            {c.label}
+          </p>
+          <p style={{ fontSize: 26, fontWeight: 700, color: c.cor, margin: '2px 0 0', lineHeight: 1 }}>
+            {c.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Tabela de solicitações em aberto ─────────────────────────────────────────
+function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
+  if (items.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px 0', color: '#aaa', fontSize: 12 }}>
+        Nenhuma solicitação para exibir.
+      </div>
+    )
+  }
+
+  const thStyle: React.CSSProperties = {
+    background: '#0A6E39',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    padding: '6px 10px',
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    fontFamily: 'Arial, sans-serif',
+  }
+  const tdStyle: React.CSSProperties = {
+    fontSize: 11,
+    padding: '6px 10px',
+    borderBottom: '0.5px solid #e5e7eb',
+    fontFamily: 'Arial, sans-serif',
+    verticalAlign: 'top',
+  }
+
+  return (
+    <div style={{ overflowX: 'auto', maxHeight: 340, overflowY: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: 90 }} />
+          <col style={{ width: '30%' }} />
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: 90 }} />
+        </colgroup>
+        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+          <tr>
+            <th style={thStyle}>Nº</th>
+            <th style={thStyle}>Escopo</th>
+            <th style={thStyle}>Cliente</th>
+            <th style={thStyle}>Cliente Final</th>
+            <th style={thStyle}>Orçamentista</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((s, i) => (
+            <tr key={s.id} style={{ background: i % 2 === 1 ? '#f9fafb' : '#fff' }}>
+              <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
+              <td style={{ ...tdStyle, color: s.escopo ? '#111' : '#aaa', fontStyle: s.escopo ? 'normal' : 'italic' }}>
+                <span title={s.escopo ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {s.escopo ?? 'Sem escopo'}
+                </span>
+              </td>
+              <td style={{ ...tdStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.cliente}</td>
+              <td style={{ ...tdStyle, color: s.cliente_final ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.cliente_final ?? '—'}
+              </td>
+              <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.orcamentista ?? '—'}
+              </td>
+              <td style={{ ...tdStyle, textAlign: 'center' }}>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  background: s.situacao === 'em_atraso' ? '#FFEBEE' : '#E8F5E9',
+                  color: s.situacao === 'em_atraso' ? '#C62828' : '#0A6E39',
+                  border: `0.5px solid ${s.situacao === 'em_atraso' ? '#ef9a9a' : '#a5d6a7'}`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {s.situacao === 'em_atraso' ? 'Em Atraso' : 'No Prazo'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ── Filtros ──────────────────────────────────────────────────────────────────
 const selectStyle: React.CSSProperties = {
   fontSize: 11,
@@ -396,6 +533,7 @@ export default function DashboardComercialPage() {
   const [orcamentistaId, setOrcamentistaId] = useState('')
   const [segmento, setSegmento] = useState('')
   const [cidadeUf, setCidadeUf] = useState('')
+  const [filtroAbertas, setFiltroAbertas] = useState<FiltroAbertas>('todas')
 
   useEffect(() => {
     fetch('/api/clientes')
@@ -427,6 +565,7 @@ export default function DashboardComercialPage() {
   const limpar = () => {
     setAno(''); setClassificacao(''); setInteresse(''); setClienteId('')
     setOrcamentistaId(''); setSegmento(''); setCidadeUf('')
+    setFiltroAbertas('todas')
   }
 
   const gap = 8
@@ -595,7 +734,25 @@ export default function DashboardComercialPage() {
           </div>
 
           {/* ── Linha 4: Por orçamentista (full width) ──────────────────── */}
-          <GraficoOrcamentistas porOrc={data.por_orc} />
+          <div style={{ marginBottom: gap }}>
+            <GraficoOrcamentistas porOrc={data.por_orc} />
+          </div>
+
+          {/* ── Linha 5: Solicitações em aberto ─────────────────────────── */}
+          <Card title="Solicitações em Aberto — Propostas Pendentes">
+            <CardsAbertas
+              counts={data.abertas_counts}
+              filtro={filtroAbertas}
+              onChange={setFiltroAbertas}
+            />
+            <TabelaAbertas
+              items={
+                filtroAbertas === 'todas'
+                  ? data.solicitacoes_abertas
+                  : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
+              }
+            />
+          </Card>
         </>
       )}
     </div>

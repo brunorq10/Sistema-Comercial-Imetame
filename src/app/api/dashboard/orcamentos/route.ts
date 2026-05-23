@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+export interface SolicitacaoAberta {
+  id: number
+  numero: string
+  escopo: string | null
+  situacao: 'no_prazo' | 'em_atraso'
+  cliente: string
+  cliente_final: string | null
+  orcamentista: string | null
+}
+
 export interface OrcDashboardData {
   anos_disponiveis: number[]
   orcamentistas_disponiveis: Array<{ id: number; nome: string }>
@@ -15,6 +25,8 @@ export interface OrcDashboardData {
   por_interesse: { ALTO: number; MEDIO: number; BAIXO: number }
   situacao_carteira: { no_prazo: number; atrasada: number; atendida: number }
   por_orc: Array<{ nome: string; total: number }>
+  solicitacoes_abertas: SolicitacaoAberta[]
+  abertas_counts: { total: number; no_prazo: number; em_atraso: number }
 }
 
 export async function GET(req: NextRequest) {
@@ -78,6 +90,9 @@ export async function GET(req: NextRequest) {
   const items = await prisma.solicitacao.findMany({
     where,
     select: {
+      id: true,
+      numero: true,
+      escopo: true,
       status: true,
       status_analise: true,
       interesse: true,
@@ -88,6 +103,8 @@ export async function GET(req: NextRequest) {
       prazo_tecnica_indeterminado: true,
       prazo_comercial: true,
       prazo_comercial_indeterminado: true,
+      cliente: { select: { nome: true } },
+      cliente_final: { select: { nome: true } },
       orcamentista: { select: { nome: true } },
       propostas_tecnicas: {
         select: { data_envio: true, nao_aplicavel: true },
@@ -114,6 +131,7 @@ export async function GET(req: NextRequest) {
   const porInteresse = { ALTO: 0, MEDIO: 0, BAIXO: 0 }
   const situacao = { no_prazo: 0, atrasada: 0, atendida: 0 }
   const orcMap = new Map<string, number>()
+  const solicitacoes_abertas: SolicitacaoAberta[] = []
   const now = new Date()
 
   for (const s of items) {
@@ -139,28 +157,30 @@ export async function GET(req: NextRequest) {
     // Situação da carteira — inclui todas as aprovadas (em elaboração, enviadas, ganhas)
     if (s.status_analise === 'APROVADA') {
       const isFab = s.classificacao === 'FABRICACOES' || s.classificacao === 'OLEO_GAS'
+      let situacaoItem: 'no_prazo' | 'em_atraso' | 'atendida'
 
       if (isFab) {
-        // Fabricação/Óleo&Gás: usa propostas_fabricacao
         const fab = s.propostas_fabricacao[0] ?? null
         if (fab?.data_envio) {
+          situacaoItem = 'atendida'
           situacao.atendida++
         } else {
           const atrasada =
             !s.prazo_tecnica_indeterminado &&
             s.prazo_tecnica != null &&
             s.prazo_tecnica < now
+          situacaoItem = atrasada ? 'em_atraso' : 'no_prazo'
           if (atrasada) situacao.atrasada++
           else situacao.no_prazo++
         }
       } else {
-        // Obras/Paradas: usa propostas_tecnicas + propostas_comerciais
         const tec = s.propostas_tecnicas[0] ?? null
         const com = s.propostas_comerciais[0] ?? null
         const tecAtendida = tec ? (!!tec.data_envio || tec.nao_aplicavel) : false
         const comAtendida = com ? (!!com.data_envio || com.nao_aplicavel) : false
 
         if (tecAtendida && comAtendida) {
+          situacaoItem = 'atendida'
           situacao.atendida++
         } else {
           const tecAtrasada =
@@ -173,10 +193,23 @@ export async function GET(req: NextRequest) {
             !s.prazo_comercial_indeterminado &&
             s.prazo_comercial != null &&
             s.prazo_comercial < now
-
-          if (tecAtrasada || comAtrasada) situacao.atrasada++
+          const atrasada = tecAtrasada || comAtrasada
+          situacaoItem = atrasada ? 'em_atraso' : 'no_prazo'
+          if (atrasada) situacao.atrasada++
           else situacao.no_prazo++
         }
+      }
+
+      if (situacaoItem !== 'atendida') {
+        solicitacoes_abertas.push({
+          id: s.id,
+          numero: s.numero,
+          escopo: s.escopo,
+          situacao: situacaoItem,
+          cliente: s.cliente.nome,
+          cliente_final: s.cliente_final?.nome ?? null,
+          orcamentista: s.orcamentista?.nome ?? null,
+        })
       }
     }
 
@@ -191,6 +224,12 @@ export async function GET(req: NextRequest) {
     .map(([nome, total]) => ({ nome, total }))
     .sort((a, b) => b.total - a.total)
 
+  const abertas_counts = {
+    total: solicitacoes_abertas.length,
+    no_prazo: solicitacoes_abertas.filter((s) => s.situacao === 'no_prazo').length,
+    em_atraso: solicitacoes_abertas.filter((s) => s.situacao === 'em_atraso').length,
+  }
+
   const data: OrcDashboardData = {
     anos_disponiveis,
     orcamentistas_disponiveis,
@@ -204,6 +243,8 @@ export async function GET(req: NextRequest) {
     por_interesse: porInteresse,
     situacao_carteira: situacao,
     por_orc,
+    solicitacoes_abertas,
+    abertas_counts,
   }
 
   return NextResponse.json({ data, error: null })
