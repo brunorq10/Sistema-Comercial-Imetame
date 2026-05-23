@@ -175,7 +175,7 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
     responsive: true,
     maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
-    layout: { padding: { top: 8, right: 16, bottom: 0, left: 0 } },
+    layout: { padding: { top: 28, right: 16, bottom: 0, left: 0 } },
     plugins: {
       legend: {
         position: 'bottom' as const,
