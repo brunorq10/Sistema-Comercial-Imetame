@@ -58,6 +58,7 @@ interface Props {
   onSuccess: () => void
   editando?: SolicitacaoListItem | null
   canAtribuir: boolean
+  canTransferir?: boolean
 }
 
 const SEGMENTO_LABELS: Record<string, string> = {
@@ -67,7 +68,7 @@ const SEGMENTO_LABELS: Record<string, string> = {
   OUTROS:         'Outros',
 }
 
-export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribuir }: Props) {
+export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribuir, canTransferir }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [orcamentistas, setOrcamentistas] = useState<Orcamentista[]>([])
   const [loading, setLoading] = useState(false)
@@ -354,10 +355,15 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
               </Select>
             </Field>
           </div>
+        </>
+      )}
 
-          <ModalSection>Atribuição — Analista Crítico</ModalSection>
+      {/* ── Orçamentista (atribuição ou transferência) ───────────────────────── */}
+      {(canAtribuir || (canTransferir && editando)) && (
+        <>
+          <ModalSection>{canAtribuir ? 'Atribuição — Analista Crítico' : 'Transferir Orçamentista'}</ModalSection>
           <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-            <Field label="Atribuir orçamentista">
+            <Field label={canAtribuir ? 'Atribuir orçamentista' : 'Novo orçamentista responsável'}>
               <Select {...register('orcamentista_id')}>
                 <option value="">Sem atribuição</option>
                 {orcamentistas.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}

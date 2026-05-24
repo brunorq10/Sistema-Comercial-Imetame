@@ -80,13 +80,9 @@ export default function SolicitacoesPage() {
   const [modalForm, setModalForm] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
   const [modalNovaRevisao, setModalNovaRevisao] = useState(false)
-  const [modalTransferir, setModalTransferir] = useState(false)
   const [editando, setEditando] = useState<SolicitacaoListItem | null>(null)
   const [cancelando, setCancelando] = useState<SolicitacaoListItem | null>(null)
   const [revisando, setRevisando] = useState<SolicitacaoListItem | null>(null)
-  const [transferindo, setTransferindo] = useState<SolicitacaoListItem | null>(null)
-  const [novoOrcamentistaId, setNovoOrcamentistaId] = useState('')
-  const [transferindoLoading, setTransferindoLoading] = useState(false)
   const [reenviandoId, setReenviandoId] = useState<number | null>(null)
   const [reativandoId, setReativandoId] = useState<number | null>(null)
   const [confirmReenviar, setConfirmReenviar] = useState<SolicitacaoListItem | null>(null)
@@ -169,7 +165,6 @@ export default function SolicitacoesPage() {
   const handleNova             = () => { setEditando(null); setModalForm(true) }
   const handleCancel           = (item: SolicitacaoListItem) => { setCancelando(item); setModalCancelar(true) }
   const handleNovaRevisao      = (item: SolicitacaoListItem) => { setRevisando(item); setModalNovaRevisao(true) }
-  const handleTransferir       = (item: SolicitacaoListItem) => { setTransferindo(item); setNovoOrcamentistaId(''); setModalTransferir(true) }
   const handleEditarReprovacao = (id: number) => { setAnaliseId(id); setAnaliseModal(true) }
 
   const exportarExcel = () => {
@@ -192,24 +187,6 @@ export default function SolicitacoesPage() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações')
     XLSX.writeFile(wb, `solicitacoes_${new Date().toISOString().slice(0,10)}.xlsx`)
-  }
-
-  const handleConfirmarTransferencia = async () => {
-    if (!transferindo || !novoOrcamentistaId || transferindoLoading) return
-    setTransferindoLoading(true)
-    try {
-      const res = await fetch(`/api/solicitacoes/${transferindo.id}/transferir-orcamentista`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ novo_orcamentista_id: Number(novoOrcamentistaId) }),
-      })
-      const json = await res.json()
-      if (!res.ok || json.error) { setPageError(json.error ?? 'Erro ao transferir orçamentista'); return }
-      setModalTransferir(false)
-      fetchData()
-    } finally {
-      setTransferindoLoading(false)
-    }
   }
 
   const handleReenviar = (item: SolicitacaoListItem) => setConfirmReenviar(item)
@@ -436,7 +413,6 @@ export default function SolicitacoesPage() {
                   onNovaRevisao={handleNovaRevisao}
                   onReenviar={perms.canCreateSolicitacao ? handleReenviar : undefined}
                   onReativar={perms.canCreateSolicitacao ? handleReativar : undefined}
-                  onTransferir={perms.canTransferirOrcamentista ? handleTransferir : undefined}
                   onEditarReprovacao={perms.isAnalistaCritico ? handleEditarReprovacao : undefined}
                   canEdit={perms.canEditSolicitacao}
                   canCancel={perms.canCancelSolicitacao}
@@ -534,6 +510,7 @@ export default function SolicitacoesPage() {
         onSuccess={fetchData}
         editando={editando}
         canAtribuir={perms.canAtribuirOrcamentista}
+        canTransferir={perms.canTransferirOrcamentista}
       />
       <CancelarSolicitacaoModal
         open={modalCancelar}
@@ -602,45 +579,6 @@ export default function SolicitacoesPage() {
         </div>
       )}
 
-      {/* Modal transferência de orçamentista — RN-23 */}
-      {modalTransferir && transferindo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
-            <h3 className="text-[14px] font-bold mb-1">Transferir orçamentista</h3>
-            <p className="text-[11px] text-gray-500 mb-3">
-              Solicitação <strong>{transferindo.numero}</strong> — atual: <strong>{transferindo.orcamentista?.nome ?? '—'}</strong>
-            </p>
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase mb-1">Novo orçamentista</label>
-            <select
-              className="w-full px-2 py-1.5 border border-gray-300 rounded text-[12px] mb-4 outline-none focus:border-green-primary"
-              value={novoOrcamentistaId}
-              onChange={(e) => setNovoOrcamentistaId(e.target.value)}
-            >
-              <option value="">Selecione...</option>
-              {orcamentistas
-                .filter((o) => o.id !== transferindo.orcamentista?.id)
-                .map((o) => (
-                  <option key={o.id} value={o.id}>{o.nome}</option>
-                ))}
-            </select>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setModalTransferir(false)}
-                className="px-3 py-1.5 text-[11px] border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmarTransferencia}
-                disabled={!novoOrcamentistaId || transferindoLoading}
-                className="px-3 py-1.5 text-[11px] bg-green-primary text-white rounded hover:bg-green-dark disabled:opacity-50"
-              >
-                {transferindoLoading ? 'Transferindo...' : 'Confirmar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

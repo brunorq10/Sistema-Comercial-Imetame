@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const existing = await prisma.solicitacao.findUnique({
     where: { id },
-    include: { orcamentista: { select: { email: true } } },
+    include: { orcamentista: { select: { id: true, nome: true, email: true } } },
   })
   if (!existing || existing.cancelled_at) {
     return NextResponse.json({ data: null, error: 'Não encontrada' }, { status: 404 })
@@ -144,8 +144,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }),
       ...(data.motivo_recusa !== undefined && { motivo_recusa: data.motivo_recusa }),
     },
-    include: { orcamentista: { select: { email: true } } },
+    include: { orcamentista: { select: { id: true, nome: true, email: true } } },
   })
+
+  // Notifica quando orçamentista é transferido via edição
+  if (data.orcamentista_id !== undefined && data.orcamentista_id !== existing.orcamentista_id) {
+    const novoOrc = await prisma.user.findUnique({
+      where: { id: data.orcamentista_id! },
+      select: { id: true, nome: true },
+    })
+    if (existing.orcamentista) {
+      createNotificacao(
+        existing.orcamentista.id,
+        `Transferência de solicitação — ${existing.numero}`,
+        `A solicitação ${existing.numero} foi transferida para ${novoOrc?.nome ?? 'outro orçamentista'}. Você não é mais o responsável.`,
+        '/orcamentos/painel',
+      )
+    }
+    if (novoOrc) {
+      createNotificacao(
+        novoOrc.id,
+        `Nova solicitação atribuída — ${existing.numero}`,
+        `Você é o novo orçamentista responsável pela solicitação ${existing.numero}.`,
+        '/orcamentos/painel',
+      )
+    }
+  }
 
   // ALTO-7: notifica por e-mail o orçamentista; se não houver, notifica todos ADM_COMERCIAL
   if (data.status && data.status !== existing.status) {
