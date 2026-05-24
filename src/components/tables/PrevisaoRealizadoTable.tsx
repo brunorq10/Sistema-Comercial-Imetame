@@ -8,6 +8,9 @@ export interface PrevisaoRealizadoItem {
   subindice_id: number
   indice: string
   cliente_nome: string
+  descricao_contrato: string | null
+  ordem: number
+  num_os: string | null
   descricao: string
   valor_consolidado: number
   valor_previsto: number
@@ -39,6 +42,7 @@ function calcPerc(faturado: number, consolidado: number) {
 interface Grupo {
   indice: string
   cliente_nome: string
+  descricao_contrato: string | null
   itens: PrevisaoRealizadoItem[]
   total_consolidado: number
   total_previsto: number
@@ -57,6 +61,7 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
         map.set(key, {
           indice: item.indice,
           cliente_nome: item.cliente_nome,
+          descricao_contrato: item.descricao_contrato,
           itens: [],
           total_consolidado: 0,
           total_previsto: 0,
@@ -98,13 +103,16 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
   const thCls = 'bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap'
   const tdBase = 'px-2 py-[5px] whitespace-nowrap text-[11px]'
 
+  // 8 colunas: toggle | Índice | Cliente | Descrição/Evento | Consolidado | Previsto | Faturado | %
+  const COL_SPAN_TOTAL = 8
+
   return (
     <div className="overflow-x-auto border border-gray-200 rounded-md">
       <table className="w-full border-collapse text-[11px]">
         <thead>
           {/* Totalizador geral */}
           <tr className="bg-[#C8E6C9] border-b-2 border-green-primary">
-            <td colSpan={3} className="px-2 py-[4px] font-bold text-[10px] whitespace-nowrap">
+            <td colSpan={4} className="px-2 py-[4px] font-bold text-[10px] whitespace-nowrap">
               TOTAIS · {grupos.length} contrato{grupos.length !== 1 ? 's' : ''} · {itens.length} sub-índice{itens.length !== 1 ? 's' : ''}
             </td>
             <td className="px-2 py-[4px] whitespace-nowrap">
@@ -125,6 +133,7 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
           <tr>
             <th className={thCls} style={{ width: 28 }} />
             <th className={thCls} style={{ width: 90 }}>Índice</th>
+            <th className={thCls} style={{ width: 160 }}>Cliente</th>
             <th className={thCls}>Descrição / Evento</th>
             <th className={thCls} style={{ width: 150 }}>Valor Consolidado</th>
             <th className={thCls} style={{ width: 140 }}>Valor Previsto</th>
@@ -152,9 +161,16 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
                       {g.indice}
                     </span>
                   </td>
+                  <td className={`${tdBase} max-w-[160px]`}>
+                    <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: 144 }}>
+                      {g.cliente_nome}
+                    </span>
+                  </td>
                   <td className={tdBase}>
-                    <span className="font-semibold text-gray-800">{g.cliente_nome}</span>
-                    <span className="ml-2 text-gray-400 text-[10px]">
+                    <span className="text-gray-700 truncate block" style={{ maxWidth: 320 }} title={g.descricao_contrato ?? ''}>
+                      {g.descricao_contrato ?? <span className="text-gray-400 italic">Sem descrição</span>}
+                    </span>
+                    <span className="text-gray-400 text-[10px]">
                       {g.itens.length} sub-índice{g.itens.length !== 1 ? 's' : ''}
                     </span>
                   </td>
@@ -179,12 +195,23 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
                 {expanded && g.itens.map((item, i) => (
                   <tr
                     key={item.id}
-                    className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-blue-50/40'}`}
                   >
+                    {/* toggle vazio */}
                     <td className={tdBase} />
-                    <td className={tdBase} />
-                    <td className={`${tdBase} pl-5 text-gray-600`}>
-                      <span className="truncate block max-w-[360px]" title={item.descricao}>
+                    {/* Nº sub-índice */}
+                    <td className={tdBase}>
+                      <span className="bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 text-[10px] font-semibold">
+                        {g.indice}.{item.ordem}
+                      </span>
+                    </td>
+                    {/* Nº OS */}
+                    <td className={`${tdBase} text-gray-500`}>
+                      {item.num_os ?? <span className="text-gray-300">—</span>}
+                    </td>
+                    {/* Descrição do sub-índice */}
+                    <td className={`${tdBase} pl-4 text-gray-600`}>
+                      <span className="truncate block" style={{ maxWidth: 320 }} title={item.descricao}>
                         {item.descricao}
                       </span>
                     </td>
@@ -213,3 +240,6 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
     </div>
   )
 }
+
+// Suprime warning de key em fragment dentro de map
+PrevisaoRealizadoTable.displayName = 'PrevisaoRealizadoTable'

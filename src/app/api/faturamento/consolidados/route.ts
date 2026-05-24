@@ -90,15 +90,18 @@ export async function GET(req: NextRequest) {
     const perc = valorConsolidado > 0 ? (faturado / valorConsolidado) * 100 : 0
 
     return {
-      id:                item.id,
-      subindice_id:      item.subindice_id,
-      indice:            item.subindice.contrato.indice,
-      cliente_nome:      item.subindice.contrato.cliente.nome,
-      descricao:         item.subindice.descricao,
-      valor_consolidado: valorConsolidado,
-      valor_previsto:    valorMesAtual,
-      valor_faturado:    faturado,
-      percentual:        Number(perc.toFixed(1)),
+      id:                   item.id,
+      subindice_id:         item.subindice_id,
+      indice:               item.subindice.contrato.indice,
+      cliente_nome:         item.subindice.contrato.cliente.nome,
+      descricao_contrato:   item.subindice.contrato.descricao ?? null,
+      ordem:                item.subindice.ordem,
+      num_os:               item.subindice.num_os ?? null,
+      descricao:            item.subindice.descricao,
+      valor_consolidado:    valorConsolidado,
+      valor_previsto:       valorMesAtual,
+      valor_faturado:       faturado,
+      percentual:           Number(perc.toFixed(1)),
     }
   })
 
