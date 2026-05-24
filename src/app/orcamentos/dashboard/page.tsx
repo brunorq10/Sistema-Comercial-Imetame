@@ -410,6 +410,16 @@ function CardsAbertas({
 }
 
 // ── Tabela de solicitações em aberto ─────────────────────────────────────────
+const now = new Date()
+
+function fmtData(iso: string | null, indeterminado?: boolean): { label: string; atrasada: boolean } {
+  if (indeterminado) return { label: 'Indeterminado', atrasada: false }
+  if (!iso) return { label: '—', atrasada: false }
+  const d = new Date(iso)
+  const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return { label, atrasada: d < now }
+}
+
 function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
   if (items.length === 0) {
     return (
@@ -436,62 +446,73 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
     padding: '6px 10px',
     borderBottom: '0.5px solid #e5e7eb',
     fontFamily: 'Arial, sans-serif',
-    verticalAlign: 'top',
+    verticalAlign: 'middle',
+    whiteSpace: 'nowrap',
   }
 
   return (
-    <div style={{ overflowX: 'auto', maxHeight: 340, overflowY: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-        <colgroup>
-          <col style={{ width: 90 }} />
-          <col style={{ width: '30%' }} />
-          <col style={{ width: '18%' }} />
-          <col style={{ width: '18%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: 90 }} />
-        </colgroup>
+    <div style={{ overflowX: 'auto', maxHeight: 380, overflowY: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
         <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
           <tr>
             <th style={thStyle}>Nº</th>
-            <th style={thStyle}>Escopo</th>
+            <th style={{ ...thStyle, minWidth: 180 }}>Escopo</th>
             <th style={thStyle}>Cliente</th>
             <th style={thStyle}>Cliente Final</th>
             <th style={thStyle}>Orçamentista</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Chegada</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Atribuição</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Prev. Técnica</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Prev. Comercial</th>
             <th style={{ ...thStyle, textAlign: 'center' }}>Situação</th>
           </tr>
         </thead>
         <tbody>
-          {items.map((s, i) => (
-            <tr key={s.id} style={{ background: i % 2 === 1 ? '#f9fafb' : '#fff' }}>
-              <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
-              <td style={{ ...tdStyle, color: s.escopo ? '#111' : '#aaa', fontStyle: s.escopo ? 'normal' : 'italic' }}>
-                <span title={s.escopo ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.escopo ?? 'Sem escopo'}
-                </span>
-              </td>
-              <td style={{ ...tdStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.cliente}</td>
-              <td style={{ ...tdStyle, color: s.cliente_final ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.cliente_final ?? '—'}
-              </td>
-              <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.orcamentista ?? '—'}
-              </td>
-              <td style={{ ...tdStyle, textAlign: 'center' }}>
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: 12,
-                  background: s.situacao === 'em_atraso' ? '#FFEBEE' : '#E8F5E9',
-                  color: s.situacao === 'em_atraso' ? '#C62828' : '#0A6E39',
-                  border: `0.5px solid ${s.situacao === 'em_atraso' ? '#ef9a9a' : '#a5d6a7'}`,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {s.situacao === 'em_atraso' ? 'Em Atraso' : 'No Prazo'}
-                </span>
-              </td>
-            </tr>
-          ))}
+          {items.map((s, i) => {
+            const chegada   = fmtData(s.data_recebimento)
+            const atrib     = fmtData(s.data_atribuicao)
+            const pzTec     = fmtData(s.prazo_tecnica, s.prazo_tecnica_indeterminado)
+            const pzCom     = fmtData(s.prazo_comercial, s.prazo_comercial_indeterminado)
+            return (
+              <tr key={s.id} style={{ background: i % 2 === 1 ? '#f9fafb' : '#fff' }}>
+                <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
+                <td style={{ ...tdStyle, color: s.escopo ? '#111' : '#aaa', fontStyle: s.escopo ? 'normal' : 'italic', maxWidth: 220 }}>
+                  <span title={s.escopo ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.escopo ?? 'Sem escopo'}
+                  </span>
+                </td>
+                <td style={tdStyle}>{s.cliente}</td>
+                <td style={{ ...tdStyle, color: s.cliente_final ? '#111' : '#aaa' }}>{s.cliente_final ?? '—'}</td>
+                <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa' }}>{s.orcamentista ?? '—'}</td>
+                <td style={{ ...tdStyle, textAlign: 'center', color: chegada.atrasada ? '#C62828' : '#374151', fontWeight: chegada.atrasada ? 700 : 400 }}>
+                  {chegada.label}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center', color: atrib.atrasada ? '#C62828' : '#374151', fontWeight: atrib.atrasada ? 700 : 400 }}>
+                  {atrib.label}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center', color: pzTec.atrasada ? '#C62828' : '#374151', fontWeight: pzTec.atrasada ? 700 : 400 }}>
+                  {pzTec.label}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center', color: pzCom.atrasada ? '#C62828' : '#374151', fontWeight: pzCom.atrasada ? 700 : 400 }}>
+                  {pzCom.label}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'center' }}>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    background: s.situacao === 'em_atraso' ? '#FFEBEE' : '#E8F5E9',
+                    color: s.situacao === 'em_atraso' ? '#C62828' : '#0A6E39',
+                    border: `0.5px solid ${s.situacao === 'em_atraso' ? '#ef9a9a' : '#a5d6a7'}`,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {s.situacao === 'em_atraso' ? 'Em Atraso' : 'No Prazo'}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -582,6 +603,9 @@ export default function DashboardComercialPage() {
 
       {/* ── Barra de filtros ──────────────────────────────────────────────── */}
       <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
         display: 'flex',
         flexWrap: 'wrap',
         gap,
@@ -591,6 +615,7 @@ export default function DashboardComercialPage() {
         borderRadius: 4,
         padding: '10px 14px',
         marginBottom: 12,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
       }}>
         {[
           {

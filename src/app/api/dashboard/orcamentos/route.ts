@@ -10,6 +10,12 @@ export interface SolicitacaoAberta {
   cliente: string
   cliente_final: string | null
   orcamentista: string | null
+  data_recebimento: string | null
+  data_atribuicao: string | null
+  prazo_tecnica: string | null
+  prazo_tecnica_indeterminado: boolean
+  prazo_comercial: string | null
+  prazo_comercial_indeterminado: boolean
 }
 
 export interface OrcDashboardData {
@@ -103,6 +109,7 @@ export async function GET(req: NextRequest) {
       prazo_tecnica_indeterminado: true,
       prazo_comercial: true,
       prazo_comercial_indeterminado: true,
+      orcamentista_id: true,
       cliente: { select: { nome: true } },
       cliente_final: { select: { nome: true } },
       orcamentista: { select: { nome: true } },
@@ -209,6 +216,12 @@ export async function GET(req: NextRequest) {
           cliente: s.cliente.nome,
           cliente_final: s.cliente_final?.nome ?? null,
           orcamentista: s.orcamentista?.nome ?? null,
+          data_recebimento: s.data_recebimento ? s.data_recebimento.toISOString() : null,
+          data_atribuicao: s.orcamentista_id ? s.created_at.toISOString() : null,
+          prazo_tecnica: s.prazo_tecnica ? s.prazo_tecnica.toISOString() : null,
+          prazo_tecnica_indeterminado: s.prazo_tecnica_indeterminado,
+          prazo_comercial: s.prazo_comercial ? s.prazo_comercial.toISOString() : null,
+          prazo_comercial_indeterminado: s.prazo_comercial_indeterminado,
         })
       }
     }
