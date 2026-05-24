@@ -543,10 +543,13 @@ const labelStyle: React.CSSProperties = {
 }
 
 // ── Página principal ─────────────────────────────────────────────────────────
+type Aba = 'solicitacoes' | 'propostas'
+
 export default function DashboardComercialPage() {
   const [data, setData] = useState<OrcDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [clientes, setClientes] = useState<{ id: number; nome: string }[]>([])
+  const [aba, setAba] = useState<Aba>('solicitacoes')
 
   const [ano, setAno] = useState('')
   const [classificacao, setClassificacao] = useState('')
@@ -726,6 +729,34 @@ export default function DashboardComercialPage() {
           ✕ Limpar
         </button>
         </div>{/* fim barra filtros */}
+
+        {/* ── Abas ──────────────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 2, marginTop: 8 }}>
+          {([
+            { key: 'solicitacoes', label: 'Solicitações' },
+            { key: 'propostas',    label: 'Propostas' },
+          ] as { key: Aba; label: string }[]).map((a) => (
+            <button
+              key={a.key}
+              onClick={() => setAba(a.key)}
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                fontFamily: 'Arial, sans-serif',
+                padding: '5px 18px',
+                border: 'none',
+                borderBottom: aba === a.key ? `2px solid ${HEADER}` : '2px solid transparent',
+                background: aba === a.key ? '#fff' : 'transparent',
+                color: aba === a.key ? HEADER : '#888',
+                cursor: 'pointer',
+                borderRadius: '4px 4px 0 0',
+                transition: 'all 0.15s',
+              }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>{/* fim bloco sticky */}
 
       {/* ── Conteúdo ─────────────────────────────────────────────────────── */}
@@ -737,7 +768,7 @@ export default function DashboardComercialPage() {
         <p style={{ textAlign: 'center', color: '#aaa', padding: '40px 0', fontSize: 13 }}>
           Nenhum dado disponível.
         </p>
-      ) : (
+      ) : aba === 'solicitacoes' ? (
         <>
           {/* ── Linha 1: KPIs ───────────────────────────────────────────── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap, marginBottom: gap }}>
@@ -769,23 +800,23 @@ export default function DashboardComercialPage() {
           <div style={{ marginBottom: gap }}>
             <GraficoOrcamentistas porOrc={data.por_orc} />
           </div>
-
-          {/* ── Linha 5: Solicitações em aberto ─────────────────────────── */}
-          <Card title="Solicitações em Aberto — Propostas Pendentes">
-            <CardsAbertas
-              counts={data.abertas_counts}
-              filtro={filtroAbertas}
-              onChange={setFiltroAbertas}
-            />
-            <TabelaAbertas
-              items={
-                filtroAbertas === 'todas'
-                  ? data.solicitacoes_abertas
-                  : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
-              }
-            />
-          </Card>
         </>
+      ) : (
+        /* ── Aba Propostas ──────────────────────────────────────────────── */
+        <Card title="Solicitações em Aberto — Propostas Pendentes">
+          <CardsAbertas
+            counts={data.abertas_counts}
+            filtro={filtroAbertas}
+            onChange={setFiltroAbertas}
+          />
+          <TabelaAbertas
+            items={
+              filtroAbertas === 'todas'
+                ? data.solicitacoes_abertas
+                : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
+            }
+          />
+        </Card>
       )}
     </div>
   )
