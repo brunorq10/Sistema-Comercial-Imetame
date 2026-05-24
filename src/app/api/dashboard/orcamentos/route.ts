@@ -14,8 +14,10 @@ export interface SolicitacaoAberta {
   data_atribuicao: string | null
   prazo_tecnica: string | null
   prazo_tecnica_indeterminado: boolean
+  prazo_tecnica_enviada: boolean
   prazo_comercial: string | null
   prazo_comercial_indeterminado: boolean
+  prazo_comercial_enviada: boolean
 }
 
 export interface OrcDashboardData {
@@ -208,6 +210,10 @@ export async function GET(req: NextRequest) {
       }
 
       if (situacaoItem !== 'atendida') {
+        const tec = s.propostas_tecnicas[0] ?? null
+        const com = s.propostas_comerciais[0] ?? null
+        const fab = s.propostas_fabricacao[0] ?? null
+        const isFabType = s.classificacao === 'FABRICACOES' || s.classificacao === 'OLEO_GAS'
         solicitacoes_abertas.push({
           id: s.id,
           numero: s.numero,
@@ -220,8 +226,14 @@ export async function GET(req: NextRequest) {
           data_atribuicao: s.orcamentista_id ? s.created_at.toISOString() : null,
           prazo_tecnica: s.prazo_tecnica ? s.prazo_tecnica.toISOString() : null,
           prazo_tecnica_indeterminado: s.prazo_tecnica_indeterminado,
+          prazo_tecnica_enviada: isFabType
+            ? !!(fab?.data_envio)
+            : !!(tec?.data_envio || tec?.nao_aplicavel),
           prazo_comercial: s.prazo_comercial ? s.prazo_comercial.toISOString() : null,
           prazo_comercial_indeterminado: s.prazo_comercial_indeterminado,
+          prazo_comercial_enviada: isFabType
+            ? !!(fab?.data_envio)
+            : !!(com?.data_envio || com?.nao_aplicavel),
         })
       }
     }

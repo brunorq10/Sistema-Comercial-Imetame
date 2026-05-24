@@ -412,12 +412,13 @@ function CardsAbertas({
 // ── Tabela de solicitações em aberto ─────────────────────────────────────────
 const now = new Date()
 
-function fmtData(iso: string | null, indeterminado?: boolean): { label: string; atrasada: boolean } {
-  if (indeterminado) return { label: 'Indeterminado', atrasada: false }
+function fmtData(iso: string | null, opts?: { indeterminado?: boolean; vermelho?: boolean }): { label: string; atrasada: boolean } {
+  if (opts?.indeterminado) return { label: 'Indeterminado', atrasada: false }
   if (!iso) return { label: '—', atrasada: false }
   const d = new Date(iso)
   const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  return { label, atrasada: d < now }
+  const atrasada = (opts?.vermelho ?? false) && d < now
+  return { label, atrasada }
 }
 
 function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
@@ -469,10 +470,10 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
         </thead>
         <tbody>
           {items.map((s, i) => {
-            const chegada   = fmtData(s.data_recebimento)
-            const atrib     = fmtData(s.data_atribuicao)
-            const pzTec     = fmtData(s.prazo_tecnica, s.prazo_tecnica_indeterminado)
-            const pzCom     = fmtData(s.prazo_comercial, s.prazo_comercial_indeterminado)
+            const chegada = fmtData(s.data_recebimento)
+            const atrib   = fmtData(s.data_atribuicao)
+            const pzTec   = fmtData(s.prazo_tecnica,   { indeterminado: s.prazo_tecnica_indeterminado,   vermelho: !s.prazo_tecnica_enviada })
+            const pzCom   = fmtData(s.prazo_comercial, { indeterminado: s.prazo_comercial_indeterminado, vermelho: !s.prazo_comercial_enviada })
             return (
               <tr key={s.id} style={{ background: i % 2 === 1 ? '#f9fafb' : '#fff' }}>
                 <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
@@ -593,30 +594,35 @@ export default function DashboardComercialPage() {
 
   return (
     <div style={{ padding: 16, background: '#f0f0f0', height: '100%', overflowY: 'auto', fontFamily: 'Arial, sans-serif' }}>
-      {/* Cabeçalho */}
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#111' }}>Dashboard Comercial</h2>
-        <p style={{ fontSize: 11, color: '#888', margin: '2px 0 0' }}>
-          Indicadores consolidados do funil de orçamentos
-        </p>
-      </div>
-
-      {/* ── Barra de filtros ──────────────────────────────────────────────── */}
+      {/* ── Cabeçalho + Filtros (bloco sticky) ───────────────────────────── */}
       <div style={{
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap,
-        alignItems: 'flex-end',
-        background: '#fff',
-        border: '0.5px solid #ccc',
-        borderRadius: 4,
-        padding: '10px 14px',
-        marginBottom: 12,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+        background: '#f0f0f0',
+        paddingBottom: 8,
+        marginBottom: 4,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.06)',
       }}>
+        {/* Título */}
+        <div style={{ marginBottom: 8 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#111' }}>Dashboard Comercial</h2>
+          <p style={{ fontSize: 11, color: '#888', margin: '2px 0 0' }}>
+            Indicadores consolidados do funil de orçamentos
+          </p>
+        </div>
+
+        {/* ── Barra de filtros ──────────────────────────────────────────── */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap,
+          alignItems: 'flex-end',
+          background: '#fff',
+          border: '0.5px solid #ccc',
+          borderRadius: 4,
+          padding: '10px 14px',
+        }}>
         {[
           {
             label: 'Ano',
@@ -719,7 +725,8 @@ export default function DashboardComercialPage() {
         >
           ✕ Limpar
         </button>
-      </div>
+        </div>{/* fim barra filtros */}
+      </div>{/* fim bloco sticky */}
 
       {/* ── Conteúdo ─────────────────────────────────────────────────────── */}
       {loading ? (
