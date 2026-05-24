@@ -15,9 +15,11 @@ export interface SolicitacaoAberta {
   prazo_tecnica: string | null
   prazo_tecnica_indeterminado: boolean
   prazo_tecnica_enviada: boolean
+  data_envio_tecnica: string | null
   prazo_comercial: string | null
   prazo_comercial_indeterminado: boolean
   prazo_comercial_enviada: boolean
+  data_envio_comercial: string | null
 }
 
 export interface OrcDashboardData {
@@ -229,11 +231,17 @@ export async function GET(req: NextRequest) {
           prazo_tecnica_enviada: isFabType
             ? !!(fab?.data_envio)
             : !!(tec?.data_envio || tec?.nao_aplicavel),
+          data_envio_tecnica: isFabType
+            ? (fab?.data_envio ? fab.data_envio.toISOString() : null)
+            : (tec?.data_envio ? tec.data_envio.toISOString() : null),
           prazo_comercial: s.prazo_comercial ? s.prazo_comercial.toISOString() : null,
           prazo_comercial_indeterminado: s.prazo_comercial_indeterminado,
           prazo_comercial_enviada: isFabType
             ? !!(fab?.data_envio)
             : !!(com?.data_envio || com?.nao_aplicavel),
+          data_envio_comercial: isFabType
+            ? (fab?.data_envio ? fab.data_envio.toISOString() : null)
+            : (com?.data_envio ? com.data_envio.toISOString() : null),
         })
       }
     }

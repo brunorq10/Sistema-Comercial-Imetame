@@ -412,16 +412,127 @@ function CardsAbertas({
 // ── Tabela de solicitações em aberto ─────────────────────────────────────────
 const now = new Date()
 
-function fmtData(iso: string | null, opts?: { indeterminado?: boolean; vermelho?: boolean }): { label: string; atrasada: boolean } {
-  if (opts?.indeterminado) return { label: 'Indeterminado', atrasada: false }
-  if (!iso) return { label: '—', atrasada: false }
-  const d = new Date(iso)
-  const label = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const atrasada = (opts?.vermelho ?? false) && d < now
-  return { label, atrasada }
+function fmtDt(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function diffDias(from: string | null, to?: Date): number {
+  if (!from) return 0
+  const ms = (to ?? now).getTime() - new Date(from).getTime()
+  return Math.max(0, Math.floor(ms / 86_400_000))
+}
+
+function DetalheAberta({ s }: { s: SolicitacaoAberta }) {
+  const diasComOrc = s.data_atribuicao
+    ? (s.prazo_tecnica_enviada && s.prazo_comercial_enviada)
+      ? diffDias(s.data_atribuicao, new Date(Math.max(
+          s.data_envio_tecnica  ? new Date(s.data_envio_tecnica).getTime()  : 0,
+          s.data_envio_comercial? new Date(s.data_envio_comercial).getTime(): 0,
+        )))
+      : diffDias(s.data_atribuicao)
+    : null
+  const enviouTodas = s.prazo_tecnica_enviada && s.prazo_comercial_enviada
+
+  const atrasoTec = (!s.prazo_tecnica_enviada && !s.prazo_tecnica_indeterminado && s.prazo_tecnica)
+    ? diffDias(s.prazo_tecnica)
+    : 0
+  const atrasoComercial = (!s.prazo_comercial_enviada && !s.prazo_comercial_indeterminado && s.prazo_comercial)
+    ? diffDias(s.prazo_comercial)
+    : 0
+
+  const sectionStyle: React.CSSProperties = {
+    background: '#f9fafb',
+    border: '0.5px solid #e5e7eb',
+    borderRadius: 4,
+    padding: '10px 14px',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: 11,
+  }
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 700,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: 2,
+  }
+  const valueStyle: React.CSSProperties = { color: '#111', fontWeight: 500 }
+  const atrasadoStyle: React.CSSProperties = { color: '#C62828', fontWeight: 700 }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, padding: '8px 12px 10px', background: '#f0f4f8', borderBottom: '0.5px solid #d1d5db' }}>
+      {/* Chegada */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Data de Chegada</p>
+        <p style={{ ...valueStyle, margin: 0 }}>{fmtDt(s.data_recebimento)}</p>
+      </div>
+
+      {/* Atribuição */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Atribuição ao Orçamentista</p>
+        <p style={{ margin: 0, ...valueStyle }}>{fmtDt(s.data_atribuicao)}</p>
+        {diasComOrc !== null && (
+          <p style={{ margin: '4px 0 0', fontSize: 10, color: enviouTodas ? '#0A6E39' : '#E8A020', fontWeight: 600 }}>
+            {enviouTodas ? `${diasComOrc} dias de elaboração` : `${diasComOrc} dias com o orçamentista`}
+          </p>
+        )}
+      </div>
+
+      {/* Proposta Técnica */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Proposta Técnica</p>
+        {s.prazo_tecnica_indeterminado ? (
+          <p style={{ margin: 0, ...valueStyle }}>Prazo indeterminado</p>
+        ) : (
+          <>
+            <p style={{ margin: 0, color: '#555' }}>
+              <span style={{ fontWeight: 600 }}>Prevista: </span>
+              <span style={atrasoTec > 0 ? atrasadoStyle : valueStyle}>{fmtDt(s.prazo_tecnica)}</span>
+            </p>
+            <p style={{ margin: '3px 0 0', color: '#555' }}>
+              <span style={{ fontWeight: 600 }}>Envio: </span>
+              {s.prazo_tecnica_enviada
+                ? <span style={{ color: '#0A6E39', fontWeight: 600 }}>{fmtDt(s.data_envio_tecnica)}</span>
+                : <span style={atrasoTec > 0 ? atrasadoStyle : valueStyle}>
+                    {atrasoTec > 0 ? `Não enviada — ${atrasoTec} dias de atraso` : 'Não enviada'}
+                  </span>
+              }
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Proposta Comercial */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Proposta Comercial</p>
+        {s.prazo_comercial_indeterminado ? (
+          <p style={{ margin: 0, ...valueStyle }}>Prazo indeterminado</p>
+        ) : (
+          <>
+            <p style={{ margin: 0, color: '#555' }}>
+              <span style={{ fontWeight: 600 }}>Prevista: </span>
+              <span style={atrasoComercial > 0 ? atrasadoStyle : valueStyle}>{fmtDt(s.prazo_comercial)}</span>
+            </p>
+            <p style={{ margin: '3px 0 0', color: '#555' }}>
+              <span style={{ fontWeight: 600 }}>Envio: </span>
+              {s.prazo_comercial_enviada
+                ? <span style={{ color: '#0A6E39', fontWeight: 600 }}>{fmtDt(s.data_envio_comercial)}</span>
+                : <span style={atrasoComercial > 0 ? atrasadoStyle : valueStyle}>
+                    {atrasoComercial > 0 ? `Não enviada — ${atrasoComercial} dias de atraso` : 'Não enviada'}
+                  </span>
+              }
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
   if (items.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '20px 0', color: '#aaa', fontSize: 12 }}>
@@ -452,66 +563,75 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
   }
 
   return (
-    <div style={{ overflowX: 'auto', maxHeight: 380, overflowY: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+    <div style={{ overflowX: 'auto', maxHeight: 440, overflowY: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: 28 }} />
+          <col style={{ width: 90 }} />
+          <col />{/* Escopo — ocupa o restante */}
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: 90 }} />
+        </colgroup>
         <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
           <tr>
+            <th style={{ ...thStyle, padding: '6px 4px', textAlign: 'center' }} />
             <th style={thStyle}>Nº</th>
-            <th style={{ ...thStyle, minWidth: 180 }}>Escopo</th>
+            <th style={thStyle}>Escopo</th>
             <th style={thStyle}>Cliente</th>
             <th style={thStyle}>Cliente Final</th>
             <th style={thStyle}>Orçamentista</th>
-            <th style={{ ...thStyle, textAlign: 'center' }}>Chegada</th>
-            <th style={{ ...thStyle, textAlign: 'center' }}>Atribuição</th>
-            <th style={{ ...thStyle, textAlign: 'center' }}>Prev. Técnica</th>
-            <th style={{ ...thStyle, textAlign: 'center' }}>Prev. Comercial</th>
             <th style={{ ...thStyle, textAlign: 'center' }}>Situação</th>
           </tr>
         </thead>
         <tbody>
           {items.map((s, i) => {
-            const chegada = fmtData(s.data_recebimento)
-            const atrib   = fmtData(s.data_atribuicao)
-            const pzTec   = fmtData(s.prazo_tecnica,   { indeterminado: s.prazo_tecnica_indeterminado,   vermelho: !s.prazo_tecnica_enviada })
-            const pzCom   = fmtData(s.prazo_comercial, { indeterminado: s.prazo_comercial_indeterminado, vermelho: !s.prazo_comercial_enviada })
+            const expanded = expandedId === s.id
+            const bg = i % 2 === 1 ? '#f9fafb' : '#fff'
             return (
-              <tr key={s.id} style={{ background: i % 2 === 1 ? '#f9fafb' : '#fff' }}>
-                <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
-                <td style={{ ...tdStyle, color: s.escopo ? '#111' : '#aaa', fontStyle: s.escopo ? 'normal' : 'italic', maxWidth: 220 }}>
-                  <span title={s.escopo ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.escopo ?? 'Sem escopo'}
-                  </span>
-                </td>
-                <td style={tdStyle}>{s.cliente}</td>
-                <td style={{ ...tdStyle, color: s.cliente_final ? '#111' : '#aaa' }}>{s.cliente_final ?? '—'}</td>
-                <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa' }}>{s.orcamentista ?? '—'}</td>
-                <td style={{ ...tdStyle, textAlign: 'center', color: chegada.atrasada ? '#C62828' : '#374151', fontWeight: chegada.atrasada ? 700 : 400 }}>
-                  {chegada.label}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center', color: atrib.atrasada ? '#C62828' : '#374151', fontWeight: atrib.atrasada ? 700 : 400 }}>
-                  {atrib.label}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center', color: pzTec.atrasada ? '#C62828' : '#374151', fontWeight: pzTec.atrasada ? 700 : 400 }}>
-                  {pzTec.label}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center', color: pzCom.atrasada ? '#C62828' : '#374151', fontWeight: pzCom.atrasada ? 700 : 400 }}>
-                  {pzCom.label}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    background: s.situacao === 'em_atraso' ? '#FFEBEE' : '#E8F5E9',
-                    color: s.situacao === 'em_atraso' ? '#C62828' : '#0A6E39',
-                    border: `0.5px solid ${s.situacao === 'em_atraso' ? '#ef9a9a' : '#a5d6a7'}`,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {s.situacao === 'em_atraso' ? 'Em Atraso' : 'No Prazo'}
-                  </span>
-                </td>
-              </tr>
+              <>
+                <tr
+                  key={s.id}
+                  style={{ background: bg, cursor: 'pointer' }}
+                  onClick={() => setExpandedId(expanded ? null : s.id)}
+                >
+                  <td style={{ ...tdStyle, textAlign: 'center', color: '#6B7280', fontSize: 10 }}>
+                    {expanded ? '▲' : '▼'}
+                  </td>
+                  <td style={{ ...tdStyle, fontWeight: 700 }}>{s.numero}</td>
+                  <td style={{ ...tdStyle, color: s.escopo ? '#111' : '#aaa', fontStyle: s.escopo ? 'normal' : 'italic' }}>
+                    <span title={s.escopo ?? ''} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.escopo ?? 'Sem escopo'}
+                    </span>
+                  </td>
+                  <td style={{ ...tdStyle, overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.cliente}</td>
+                  <td style={{ ...tdStyle, color: s.cliente_final ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {s.cliente_final ?? '—'}
+                  </td>
+                  <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {s.orcamentista ?? '—'}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
+                      background: s.situacao === 'em_atraso' ? '#FFEBEE' : '#E8F5E9',
+                      color: s.situacao === 'em_atraso' ? '#C62828' : '#0A6E39',
+                      border: `0.5px solid ${s.situacao === 'em_atraso' ? '#ef9a9a' : '#a5d6a7'}`,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {s.situacao === 'em_atraso' ? 'Em Atraso' : 'No Prazo'}
+                    </span>
+                  </td>
+                </tr>
+                {expanded && (
+                  <tr key={`${s.id}-detalhe`}>
+                    <td colSpan={7} style={{ padding: 0 }}>
+                      <DetalheAberta s={s} />
+                    </td>
+                  </tr>
+                )}
+              </>
             )
           })}
         </tbody>
