@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
           subindice: {
             include: {
               contrato: {
-                include: { cliente: { select: { nome: true } } },
+                include: {
+                  cliente: { select: { nome: true } },
+                  solicitacao: { select: { cliente_final: { select: { nome: true } } } },
+                },
               },
               notas_fiscais: {
                 where: { ativa: true },
@@ -94,6 +97,7 @@ export async function GET(req: NextRequest) {
       subindice_id:         item.subindice_id,
       indice:               item.subindice.contrato.indice,
       cliente_nome:         item.subindice.contrato.cliente.nome,
+      cliente_final_nome:   item.subindice.contrato.solicitacao?.cliente_final?.nome ?? null,
       descricao_contrato:   item.subindice.contrato.descricao ?? null,
       ordem:                item.subindice.ordem,
       num_os:               item.subindice.num_os ?? null,

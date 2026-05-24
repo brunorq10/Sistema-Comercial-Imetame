@@ -8,6 +8,7 @@ export interface PrevisaoRealizadoItem {
   subindice_id: number
   indice: string
   cliente_nome: string
+  cliente_final_nome: string | null
   descricao_contrato: string | null
   ordem: number
   num_os: string | null
@@ -42,6 +43,7 @@ function calcPerc(faturado: number, consolidado: number) {
 interface Grupo {
   indice: string
   cliente_nome: string
+  cliente_final_nome: string | null
   descricao_contrato: string | null
   itens: PrevisaoRealizadoItem[]
   total_consolidado: number
@@ -61,6 +63,7 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
         map.set(key, {
           indice: item.indice,
           cliente_nome: item.cliente_nome,
+          cliente_final_nome: item.cliente_final_nome,
           descricao_contrato: item.descricao_contrato,
           itens: [],
           total_consolidado: 0,
@@ -103,8 +106,8 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
   const thCls = 'bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap'
   const tdBase = 'px-2 py-[5px] whitespace-nowrap text-[11px]'
 
-  // 8 colunas: toggle | Índice | Cliente | Descrição/Evento | Consolidado | Previsto | Faturado | %
-  const COL_SPAN_TOTAL = 8
+  // 9 colunas: toggle | Índice | Cliente | Cliente Final | Descrição/Evento | Consolidado | Previsto | Faturado | %
+  const COL_SPAN_TOTAL = 9
 
   return (
     <div className="overflow-x-auto border border-gray-200 rounded-md">
@@ -112,7 +115,7 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
         <thead>
           {/* Totalizador geral */}
           <tr className="bg-[#C8E6C9] border-b-2 border-green-primary">
-            <td colSpan={4} className="px-2 py-[4px] font-bold text-[10px] whitespace-nowrap">
+            <td colSpan={5} className="px-2 py-[4px] font-bold text-[10px] whitespace-nowrap">
               TOTAIS · {grupos.length} contrato{grupos.length !== 1 ? 's' : ''} · {itens.length} sub-índice{itens.length !== 1 ? 's' : ''}
             </td>
             <td className="px-2 py-[4px] whitespace-nowrap">
@@ -133,7 +136,8 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
           <tr>
             <th className={thCls} style={{ width: 28 }} />
             <th className={thCls} style={{ width: 90 }}>Índice</th>
-            <th className={thCls} style={{ width: 160 }}>Cliente</th>
+            <th className={thCls} style={{ width: 150 }}>Cliente</th>
+            <th className={thCls} style={{ width: 140 }}>Cliente Final</th>
             <th className={thCls}>Descrição / Evento</th>
             <th className={thCls} style={{ width: 150 }}>Valor Consolidado</th>
             <th className={thCls} style={{ width: 140 }}>Valor Previsto</th>
@@ -161,10 +165,16 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
                       {g.indice}
                     </span>
                   </td>
-                  <td className={`${tdBase} max-w-[160px]`}>
-                    <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: 144 }}>
+                  <td className={`${tdBase} max-w-[150px]`}>
+                    <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: 134 }}>
                       {g.cliente_nome}
                     </span>
+                  </td>
+                  <td className={`${tdBase} max-w-[140px]`}>
+                    {g.cliente_final_nome
+                      ? <span className="text-indigo-600 truncate block" style={{ maxWidth: 124 }}>{g.cliente_final_nome}</span>
+                      : <span className="text-gray-300">—</span>
+                    }
                   </td>
                   <td className={tdBase}>
                     <span className="text-gray-700 truncate block" style={{ maxWidth: 320 }} title={g.descricao_contrato ?? ''}>
@@ -205,10 +215,12 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
                         {g.indice}.{item.ordem}
                       </span>
                     </td>
-                    {/* Nº OS */}
+                    {/* Nº OS — ocupa coluna Cliente */}
                     <td className={`${tdBase} text-gray-500`}>
                       {item.num_os ?? <span className="text-gray-300">—</span>}
                     </td>
+                    {/* Cliente Final — vazio nos sub-índices */}
+                    <td className={tdBase} />
                     {/* Descrição do sub-índice */}
                     <td className={`${tdBase} pl-4 text-gray-600`}>
                       <span className="truncate block" style={{ maxWidth: 320 }} title={item.descricao}>
