@@ -196,7 +196,7 @@ export default function MeuPainelAcordosPage() {
     return {
       totalContratos:       filteredContratos.length,
       totalSubindices:      allSubs.length,
-      valorTotalContratado: contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0),
+      valorTotalContratado: filteredContratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0),
       prevMesAtual:  sumMes(subsAnoAtual, m),
       fatMesAtual:   sumNFMes(m, anoAtual),
       fatUltimoMes:  sumNFMes(mp, anoMpYear),
@@ -210,7 +210,7 @@ export default function MeuPainelAcordosPage() {
       anoAtual,
       anoProximo,
     }
-  }, [filteredContratos, contratos])
+  }, [filteredContratos])
 
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
 
