@@ -74,6 +74,8 @@ export async function GET(req: NextRequest) {
   const inicioMes = new Date(ano, mes - 1, 1)
   const fimMes    = new Date(ano, mes, 1)
 
+  const mesKey = MESES_KEYS[mes - 1]
+
   const itens = consolidado.itens.map((item) => {
     const faturado = item.subindice.notas_fiscais
       .filter((nf) => {
@@ -82,18 +84,21 @@ export async function GET(req: NextRequest) {
       })
       .reduce((a, nf) => a + Number(nf.valor_atribuido), 0)
 
-    const previsto = Number(item.valor_previsto)
-    const perc     = previsto > 0 ? (faturado / previsto) * 100 : 0
+    const valorConsolidado = Number(item.valor_previsto)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const valorMesAtual    = Number((item.subindice as any)[mesKey] ?? 0)
+    const perc = valorConsolidado > 0 ? (faturado / valorConsolidado) * 100 : 0
 
     return {
-      id:             item.id,
-      subindice_id:   item.subindice_id,
-      indice:         item.subindice.contrato.indice,
-      cliente_nome:   item.subindice.contrato.cliente.nome,
-      descricao:      item.subindice.descricao,
-      valor_previsto: previsto,
-      valor_faturado: faturado,
-      percentual:     Number(perc.toFixed(1)),
+      id:                item.id,
+      subindice_id:      item.subindice_id,
+      indice:            item.subindice.contrato.indice,
+      cliente_nome:      item.subindice.contrato.cliente.nome,
+      descricao:         item.subindice.descricao,
+      valor_consolidado: valorConsolidado,
+      valor_previsto:    valorMesAtual,
+      valor_faturado:    faturado,
+      percentual:        Number(perc.toFixed(1)),
     }
   })
 
