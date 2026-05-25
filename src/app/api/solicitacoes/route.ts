@@ -134,6 +134,7 @@ export async function GET(req: NextRequest) {
         prazo_comercial: true,
         prazo_comercial_indeterminado: true,
         visita_tecnica: true,
+        as_sold: true,
         cancelled_at: true,
         motivo_reprovacao: true,
         obs_reprovacao: true,

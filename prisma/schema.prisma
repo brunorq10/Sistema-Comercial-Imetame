@@ -213,6 +213,7 @@ model Solicitacao {
   motivo_reprovacao            MotivoReprovacao?
   obs_reprovacao               String?
   revisao_esperada  Int               @default(1)
+  as_sold           Boolean           @default(false)
   created_at        DateTime          @default(now())
   updated_at      DateTime          @updatedAt
   created_by      Int

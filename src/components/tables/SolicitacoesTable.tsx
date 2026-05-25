@@ -65,7 +65,7 @@ export function SolicitacoesTable({
       }),
       col.accessor('versao_atual', {
         header: 'Versão',
-        cell: (info) => <VersaoBadge versao={info.getValue()} />,
+        cell: (info) => <VersaoBadge versao={info.getValue()} asSold={info.row.original.as_sold} />,
         size: 70,
       }),
       col.accessor((row) => row.cliente.nome, {
@@ -133,7 +133,7 @@ export function SolicitacoesTable({
           const isReprovada = item.status_analise === 'REPROVADA'
           return (
             <div className="flex gap-1">
-              {canRevisao && !isCancelada && (
+              {canRevisao && !isCancelada && !item.as_sold && (
                 <Button
                   variant="warning"
                   size="sm"

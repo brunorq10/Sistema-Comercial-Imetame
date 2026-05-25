@@ -523,6 +523,7 @@ export default function SolicitacoesPage() {
         onClose={() => setModalNovaRevisao(false)}
         onSuccess={fetchData}
         solicitacao={revisando}
+        canAtribuir={perms.canAtribuirOrcamentista}
       />
 
       {/* Modal confirmação — reenviar */}

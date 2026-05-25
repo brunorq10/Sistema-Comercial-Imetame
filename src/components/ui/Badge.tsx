@@ -72,8 +72,7 @@ export function StatusAnaliseBadge({ status }: { status: StatusAnalise }) {
   return <Badge variant={variant}>{label}</Badge>
 }
 
-export function VersaoBadge({ versao }: { versao: number }) {
-  return (
-    <Badge variant="purple">{`Rev${String(versao - 1).padStart(2, '0')}`}</Badge>
-  )
+export function VersaoBadge({ versao, asSold }: { versao: number; asSold?: boolean }) {
+  if (asSold) return <Badge variant="green">As Sold.</Badge>
+  return <Badge variant="purple">{`Rev${String(versao - 1).padStart(2, '0')}`}</Badge>
 }

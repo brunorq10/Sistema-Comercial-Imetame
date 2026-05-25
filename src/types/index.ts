@@ -104,6 +104,7 @@ export interface SolicitacaoListItem {
   prazo_comercial_indeterminado: boolean
   visita_tecnica: boolean
   versao_atual: number
+  as_sold: boolean
   cancelled_at: string | null
   motivo_reprovacao: MotivoReprovacao | null
   obs_reprovacao: string | null
