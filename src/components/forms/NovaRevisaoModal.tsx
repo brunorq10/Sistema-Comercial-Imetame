@@ -203,9 +203,9 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         <div className="flex gap-3">
           <button
             onClick={() => handleEscolhaTipo(true)}
-            className="flex-1 border-2 border-green-primary rounded-md px-4 py-3 text-left hover:bg-green-light transition-colors"
+            className="flex-1 border-2 border-gray-200 rounded-md px-4 py-3 text-left hover:bg-gray-50 transition-colors"
           >
-            <p className="text-[12px] font-bold text-green-dark">Sim — proposta As Sold.</p>
+            <p className="text-[12px] font-bold text-gray-700">Sim — proposta As Sold.</p>
             <p className="text-[10px] text-gray-500 mt-0.5">Versão final consolidada.</p>
           </button>
           <button
