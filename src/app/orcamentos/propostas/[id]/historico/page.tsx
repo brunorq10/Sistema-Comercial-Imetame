@@ -87,7 +87,7 @@ function fmtCell(v: number | null, fmt?: 'currency' | 'pct') {
   return fmtN(v)
 }
 
-function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 'currency' | 'num') {
+function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 'currency' | 'num' | 'decimal') {
   return {
     data: {
       labels,
@@ -101,7 +101,12 @@ function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 
         datalabels: {
           display: true, align: 'top' as const, anchor: 'end' as const, offset: 6,
           font: { size: 10, weight: 'bold' as const }, color: '#374151',
-          formatter: (v: number | null) => v != null ? (fmt === 'currency' ? formatCurrency(v) : fmtN(v)) : '',
+          formatter: (v: number | null) => {
+            if (v == null) return ''
+            if (fmt === 'currency') return formatCurrency(v)
+            if (fmt === 'decimal')  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            return fmtN(v)
+          },
         },
       },
       scales: {
@@ -165,7 +170,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
   const valorChart = mkChart(labels, revisions.map(r => r.valorTotal), '#2E7D32', 'currency')
   const hhChart    = mkChart(labels, revisions.map(r => r.hhTotal),    '#1565C0', 'num')
-  const rhhChart   = mkChart(labels, revisions.map(r => r.rhh),        '#E65100', 'currency')
+  const rhhChart   = mkChart(labels, revisions.map(r => r.rhh),        '#E65100', 'decimal')
 
   type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean }
   const tecRows: NumRow[] = [
@@ -200,21 +205,36 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
     <div className="p-4 h-full overflow-y-auto bg-gray-50">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-3 flex items-center gap-4">
+        {/* Ícone */}
+        <div className="w-10 h-10 bg-green-primary rounded-lg flex items-center justify-center text-white font-bold text-[10px] shrink-0">SOL</div>
+
+        {/* Dois grupos de chips em duas linhas */}
+        <div className="flex-1 min-w-0">
+          {/* Linha 1 */}
+          <div className="flex items-center gap-0 mb-2.5">
+            <InfoChip label="Proposta" value={raw.numero} bold />
+            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
+            <InfoChip label="Cliente" value={raw.cliente} />
+            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
+            <InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} />
+          </div>
+          {/* Linha 2 */}
+          <div className="flex items-center gap-0">
+            <InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} />
+            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
+            <InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate />
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[10px] text-gray-400 hover:text-gray-600">
             ← Voltar às Propostas
           </button>
           <button onClick={exportXLSX} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
             ↓ Exportar
           </button>
-        </div>
-        <div className="grid grid-cols-5 gap-4">
-          <InfoChip label="Proposta" value={raw.numero} bold />
-          <InfoChip label="Cliente" value={raw.cliente} />
-          <InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} />
-          <InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} />
-          <InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate />
         </div>
       </div>
 
