@@ -11,6 +11,7 @@ export interface DetalheInline {
   numero: string
   created_at: string
   contato: string | null
+  comprador: string | null
   cidade: string | null
   estado: string | null
   origem: Origem | null
@@ -110,41 +111,45 @@ export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, 
     <div className="bg-[#F9FAFB] border-t border-gray-200 px-4 py-4 text-[11px]">
       {/* Info geral */}
       <div className="grid grid-cols-4 gap-x-6 gap-y-2.5 mb-4">
+        {/* Linha 1 */}
         <Field label="Cliente">{detalhe.cliente.nome}</Field>
         <Field label="Cliente Final">{detalhe.cliente_final?.nome ?? '—'}</Field>
-        <Field label="Contato">{detalhe.contato ?? '—'}</Field>
         <Field label="Cidade / UF">
           {[detalhe.cidade, detalhe.estado].filter(Boolean).join(' / ') || '—'}
         </Field>
+        <Field label="Comprador">{detalhe.comprador ?? '—'}</Field>
 
+        {/* Linha 2 */}
         <Field label="Origem">
           {detalhe.origem ? ORIGEM_LABELS[detalhe.origem] : '—'}
         </Field>
         <Field label="Escopo" className="col-span-3">{detalhe.escopo ?? '—'}</Field>
 
+        {/* Linha 3 */}
         <Field label="Classificação">
           {detalhe.classificacao ? CLASSIFICACAO_LABELS[detalhe.classificacao] : '—'}
         </Field>
         <Field label="Interesse">
           {detalhe.interesse ? INTERESSE_LABELS[detalhe.interesse] : '—'}
         </Field>
-        <Field label="Status análise">
-          <StatusAnaliseBadge status={detalhe.status_analise} />
-        </Field>
-        <Field label="Orçamentista">{detalhe.orcamentista?.nome ?? '—'}</Field>
-
-        <Field label="Prazo técnica">
-          {detalhe.prazo_tecnica_indeterminado ? 'Não Determinado' : formatDate(detalhe.prazo_tecnica)}
-        </Field>
-        <Field label="Prazo comercial">
-          {detalhe.prazo_comercial_indeterminado ? 'Não Determinado' : formatDate(detalhe.prazo_comercial)}
-        </Field>
         <Field label="Visita técnica">
           {detalhe.visita_tecnica
             ? `Sim${detalhe.data_visita ? ' — ' + formatDate(detalhe.data_visita) : ''}`
             : 'Não'}
         </Field>
-        <Field label="Criado por">{detalhe.criador.nome} em {formatDate(detalhe.created_at)}</Field>
+        <Field label="Status análise">
+          <StatusAnaliseBadge status={detalhe.status_analise} />
+        </Field>
+
+        {/* Linha 4 */}
+        <Field label="Prazo Proposta Técnica">
+          {detalhe.prazo_tecnica_indeterminado ? 'Não Determinado' : formatDate(detalhe.prazo_tecnica)}
+        </Field>
+        <Field label="Prazo Proposta Comercial">
+          {detalhe.prazo_comercial_indeterminado ? 'Não Determinado' : formatDate(detalhe.prazo_comercial)}
+        </Field>
+        <Field label="Data de Criação">{formatDate(detalhe.created_at)}</Field>
+        <Field label="Orçamentista">{detalhe.orcamentista?.nome ?? '—'}</Field>
 
         {detalhe.motivo_recusa && (
           <div className="col-span-4">
