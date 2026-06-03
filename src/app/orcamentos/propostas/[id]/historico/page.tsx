@@ -108,7 +108,7 @@ function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 
         x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
         y: { display: false },
       },
-      layout: { padding: { top: 36, right: 20, left: 20, bottom: 4 } },
+      layout: { padding: { top: 55, right: 24, left: 24, bottom: 8 } },
     },
   }
 }
@@ -200,24 +200,22 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
     <div className="p-4 h-full overflow-y-auto bg-gray-50">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 flex items-center gap-4">
-        <div className="w-10 h-10 bg-green-primary rounded-lg flex items-center justify-center text-white font-bold text-[10px] shrink-0">SOL</div>
-        <div className="shrink-0">
-          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[9px] text-gray-400 hover:text-gray-600 mb-0.5 block">← Propostas</button>
-          <p className="text-[15px] font-bold text-gray-800 leading-tight">{raw.numero}</p>
-          <p className="text-[11px] text-gray-500">{raw.cliente}</p>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-1">
+            ← Voltar às Propostas
+          </button>
+          <button onClick={exportXLSX} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
+            ↓ Exportar
+          </button>
         </div>
-        <div className="w-px h-10 bg-gray-200 mx-1 shrink-0" />
-        <div className="flex items-center gap-6 flex-1 flex-wrap">
-          <InfoChip label="Período do histórico" value={periodFrom && periodTo ? `${formatDate(periodFrom)} a ${formatDate(periodTo)}` : '—'} />
-          <div className="w-px h-8 bg-gray-100" />
-          <InfoChip label="Total de revisões" value={`${N} revisão${N !== 1 ? 'ões' : ''}`} />
-          <div className="w-px h-8 bg-gray-100" />
-          <InfoChip label="Melhor proposta (menor valor)" value={bestRev?.label ?? '—'} sub={bestRev ? formatCurrency(bestRev.valorTotal) : undefined} />
+        <div className="grid grid-cols-5 gap-4">
+          <InfoChip label="Proposta" value={raw.numero} bold />
+          <InfoChip label="Cliente" value={raw.cliente} />
+          <InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} />
+          <InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} />
+          <InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate />
         </div>
-        <button onClick={exportXLSX} className="shrink-0 flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
-          ↓ Exportar
-        </button>
       </div>
 
       {/* ── Linha do Tempo ──────────────────────────────────────────────────── */}
@@ -288,7 +286,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
         ].map(({ title, chart }) => (
           <div key={title} className="bg-white border border-gray-200 rounded-lg p-4">
             <p className="text-[11px] font-semibold text-gray-600 mb-1">{title}</p>
-            <div style={{ height: 180 }}>
+            <div style={{ height: 200 }}>
               <Line data={chart.data} options={chart.options as never} />
             </div>
           </div>
@@ -360,12 +358,13 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function InfoChip({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function InfoChip({ label, value, bold, truncate }: { label: string; value: string; bold?: boolean; truncate?: boolean }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-[12px] font-bold text-gray-700">{value}</p>
-      {sub && <p className="text-[10px] text-gray-500">{sub}</p>}
+      <p className={cn('text-[12px] text-gray-800', bold ? 'font-extrabold' : 'font-medium', truncate && 'truncate')} title={truncate ? value : undefined}>
+        {value}
+      </p>
     </div>
   )
 }
@@ -406,10 +405,12 @@ function DataRow({ label, revisions, vals, fmt, bold }: {
         const prevV = idx > 0 ? vals[idx - 1] : null
         const d     = idx > 0 ? delta(curr, prevV) : null
         return (
-          <td key={rev.versao} className={cn('px-3 py-2 text-center', bold && 'font-bold')}>
-            <div className={bold ? 'text-auto-value' : ''}>{fmtCell(curr, fmt)}</div>
+          <td key={rev.versao} className="px-3 py-2.5 text-center">
+            <div className={cn('text-[13px] font-bold', bold ? 'text-auto-value' : 'text-gray-800')}>
+              {fmtCell(curr, fmt)}
+            </div>
             {d && (
-              <div className={cn('text-[9px] font-semibold mt-0.5', d.cls)}>
+              <div className={cn('text-[9px] font-normal mt-0.5 opacity-70', d.cls)}>
                 {d.abs} ({d.pct})
               </div>
             )}
