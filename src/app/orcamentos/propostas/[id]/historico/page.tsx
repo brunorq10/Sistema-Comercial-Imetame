@@ -39,7 +39,7 @@ interface HistoricoData {
 }
 interface Rev {
   versao: number; label: string; tec: TecData; com: ComData | null
-  hhTotal: number | null; valorTotal: number | null; rhh: number | null
+  hhTotal: number | null; valorTotal: number | null; rhh: number | null; rhhSemTerc: number | null
   isFirst: boolean; isLast: boolean
 }
 
@@ -87,11 +87,11 @@ function fmtCell(v: number | null, fmt?: 'currency' | 'pct') {
   return fmtN(v)
 }
 
-function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 'currency' | 'num' | 'decimal') {
+function mkChart(labels: string[], series: { vals: (number | null)[]; color: string }[], fmt: 'currency' | 'num' | 'decimal') {
   return {
     data: {
       labels,
-      datasets: [{ data: vals, borderColor: color, backgroundColor: color + '12', pointBackgroundColor: color, pointRadius: 6, pointHoverRadius: 8, tension: 0.3, fill: true }],
+      datasets: series.map(s => ({ data: s.vals, borderColor: s.color, backgroundColor: s.color + '12', pointBackgroundColor: s.color, pointRadius: 6, pointHoverRadius: 8, tension: 0.3, fill: true })),
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -143,8 +143,10 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
       const hhTotal   = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
       const valorTotal = com?.valor_total != null ? Number(com.valor_total) : null
       const rhh        = hhTotal && valorTotal && hhTotal > 0 ? valorTotal / hhTotal : null
+      const terceiros  = com?.valor_terceiros != null ? Number(com.valor_terceiros) : null
+      const rhhSemTerc = hhTotal && valorTotal != null && hhTotal > 0 ? (valorTotal - (terceiros ?? 0)) / hhTotal : null
       const label      = raw.as_sold && isLast ? 'As Sold.' : formatRev(tec.versao)
-      return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, rhh, isFirst, isLast }
+      return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, rhh, rhhSemTerc, isFirst, isLast }
     })
   }, [raw])
 
@@ -152,25 +154,16 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
   if (error || !raw) return <div className="p-8 text-center text-red-600 text-sm">{error ?? 'Não encontrado'}</div>
   if (revisions.length === 0) return <div className="p-8 text-center text-gray-400 text-sm">Nenhuma revisão registrada.</div>
 
-  const first  = revisions[0]
-  const latest = revisions[revisions.length - 1]
-  const prev   = revisions.length >= 2 ? revisions[revisions.length - 2] : null
-  const latestSt = revStatus(latest)
-
-  const allDates = [...revisions.map(r => r.tec.data_envio), ...revisions.map(r => r.com?.data_envio ?? null)].filter(Boolean) as string[]
-  const periodFrom = allDates.length ? allDates.reduce((a, b) => a < b ? a : b) : null
-  const periodTo   = allDates.length ? allDates.reduce((a, b) => a > b ? a : b) : null
-
-  const bestRev  = [...revisions].filter(r => r.valorTotal != null).sort((a, b) => a.valorTotal! - b.valorTotal!)[0] ?? null
-  const economia = first.valorTotal != null && latest.valorTotal != null ? first.valorTotal - latest.valorTotal : null
-
   const N       = revisions.length
   const linePct = `${(100 / (2 * N)).toFixed(2)}%`
   const labels  = revisions.map(r => r.label)
 
-  const valorChart = mkChart(labels, revisions.map(r => r.valorTotal), '#2E7D32', 'currency')
-  const hhChart    = mkChart(labels, revisions.map(r => r.hhTotal),    '#1565C0', 'num')
-  const rhhChart   = mkChart(labels, revisions.map(r => r.rhh),        '#E65100', 'decimal')
+  const valorChart = mkChart(labels, [{ vals: revisions.map(r => r.valorTotal), color: '#2E7D32' }], 'currency')
+  const hhChart    = mkChart(labels, [{ vals: revisions.map(r => r.hhTotal),    color: '#1565C0' }], 'num')
+  const rhhChart   = mkChart(labels, [
+    { vals: revisions.map(r => r.rhh),         color: '#E65100' },
+    { vals: revisions.map(r => r.rhhSemTerc),  color: '#7B1FA2' },
+  ], 'decimal')
 
   type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean }
   const tecRows: NumRow[] = [
@@ -182,9 +175,10 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
     { key: 'Dias de Parada', vals: revisions.map(r => r.tec.dias_parada) },
   ]
   const comRows: NumRow[] = [
-    { key: 'Valor Total', vals: revisions.map(r => r.valorTotal), fmt: 'currency' },
-    { key: 'Terceiros',   vals: revisions.map(r => r.com?.valor_terceiros != null ? Number(r.com.valor_terceiros) : null), fmt: 'currency' },
-    { key: 'R$/HH',       vals: revisions.map(r => r.rhh), fmt: 'currency' },
+    { key: 'Valor Total',        vals: revisions.map(r => r.valorTotal),   fmt: 'currency' },
+    { key: 'Terceiros',          vals: revisions.map(r => r.com?.valor_terceiros != null ? Number(r.com.valor_terceiros) : null), fmt: 'currency' },
+    { key: 'R$/HH',              vals: revisions.map(r => r.rhh),          fmt: 'currency' },
+    { key: 'R$/HH s/ Terceiros', vals: revisions.map(r => r.rhhSemTerc),  fmt: 'currency' },
   ]
 
   function exportXLSX() {
@@ -213,13 +207,13 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
         <div className="flex items-center flex-1 min-w-0 gap-0">
           <div className="shrink-0"><InfoChip label="Proposta" value={raw.numero} bold /></div>
           <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
-          <div className="min-w-0 flex-1"><InfoChip label="Cliente" value={raw.cliente} truncate /></div>
+          <div className="min-w-0 flex-[0.8]"><InfoChip label="Cliente" value={raw.cliente} truncate /></div>
           <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
-          <div className="min-w-0 flex-1"><InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} truncate /></div>
+          <div className="min-w-0 flex-[0.8]"><InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} truncate /></div>
           <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
           <div className="shrink-0"><InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} /></div>
           <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
-          <div className="min-w-0 flex-[2]"><InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate /></div>
+          <div className="min-w-0 flex-[3]"><InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate /></div>
         </div>
 
         {/* Ações */}
@@ -269,43 +263,30 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* ── KPI Cards ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-5 gap-3 mb-3">
-        <KpiCard icon="👥" iconBg="bg-blue-100" label={`HH Total (${latest.label})`} value={fmtN(latest.hhTotal)}>
-          {prev && (() => { const d = delta(latest.hhTotal, prev.hhTotal); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.cls)}>{d.abs} vs {prev.label}</p> })()}
-        </KpiCard>
-        <KpiCard icon="💰" iconBg="bg-green-100" label={`Valor Total (${latest.label})`} value={formatCurrency(latest.valorTotal)} small>
-          {prev && (() => { const d = delta(latest.valorTotal, prev.valorTotal); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.cls)}>{d.pct} vs {prev.label}</p> })()}
-        </KpiCard>
-        <KpiCard icon="📊" iconBg="bg-indigo-100" label={`R$ por HH (${latest.label})`} value={latest.rhh != null ? formatCurrency(latest.rhh) : '—'} small>
-          {prev && (() => { const d = delta(latest.rhh, prev.rhh); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.cls)}>{d.pct} vs {prev.label}</p> })()}
-        </KpiCard>
-        <KpiCard icon="📉" iconBg="bg-purple-100" label="Redução total valor" value={economia != null ? (economia >= 0 ? '-' : '+') + formatCurrency(Math.abs(economia)) : '—'} valueColor={economia != null ? (economia > 0 ? 'text-green-700' : economia < 0 ? 'text-red-700' : '') : ''} small>
-          {economia != null && first.valorTotal != null && (
-            <p className={cn('text-[10px] font-semibold', economia > 0 ? 'text-green-700' : 'text-red-700')}>
-              {economia > 0 ? '-' : '+'}{((Math.abs(economia) / first.valorTotal) * 100).toFixed(1).replace('.', ',')}% vs {first.label}
-            </p>
-          )}
-        </KpiCard>
-        <KpiCard icon="✅" iconBg="bg-green-100" label="Situação" value={latestSt.label} valueColor={latestSt.textCls}>
-          <p className="text-[10px] text-gray-400">{latest.label}</p>
-        </KpiCard>
-      </div>
-
       {/* ── Gráficos ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3 mb-3">
-        {[
-          { title: 'Evolução do Valor Total (R$)', chart: valorChart },
-          { title: 'Evolução do HH Total',          chart: hhChart },
-          { title: 'Evolução do R$ por HH',         chart: rhhChart },
-        ].map(({ title, chart }) => (
-          <div key={title} className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-[11px] font-semibold text-gray-600 mb-1">{title}</p>
-            <div style={{ height: 200 }}>
-              <Line data={chart.data} options={chart.options as never} />
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-[11px] font-semibold text-gray-600 mb-1">Evolução do Valor Total (R$)</p>
+          <div style={{ height: 200 }}><Line data={valorChart.data} options={valorChart.options as never} /></div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-[11px] font-semibold text-gray-600 mb-1">Evolução do HH Total</p>
+          <div style={{ height: 200 }}><Line data={hhChart.data} options={hhChart.options as never} /></div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-semibold text-gray-600">Evolução do R$ por HH</p>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-[9px] text-gray-500">
+                <span className="inline-block w-3 h-[2px] rounded bg-[#E65100]" /> R$/HH
+              </span>
+              <span className="flex items-center gap-1 text-[9px] text-gray-500">
+                <span className="inline-block w-3 h-[2px] rounded bg-[#7B1FA2]" /> s/ Terceiros
+              </span>
             </div>
           </div>
-        ))}
+          <div style={{ height: 200 }}><Line data={rhhChart.data} options={rhhChart.options as never} /></div>
+        </div>
       </div>
 
       {/* ── Tabela Comparativa ──────────────────────────────────────────────── */}
@@ -384,21 +365,6 @@ function InfoChip({ label, value, bold, truncate }: { label: string; value: stri
   )
 }
 
-function KpiCard({ icon, iconBg, label, value, valueColor, small, children }: {
-  icon: string; iconBg: string; label: string; value: string
-  valueColor?: string; small?: boolean; children?: React.ReactNode
-}) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-start gap-3">
-      <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[15px]', iconBg)}>{icon}</div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[9px] text-gray-400 uppercase tracking-wide leading-tight mb-0.5">{label}</p>
-        <p className={cn('font-bold leading-tight truncate', small ? 'text-[13px]' : 'text-[18px]', valueColor || 'text-gray-800')}>{value}</p>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 function SectionRow({ label, colSpan }: { label: string; colSpan: number }) {
   return (
