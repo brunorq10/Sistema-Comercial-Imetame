@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,135 +11,113 @@ import {
   LineElement,
   Tooltip,
 } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { Line } from 'react-chartjs-2'
 import { formatDate, formatCurrency, formatRev } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, ChartDataLabels)
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface HistoricoData {
-  id: number
-  numero: string
-  created_at: string
-  data_recebimento: string | null
-  cliente: string
-  cliente_final: string | null
-  cidade: string | null
-  estado: string | null
-  escopo: string | null
-  orcamentista: string | null
-  as_sold: boolean
-  propostas_tecnicas: {
-    id: number
-    versao: number
-    hh_direto: number | null
-    hh_indireto: number | null
-    hh_total: number | null
-    efetivo_pico: number | null
-    dias_parada: number | null
-    turno: string | null
-    data_envio: string | null
-  }[]
-  propostas_comerciais: {
-    id: number
-    versao: number
-    valor_total: string | null
-    valor_terceiros: string | null
-    data_envio: string | null
-    resultado: string | null
-    proposta_tecnica_id: number
-  }[]
+interface TecData {
+  id: number; versao: number
+  hh_direto: number | null; hh_indireto: number | null; hh_total: number | null
+  efetivo_pico: number | null; dias_parada: number | null; turno: string | null
+  data_envio: string | null
 }
-
-interface RevisionData {
-  versao: number
-  label: string
-  tec: HistoricoData['propostas_tecnicas'][0]
-  com: HistoricoData['propostas_comerciais'][0] | null
-  hhTotal: number | null
-  valorTotal: number | null
-  rhh: number | null
+interface ComData {
+  id: number; versao: number; proposta_tecnica_id: number
+  valor_total: string | null; valor_terceiros: string | null
+  data_envio: string | null; resultado: string | null
+}
+interface HistoricoData {
+  id: number; numero: string; created_at: string; data_recebimento: string | null
+  cliente: string; cliente_final: string | null; cidade: string | null; estado: string | null
+  escopo: string | null; orcamentista: string | null; as_sold: boolean
+  propostas_tecnicas: TecData[]; propostas_comerciais: ComData[]
+}
+interface Rev {
+  versao: number; label: string; tec: TecData; com: ComData | null
+  hhTotal: number | null; valorTotal: number | null; rhh: number | null
+  isFirst: boolean; isLast: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function pctVar(curr: number | null, prev: number | null): { text: string; positive: boolean } | null {
-  if (curr == null || prev == null || prev === 0) return null
-  const pct = ((curr - prev) / prev) * 100
-  return { text: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', positive: pct > 0 }
+function revStatus(rev: Rev) {
+  if (!rev.com) {
+    if (rev.isFirst) return { label: 'Inicial', dotCls: 'bg-yellow-400 border-yellow-500', badgeCls: 'bg-yellow-50 text-yellow-700 border border-yellow-300', textCls: 'text-yellow-700' }
+    return { label: 'Pendente', dotCls: 'bg-gray-300 border-gray-400', badgeCls: 'bg-gray-100 text-gray-500 border border-gray-300', textCls: 'text-gray-500' }
+  }
+  if (rev.com.resultado === 'GANHOU') return { label: 'Aprovada', dotCls: 'bg-green-600 border-green-600', badgeCls: 'bg-green-50 text-green-700 border border-green-300', textCls: 'text-green-700' }
+  if (rev.com.resultado === 'PERDEU') return { label: 'Perdeu', dotCls: 'bg-white border-red-500', badgeCls: 'bg-red-50 text-red-700 border border-red-300', textCls: 'text-red-700' }
+  return { label: 'Aguardando', dotCls: 'bg-orange-400 border-orange-500', badgeCls: 'bg-orange-50 text-orange-700 border border-orange-300', textCls: 'text-orange-700' }
 }
 
-function fmtNum(n: number | null): string {
+function percInd(tec: TecData): number | null {
+  const t = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
+  if (!t || !tec.hh_indireto) return null
+  return (tec.hh_indireto / t) * 100
+}
+
+function fmtN(n: number | null) {
   if (n == null) return '—'
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
 }
 
-function fmtDelta(curr: number | null, prev: number | null): { text: string; cls: string } {
-  if (curr == null || prev == null) return { text: '—', cls: 'text-gray-400' }
-  const diff = curr - prev
-  if (diff === 0) return { text: '—', cls: 'text-gray-500' }
-  const pct = prev !== 0 ? (diff / prev) * 100 : 0
-  const sign = diff > 0 ? '+' : ''
-  const text = `${sign}${diff.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} (${sign}${pct.toFixed(1)}%)`
-  const cls = diff < 0 ? 'text-green-700 font-semibold' : 'text-red-700 font-semibold'
-  return { text, cls }
-}
-
-function getTimelineStatus(rev: RevisionData) {
-  if (!rev.com) return { label: 'Sem comercial', bg: 'bg-gray-100', text: 'text-gray-500' }
-  if (rev.com.resultado === 'GANHOU') return { label: 'Aprovada', bg: 'bg-green-100', text: 'text-green-700' }
-  if (rev.com.resultado === 'PERDEU') return { label: 'Perdida', bg: 'bg-red-100', text: 'text-red-700' }
-  return { label: 'Aguardando', bg: 'bg-amber-100', text: 'text-amber-700' }
-}
-
-function getSituacao(revisions: RevisionData[], asSold: boolean) {
-  if (!revisions.length) return { label: '—', color: 'text-gray-500' }
-  const latest = revisions[revisions.length - 1]
-  if (asSold) return { label: 'As Sold. ✓', color: 'text-green-700' }
-  if (!latest.com) return { label: 'Em elaboração', color: 'text-blue-700' }
-  if (latest.com.resultado === 'GANHOU') return { label: 'Aprovada', color: 'text-green-700' }
-  if (latest.com.resultado === 'PERDEU') return { label: 'Perdida', color: 'text-red-700' }
-  return { label: 'Aguardando', color: 'text-amber-700' }
-}
-
-function percIndireta(tec: HistoricoData['propostas_tecnicas'][0]): number | null {
-  const total = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
-  if (!total || !tec.hh_indireto) return null
-  return (tec.hh_indireto / total) * 100
-}
-
-const baseChartOpts = (fmt?: 'currency') => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      callbacks: {
-        label: (ctx: { parsed: { y: number } }) =>
-          fmt === 'currency' ? formatCurrency(ctx.parsed.y) : fmtNum(ctx.parsed.y),
-      },
-    },
-  },
-  scales: {
-    x: { grid: { display: false } },
-    y: { beginAtZero: false, grid: { color: '#f0f0f0' } },
-  },
-})
-
-function mkChartData(labels: string[], vals: (number | null)[], color: string) {
+function delta(curr: number | null, prev: number | null) {
+  if (curr == null || prev == null) return null
+  const d = curr - prev
+  if (d === 0) return { abs: '0', pct: '0,0%', favorable: null }
+  const pct = prev !== 0 ? Math.abs(d / prev) * 100 : 0
+  const sign = d > 0 ? '+' : ''
   return {
-    labels,
-    datasets: [{
-      data: vals,
-      borderColor: color,
-      backgroundColor: color + '18',
-      pointBackgroundColor: color,
-      pointRadius: 5,
-      tension: 0.3,
-      fill: true,
-    }],
+    abs: `${sign}${d.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`,
+    pct: `${sign}${pct.toFixed(1).replace('.', ',')}%`,
+    favorable: d < 0,
+  }
+}
+
+function fmtCell(v: number | null, fmt?: 'currency' | 'pct') {
+  if (v == null) return '—'
+  if (fmt === 'currency') return formatCurrency(v)
+  if (fmt === 'pct') return v.toFixed(1).replace('.', ',') + '%'
+  return fmtN(v)
+}
+
+function mkChart(labels: string[], vals: (number | null)[], color: string, fmt: 'currency' | 'num') {
+  return {
+    data: {
+      labels,
+      datasets: [{ data: vals, borderColor: color, backgroundColor: color + '12', pointBackgroundColor: color, pointRadius: 5, pointHoverRadius: 7, tension: 0.3, fill: true }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true },
+        datalabels: {
+          display: true, align: 'top' as const, anchor: 'end' as const, offset: 6,
+          font: { size: 9, weight: 'bold' as const }, color: '#374151',
+          formatter: (v: number | null) => v != null ? (fmt === 'currency' ? formatCurrency(v) : fmtN(v)) : '',
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: {
+          beginAtZero: false, grid: { color: '#f3f4f6' },
+          ticks: {
+            font: { size: 9 },
+            callback: (v: string | number) =>
+              fmt === 'currency'
+                ? new Intl.NumberFormat('pt-BR', { notation: 'compact', currency: 'BRL', style: 'currency' }).format(Number(v))
+                : fmtN(Number(v)),
+          },
+        },
+      },
+      layout: { padding: { top: 28, right: 12, left: 4 } },
+    },
   }
 }
 
@@ -146,345 +125,388 @@ function mkChartData(labels: string[], vals: (number | null)[], color: string) {
 
 export default function HistoricoPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const [data, setData] = useState<HistoricoData | null>(null)
+  const [raw, setRaw] = useState<HistoricoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/propostas/${params.id}/historico`)
-      .then((r) => r.json())
-      .then((j) => { if (j.error) setError(j.error); else setData(j.data) })
+      .then(r => r.json())
+      .then(j => { if (j.error) setError(j.error); else setRaw(j.data) })
       .catch(() => setError('Erro ao carregar dados'))
       .finally(() => setLoading(false))
   }, [params.id])
 
+  const revisions: Rev[] = useMemo(() => {
+    if (!raw) return []
+    return raw.propostas_tecnicas.map((tec, idx) => {
+      const isLast = idx === raw.propostas_tecnicas.length - 1
+      const isFirst = idx === 0
+      const com = raw.propostas_comerciais.find(c => c.proposta_tecnica_id === tec.id) ?? null
+      const hhTotal = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
+      const valorTotal = com?.valor_total != null ? Number(com.valor_total) : null
+      const rhh = hhTotal && valorTotal && hhTotal > 0 ? valorTotal / hhTotal : null
+      const label = raw.as_sold && isLast ? 'As Sold.' : formatRev(tec.versao)
+      return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, rhh, isFirst, isLast }
+    })
+  }, [raw])
+
   if (loading) return <div className="p-8 text-center text-gray-400 text-sm">Carregando...</div>
-  if (error || !data) return <div className="p-8 text-center text-red-600 text-sm">{error ?? 'Proposta não encontrada'}</div>
+  if (error || !raw) return <div className="p-8 text-center text-red-600 text-sm">{error ?? 'Não encontrado'}</div>
+  if (revisions.length === 0) return <div className="p-8 text-center text-gray-400 text-sm">Nenhuma revisão registrada.</div>
 
-  // Build revisions (tecnicas are ASC from API)
-  const revisions: RevisionData[] = data.propostas_tecnicas.map((tec, idx) => {
-    const isLast = idx === data.propostas_tecnicas.length - 1
-    const com = data.propostas_comerciais.find((c) => c.proposta_tecnica_id === tec.id) ?? null
-    const hhTotal = tec.hh_total ??
-      ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
-    const valorTotal = com?.valor_total != null ? Number(com.valor_total) : null
-    const rhh = (hhTotal != null && valorTotal != null && hhTotal > 0) ? valorTotal / hhTotal : null
-    const label = data.as_sold && isLast ? 'As Sold.' : formatRev(tec.versao)
-    return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, rhh }
-  })
-
+  const first  = revisions[0]
   const latest = revisions[revisions.length - 1]
   const prev   = revisions.length >= 2 ? revisions[revisions.length - 2] : null
-  const first  = revisions[0]
-  const situacao = getSituacao(revisions, data.as_sold)
+  const latestSt = revStatus(latest)
 
-  const bestRev = [...revisions]
-    .filter((r) => r.valorTotal != null)
-    .sort((a, b) => a.valorTotal! - b.valorTotal!)[0] ?? null
+  const allDates = [...revisions.map(r => r.tec.data_envio), ...revisions.map(r => r.com?.data_envio ?? null)].filter(Boolean) as string[]
+  const periodFrom = allDates.length ? allDates.reduce((a, b) => a < b ? a : b) : null
+  const periodTo   = allDates.length ? allDates.reduce((a, b) => a > b ? a : b) : null
 
-  const economia =
-    first?.valorTotal != null && latest?.valorTotal != null
-      ? first.valorTotal - latest.valorTotal
-      : null
+  const bestRev = [...revisions].filter(r => r.valorTotal != null).sort((a, b) => a.valorTotal! - b.valorTotal!)[0] ?? null
+  const economia = first.valorTotal != null && latest.valorTotal != null ? first.valorTotal - latest.valorTotal : null
 
-  const labels = revisions.map((r) => r.label)
+  const N = revisions.length
+  const linePct = `${(100 / (2 * N)).toFixed(2)}%`
+  const labels  = revisions.map(r => r.label)
 
-  // Rows for the comparative table
-  const tecRows: { key: string; vals: (number | null)[]; fmt?: 'pct' | 'num' }[] = [
-    { key: 'HH Direto',    vals: revisions.map((r) => r.tec.hh_direto) },
-    { key: 'HH Indireto',  vals: revisions.map((r) => r.tec.hh_indireto) },
-    { key: 'HH Total',     vals: revisions.map((r) => r.hhTotal) },
-    { key: '% Indireto',   vals: revisions.map((r) => percIndireta(r.tec)), fmt: 'pct' },
-    { key: 'Efetivo Pico', vals: revisions.map((r) => r.tec.efetivo_pico) },
-    { key: 'Dias Parada',  vals: revisions.map((r) => r.tec.dias_parada) },
+  const valorChart = mkChart(labels, revisions.map(r => r.valorTotal), '#2E7D32', 'currency')
+  const hhChart    = mkChart(labels, revisions.map(r => r.hhTotal),    '#1565C0', 'num')
+  const rhhChart   = mkChart(labels, revisions.map(r => r.rhh),        '#E65100', 'currency')
+
+  type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean }
+  const tecRows: NumRow[] = [
+    { key: 'HH Direto',      vals: revisions.map(r => r.tec.hh_direto) },
+    { key: 'HH Indireto',    vals: revisions.map(r => r.tec.hh_indireto) },
+    { key: 'HH Total',       vals: revisions.map(r => r.hhTotal), bold: true },
+    { key: '% Indireto',     vals: revisions.map(r => percInd(r.tec)), fmt: 'pct' },
+    { key: 'Efetivo Pico',   vals: revisions.map(r => r.tec.efetivo_pico) },
+    { key: 'Dias de Parada', vals: revisions.map(r => r.tec.dias_parada) },
   ]
-  const comRows: { key: string; vals: (number | null)[]; fmt: 'currency' }[] = [
-    { key: 'Valor Total', vals: revisions.map((r) => r.valorTotal), fmt: 'currency' },
-    { key: 'Terceiros',   vals: revisions.map((r) => r.com?.valor_terceiros != null ? Number(r.com.valor_terceiros) : null), fmt: 'currency' },
-    { key: 'R$/HH',       vals: revisions.map((r) => r.rhh), fmt: 'currency' },
+  const comRows: NumRow[] = [
+    { key: 'Valor Total', vals: revisions.map(r => r.valorTotal),  fmt: 'currency' },
+    { key: 'Terceiros',   vals: revisions.map(r => r.com?.valor_terceiros != null ? Number(r.com.valor_terceiros) : null), fmt: 'currency' },
+    { key: 'R$/HH',       vals: revisions.map(r => r.rhh), fmt: 'currency' },
   ]
+
+  function exportXLSX() {
+    const rows = revisions.map(r => ({
+      'Revisão': r.label, 'HH Direto': r.tec.hh_direto ?? '', 'HH Indireto': r.tec.hh_indireto ?? '',
+      'HH Total': r.hhTotal ?? '', '% Indireto': percInd(r.tec)?.toFixed(1) ?? '',
+      'Efetivo Pico': r.tec.efetivo_pico ?? '', 'Dias de Parada': r.tec.dias_parada ?? '', 'Turno': r.tec.turno ?? '',
+      'Valor Total (R$)': r.valorTotal ?? '', 'Terceiros (R$)': r.com?.valor_terceiros ?? '', 'R$/HH': r.rhh?.toFixed(2) ?? '',
+      'Resultado': r.com?.resultado ?? '', 'Env. Técnica': formatDate(r.tec.data_envio), 'Env. Comercial': formatDate(r.com?.data_envio),
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Histórico')
+    XLSX.writeFile(wb, `historico_${raw?.numero ?? 'proposta'}.xlsx`)
+  }
 
   return (
-    <div className="p-4 h-full overflow-y-auto">
+    <div className="p-4 h-full overflow-y-auto bg-gray-50">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-4 gap-4">
-        <div>
-          <button
-            onClick={() => router.push('/orcamentos/propostas')}
-            className="text-[11px] text-gray-400 hover:text-gray-700 mb-1.5 flex items-center gap-1"
-          >
-            ← Voltar às Propostas
-          </button>
-          <h2 className="text-[16px] font-bold">{data.numero} — Histórico de Revisões</h2>
-          <p className="text-[12px] text-gray-600 mt-0.5">
-            <span className="font-medium">{data.cliente}</span>
-            {data.cliente_final && <span className="text-gray-400"> · {data.cliente_final}</span>}
-            {(data.cidade || data.estado) && (
-              <span className="text-gray-400"> · {[data.cidade, data.estado].filter(Boolean).join('/')}</span>
-            )}
-          </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
-            {revisions.length} revisão{revisions.length !== 1 ? 'ões' : ''}
-            {bestRev && (
-              <> · Melhor proposta:{' '}
-                <span className="font-semibold text-green-dark">
-                  {formatCurrency(bestRev.valorTotal)} ({bestRev.label})
-                </span>
-              </>
-            )}
-            {data.orcamentista && <> · Orçamentista: {data.orcamentista}</>}
-          </p>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 flex items-center gap-4">
+        <div className="w-10 h-10 bg-green-primary rounded-lg flex items-center justify-center text-white font-bold text-[11px] shrink-0 text-center leading-tight">
+          SOL
         </div>
-        <button
-          onClick={() => window.print()}
-          className="shrink-0 border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
-        >
-          Imprimir
+        <div className="shrink-0">
+          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[9px] text-gray-400 hover:text-gray-600 mb-0.5 block">
+            ← Propostas
+          </button>
+          <p className="text-[15px] font-bold text-gray-800 leading-tight">{raw.numero}</p>
+          <p className="text-[11px] text-gray-500">{raw.cliente}</p>
+        </div>
+        <div className="w-px h-10 bg-gray-200 mx-1 shrink-0" />
+        <div className="flex items-center gap-6 flex-1 flex-wrap">
+          <InfoChip label="Período do histórico" value={periodFrom && periodTo ? `${formatDate(periodFrom)} a ${formatDate(periodTo)}` : '—'} />
+          <div className="w-px h-8 bg-gray-100" />
+          <InfoChip label="Total de revisões" value={`${N} revisão${N !== 1 ? 'ões' : ''}`} />
+          <div className="w-px h-8 bg-gray-100" />
+          <InfoChip label="Melhor proposta (menor valor)" value={bestRev?.label ?? '—'} sub={bestRev ? formatCurrency(bestRev.valorTotal) : undefined} />
+        </div>
+        <button onClick={exportXLSX} className="shrink-0 flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
+          ↓ Exportar
         </button>
       </div>
 
-      {revisions.length === 0 ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Nenhuma revisão registrada.</p>
-      ) : (
-        <>
-          {/* ── Linha do Tempo ──────────────────────────────────────────────── */}
-          <section className="bg-white border border-gray-200 rounded-md p-4 mb-4 overflow-x-auto">
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-3">Linha do Tempo</p>
-            <div className="flex items-start min-w-max">
-              {revisions.map((rev, idx) => {
-                const tl = getTimelineStatus(rev)
-                const isLast = idx === revisions.length - 1
-                return (
-                  <div key={rev.versao} className="flex items-start">
-                    <div className="flex flex-col items-center w-[130px]">
-                      <div className={cn(
-                        'text-[11px] font-bold px-3 py-1 rounded-full border-2',
-                        isLast
-                          ? 'border-green-primary text-green-dark bg-green-light'
-                          : 'border-gray-300 text-gray-600 bg-white',
-                      )}>
-                        {rev.label}
-                      </div>
-                      <div className="text-[9px] text-gray-400 mt-2 text-center leading-4">
-                        <div>Tec: {formatDate(rev.tec.data_envio)}</div>
-                        <div>Com: {formatDate(rev.com?.data_envio)}</div>
-                      </div>
-                      <span className={cn(
-                        'text-[9px] font-semibold px-2 py-0.5 rounded-full mt-1.5',
-                        tl.bg, tl.text,
-                      )}>
-                        {tl.label}
-                      </span>
-                    </div>
-                    {!isLast && (
-                      <div className="flex items-center mt-3.5 mx-1 gap-0">
-                        <div className="w-8 h-[2px] bg-gray-200" />
-                        <span className="text-gray-300 text-[8px] -ml-0.5">▶</span>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+      {/* ── Linha do Tempo ──────────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-3">
+        {/* Labels */}
+        <div className="flex mb-2.5">
+          {revisions.map(rev => {
+            const st = revStatus(rev)
+            return (
+              <div key={rev.versao} className="flex-1 flex justify-center">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-bold text-gray-700">{rev.label}</span>
+                  <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', st.badgeCls)}>{st.label}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {/* Circles + line */}
+        <div className="flex items-center relative py-0.5">
+          <div className="absolute h-[3px] bg-green-primary z-0" style={{ left: linePct, right: linePct, top: '50%', transform: 'translateY(-50%)' }} />
+          {revisions.map(rev => {
+            const st = revStatus(rev)
+            return (
+              <div key={rev.versao} className="flex-1 flex justify-center relative z-10">
+                <div className={cn('w-5 h-5 rounded-full border-2 shadow-sm', st.dotCls)} />
+              </div>
+            )
+          })}
+        </div>
+        {/* Dates */}
+        <div className="flex mt-2.5">
+          {revisions.map(rev => (
+            <div key={rev.versao} className="flex-1 text-center text-[9px] text-gray-400 leading-4">
+              <span>Téc: {formatDate(rev.tec.data_envio)}</span>
+              {rev.com && <span className="ml-1">• Com: {formatDate(rev.com.data_envio)}</span>}
             </div>
-          </section>
+          ))}
+        </div>
+      </div>
 
-          {/* ── KPI Cards ───────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-5 gap-2.5 mb-4">
-            <KpiCard
-              label="HH Total (atual)"
-              value={fmtNum(latest?.hhTotal ?? null)}
-              variant={pctVar(latest?.hhTotal ?? null, prev?.hhTotal ?? null)}
-              lowerIsBetter
-            />
-            <KpiCard
-              label="Valor Total (atual)"
-              value={formatCurrency(latest?.valorTotal ?? null)}
-              variant={pctVar(latest?.valorTotal ?? null, prev?.valorTotal ?? null)}
-              lowerIsBetter
-            />
-            <KpiCard
-              label="R$/HH (atual)"
-              value={latest?.rhh != null ? formatCurrency(latest.rhh) : '—'}
-              variant={pctVar(latest?.rhh ?? null, prev?.rhh ?? null)}
-              lowerIsBetter
-            />
-            <KpiCard
-              label="Economia Acumulada"
-              value={economia != null ? formatCurrency(Math.abs(economia)) : '—'}
-              sub={
-                economia != null
-                  ? economia > 0
-                    ? '↓ redução vs Rev00'
-                    : economia < 0
-                    ? '↑ aumento vs Rev00'
-                    : 'sem variação'
-                  : undefined
-              }
-              positive={economia != null ? economia > 0 : undefined}
-            />
-            <div className="bg-white border border-gray-200 rounded-md p-3">
-              <p className="text-[10px] text-gray-400 uppercase tracking-[0.04em] mb-1">Situação Atual</p>
-              <p className={cn('text-[15px] font-bold', situacao.color)}>{situacao.label}</p>
+      {/* ── KPI Cards ───────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-5 gap-3 mb-3">
+        <KpiCard icon="👥" iconBg="bg-blue-100" label={`HH Total (${latest.label})`} value={fmtN(latest.hhTotal)}>
+          {prev && (() => { const d = delta(latest.hhTotal, prev.hhTotal); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.favorable ? 'text-green-700' : d.favorable === false ? 'text-red-700' : 'text-gray-500')}>{d.abs} vs {prev.label}</p> })()}
+        </KpiCard>
+        <KpiCard icon="💰" iconBg="bg-green-100" label={`Valor Total (${latest.label})`} value={formatCurrency(latest.valorTotal)} small>
+          {prev && (() => { const d = delta(latest.valorTotal, prev.valorTotal); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.favorable ? 'text-green-700' : d.favorable === false ? 'text-red-700' : 'text-gray-500')}>{d.pct} vs {prev.label}</p> })()}
+        </KpiCard>
+        <KpiCard icon="📊" iconBg="bg-indigo-100" label={`R$ por HH (${latest.label})`} value={latest.rhh != null ? formatCurrency(latest.rhh) : '—'} small>
+          {prev && (() => { const d = delta(latest.rhh, prev.rhh); if (!d) return null; return <p className={cn('text-[10px] font-semibold', d.favorable ? 'text-green-700' : d.favorable === false ? 'text-red-700' : 'text-gray-500')}>{d.pct} vs {prev.label}</p> })()}
+        </KpiCard>
+        <KpiCard icon="📉" iconBg="bg-purple-100" label="Redução total valor" value={economia != null ? (economia >= 0 ? '-' : '+') + formatCurrency(Math.abs(economia)) : '—'} valueColor={economia != null ? (economia > 0 ? 'text-green-700' : economia < 0 ? 'text-red-700' : '') : ''} small>
+          {economia != null && first.valorTotal != null && (
+            <p className={cn('text-[10px] font-semibold', economia > 0 ? 'text-green-700' : 'text-red-700')}>
+              {economia > 0 ? '-' : '+'}{((Math.abs(economia) / first.valorTotal) * 100).toFixed(1).replace('.', ',')}% vs {first.label}
+            </p>
+          )}
+        </KpiCard>
+        <KpiCard icon="✅" iconBg="bg-green-100" label="Situação" value={latestSt.label} valueColor={latestSt.textCls}>
+          <p className="text-[10px] text-gray-400">Revisão mais recente</p>
+        </KpiCard>
+      </div>
+
+      {/* ── Gráficos ────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3 mb-3">
+        {[
+          { title: 'Evolução do Valor Total (R$)', chart: valorChart },
+          { title: 'Evolução do HH Total',          chart: hhChart },
+          { title: 'Evolução do R$ por HH',         chart: rhhChart },
+        ].map(({ title, chart }) => (
+          <div key={title} className="bg-white border border-gray-200 rounded-lg p-4">
+            <p className="text-[11px] font-semibold text-gray-600 mb-2">{title}</p>
+            <div style={{ height: 180 }}>
+              <Line data={chart.data} options={chart.options as never} />
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* ── Gráficos ────────────────────────────────────────────────────── */}
-          {revisions.length >= 2 && (
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
-              <ChartCard title="Valor Total (R$)">
-                <Line
-                  data={mkChartData(labels, revisions.map((r) => r.valorTotal), '#2E7D32')}
-                  options={baseChartOpts('currency') as never}
-                />
-              </ChartCard>
-              <ChartCard title="HH Total">
-                <Line
-                  data={mkChartData(labels, revisions.map((r) => r.hhTotal), '#1565C0')}
-                  options={baseChartOpts() as never}
-                />
-              </ChartCard>
-              <ChartCard title="R$ por HH">
-                <Line
-                  data={mkChartData(labels, revisions.map((r) => r.rhh), '#E65100')}
-                  options={baseChartOpts('currency') as never}
-                />
-              </ChartCard>
-            </div>
-          )}
+      {/* ── Comparativo + Envios ────────────────────────────────────────────── */}
+      <div className="flex gap-3 items-start">
 
-          {/* ── Tabela Comparativa ──────────────────────────────────────────── */}
-          <section className="bg-white border border-gray-200 rounded-md overflow-hidden mb-4">
-            <div className="px-4 py-2.5 border-b border-gray-100">
-              <p className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Tabela Comparativa</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[11px] border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="text-left px-4 py-2 text-[9px] text-gray-400 uppercase font-semibold tracking-wide w-[160px]">
-                      Campo
-                    </th>
-                    {revisions.map((r) => (
-                      <th key={r.versao} className="text-right px-3 py-2 text-[9px] text-gray-500 font-semibold whitespace-nowrap">
-                        {r.label}
+        {/* Tabela comparativa */}
+        <div className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-gray-100">
+            <p className="text-[12px] font-semibold text-gray-700">Comparativo entre revisões</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] border-collapse">
+              <thead>
+                <tr className="bg-green-primary text-white">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold w-[140px]">Indicador</th>
+                  {/* First revision: no delta before */}
+                  <th className="px-3 py-0 text-center min-w-[110px]">
+                    <div className="flex items-center justify-center gap-1 py-1">
+                      <span className="font-bold">{first.label}</span>
+                      <span className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', revStatus(first).badgeCls.replace('border-yellow-300', '').replace('border-green-300', '').replace('border-red-300', '').replace('border-orange-300', '').replace('border-gray-300', ''))}>{revStatus(first).label}</span>
+                    </div>
+                    <div className="text-[8px] text-green-200 pb-1.5 font-normal">
+                      Téc: {formatDate(first.tec.data_envio)}{first.com ? ` • Com: ${formatDate(first.com.data_envio)}` : ''}
+                    </div>
+                  </th>
+                  {/* Subsequent revisions: each gets a revision col + delta col */}
+                  {revisions.slice(1).map((rev, idx) => (
+                    <>
+                      <th key={`r${rev.versao}`} className="px-3 py-0 text-center min-w-[110px]">
+                        <div className="flex items-center justify-center gap-1 py-1">
+                          <span className="font-bold">{rev.label}</span>
+                          <span className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', revStatus(rev).badgeCls)}>{revStatus(rev).label}</span>
+                        </div>
+                        <div className="text-[8px] text-green-200 pb-1.5 font-normal">
+                          Téc: {formatDate(rev.tec.data_envio)}{rev.com ? ` • Com: ${formatDate(rev.com.data_envio)}` : ''}
+                        </div>
                       </th>
-                    ))}
-                    <th className="text-right px-3 py-2 text-[9px] text-gray-500 font-semibold bg-blue-50 border-l border-blue-100 whitespace-nowrap">
-                      Δ vs anterior
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Técnica */}
-                  <tr>
-                    <td colSpan={revisions.length + 2} className="px-4 py-1.5 bg-gray-50 text-[9px] font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100">
-                      Proposta Técnica
-                    </td>
-                  </tr>
-                  {tecRows.map((row) => {
-                    const last = row.vals[row.vals.length - 1]
-                    const prevV = row.vals.length >= 2 ? row.vals[row.vals.length - 2] : null
-                    const { text: dt, cls } = fmtDelta(last, prevV)
-                    return (
-                      <tr key={row.key} className="border-t border-gray-50 hover:bg-gray-50">
-                        <td className="px-4 py-1.5 text-gray-500">{row.key}</td>
-                        {row.vals.map((v, i) => (
-                          <td key={i} className="px-3 py-1.5 text-right font-medium">
-                            {v != null ? (row.fmt === 'pct' ? v.toFixed(1) + '%' : fmtNum(v)) : '—'}
-                          </td>
-                        ))}
-                        <td className={cn('px-3 py-1.5 text-right border-l border-blue-50 bg-blue-50/30', cls)}>{dt}</td>
-                      </tr>
-                    )
-                  })}
-                  {/* Turno (string — no delta) */}
-                  <tr className="border-t border-gray-50 hover:bg-gray-50">
-                    <td className="px-4 py-1.5 text-gray-500">Turno</td>
-                    {revisions.map((r) => (
-                      <td key={r.versao} className="px-3 py-1.5 text-right font-medium">
-                        {r.tec.turno ?? '—'}
+                      <th key={`d${rev.versao}`} className="px-3 py-2.5 text-center text-[9px] font-semibold text-green-100 bg-green-800/40 min-w-[90px] whitespace-nowrap">
+                        Δ vs. {revisions[idx].label}
+                      </th>
+                    </>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* TÉCNICA */}
+                <SectionRow label="TÉCNICA" colSpan={1 + revisions.length + Math.max(0, revisions.length - 1)} />
+                {tecRows.map(row => (
+                  <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} />
+                ))}
+                {/* Turno (string) */}
+                <tr className="border-t border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-1.5 text-gray-500">Turno</td>
+                  <td className="px-3 py-1.5 text-center font-medium">{first.tec.turno ?? '—'}</td>
+                  {revisions.slice(1).map((rev, idx) => (
+                    <>
+                      <td key={`t${rev.versao}`} className="px-3 py-1.5 text-center font-medium">{rev.tec.turno ?? '—'}</td>
+                      <td key={`td${rev.versao}`} className="px-3 py-1.5 text-center bg-gray-50 text-gray-400 text-[10px]">
+                        {rev.tec.turno !== revisions[idx].tec.turno && rev.tec.turno
+                          ? <><span className="line-through text-gray-300">{revisions[idx].tec.turno ?? '—'}</span><br />{rev.tec.turno}</>
+                          : '—'}
                       </td>
-                    ))}
-                    <td className="px-3 py-1.5 text-right border-l border-blue-50 bg-blue-50/30 text-gray-400">—</td>
-                  </tr>
+                    </>
+                  ))}
+                </tr>
+                {/* COMERCIAL */}
+                <SectionRow label="COMERCIAL" colSpan={1 + revisions.length + Math.max(0, revisions.length - 1)} />
+                {comRows.map(row => (
+                  <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+            <p className="text-[9px] text-gray-400">ⓘ Δ = Variação em relação à revisão anterior.</p>
+          </div>
+        </div>
 
-                  {/* Comercial */}
-                  <tr>
-                    <td colSpan={revisions.length + 2} className="px-4 py-1.5 bg-gray-50 text-[9px] font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100">
-                      Proposta Comercial
-                    </td>
-                  </tr>
-                  {comRows.map((row) => {
-                    const last = row.vals[row.vals.length - 1]
-                    const prevV = row.vals.length >= 2 ? row.vals[row.vals.length - 2] : null
-                    const { text: dt, cls } = fmtDelta(last, prevV)
-                    return (
-                      <tr key={row.key} className="border-t border-gray-50 hover:bg-gray-50">
-                        <td className="px-4 py-1.5 text-gray-500">{row.key}</td>
-                        {row.vals.map((v, i) => (
-                          <td key={i} className="px-3 py-1.5 text-right font-medium">
-                            {v != null ? formatCurrency(v) : '—'}
-                          </td>
-                        ))}
-                        <td className={cn('px-3 py-1.5 text-right border-l border-blue-50 bg-blue-50/30', cls)}>{dt}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      )}
+        {/* Histórico de envios */}
+        <div className="w-[260px] shrink-0 bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-gray-100">
+            <p className="text-[12px] font-semibold text-gray-700">Histórico de envios</p>
+          </div>
+          <div className="px-4 py-3 space-y-4">
+            {revisions.map((rev, idx) => {
+              const st = revStatus(rev)
+              return (
+                <div key={rev.versao} className="relative">
+                  {idx < revisions.length - 1 && (
+                    <div className="absolute left-[7px] top-5 bottom-[-16px] w-[2px] bg-gray-100" />
+                  )}
+                  <div className="flex items-start gap-2.5">
+                    <div className={cn('w-4 h-4 rounded-full border-2 mt-0.5 shrink-0', st.dotCls)} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[11px] font-bold text-gray-700">{rev.label}</span>
+                        <span className={cn('text-[8px] font-semibold px-1.5 py-0.5 rounded-full', st.badgeCls)}>{st.label}</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 space-y-0.5">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-400">Técnica enviada</span>
+                          <span className="font-medium">{formatDate(rev.tec.data_envio)}</span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-400">Comercial enviada</span>
+                          <span className="font-medium">{formatDate(rev.com?.data_envio)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="px-4 pb-4">
+            <button
+              onClick={() => document.querySelector('table')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full border border-gray-300 text-gray-600 text-[11px] font-medium rounded-md py-2 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
+            >
+              📋 Ver todas as versões
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({
-  label, value, variant, lowerIsBetter, sub, positive,
-}: {
-  label: string
-  value: string
-  variant?: { text: string; positive: boolean } | null
-  lowerIsBetter?: boolean
-  sub?: string
-  positive?: boolean
-}) {
-  const varColor =
-    variant == null ? '' :
-    (lowerIsBetter ? !variant.positive : variant.positive)
-      ? 'text-green-700'
-      : 'text-red-700'
-
+function InfoChip({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-3">
-      <p className="text-[10px] text-gray-400 uppercase tracking-[0.04em] mb-1">{label}</p>
-      <p className="text-[15px] font-bold text-gray-800 truncate">{value}</p>
-      {variant && (
-        <p className={cn('text-[10px] font-semibold mt-0.5', varColor)}>
-          {variant.text} vs anterior
-        </p>
-      )}
-      {sub && (
-        <p className={cn('text-[10px] mt-0.5',
-          positive === true ? 'text-green-600' :
-          positive === false ? 'text-red-600' : 'text-gray-400',
-        )}>
-          {sub}
-        </p>
-      )}
+    <div>
+      <p className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-[12px] font-bold text-gray-700">{value}</p>
+      {sub && <p className="text-[10px] text-gray-500">{sub}</p>}
     </div>
   )
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function KpiCard({ icon, iconBg, label, value, valueColor, small, children }: {
+  icon: string; iconBg: string; label: string; value: string
+  valueColor?: string; small?: boolean; children?: React.ReactNode
+}) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-3">
-      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-2">{title}</p>
-      <div style={{ height: 160 }}>{children}</div>
+    <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-start gap-3">
+      <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[15px]', iconBg)}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] text-gray-400 uppercase tracking-wide leading-tight mb-0.5">{label}</p>
+        <p className={cn('font-bold leading-tight truncate', small ? 'text-[13px]' : 'text-[18px]', valueColor || 'text-gray-800')}>{value}</p>
+        {children}
+      </div>
     </div>
+  )
+}
+
+function SectionRow({ label, colSpan }: { label: string; colSpan: number }) {
+  return (
+    <tr className="bg-gray-100 border-t border-gray-200">
+      <td colSpan={colSpan} className="px-4 py-1.5 text-[9px] font-bold text-gray-500 uppercase tracking-wider">{label}</td>
+    </tr>
+  )
+}
+
+function DataRow({ label, revisions, vals, fmt, bold }: {
+  label: string; revisions: Rev[]
+  vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean
+}) {
+  return (
+    <tr className="border-t border-gray-50 hover:bg-gray-50">
+      <td className={cn('px-4 py-1.5 text-gray-600 whitespace-nowrap', bold && 'font-bold text-gray-800')}>{label}</td>
+      {/* First revision value */}
+      <td className={cn('px-3 py-1.5 text-center', bold && 'font-bold text-auto-value')}>
+        {fmtCell(vals[0], fmt)}
+      </td>
+      {/* Subsequent revisions: value + delta */}
+      {revisions.slice(1).map((rev, idx) => {
+        const curr = vals[idx + 1]
+        const prevV = vals[idx]
+        const d = delta(curr, prevV)
+        return (
+          <>
+            <td key={`v${rev.versao}`} className={cn('px-3 py-1.5 text-center', bold && 'font-bold text-auto-value')}>
+              {fmtCell(curr, fmt)}
+            </td>
+            <td key={`d${rev.versao}`} className="px-3 py-1.5 text-center bg-gray-50 text-[10px]">
+              {d == null || d.abs === '0' ? (
+                <span className="text-gray-400">—</span>
+              ) : (
+                <span className={cn('font-semibold', d.favorable ? 'text-green-700' : d.favorable === false ? 'text-red-700' : 'text-gray-500')}>
+                  <span className="block">{d.abs}</span>
+                  <span className="block text-[9px]">{d.pct} {d.favorable ? '↓' : '↑'}</span>
+                </span>
+              )}
+            </td>
+          </>
+        )
+      })}
+    </tr>
   )
 }
