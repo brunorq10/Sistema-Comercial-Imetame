@@ -209,22 +209,17 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
         {/* Ícone */}
         <div className="w-10 h-10 bg-green-primary rounded-lg flex items-center justify-center text-white font-bold text-[10px] shrink-0">SOL</div>
 
-        {/* Dois grupos de chips em duas linhas */}
-        <div className="flex-1 min-w-0">
-          {/* Linha 1 */}
-          <div className="flex items-center gap-0 mb-2.5">
-            <InfoChip label="Proposta" value={raw.numero} bold />
-            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
-            <InfoChip label="Cliente" value={raw.cliente} />
-            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
-            <InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} />
-          </div>
-          {/* Linha 2 */}
-          <div className="flex items-center gap-0">
-            <InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} />
-            <div className="w-px h-8 bg-gray-100 mx-5 shrink-0" />
-            <InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate />
-          </div>
+        {/* Chips em uma linha */}
+        <div className="flex items-center flex-1 min-w-0 gap-0">
+          <div className="shrink-0"><InfoChip label="Proposta" value={raw.numero} bold /></div>
+          <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
+          <div className="min-w-0 flex-1"><InfoChip label="Cliente" value={raw.cliente} truncate /></div>
+          <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
+          <div className="min-w-0 flex-1"><InfoChip label="Cliente Final" value={raw.cliente_final ?? '—'} truncate /></div>
+          <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
+          <div className="shrink-0"><InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} /></div>
+          <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
+          <div className="min-w-0 flex-[2]"><InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate /></div>
         </div>
 
         {/* Ações */}
