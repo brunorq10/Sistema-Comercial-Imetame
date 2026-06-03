@@ -11,7 +11,9 @@ export interface PainelItem {
   id: number
   numero: string
   created_at: string
+  data_recebimento: string | null
   cliente: string
+  cliente_final: string | null
   cidade: string | null
   estado: string | null
   escopo: string | null
@@ -71,10 +73,6 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
   const atrasado = item.tecnica_atrasada || item.comercial_atrasada
   const tecnicaOk = item.tecnica_enviada && !item.comercial_enviada && !item.comercial_atrasada
 
-  const local = [item.cliente, [item.cidade, item.estado].filter(Boolean).join('/')]
-    .filter(Boolean)
-    .join(' — ')
-
   return (
     <div
       className={cn(
@@ -82,15 +80,20 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
         atrasado ? 'border-l-[#C62828]' : tecnicaOk ? 'border-l-[#FB8C00]' : 'border-l-green-primary',
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-2.5 gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[13px] font-bold">{item.numero} — {item.cliente}</span>
+          <span className="text-[13px] font-bold">{item.numero}</span>
           <Badge variant="purple">{`Rev${String(item.versao_atual - 1).padStart(2, '0')}`}</Badge>
           {item.classificacao && <ClassificacaoBadge value={item.classificacao} />}
+          {/* Status urgência */}
+          {atrasado
+            ? <Badge variant="red">⚠ Atrasada</Badge>
+            : <Badge variant="green">No prazo</Badge>
+          }
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {/* Badge técnica */}
+        {/* Indicadores de envio — mantidos sem alteração */}
+        <div className="flex gap-1.5 flex-wrap justify-end">
           {item.tecnica_nao_aplicavel ? (
             <Badge variant="gray">Técnica — N/A</Badge>
           ) : item.tecnica_enviada ? (
@@ -100,7 +103,6 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
           ) : (
             <Badge variant="blue">Em elaboração</Badge>
           )}
-          {/* Badge comercial */}
           {item.comercial_nao_aplicavel ? (
             <Badge variant="gray">Comercial — N/A</Badge>
           ) : item.comercial_enviada ? (
@@ -113,14 +115,18 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
         </div>
       </div>
 
-      {/* Body */}
-      <div className="grid grid-cols-4 gap-2 text-[11px] mb-2.5">
-        <CardField label="Classificação">
-          {item.classificacao ? CLASSIFICACAO_LABELS[item.classificacao] : '—'}
+      {/* ── Body ────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-4 gap-x-4 gap-y-2 text-[11px] mb-2.5">
+
+        {/* Linha 1: identificação */}
+        <CardField label="Cliente">{item.cliente}</CardField>
+        <CardField label="Cliente Final">{item.cliente_final ?? '—'}</CardField>
+        <CardField label="Cidade / UF">
+          {[item.cidade, item.estado].filter(Boolean).join(' / ') || '—'}
         </CardField>
         <CardField label="Interesse">
           <span className={
-            item.interesse === 'ALTO' ? 'text-green-primary font-bold' :
+            item.interesse === 'ALTO'  ? 'text-green-primary font-bold' :
             item.interesse === 'MEDIO' ? 'text-[#E65100] font-bold' :
             item.interesse === 'BAIXO' ? 'text-red-700 font-bold' : ''
           }>
@@ -128,66 +134,66 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
           </span>
         </CardField>
 
-        {item.tecnica_enviada ? (
-          <CardField label="Env. técnica">
-            <span className="text-green-primary">{formatDate(item.data_envio_tecnica)} ✓</span>
-          </CardField>
-        ) : (
-          <CardField label="Prazo técnica">
-            <span className={item.tecnica_atrasada ? 'text-red-700 font-semibold' : ''}>
-              {formatDate(item.prazo_tecnica)}{item.tecnica_atrasada ? ' ⚠' : ''}
-            </span>
-          </CardField>
-        )}
+        {/* Linha 2: escopo + classificação */}
+        <CardField label="Escopo" className="col-span-3">
+          {item.escopo ?? '—'}
+        </CardField>
+        <CardField label="Classificação">
+          {item.classificacao ? CLASSIFICACAO_LABELS[item.classificacao] : '—'}
+        </CardField>
 
-        <CardField label="Prazo comercial">
+        {/* Linha 3: prazos + visita + data criação */}
+        <CardField label="Prazo Proposta Técnica">
+          <span className={item.tecnica_atrasada ? 'text-red-700 font-semibold' : ''}>
+            {formatDate(item.prazo_tecnica)}{item.tecnica_atrasada ? ' ⚠' : ''}
+          </span>
+          {item.tecnica_enviada && item.data_envio_tecnica && (
+            <span className="block text-[10px] text-green-700 font-semibold mt-0.5">
+              Enviada em {formatDate(item.data_envio_tecnica)} ✓
+            </span>
+          )}
+        </CardField>
+        <CardField label="Prazo Proposta Comercial">
           <span className={item.comercial_atrasada ? 'text-red-700 font-semibold' : ''}>
             {formatDate(item.prazo_comercial)}{item.comercial_atrasada ? ' ⚠' : ''}
           </span>
+          {item.comercial_enviada && item.data_envio_comercial && (
+            <span className="block text-[10px] text-green-700 font-semibold mt-0.5">
+              Enviada em {formatDate(item.data_envio_comercial)} ✓
+            </span>
+          )}
         </CardField>
-
-        <CardField label="Escopo" className="col-span-2">
-          {item.escopo ?? '—'}
-        </CardField>
-        <CardField label="Cliente">
-          {local}
-        </CardField>
-
-        <CardField label={item.visita_tecnica ? 'Visita técnica' : 'Visita técnica'}>
+        <CardField label="Visita técnica">
           {item.visita_tecnica
             ? `Sim${item.data_visita ? ' — ' + formatDate(item.data_visita) : ''}`
             : 'Não'}
         </CardField>
-        <CardField label="Atribuído em">
+        <CardField label="Data de Criação">
+          {formatDate(item.data_recebimento ?? item.created_at)}
+        </CardField>
+
+        {/* Linha 4: data de atribuição */}
+        <CardField label="Data de Atribuição">
           {formatDate(item.created_at)}
         </CardField>
       </div>
 
-      {/* Actions */}
+      {/* ── Actions ─────────────────────────────────────────────────────────── */}
       <div className="flex gap-2 flex-wrap">
         {isFabricacaoType ? (
           <Button size="sm" onClick={() => onRegistrarFabricacao(item)}>
             Enviar Proposta
           </Button>
         ) : isParadasType ? (
-          <Button
-            size="sm"
-            onClick={() => onRegistrarParada(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}
-          >
+          <Button size="sm" onClick={() => onRegistrarParada(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}>
             Enviar Proposta
           </Button>
         ) : isObrasType ? (
-          <Button
-            size="sm"
-            onClick={() => onRegistrarObra(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}
-          >
+          <Button size="sm" onClick={() => onRegistrarObra(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}>
             Enviar Proposta
           </Button>
         ) : (
-          <Button
-            size="sm"
-            onClick={() => item.tecnica_enviada ? onRegistrarComercial(item) : onRegistrarTecnica(item)}
-          >
+          <Button size="sm" onClick={() => item.tecnica_enviada ? onRegistrarComercial(item) : onRegistrarTecnica(item)}>
             Enviar Proposta
           </Button>
         )}

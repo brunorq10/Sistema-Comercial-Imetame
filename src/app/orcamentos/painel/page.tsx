@@ -69,7 +69,7 @@ export default function PainelOrcamentosPage() {
     return Array.from(map.keys()).sort()
   }, [items])
 
-  // Lista filtrada pelo indicador ativo + cliente
+  // Lista filtrada pelo indicador ativo + cliente, ordenada por urgência
   const itemsFiltrados = useMemo(() => {
     let lista = items
     if (filtroAtivo === 'elaboracao') {
@@ -84,7 +84,19 @@ export default function PainelOrcamentosPage() {
       lista = items.filter((i) => i.comercial_enviada)
     }
     if (clienteFiltro) lista = lista.filter((i) => i.cliente === clienteFiltro)
-    return lista
+
+    // Ordena do mais urgente ao menos urgente:
+    // prazo mais próximo (ou já vencido) primeiro; sem prazo e já enviadas vão por último
+    const now = Date.now()
+    const urgency = (i: PainelItem): number => {
+      if (i.comercial_enviada || i.fabricacao_enviada) return Infinity
+      const deadline = i.tecnica_enviada
+        ? (i.prazo_comercial ? new Date(i.prazo_comercial).getTime() : null)
+        : (i.prazo_tecnica   ? new Date(i.prazo_tecnica).getTime()   : null)
+      if (deadline === null) return Infinity - 1
+      return deadline - now  // negativo = atrasada
+    }
+    return [...lista].sort((a, b) => urgency(a) - urgency(b))
   }, [items, filtroAtivo, subFiltro, clienteFiltro])
 
   const handleSetFiltro = (f: FiltroIndicador) => {
