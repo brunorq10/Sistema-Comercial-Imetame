@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
 import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
-import { HistoricoPropostaModal } from '@/components/forms/HistoricoPropostaModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import type { PropostasItem } from '@/types'
@@ -24,6 +24,7 @@ const opResultado = [
 ]
 
 export default function PropostasPage() {
+  const router = useRouter()
   const { canRegistrarTecnica, canRegistrarComercial, canCancelSolicitacao } = usePermissions()
   const canEditar = canRegistrarTecnica || canRegistrarComercial
 
@@ -53,8 +54,7 @@ export default function PropostasPage() {
   type Aplicados = { numero: string; clienteId: string; cidade: string; classificacao: string; orcamentistaId: string; resultado: string; escopo: string }
   const [aplicados, setAplicados] = useState<Aplicados>({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
 
-  const [modalEditar,    setModalEditar]    = useState<PropostasItem | null>(null)
-  const [modalHistorico, setModalHistorico] = useState<PropostasItem | null>(null)
+  const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
 
   useEffect(() => {
     fetch('/api/propostas?modo=filtros').then(r => r.json()).then(j => {
@@ -247,7 +247,7 @@ export default function PropostasPage() {
               <PropostasTable
                 data={items}
                 onEditar={setModalEditar}
-                onHistorico={setModalHistorico}
+                onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico`)}
                 canEditar={canEditar}
               />
             </div>
@@ -255,14 +255,6 @@ export default function PropostasPage() {
           </>
         )}
       </div>
-
-      {modalHistorico && (
-        <HistoricoPropostaModal
-          open={true}
-          item={modalHistorico}
-          onClose={() => setModalHistorico(null)}
-        />
-      )}
 
       {modalEditar && (
         <EditarPropostaModal
