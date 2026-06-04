@@ -111,11 +111,12 @@ function delta(curr: number | null, prev: number | null) {
   }
 }
 
-function fmtCell(v: number | null, fmt?: 'currency' | 'pct' | 'decimal3') {
+function fmtCell(v: number | null, fmt?: 'currency' | 'pct' | 'decimal3' | 'ton0') {
   if (v == null) return '—'
   if (fmt === 'currency') return formatCurrency(v)
   if (fmt === 'pct') return v.toFixed(1).replace('.', ',') + '%'
   if (fmt === 'decimal3') return v.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t'
+  if (fmt === 'ton0') return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' t'
   return fmtN(v)
 }
 
@@ -253,7 +254,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
       },
       {
         title: 'HH/ton',
-        chart: mkChart(labels, [{ vals: revisions.map(r => r.hhPorTon), color: '#7B1FA2' }], 'decimal'),
+        chart: mkChart(labels, [{ vals: revisions.map(r => r.hhPorTon), color: '#7B1FA2' }], 'num'),
       },
       {
         title: 'Evolução do R$/kg',
@@ -300,14 +301,14 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
   }
 
   // ── Rows da tabela por classificação ──────────────────────────────────────
-  type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct' | 'decimal3'; bold?: boolean; highlight?: boolean }
+  type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct' | 'decimal3' | 'ton0'; bold?: boolean; highlight?: boolean }
 
   const tecRows: NumRow[] = isObra ? [
-    { key: 'Peso Equipamentos (t)',  vals: revisions.map(r => r.tec.peso_equipamentos != null ? Number(r.tec.peso_equipamentos) : null), fmt: 'decimal3' },
-    { key: 'Peso Tubulações (t)',    vals: revisions.map(r => r.tec.peso_tubulacoes != null ? Number(r.tec.peso_tubulacoes) : null), fmt: 'decimal3' },
-    { key: 'Peso Suportes (t)',      vals: revisions.map(r => r.tec.peso_suportes != null ? Number(r.tec.peso_suportes) : null), fmt: 'decimal3' },
-    { key: 'Peso Estruturas (t)',    vals: revisions.map(r => r.tec.peso_estruturas != null ? Number(r.tec.peso_estruturas) : null), fmt: 'decimal3' },
-    { key: 'Peso Total (t)',         vals: revisions.map(r => r.pesoTotal), fmt: 'decimal3', bold: true, highlight: true },
+    { key: 'Peso Equipamentos (t)',  vals: revisions.map(r => r.tec.peso_equipamentos != null ? Number(r.tec.peso_equipamentos) : null), fmt: 'ton0' },
+    { key: 'Peso Tubulações (t)',    vals: revisions.map(r => r.tec.peso_tubulacoes != null ? Number(r.tec.peso_tubulacoes) : null), fmt: 'ton0' },
+    { key: 'Peso Suportes (t)',      vals: revisions.map(r => r.tec.peso_suportes != null ? Number(r.tec.peso_suportes) : null), fmt: 'ton0' },
+    { key: 'Peso Estruturas (t)',    vals: revisions.map(r => r.tec.peso_estruturas != null ? Number(r.tec.peso_estruturas) : null), fmt: 'ton0' },
+    { key: 'Peso Total (t)',         vals: revisions.map(r => r.pesoTotal), fmt: 'ton0', bold: true, highlight: true },
     { key: 'HH Total',               vals: revisions.map(r => r.hhTotal), bold: true, highlight: true },
     { key: 'HH/ton',                 vals: revisions.map(r => r.hhPorTon) },
   ] : [
@@ -320,20 +321,23 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
     { key: 'Dias de Parada', vals: revisions.map(r => r.tec.dias_parada) },
   ]
 
-  const comRows: NumRow[] = isObra ? [
-    { key: 'Valor Montagem',        vals: revisions.map(r => r.valorMontagem), fmt: 'currency' },
-    { key: 'Terceiros',             vals: revisions.map(r => r.valorTerceiros), fmt: 'currency' },
-    { key: 'Fabricações',           vals: revisions.map(r => r.valorFabricacao), fmt: 'currency' },
-    { key: 'Valor Total',           vals: revisions.map(r => r.valorTotal), fmt: 'currency', bold: true, highlight: true },
-    { key: 'R$/kg',                 vals: revisions.map(r => r.rsPorKg), fmt: 'currency' },
-    { key: 'R$/kg s/ Fab+Terc',     vals: revisions.map(r => r.rsPorKgSemTerc), fmt: 'currency' },
-    { key: 'R$/HH',                 vals: revisions.map(r => r.rhh), fmt: 'currency' },
-  ] : [
+  // Obras: comRows exclui Terceiros (renderizado separadamente com expand)
+  const comRowsObra: NumRow[] = [
+    { key: 'Valor Montagem',      vals: revisions.map(r => r.valorMontagem),    fmt: 'currency' },
+    { key: 'R$/kg s/ Fab+Terc',   vals: revisions.map(r => r.rsPorKgSemTerc),  fmt: 'currency' },
+    { key: 'Fabricações',         vals: revisions.map(r => r.valorFabricacao),  fmt: 'currency' },
+    // Terceiros rendered as TerceirosExpandableRow
+    { key: 'Valor Total',         vals: revisions.map(r => r.valorTotal),       fmt: 'currency', bold: true, highlight: true },
+    { key: 'R$/kg',               vals: revisions.map(r => r.rsPorKg),          fmt: 'currency' },
+    { key: 'R$/HH',               vals: revisions.map(r => r.rhh),              fmt: 'currency' },
+  ]
+
+  const comRows: NumRow[] = isObra ? [] : [
     // Paradas
-    { key: 'Valor Total',           vals: revisions.map(r => r.valorTotal), fmt: 'currency', bold: true, highlight: true },
-    { key: 'Terceiros',             vals: revisions.map(r => r.valorTerceiros), fmt: 'currency' },
-    { key: 'R$/HH',                 vals: revisions.map(r => r.rhh), fmt: 'currency' },
-    { key: 'R$/HH s/ Terceiros',    vals: revisions.map(r => r.rhhSemTerc), fmt: 'currency' },
+    { key: 'Valor Total',         vals: revisions.map(r => r.valorTotal),       fmt: 'currency', bold: true, highlight: true },
+    { key: 'Terceiros',           vals: revisions.map(r => r.valorTerceiros),   fmt: 'currency' },
+    { key: 'R$/HH',               vals: revisions.map(r => r.rhh),              fmt: 'currency' },
+    { key: 'R$/HH s/ Terceiros',  vals: revisions.map(r => r.rhhSemTerc),       fmt: 'currency' },
   ]
 
   // ── Timeline ──────────────────────────────────────────────────────────────
@@ -459,9 +463,24 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
                 </tr>
               )}
               <SectionRow label="COMERCIAL" colSpan={1 + N} />
-              {comRows.map(row => (
-                <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
-              ))}
+              {isObra ? (
+                <>
+                  {/* Valor Montagem + R$/kg s/ Fab+Terc + Fabricações */}
+                  {comRowsObra.slice(0, 3).map(row => (
+                    <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
+                  ))}
+                  {/* Terceiros expansível */}
+                  <TerceirosExpandableRow revisions={revisions} />
+                  {/* Valor Total + R$/kg + R$/HH */}
+                  {comRowsObra.slice(3).map(row => (
+                    <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
+                  ))}
+                </>
+              ) : (
+                comRows.map(row => (
+                  <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -741,9 +760,77 @@ function SectionRow({ label, colSpan }: { label: string; colSpan: number }) {
   )
 }
 
+const TERC_ESPECIALIDADES: { key: keyof ComData; label: string }[] = [
+  { key: 'valor_eletrica',         label: 'Elétrica' },
+  { key: 'valor_isolamento',       label: 'Isolamento' },
+  { key: 'valor_civil',            label: 'Civil' },
+  { key: 'valor_hidraulica',       label: 'Hidráulica' },
+  { key: 'valor_fibra',            label: 'Fibra' },
+  { key: 'valor_tijolo_antiacido', label: 'Tijolo antiácido' },
+  { key: 'valor_outros_terceiros', label: 'Outros' },
+]
+
+function TerceirosExpandableRow({ revisions }: { revisions: Rev[] }) {
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <>
+      <tr className="border-t border-gray-50 group hover:bg-gray-50">
+        <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 text-gray-600 whitespace-nowrap border-r border-gray-100">
+          <div className="flex items-center gap-1.5">
+            <span>Terceiros</span>
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="text-[9px] text-gray-400 hover:text-green-primary border border-gray-200 rounded px-1.5 py-0.5 leading-none transition-colors"
+            >
+              {expanded ? '▲' : '▼'}
+            </button>
+          </div>
+        </td>
+        {revisions.map((rev, idx) => {
+          const curr  = rev.valorTerceiros
+          const prevV = idx > 0 ? revisions[idx - 1].valorTerceiros : null
+          const d     = idx > 0 ? delta(curr, prevV) : null
+          return (
+            <td key={rev.versao} className="px-2 py-2.5 text-center border-l border-gray-100">
+              <div className="text-[12px] font-bold text-gray-800">{fmtCell(curr, 'currency')}</div>
+              {d && <div className={cn('text-[10px] font-semibold mt-0.5', d.cls)}>{d.abs} ({d.pct})</div>}
+            </td>
+          )
+        })}
+      </tr>
+      {expanded && TERC_ESPECIALIDADES.map(({ key, label }) => {
+        const vals = revisions.map(r => {
+          const v = r.com?.[key]
+          return v != null ? Number(v) : null
+        })
+        const hasAny = vals.some(v => v != null && v > 0)
+        if (!hasAny) return null
+        return (
+          <tr key={key} className="border-t border-gray-50 group bg-gray-50/60 hover:bg-gray-100/60">
+            <td className="sticky left-0 z-10 bg-gray-50/60 group-hover:bg-gray-100/60 pl-7 pr-3 py-1.5 text-[10px] text-gray-500 whitespace-nowrap border-r border-gray-100">
+              ↳ {label}
+            </td>
+            {revisions.map((rev, idx) => {
+              const curr  = vals[idx]
+              const prevV = idx > 0 ? vals[idx - 1] : null
+              const d     = idx > 0 ? delta(curr, prevV) : null
+              return (
+                <td key={rev.versao} className="px-2 py-1.5 text-center border-l border-gray-100">
+                  <div className="text-[11px] font-medium text-gray-700">{curr != null && curr > 0 ? fmtCell(curr, 'currency') : '—'}</div>
+                  {d && <div className={cn('text-[10px] font-semibold mt-0.5', d.cls)}>{d.abs} ({d.pct})</div>}
+                </td>
+              )
+            })}
+          </tr>
+        )
+      })}
+    </>
+  )
+}
+
 function DataRow({ label, revisions, vals, fmt, bold, highlight }: {
   label: string; revisions: Rev[]
-  vals: (number | null)[]; fmt?: 'currency' | 'pct' | 'decimal3'; bold?: boolean; highlight?: boolean
+  vals: (number | null)[]; fmt?: 'currency' | 'pct' | 'decimal3' | 'ton0'; bold?: boolean; highlight?: boolean
 }) {
   return (
     <tr className={cn('border-t border-gray-50 group', highlight ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50')}>
