@@ -39,7 +39,8 @@ interface HistoricoData {
 }
 interface Rev {
   versao: number; label: string; tec: TecData; com: ComData | null
-  hhTotal: number | null; valorTotal: number | null; rhh: number | null; rhhSemTerc: number | null
+  hhTotal: number | null; valorTotal: number | null; valorSemTerc: number | null
+  rhh: number | null; rhhSemTerc: number | null
   isFirst: boolean; isLast: boolean
 }
 
@@ -142,11 +143,12 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
       const com = raw.propostas_comerciais.find(c => c.proposta_tecnica_id === tec.id) ?? null
       const hhTotal   = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
       const valorTotal = com?.valor_total != null ? Number(com.valor_total) : null
-      const rhh        = hhTotal && valorTotal && hhTotal > 0 ? valorTotal / hhTotal : null
-      const terceiros  = com?.valor_terceiros != null ? Number(com.valor_terceiros) : null
-      const rhhSemTerc = hhTotal && valorTotal != null && hhTotal > 0 ? (valorTotal - (terceiros ?? 0)) / hhTotal : null
-      const label      = raw.as_sold && isLast ? 'As Sold.' : formatRev(tec.versao)
-      return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, rhh, rhhSemTerc, isFirst, isLast }
+      const rhh         = hhTotal && valorTotal && hhTotal > 0 ? valorTotal / hhTotal : null
+      const terceiros   = com?.valor_terceiros != null ? Number(com.valor_terceiros) : null
+      const valorSemTerc = valorTotal != null ? valorTotal - (terceiros ?? 0) : null
+      const rhhSemTerc  = hhTotal && valorTotal != null && hhTotal > 0 ? (valorTotal - (terceiros ?? 0)) / hhTotal : null
+      const label       = raw.as_sold && isLast ? 'As Sold.' : formatRev(tec.versao)
+      return { versao: tec.versao, label, tec, com, hhTotal, valorTotal, valorSemTerc, rhh, rhhSemTerc, isFirst, isLast }
     })
   }, [raw])
 
@@ -154,28 +156,30 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
   if (error || !raw) return <div className="p-8 text-center text-red-600 text-sm">{error ?? 'Não encontrado'}</div>
   if (revisions.length === 0) return <div className="p-8 text-center text-gray-400 text-sm">Nenhuma revisão registrada.</div>
 
-  const N       = revisions.length
-  const linePct = `${(100 / (2 * N)).toFixed(2)}%`
-  const labels  = revisions.map(r => r.label)
+  const N      = revisions.length
+  const labels = revisions.map(r => r.label)
 
-  const valorChart = mkChart(labels, [{ vals: revisions.map(r => r.valorTotal), color: '#2E7D32' }], 'currency')
+  const valorChart = mkChart(labels, [
+    { vals: revisions.map(r => r.valorTotal),    color: '#2E7D32' },
+    { vals: revisions.map(r => r.valorSemTerc),  color: '#0288D1' },
+  ], 'currency')
   const hhChart    = mkChart(labels, [{ vals: revisions.map(r => r.hhTotal),    color: '#1565C0' }], 'num')
   const rhhChart   = mkChart(labels, [
     { vals: revisions.map(r => r.rhh),         color: '#E65100' },
     { vals: revisions.map(r => r.rhhSemTerc),  color: '#7B1FA2' },
   ], 'decimal')
 
-  type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean }
+  type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean; highlight?: boolean }
   const tecRows: NumRow[] = [
     { key: 'HH Direto',      vals: revisions.map(r => r.tec.hh_direto) },
     { key: 'HH Indireto',    vals: revisions.map(r => r.tec.hh_indireto) },
-    { key: 'HH Total',       vals: revisions.map(r => r.hhTotal), bold: true },
+    { key: 'HH Total',       vals: revisions.map(r => r.hhTotal), bold: true, highlight: true },
     { key: '% Indireto',     vals: revisions.map(r => percInd(r.tec)), fmt: 'pct' },
     { key: 'Efetivo Pico',   vals: revisions.map(r => r.tec.efetivo_pico) },
     { key: 'Dias de Parada', vals: revisions.map(r => r.tec.dias_parada) },
   ]
   const comRows: NumRow[] = [
-    { key: 'Valor Total',        vals: revisions.map(r => r.valorTotal),   fmt: 'currency' },
+    { key: 'Valor Total',        vals: revisions.map(r => r.valorTotal),   fmt: 'currency', bold: true, highlight: true },
     { key: 'Terceiros',          vals: revisions.map(r => r.com?.valor_terceiros != null ? Number(r.com.valor_terceiros) : null), fmt: 'currency' },
     { key: 'R$/HH',              vals: revisions.map(r => r.rhh),          fmt: 'currency' },
     { key: 'R$/HH s/ Terceiros', vals: revisions.map(r => r.rhhSemTerc),  fmt: 'currency' },
@@ -218,7 +222,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
         {/* Ações */}
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <button onClick={() => router.push('/orcamentos/propostas')} className="text-[10px] text-gray-400 hover:text-gray-600">
+          <button onClick={() => router.push('/orcamentos/propostas')} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
             ← Voltar às Propostas
           </button>
           <button onClick={exportXLSX} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
@@ -228,45 +232,76 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ── Linha do Tempo ──────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-3">
-        <div className="flex mb-2.5">
-          {revisions.map(rev => {
-            const st = revStatus(rev)
-            return (
-              <div key={rev.versao} className="flex-1 flex justify-center">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[12px] font-bold text-gray-700">{rev.label}</span>
-                  <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', st.badgeCls)}>{st.label}</span>
-                </div>
+      {(() => {
+        const tlTotal = N + 1 // +1 para o ponto de solicitação
+        const tlLinePct = `${(100 / (2 * tlTotal)).toFixed(2)}%`
+        const solDate = raw.data_recebimento ?? raw.created_at
+        return (
+          <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-3">
+            {/* Labels */}
+            <div className="flex mb-2.5">
+              <div className="flex-1 flex justify-center">
+                <span className="text-[11px] font-semibold text-gray-500">Solicitação</span>
               </div>
-            )
-          })}
-        </div>
-        <div className="flex items-center relative py-0.5">
-          <div className="absolute h-[3px] bg-green-primary z-0" style={{ left: linePct, right: linePct, top: '50%', transform: 'translateY(-50%)' }} />
-          {revisions.map(rev => {
-            const st = revStatus(rev)
-            return (
-              <div key={rev.versao} className="flex-1 flex justify-center relative z-10">
-                <div className={cn('w-5 h-5 rounded-full border-2 shadow-sm', st.dotCls)} />
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex mt-2.5">
-          {revisions.map(rev => (
-            <div key={rev.versao} className="flex-1 text-center text-[9px] text-gray-400 leading-4">
-              <span>Téc: {formatDate(rev.tec.data_envio)}</span>
-              {rev.com && <span className="ml-1">• Com: {formatDate(rev.com.data_envio)}</span>}
+              {revisions.map(rev => {
+                const st = revStatus(rev)
+                const showBadge = rev.com?.resultado === 'GANHOU' || rev.com?.resultado === 'PERDEU'
+                return (
+                  <div key={rev.versao} className="flex-1 flex justify-center">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[12px] font-bold text-gray-700">{rev.label}</span>
+                      {showBadge && <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', st.badgeCls)}>{st.label}</span>}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
-      </div>
+            {/* Dots + line */}
+            <div className="flex items-center relative py-0.5">
+              <div className="absolute h-[3px] bg-green-primary z-0" style={{ left: tlLinePct, right: tlLinePct, top: '50%', transform: 'translateY(-50%)' }} />
+              {/* Ponto solicitação */}
+              <div className="flex-1 flex justify-center relative z-10">
+                <div className="w-5 h-5 rounded-full border-2 bg-blue-100 border-blue-400 shadow-sm" />
+              </div>
+              {revisions.map(rev => {
+                const st = revStatus(rev)
+                return (
+                  <div key={rev.versao} className="flex-1 flex justify-center relative z-10">
+                    <div className={cn('w-5 h-5 rounded-full border-2 shadow-sm', st.dotCls)} />
+                  </div>
+                )
+              })}
+            </div>
+            {/* Dates */}
+            <div className="flex mt-2.5">
+              <div className="flex-1 text-center text-[9px] text-gray-400 leading-4">
+                {formatDate(solDate)}
+              </div>
+              {revisions.map(rev => (
+                <div key={rev.versao} className="flex-1 text-center text-[9px] text-gray-400 leading-4">
+                  <span>Téc: {formatDate(rev.tec.data_envio)}</span>
+                  {rev.com && <span className="ml-1">• Com: {formatDate(rev.com.data_envio)}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Gráficos ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3 mb-3">
         <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <p className="text-[11px] font-semibold text-gray-600 mb-1">Evolução do Valor Total (R$)</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[11px] font-semibold text-gray-600">Evolução do Valor Total (R$)</p>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-[9px] text-gray-500">
+                <span className="inline-block w-3 h-[2px] rounded bg-[#2E7D32]" /> Total
+              </span>
+              <span className="flex items-center gap-1 text-[9px] text-gray-500">
+                <span className="inline-block w-3 h-[2px] rounded bg-[#0288D1]" /> s/ Terceiros
+              </span>
+            </div>
+          </div>
           <div style={{ height: 200 }}><Line data={valorChart.data} options={valorChart.options as never} /></div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -301,11 +336,12 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
                 <th className="sticky left-0 z-10 bg-green-primary text-left px-3 py-2.5 text-[10px] font-semibold w-[130px] border-r border-green-700">Indicador</th>
                 {revisions.map((rev) => {
                   const st = revStatus(rev)
+                  const showBadge = rev.com?.resultado === 'GANHOU' || rev.com?.resultado === 'PERDEU'
                   return (
                     <th key={rev.versao} className="px-2 py-0 text-center w-[90px] border-l border-green-700">
                       <div className="flex items-center justify-center gap-1 pt-2 pb-0.5 flex-wrap">
                         <span className="font-bold text-[11px]">{rev.label}</span>
-                        <span className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', st.badgeCls)}>{st.label}</span>
+                        {showBadge && <span className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', st.badgeCls)}>{st.label}</span>}
                       </div>
                       <div className="text-[8px] text-green-200 pb-2 font-normal whitespace-nowrap">
                         Téc: {formatDate(rev.tec.data_envio)}{rev.com ? ` • Com: ${formatDate(rev.com.data_envio)}` : ''}
@@ -318,7 +354,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
             <tbody>
               <SectionRow label="TÉCNICA" colSpan={1 + N} />
               {tecRows.map(row => (
-                <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} />
+                <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
               ))}
               {/* Turno */}
               <tr className="border-t border-gray-50 group hover:bg-gray-50">
@@ -338,7 +374,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
               </tr>
               <SectionRow label="COMERCIAL" colSpan={1 + N} />
               {comRows.map(row => (
-                <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} />
+                <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
               ))}
             </tbody>
           </table>
@@ -375,13 +411,17 @@ function SectionRow({ label, colSpan }: { label: string; colSpan: number }) {
   )
 }
 
-function DataRow({ label, revisions, vals, fmt, bold }: {
+function DataRow({ label, revisions, vals, fmt, bold, highlight }: {
   label: string; revisions: Rev[]
-  vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean
+  vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean; highlight?: boolean
 }) {
   return (
-    <tr className="border-t border-gray-50 group hover:bg-gray-50">
-      <td className={cn('sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 text-gray-600 whitespace-nowrap border-r border-gray-100', bold && 'font-bold text-gray-800')}>{label}</td>
+    <tr className={cn('border-t border-gray-50 group', highlight ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50')}>
+      <td className={cn(
+        'sticky left-0 z-10 px-3 py-2 text-gray-600 whitespace-nowrap border-r border-gray-100',
+        highlight ? 'bg-green-50 group-hover:bg-green-100' : 'bg-white group-hover:bg-gray-50',
+        bold && 'font-bold text-gray-800'
+      )}>{label}</td>
       {revisions.map((rev, idx) => {
         const curr  = vals[idx]
         const prevV = idx > 0 ? vals[idx - 1] : null
