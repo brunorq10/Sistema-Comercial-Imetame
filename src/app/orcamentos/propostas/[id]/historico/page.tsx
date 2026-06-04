@@ -295,19 +295,19 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
           <p className="text-[12px] font-semibold text-gray-700">Comparativo entre revisões</p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[11px] border-collapse">
+          <table className="text-[11px] border-collapse mx-auto">
             <thead>
               <tr className="bg-green-primary text-white">
-                <th className="text-left px-4 py-2.5 text-[10px] font-semibold w-[150px]">Indicador</th>
+                <th className="sticky left-0 z-10 bg-green-primary text-left px-3 py-2.5 text-[10px] font-semibold w-[130px] border-r border-green-700">Indicador</th>
                 {revisions.map((rev) => {
                   const st = revStatus(rev)
                   return (
-                    <th key={rev.versao} className="px-3 py-0 text-center min-w-[120px]">
-                      <div className="flex items-center justify-center gap-1.5 pt-2 pb-0.5">
+                    <th key={rev.versao} className="px-2 py-0 text-center w-[90px] border-l border-green-700">
+                      <div className="flex items-center justify-center gap-1 pt-2 pb-0.5 flex-wrap">
                         <span className="font-bold text-[11px]">{rev.label}</span>
                         <span className={cn('text-[8px] px-1.5 py-0.5 rounded-full font-semibold', st.badgeCls)}>{st.label}</span>
                       </div>
-                      <div className="text-[8px] text-green-200 pb-2 font-normal">
+                      <div className="text-[8px] text-green-200 pb-2 font-normal whitespace-nowrap">
                         Téc: {formatDate(rev.tec.data_envio)}{rev.com ? ` • Com: ${formatDate(rev.com.data_envio)}` : ''}
                       </div>
                     </th>
@@ -321,13 +321,13 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
                 <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} />
               ))}
               {/* Turno */}
-              <tr className="border-t border-gray-50 hover:bg-gray-50">
-                <td className="px-4 py-2 text-gray-500">Turno</td>
+              <tr className="border-t border-gray-50 group hover:bg-gray-50">
+                <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 text-gray-500 whitespace-nowrap border-r border-gray-100">Turno</td>
                 {revisions.map((rev, idx) => {
                   const prevTurno = idx > 0 ? revisions[idx - 1].tec.turno : null
                   const changed = idx > 0 && rev.tec.turno !== prevTurno
                   return (
-                    <td key={rev.versao} className="px-3 py-2 text-center">
+                    <td key={rev.versao} className="px-2 py-2 text-center border-l border-gray-100">
                       <div className="font-medium">{rev.tec.turno ?? '—'}</div>
                       {changed && prevTurno && (
                         <div className="text-[9px] text-orange-500 mt-0.5">era: {prevTurno}</div>
@@ -369,7 +369,8 @@ function InfoChip({ label, value, bold, truncate }: { label: string; value: stri
 function SectionRow({ label, colSpan }: { label: string; colSpan: number }) {
   return (
     <tr className="bg-gray-100 border-t border-gray-200">
-      <td colSpan={colSpan} className="px-4 py-1.5 text-[9px] font-bold text-gray-500 uppercase tracking-wider">{label}</td>
+      <td className="sticky left-0 z-10 bg-gray-100 px-3 py-1.5 text-[9px] font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200">{label}</td>
+      {colSpan > 1 && <td colSpan={colSpan - 1} className="bg-gray-100" />}
     </tr>
   )
 }
@@ -379,19 +380,19 @@ function DataRow({ label, revisions, vals, fmt, bold }: {
   vals: (number | null)[]; fmt?: 'currency' | 'pct'; bold?: boolean
 }) {
   return (
-    <tr className="border-t border-gray-50 hover:bg-gray-50">
-      <td className={cn('px-4 py-2 text-gray-600 whitespace-nowrap', bold && 'font-bold text-gray-800')}>{label}</td>
+    <tr className="border-t border-gray-50 group hover:bg-gray-50">
+      <td className={cn('sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 text-gray-600 whitespace-nowrap border-r border-gray-100', bold && 'font-bold text-gray-800')}>{label}</td>
       {revisions.map((rev, idx) => {
         const curr  = vals[idx]
         const prevV = idx > 0 ? vals[idx - 1] : null
         const d     = idx > 0 ? delta(curr, prevV) : null
         return (
-          <td key={rev.versao} className="px-3 py-2.5 text-center">
-            <div className={cn('text-[13px] font-bold', bold ? 'text-auto-value' : 'text-gray-800')}>
+          <td key={rev.versao} className="px-2 py-2.5 text-center border-l border-gray-100">
+            <div className={cn('text-[12px] font-bold', bold ? 'text-auto-value' : 'text-gray-800')}>
               {fmtCell(curr, fmt)}
             </div>
             {d && (
-              <div className={cn('text-[9px] font-normal mt-0.5 opacity-70', d.cls)}>
+              <div className={cn('text-[10px] font-semibold mt-0.5', d.cls)}>
                 {d.abs} ({d.pct})
               </div>
             )}
