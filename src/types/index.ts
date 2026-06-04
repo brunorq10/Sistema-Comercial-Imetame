@@ -222,6 +222,7 @@ export interface PropostasItem {
     valor_outros_terceiros: string | null
     possui_fabricacao: boolean
     valor_fabricacao: string | null
+    peso_fabricacao: string | null
     valor_terceiros: string | null
     valor_total: string | null
     data_envio: string | null
@@ -235,6 +236,8 @@ export interface PropostasItem {
     possui_testes: boolean
     descricao_testes: string | null
     valor_testes: string | null
+    possui_montagem: boolean
+    valor_montagem: string | null
     peso_total: string
     valor_total: string
     data_envio: string | null

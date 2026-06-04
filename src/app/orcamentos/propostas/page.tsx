@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { usePermissions } from '@/hooks/usePermissions'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import type { PropostasItem } from '@/types'
 
 const opClassificacao = [
@@ -34,25 +34,28 @@ export default function PropostasPage() {
   const [pages, setPages]     = useState(1)
   const [loading, setLoading] = useState(true)
 
-  // Opções de filtro (vindas da própria tabela de propostas)
   const [clientes,      setClientes]      = useState<{ id: number; nome: string }[]>([])
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
   const [numeros,       setNumeros]       = useState<string[]>([])
   const [cidades,       setCidades]       = useState<string[]>([])
   const [escopos,       setEscopos]       = useState<string[]>([])
 
-  // Filtros — estados de edição (o que o usuário vê nos controles)
-  const [numero,         setNumero]         = useState('')
-  const [clienteId,      setClienteId]      = useState('')
-  const [cidade,         setCidade]         = useState('')
-  const [classificacao,  setClassificacao]  = useState('')
-  const [orcamentistaId, setOrcamentistaId] = useState('')
-  const [resultado,      setResultado]      = useState('')
-  const [escopo,         setEscopo]         = useState('')
+  // Filtros de edição — multi-select onde aplicável
+  const [numero,          setNumero]          = useState('')
+  const [clienteIds,      setClienteIds]      = useState<string[]>([])
+  const [cidade,          setCidade]          = useState('')
+  const [classificacoes,  setClassificacoes]  = useState<string[]>([])
+  const [orcamentistaIds, setOrcamentistaIds] = useState<string[]>([])
+  const [resultados,      setResultados]      = useState<string[]>([])
+  const [escopo,          setEscopo]          = useState('')
 
-  // Filtros aplicados (o que fetchData realmente usa)
-  type Aplicados = { numero: string; clienteId: string; cidade: string; classificacao: string; orcamentistaId: string; resultado: string; escopo: string }
-  const [aplicados, setAplicados] = useState<Aplicados>({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
+  type Aplicados = {
+    numero: string; clienteIds: string[]; cidade: string
+    classificacoes: string[]; orcamentistaIds: string[]; resultados: string[]; escopo: string
+  }
+  const [aplicados, setAplicados] = useState<Aplicados>({
+    numero: '', clienteIds: [], cidade: '', classificacoes: [], orcamentistaIds: [], resultados: [], escopo: '',
+  })
 
   const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
 
@@ -72,13 +75,13 @@ export default function PropostasPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (aplicados.numero)         params.set('numero', aplicados.numero)
-      if (aplicados.clienteId)      params.set('cliente_id', aplicados.clienteId)
-      if (aplicados.cidade)         params.set('cidade', aplicados.cidade)
-      if (aplicados.classificacao)  params.set('classificacao', aplicados.classificacao)
-      if (aplicados.orcamentistaId) params.set('orcamentista_id', aplicados.orcamentistaId)
-      if (aplicados.resultado)      params.set('resultado', aplicados.resultado)
-      if (aplicados.escopo)         params.set('escopo', aplicados.escopo)
+      if (aplicados.numero)  params.set('numero', aplicados.numero)
+      if (aplicados.cidade)  params.set('cidade', aplicados.cidade)
+      if (aplicados.escopo)  params.set('escopo', aplicados.escopo)
+      aplicados.clienteIds.forEach(id  => params.append('cliente_id', id))
+      aplicados.orcamentistaIds.forEach(id => params.append('orcamentista_id', id))
+      aplicados.classificacoes.forEach(c => params.append('classificacao', c))
+      aplicados.resultados.forEach(r   => params.append('resultado', r))
       params.set('page', String(page))
       params.set('limit', '20')
       const res = await fetch(`/api/propostas?${params}`)
@@ -94,15 +97,15 @@ export default function PropostasPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const handleFiltrar = () => {
-    setAplicados({ numero, clienteId, cidade, classificacao, orcamentistaId, resultado, escopo })
+    setAplicados({ numero, clienteIds, cidade, classificacoes, orcamentistaIds, resultados, escopo })
     setPage(1)
   }
 
   const limpar = () => {
-    setNumero(''); setClienteId(''); setCidade('')
-    setClassificacao(''); setOrcamentistaId('')
-    setResultado(''); setEscopo('')
-    setAplicados({ numero: '', clienteId: '', cidade: '', classificacao: '', orcamentistaId: '', resultado: '', escopo: '' })
+    setNumero(''); setClienteIds([]); setCidade('')
+    setClassificacoes([]); setOrcamentistaIds([])
+    setResultados([]); setEscopo('')
+    setAplicados({ numero: '', clienteIds: [], cidade: '', classificacoes: [], orcamentistaIds: [], resultados: [], escopo: '' })
     setPage(1)
   }
 
@@ -134,110 +137,70 @@ export default function PropostasPage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── Zona congelada ──────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 px-4 pt-4 pb-2">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[15px] font-bold">Propostas</h2>
-        <div className="flex items-center gap-2">
-          {!loading && items.length > 0 && (
-            <button
-              onClick={exportarExcel}
-              className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] font-medium hover:bg-gray-50 transition-colors"
-            >
-              Exportar Excel
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-[15px] font-bold">Propostas</h2>
+          <div className="flex items-center gap-2">
+            {!loading && items.length > 0 && (
+              <button onClick={exportarExcel}
+                className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] font-medium hover:bg-gray-50 transition-colors">
+                Exportar Excel
+              </button>
+            )}
+            <span className="text-[11px] text-gray-400">{items.length} proposta{items.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex gap-1.5 items-end">
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Nº Proposta</label>
+            <SearchableSelect value={numero} onChange={setNumero}
+              options={numeros.map(n => ({ value: n, label: n }))} emptyLabel="Todas" />
+          </div>
+          <div className="flex-[2] min-w-0">
+            <label className={fLbl}>Cliente</label>
+            <SearchableMultiSelect values={clienteIds} onChange={setClienteIds}
+              options={clientes.map(c => ({ value: String(c.id), label: c.nome }))} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Cidade/UF</label>
+            <SearchableSelect value={cidade} onChange={setCidade}
+              options={cidades.map(c => ({ value: c, label: c }))} emptyLabel="Todas" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Classificação</label>
+            <SearchableMultiSelect values={classificacoes} onChange={setClassificacoes}
+              options={opClassificacao} emptyLabel="Todas" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Orçamentista</label>
+            <SearchableMultiSelect values={orcamentistaIds} onChange={setOrcamentistaIds}
+              options={orcamentistas.map(o => ({ value: String(o.id), label: o.nome }))} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <label className={fLbl}>Resultado</label>
+            <SearchableMultiSelect values={resultados} onChange={setResultados}
+              options={opResultado} />
+          </div>
+          <div className="flex-[2] min-w-0">
+            <label className={fLbl}>Escopo</label>
+            <SearchableSelect value={escopo} onChange={setEscopo}
+              options={escopos.map(e => ({ value: e, label: e }))} placeholder="Digite para filtrar…" />
+          </div>
+          <div className="flex-shrink-0 flex items-end gap-1">
+            <button onClick={handleFiltrar}
+              className="bg-green-primary text-white border-none rounded px-2.5 py-[5px] text-[11px] font-semibold cursor-pointer hover:bg-green-dark transition-colors whitespace-nowrap">
+              Filtrar
             </button>
-          )}
-          <span className="text-[11px] text-gray-400">
-            {items.length} proposta{items.length !== 1 ? 's' : ''}
-          </span>
+            <button onClick={limpar}
+              className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
+              ✕
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Filtros ───────────────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex gap-1.5 items-end">
-
-        <div className="flex-1 min-w-0">
-          <label className={fLbl}>Nº Proposta</label>
-          <SearchableSelect
-            value={numero}
-            onChange={setNumero}
-            options={numeros.map(n => ({ value: n, label: n }))}
-            emptyLabel="Todas"
-          />
-        </div>
-
-        <div className="flex-[2] min-w-0">
-          <label className={fLbl}>Cliente</label>
-          <SearchableSelect
-            value={clienteId}
-            onChange={setClienteId}
-            options={clientes.map(c => ({ value: String(c.id), label: c.nome }))}
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <label className={fLbl}>Cidade/UF</label>
-          <SearchableSelect
-            value={cidade}
-            onChange={setCidade}
-            options={cidades.map(c => ({ value: c, label: c }))}
-            emptyLabel="Todas"
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <label className={fLbl}>Classificação</label>
-          <SearchableSelect
-            value={classificacao}
-            onChange={setClassificacao}
-            options={opClassificacao}
-            emptyLabel="Todas"
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <label className={fLbl}>Orçamentista</label>
-          <SearchableSelect
-            value={orcamentistaId}
-            onChange={setOrcamentistaId}
-            options={orcamentistas.map(o => ({ value: String(o.id), label: o.nome }))}
-          />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <label className={fLbl}>Resultado</label>
-          <SearchableSelect
-            value={resultado}
-            onChange={setResultado}
-            options={opResultado}
-          />
-        </div>
-
-        <div className="flex-[2] min-w-0">
-          <label className={fLbl}>Escopo</label>
-          <SearchableSelect
-            value={escopo}
-            onChange={setEscopo}
-            options={escopos.map(e => ({ value: e, label: e }))}
-            placeholder="Digite para filtrar…"
-          />
-        </div>
-
-        <div className="flex-shrink-0 flex items-end gap-1">
-          <button onClick={handleFiltrar}
-            className="bg-green-primary text-white border-none rounded px-2.5 py-[5px] text-[11px] font-semibold cursor-pointer hover:bg-green-dark transition-colors whitespace-nowrap">
-            Filtrar
-          </button>
-          <button onClick={limpar}
-            className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
-            ✕
-          </button>
-        </div>
-      </div>
-
-      </div>{/* fim zona congelada */}
-
-      {/* ── Zona de scroll ──────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 flex flex-col">
         {loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
@@ -267,5 +230,6 @@ export default function PropostasPage() {
           canCancelar={canCancelSolicitacao}
         />
       )}
-    </div>  )
+    </div>
+  )
 }

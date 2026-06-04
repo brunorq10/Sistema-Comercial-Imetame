@@ -754,8 +754,9 @@ function InfoSection({ infos }: { infos: InfoData[] }) {
               <p className="text-[11px] text-gray-700 leading-relaxed">{info.comentario}</p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[9px] text-gray-400">{info.autor}</p>
-              <p className="text-[9px] text-gray-300">{formatDate(info.created_at)}</p>
+              <p className="text-[9px] font-semibold text-gray-500">{info.autor}</p>
+              <p className="text-[9px] text-gray-400">{formatDate(info.created_at)}</p>
+              <p className="text-[9px] text-gray-400">{new Date(info.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
             </div>
           </div>
         ))}

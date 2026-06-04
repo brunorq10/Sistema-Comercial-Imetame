@@ -66,15 +66,16 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Number(searchParams.get('limit') ?? 20))
   const skip  = (page - 1) * limit
 
-  const classificacao = searchParams.get('classificacao') ?? undefined
-  const status = searchParams.get('status') ?? undefined
-  const orcamentista_id = searchParams.get('orcamentista_id') ?? undefined
-  const resultado = searchParams.get('resultado') ?? undefined
-  const ano = searchParams.get('ano') ?? undefined
-  const numero = searchParams.get('numero') ?? undefined
-  const escopo = searchParams.get('escopo') ?? undefined
-  const cliente_id = searchParams.get('cliente_id') ?? undefined
-  const cidade = searchParams.get('cidade') ?? undefined
+  // Suporte a múltiplos valores (getAll) e valor único (get) para retrocompatibilidade
+  const classificacoes    = searchParams.getAll('classificacao')
+  const status            = searchParams.get('status') ?? undefined
+  const orcamentista_ids  = searchParams.getAll('orcamentista_id')
+  const resultados        = searchParams.getAll('resultado')
+  const ano               = searchParams.get('ano') ?? undefined
+  const numero            = searchParams.get('numero') ?? undefined
+  const escopo            = searchParams.get('escopo') ?? undefined
+  const cliente_ids       = searchParams.getAll('cliente_id')
+  const cidade            = searchParams.get('cidade') ?? undefined
 
   const wherePropostas = {
     cancelled_at: null,
@@ -83,14 +84,14 @@ export async function GET(req: NextRequest) {
       { propostas_comerciais: { some: { data_envio: { not: null } } } },
       { propostas_fabricacao: { some: { data_envio: { not: null } } } },
     ],
-    ...(classificacao && { classificacao: classificacao as never }),
+    ...(classificacoes.length > 0 && { classificacao: { in: classificacoes as never[] } }),
     ...(status && { status: status as never }),
-    ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
-    ...(cliente_id && { cliente_id: Number(cliente_id) }),
+    ...(orcamentista_ids.length > 0 && { orcamentista_id: { in: orcamentista_ids.map(Number) } }),
+    ...(cliente_ids.length > 0 && { cliente_id: { in: cliente_ids.map(Number) } }),
     ...(cidade && { cidade: { contains: cidade.split('/')[0].trim(), mode: 'insensitive' as const } }),
     ...(numero && { numero: { contains: numero, mode: 'insensitive' as const } }),
     ...(escopo && { escopo: { contains: escopo, mode: 'insensitive' as const } }),
-    ...(resultado && { propostas_comerciais: { some: { resultado } } }),
+    ...(resultados.length > 0 && { propostas_comerciais: { some: { resultado: { in: resultados } } } }),
     ...(ano && {
       propostas_tecnicas: {
         some: {
@@ -204,6 +205,7 @@ export async function GET(req: NextRequest) {
         valor_outros_terceiros: pc.valor_outros_terceiros?.toString() ?? null,
         possui_fabricacao: pc.possui_fabricacao,
         valor_fabricacao: pc.valor_fabricacao?.toString() ?? null,
+        peso_fabricacao: pc.peso_fabricacao?.toString() ?? null,
         valor_terceiros: pc.valor_terceiros?.toString() ?? null,
         valor_total: pc.valor_total?.toString() ?? null,
         data_envio: pc.data_envio?.toISOString() ?? null,
@@ -217,6 +219,8 @@ export async function GET(req: NextRequest) {
         possui_testes: pf.possui_testes,
         descricao_testes: pf.descricao_testes,
         valor_testes: pf.valor_testes?.toString() ?? null,
+        possui_montagem: pf.possui_montagem,
+        valor_montagem: pf.valor_montagem?.toString() ?? null,
         peso_total: pf.peso_total.toString(),
         valor_total: pf.valor_total.toString(),
         data_envio: pf.data_envio?.toISOString() ?? null,
