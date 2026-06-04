@@ -66,7 +66,7 @@ export function StatusAnaliseBadge({ status }: { status: StatusAnalise }) {
   const map: Record<StatusAnalise, { label: string; variant: BadgeProps['variant'] }> = {
     AGUARDANDO: { label: 'Em análise', variant: 'amber' },
     APROVADA: { label: 'Aprovada', variant: 'green' },
-    REPROVADA: { label: 'Reprovada', variant: 'red' },
+    REPROVADA: { label: 'Agradecida', variant: 'red' },
   }
   const { label, variant } = map[status]
   return <Badge variant={variant}>{label}</Badge>

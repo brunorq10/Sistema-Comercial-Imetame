@@ -221,8 +221,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     await createNotificacao(
       sol.criador.id,
-      `Solicitação reprovada — ${sol.numero}`,
-      `A solicitação ${sol.numero} — ${sol.cliente.nome} foi reprovada. Motivo: ${mensagemCompleta}`,
+      `Solicitação agradecida — ${sol.numero}`,
+      `A solicitação ${sol.numero} — ${sol.cliente.nome} foi agradecida. Motivo: ${mensagemCompleta}`,
       '/orcamentos/solicitacoes',
     )
     emailSolicitacaoReprovada(

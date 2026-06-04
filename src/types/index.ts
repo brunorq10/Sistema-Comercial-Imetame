@@ -17,7 +17,7 @@ export type { Perfil, StatusSolicitacao, StatusAnalise, Classificacao, Interesse
 export const STATUS_ANALISE_LABELS: Record<StatusAnalise, string> = {
   AGUARDANDO: 'Em análise',
   APROVADA: 'Aprovada',
-  REPROVADA: 'Reprovada',
+  REPROVADA: 'Agradecida',
 }
 
 export const STATUS_LABELS: Record<StatusSolicitacao, string> = {

@@ -894,7 +894,7 @@ export default function DashboardComercialPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap, marginBottom: gap }}>
             <KPI label="Total Solicitações" value={data.total} color="#111" />
             <KPI label="Aprovadas" value={data.aprovadas} color={GREEN} />
-            <KPI label="Reprovadas" value={data.reprovadas} color="#C62828" />
+            <KPI label="Agradecidas" value={data.reprovadas} color="#C62828" />
             <KPI label="Em Análise" value={data.em_analise} color={AMBER} />
           </div>
 

@@ -87,9 +87,9 @@ export function emailSolicitacaoReprovada(
 ): void {
   sendEmailAsync({
     to: para,
-    subject: `[Imetame] Solicitação reprovada — ${numero}`,
+    subject: `[Imetame] Solicitação agradecida — ${numero}`,
     html: `
-      <p>A solicitação <strong>${numero}</strong> — ${cliente} foi reprovada pelo Analista Crítico.</p>
+      <p>A solicitação <strong>${numero}</strong> — ${cliente} foi agradecida pelo Analista Crítico.</p>
       <p><strong>Motivo:</strong> ${motivo}</p>
     `,
   })

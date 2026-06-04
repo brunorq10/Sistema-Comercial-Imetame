@@ -203,13 +203,13 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
               Voltar
             </Button>
             <Button variant="danger" onClick={handleReprovar} disabled={loading}>
-              {loading ? 'Reprovando...' : 'Confirmar reprovação'}
+              {loading ? 'Agradecendo...' : 'Confirmar agradecimento'}
             </Button>
           </>
         ) : (
           <>
             <Button variant="danger" onClick={() => { setModo('reprovar'); setError(null) }} disabled={loading}>
-              Reprovar
+              Agradecer
             </Button>
             <Button onClick={handleAprovar} disabled={loading}>
               {loading ? 'Aprovando...' : 'Aprovar e atribuir'}
@@ -240,7 +240,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
 
           {modo === 'reprovar' ? (
             <>
-              <ModalSection>Motivo da reprovação *</ModalSection>
+              <ModalSection>Motivo do agradecimento *</ModalSection>
               <Field label="Selecione o motivo *" className="mb-2">
                 <Select
                   value={motivoReprovacao}
