@@ -21,6 +21,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         orderBy: { versao: 'asc' },
         include: { equipamentos: { orderBy: { ordem: 'asc' } } },
       },
+      solicitacoes_info: {
+        orderBy: { data: 'asc' },
+        include: { criador: { select: { nome: true } } },
+      },
     },
   })
 
@@ -97,6 +101,14 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
           valor_total: e.valor_total.toString(),
           observacoes: e.observacoes,
         })),
+      })),
+      informacoes: sol.solicitacoes_info.map(i => ({
+        id: i.id,
+        data: i.data.toISOString(),
+        comentario: i.comentario,
+        versao: i.versao,
+        created_at: i.created_at.toISOString(),
+        autor: i.criador.nome,
       })),
     },
     error: null,

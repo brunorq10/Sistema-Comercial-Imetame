@@ -19,6 +19,7 @@ const schemaPost = z.object({
   valor_outros_terceiros: z.number().min(0).optional(),
   possui_fabricacao: z.boolean().default(false),
   valor_fabricacao: z.number().min(0).optional(),
+  peso_fabricacao: z.number().min(0).optional(),
   // Paradas: valor total direto + terceiros opcionais
   valor_total_direto: z.number().min(0).optional(),
   valor_terceiros: z.number().min(0).optional(),
@@ -190,6 +191,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         valor_outros_terceiros: (!naoAplicavel && d.possui_terceiros) ? (d.valor_outros_terceiros ?? null) : null,
         possui_fabricacao: naoAplicavel ? false : d.possui_fabricacao,
         valor_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.valor_fabricacao ?? null) : null,
+        peso_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.peso_fabricacao ?? null) : null,
         valor_terceiros: naoAplicavel ? null : (d.valor_terceiros ?? null),
         valor_total: valorTotalGeral,
         data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),

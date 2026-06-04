@@ -54,6 +54,10 @@ interface FabData {
   resultado: string | null; data_envio: string | null
   equipamentos: EquipFab[]
 }
+interface InfoData {
+  id: number; data: string; comentario: string
+  versao: number | null; created_at: string; autor: string
+}
 interface HistoricoData {
   id: number; numero: string; created_at: string; data_recebimento: string | null
   cliente: string; cliente_final: string | null; cidade: string | null; estado: string | null
@@ -62,6 +66,7 @@ interface HistoricoData {
   propostas_tecnicas: TecData[]
   propostas_comerciais: ComData[]
   propostas_fabricacao: FabData[]
+  informacoes: InfoData[]
 }
 
 // Rev unificada para Paradas/Obras
@@ -498,6 +503,8 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
           <p className="text-[9px] text-gray-400">ⓘ Variação exibida abaixo de cada valor — verde se aumentou, vermelho se diminuiu.</p>
         </div>
       </div>
+
+      <InfoSection infos={raw.informacoes} />
     </div>
   )
 }
@@ -717,11 +724,45 @@ function HistoricoFabricacao({ raw, router }: { raw: HistoricoData; router: Retu
           </table>
         </div>
       </div>
+
+      <InfoSection infos={raw.informacoes} />
     </div>
   )
 }
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
+
+function InfoSection({ infos }: { infos: InfoData[] }) {
+  if (infos.length === 0) return null
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
+      <div className="px-4 py-2.5 border-b border-gray-100">
+        <p className="text-[12px] font-semibold text-gray-700">Informações registradas durante a negociação</p>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {infos.map(info => (
+          <div key={info.id} className="px-4 py-3 flex gap-4">
+            <div className="shrink-0 text-center min-w-[70px]">
+              <p className="text-[10px] font-semibold text-gray-700">{formatDate(info.data)}</p>
+              {info.versao != null && (
+                <span className="inline-block mt-0.5 text-[9px] bg-green-50 text-green-700 border border-green-200 rounded-full px-1.5 py-0.5 font-semibold">
+                  {formatRev(info.versao)}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-gray-700 leading-relaxed">{info.comentario}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[9px] text-gray-400">{info.autor}</p>
+              <p className="text-[9px] text-gray-300">{formatDate(info.created_at)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function HeaderBar({ raw, onBack, onExport }: { raw: HistoricoData; onBack: () => void; onExport: () => void }) {
   return (

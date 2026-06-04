@@ -45,6 +45,8 @@ export function RegistrarFabricacaoModal({
   const [possuiTestes, setPossuiTestes] = useState(false)
   const [descricaoTestes, setDescricaoTestes] = useState('')
   const [valorTestes, setValorTestes] = useState('')
+  const [possuiMontagem, setPossuiMontagem] = useState(false)
+  const [valorMontagem, setValorMontagem] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -69,14 +71,19 @@ export function RegistrarFabricacaoModal({
   // Testes
   const numTestes = possuiTestes ? (Number(valorTestes) || 0) : 0
 
+  // Montagem
+  const numMontagem = possuiMontagem ? (Number(valorMontagem) || 0) : 0
+
   // Total geral
-  const valorTotalGeral = valorTotalEquip + numTestes
+  const valorTotalGeral = valorTotalEquip + numTestes + numMontagem
 
   const resetForm = () => {
     setEquipamentos([equipamentoVazio()])
     setPossuiTestes(false)
     setDescricaoTestes('')
     setValorTestes('')
+    setPossuiMontagem(false)
+    setValorMontagem('')
     setDataEnvio(new Date().toISOString().split('T')[0])
     setError(null)
   }
@@ -97,12 +104,14 @@ export function RegistrarFabricacaoModal({
           ...(e.observacoes.trim() ? { observacoes: e.observacoes.trim() } : {}),
         })),
         possui_testes: possuiTestes,
+        possui_montagem: possuiMontagem,
         data_envio: dataEnvio,
       }
       if (possuiTestes) {
         if (descricaoTestes.trim()) body.descricao_testes = descricaoTestes.trim()
         if (numTestes > 0) body.valor_testes = numTestes
       }
+      if (possuiMontagem && numMontagem > 0) body.valor_montagem = numMontagem
 
       const res = await fetch(`/api/solicitacoes/${solicitacaoId}/proposta-fabricacao`, {
         method: 'POST',
@@ -277,29 +286,70 @@ export function RegistrarFabricacaoModal({
         </div>
       )}
 
-      {/* ── Seção 4: Total Geral ──────────────────────────────────── */}
+      {/* ── Seção 4: Montagem ─────────────────────────────────────── */}
+      <ModalSection>4. Montagem</ModalSection>
+      <div className="flex gap-3 mb-3">
+        <button
+          onClick={() => setPossuiMontagem(false)}
+          className={`text-[11px] font-semibold px-4 py-1.5 rounded-full border transition-colors ${
+            !possuiMontagem
+              ? 'bg-green-primary text-white border-green-primary'
+              : 'bg-white text-gray-500 border-gray-300'
+          }`}
+        >
+          Não
+        </button>
+        <button
+          onClick={() => setPossuiMontagem(true)}
+          className={`text-[11px] font-semibold px-4 py-1.5 rounded-full border transition-colors ${
+            possuiMontagem
+              ? 'bg-green-primary text-white border-green-primary'
+              : 'bg-white text-gray-500 border-gray-300'
+          }`}
+        >
+          Sim — haverá montagem
+        </button>
+      </div>
+      {possuiMontagem && (
+        <div className="pl-4 border-l-2 border-green-primary/30 mb-4">
+          <Field label="Valor da Montagem (R$)">
+            <CurrencyInput value={valorMontagem} onChange={setValorMontagem} />
+          </Field>
+        </div>
+      )}
+
+      {/* ── Seção 5: Total Geral ──────────────────────────────────── */}
       {valorTotalGeral > 0 && (
         <>
-          <ModalSection>4. Total Geral</ModalSection>
-          <div className="bg-[#EEF7EE] border border-[#C8E6C9] rounded p-3 grid grid-cols-3 gap-3 mb-4">
-            <div>
-              <p className="text-[9px] text-gray-500 uppercase font-bold">Peso Total (ton)</p>
-              <p className="text-[15px] font-bold text-gray-700">{formatTon(pesoTotalEquip)} ton</p>
+          <ModalSection>5. Total Geral</ModalSection>
+          <div className="bg-[#EEF7EE] border border-[#C8E6C9] rounded p-3 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-2">
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase font-bold">Peso Total (ton)</p>
+                <p className="text-[15px] font-bold text-gray-700">{formatTon(pesoTotalEquip)} ton</p>
+              </div>
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase font-bold">Valor Total</p>
+                <p className="text-[15px] font-bold text-auto-value">{formatCurrency(valorTotalGeral)}</p>
+              </div>
+              <div>
+                <p className="text-[9px] text-gray-500 uppercase font-bold">R$/kg final</p>
+                <p className="text-[15px] font-bold text-auto-value">{rskg(valorTotalGeral, pesoTotalEquip)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[9px] text-gray-500 uppercase font-bold">Valor Total</p>
-              <p className="text-[15px] font-bold text-auto-value">{formatCurrency(valorTotalGeral)}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-gray-500 uppercase font-bold">R$/kg final</p>
-              <p className="text-[15px] font-bold text-auto-value">{rskg(valorTotalGeral, pesoTotalEquip)}</p>
-            </div>
+            {(numTestes > 0 || numMontagem > 0) && (
+              <div className="text-[10px] text-gray-500 flex gap-4 pt-2 border-t border-[#C8E6C9]">
+                <span>Equipamentos: {formatCurrency(valorTotalEquip)}</span>
+                {numTestes > 0 && <span>Testes: {formatCurrency(numTestes)}</span>}
+                {numMontagem > 0 && <span>Montagem: {formatCurrency(numMontagem)}</span>}
+              </div>
+            )}
           </div>
         </>
       )}
 
-      {/* ── Seção 5: Data de envio ────────────────────────────────── */}
-      <ModalSection>5. Data de envio</ModalSection>
+      {/* ── Seção 6: Data de envio ────────────────────────────────── */}
+      <ModalSection>6. Data de envio</ModalSection>
       <Field label="Data de envio da proposta">
         <Input
           type="date"

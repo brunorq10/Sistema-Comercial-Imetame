@@ -121,6 +121,7 @@ model User {
   propostas_tecnicas          PropostaTecnica[]
   propostas_comerciais        PropostaComercial[]
   propostas_fabricacao        PropostaFabricacao[]
+  solicitacoes_info           SolicitacaoInfo[]
   acordos                     Acordo[]
   notas_fiscais               NotaFiscal[]
   notificacoes                Notificacao[]
@@ -229,6 +230,7 @@ model Solicitacao {
   propostas_comerciais PropostaComercial[]
   propostas_fabricacao PropostaFabricacao[]
   contratos            Contrato[]
+  solicitacoes_info    SolicitacaoInfo[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -306,6 +308,7 @@ model PropostaComercial {
   valor_outros_terceiros  Decimal?     @db.Decimal(15, 2)
   possui_fabricacao       Boolean      @default(false)
   valor_fabricacao        Decimal?     @db.Decimal(15, 2)
+  peso_fabricacao         Decimal?     @db.Decimal(10, 3)
   valor_terceiros         Decimal?     @db.Decimal(15, 2)
   valor_total             Decimal?     @db.Decimal(15, 2)
   data_envio              DateTime?
@@ -331,6 +334,8 @@ model PropostaFabricacao {
   possui_testes    Boolean                @default(false)
   descricao_testes String?
   valor_testes     Decimal?               @db.Decimal(15, 2)
+  possui_montagem  Boolean                @default(false)
+  valor_montagem   Decimal?               @db.Decimal(15, 2)
   peso_total       Decimal                @db.Decimal(10, 3)
   valor_total      Decimal                @db.Decimal(15, 2)
   data_envio       DateTime?
@@ -363,6 +368,22 @@ model EquipamentoFabricacao {
 
   @@index([proposta_fabricacao_id])
   @@map("equipamentos_fabricacao")
+}
+
+model SolicitacaoInfo {
+  id             Int      @id @default(autoincrement())
+  solicitacao_id Int
+  data           DateTime
+  comentario     String
+  versao         Int?
+  created_at     DateTime @default(now())
+  created_by     Int
+
+  solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id])
+  criador     User        @relation(fields: [created_by], references: [id])
+
+  @@index([solicitacao_id])
+  @@map("solicitacoes_info")
 }
 
 model Acordo {

@@ -151,8 +151,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             <Field label="Turno Considerado">
               <Select value={turno} onChange={(e) => setTurno(e.target.value)}>
                 <option value="">Selecione...</option>
-                <option value="Hora normal">Hora normal</option>
-                <option value="Turno estendido">Turno estendido</option>
+                <option value="Turno adm">Turno adm</option>
+                <option value="1 turno">1 turno</option>
                 <option value="2 Turnos">2 Turnos</option>
                 <option value="3 Turnos">3 Turnos</option>
               </Select>

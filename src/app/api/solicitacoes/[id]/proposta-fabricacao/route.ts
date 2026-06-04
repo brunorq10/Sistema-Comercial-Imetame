@@ -15,6 +15,8 @@ const schemaPost = z.object({
   possui_testes: z.boolean().default(false),
   descricao_testes: z.string().optional(),
   valor_testes: z.number().min(0).optional(),
+  possui_montagem: z.boolean().default(false),
+  valor_montagem: z.number().min(0).optional(),
   data_envio: z.string().min(1),
 })
 
@@ -92,7 +94,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const pesoTotal = d.equipamentos.reduce((acc, e) => acc + e.peso_ton, 0)
   const valorEquipamentos = d.equipamentos.reduce((acc, e) => acc + e.valor_total, 0)
   const valorTestes = d.possui_testes ? (d.valor_testes ?? 0) : 0
-  const valorTotal = valorEquipamentos + valorTestes
+  const valorMontagem = d.possui_montagem ? (d.valor_montagem ?? 0) : 0
+  const valorTotal = valorEquipamentos + valorTestes + valorMontagem
   const proximaVersao = (sol.propostas_fabricacao[0]?.versao ?? 0) + 1
 
   const proposta = await prisma.$transaction(async (tx) => {
@@ -103,6 +106,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         possui_testes: d.possui_testes,
         descricao_testes: d.possui_testes ? (d.descricao_testes ?? null) : null,
         valor_testes: d.possui_testes ? valorTestes : null,
+        possui_montagem: d.possui_montagem,
+        valor_montagem: d.possui_montagem ? valorMontagem : null,
         peso_total: pesoTotal,
         valor_total: valorTotal,
         data_envio: new Date(d.data_envio),
@@ -154,7 +159,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const pesoTotal = d.equipamentos.reduce((acc, e) => acc + e.peso_ton, 0)
   const valorEquipamentos = d.equipamentos.reduce((acc, e) => acc + e.valor_total, 0)
   const valorTestes = d.possui_testes ? (d.valor_testes ?? 0) : 0
-  const valorTotal = valorEquipamentos + valorTestes
+  const valorMontPut = d.possui_montagem ? (d.valor_montagem ?? 0) : 0
+  const valorTotal = valorEquipamentos + valorTestes + valorMontPut
 
   const proposta = await prisma.$transaction(async (tx) => {
     return tx.propostaFabricacao.update({
@@ -163,6 +169,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         possui_testes: d.possui_testes,
         descricao_testes: d.possui_testes ? (d.descricao_testes ?? null) : null,
         valor_testes: d.possui_testes ? valorTestes : null,
+        possui_montagem: d.possui_montagem,
+        valor_montagem: d.possui_montagem ? valorMontPut : null,
         peso_total: pesoTotal,
         valor_total: valorTotal,
         data_envio: new Date(d.data_envio),

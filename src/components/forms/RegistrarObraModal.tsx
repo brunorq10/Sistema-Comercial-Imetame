@@ -246,6 +246,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   })
   const [possuiFabricacao, setPossuiFabricacao] = useState(false)
   const [valorFabricacao, setValorFabricacao] = useState('')
+  const [pesoFabricacao, setPesoFabricacao] = useState('')
   const [dataEnvio, setDataEnvio] = useState(today())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -264,6 +265,8 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
   const numTerceiros = TERCEIROS.reduce((sum, { key }) => sum + (Number(terceiros[key]) || 0), 0)
   const numFabricacao = possuiFabricacao ? (Number(valorFabricacao) || 0) : 0
+  const numPesoFab = possuiFabricacao ? (Number(pesoFabricacao) || 0) : 0
+  const rsPorKgFab = numPesoFab > 0 && numFabricacao > 0 ? numFabricacao / (numPesoFab * 1000) : null
   const valorGlobal = numMontagem + (possuiTerceiros ? numTerceiros : 0) + numFabricacao
 
   const rsPorKgGlobal = pesoTotalRef && pesoTotalRef > 0 && valorGlobal > 0
@@ -292,7 +295,10 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
             if (v > 0) body[apiKey] = v
           }
         }
-        if (possuiFabricacao && numFabricacao > 0) body.valor_fabricacao = numFabricacao
+        if (possuiFabricacao && numFabricacao > 0) {
+          body.valor_fabricacao = numFabricacao
+          if (numPesoFab > 0) body.peso_fabricacao = numPesoFab
+        }
       }
 
       const res = await fetch(`/api/solicitacoes/${solicitacaoId}/proposta-comercial`, {
@@ -436,9 +442,22 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         <SimNaoToggle value={possuiFabricacao} onChange={setPossuiFabricacao} />
       </div>
       {possuiFabricacao && (
-        <Field label="Valor das Fabricações (R$)" className="mb-4">
-          <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
-        </Field>
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-2.5 mb-2">
+            <Field label="Valor das Fabricações (R$)">
+              <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
+            </Field>
+            <Field label="Peso das Fabricações (t)">
+              <CurrencyInput value={pesoFabricacao} onChange={setPesoFabricacao} />
+            </Field>
+          </div>
+          {rsPorKgFab && (
+            <div className="bg-auto-bg border border-auto-value/20 rounded px-3 py-2 text-[11px]">
+              <span className="text-[9px] text-gray-400 uppercase mr-2">R$/kg Fabricações</span>
+              <span className="font-bold text-auto-value">{formatCurrency(rsPorKgFab)}</span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Total Global */}

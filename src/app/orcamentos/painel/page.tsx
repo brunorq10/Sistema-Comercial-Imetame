@@ -7,6 +7,7 @@ import { RegistrarComercialModal } from '@/components/forms/RegistrarComercialMo
 import { RegistrarFabricacaoModal } from '@/components/forms/RegistrarFabricacaoModal'
 import { RegistrarParadaModal } from '@/components/forms/RegistrarParadaModal'
 import { RegistrarObraModal } from '@/components/forms/RegistrarObraModal'
+import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +32,7 @@ export default function PainelOrcamentosPage() {
   const [modalFabricacao, setModalFabricacao] = useState<PainelItem | null>(null)
   const [modalParada, setModalParada] = useState<{ item: PainelItem; tab: 'tecnica' | 'comercial' } | null>(null)
   const [modalObra, setModalObra] = useState<{ item: PainelItem; tab: 'tecnica' | 'comercial' } | null>(null)
+  const [modalInfo, setModalInfo] = useState<PainelItem | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -241,6 +243,7 @@ export default function PainelOrcamentosPage() {
             onRegistrarFabricacao={setModalFabricacao}
             onRegistrarParada={(item, tab) => setModalParada({ item, tab })}
             onRegistrarObra={(item, tab) => setModalObra({ item, tab })}
+            onRegistrarInfo={setModalInfo}
           />
         ))
       )}
@@ -295,6 +298,15 @@ export default function PainelOrcamentosPage() {
           numero={modalObra.item.numero}
           defaultTab={modalObra.tab}
           propostasTecnicas={modalObra.item.propostas_tecnicas}
+        />
+      )}
+      {modalInfo && (
+        <RegistrarInfoModal
+          open={true}
+          onClose={() => setModalInfo(null)}
+          onSuccess={fetchData}
+          solicitacaoId={modalInfo.id}
+          numero={modalInfo.numero}
         />
       )}
     </div>
