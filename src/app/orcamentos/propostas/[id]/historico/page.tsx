@@ -181,7 +181,17 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
       const hhTotal     = tec.hh_total ?? ((tec.hh_direto != null && tec.hh_indireto != null) ? tec.hh_direto + tec.hh_indireto : null)
       const pesoTotal   = tec.peso_montagem != null ? Number(tec.peso_montagem) : null
       const valorTotal  = com?.valor_total != null ? Number(com.valor_total) : null
-      const valorTerceiros  = com?.valor_terceiros != null ? Number(com.valor_terceiros) : null
+      // Para Obras as especialidades ficam em campos separados; valor_terceiros só é preenchido para Paradas.
+      // Sempre prefere o somatório das especialidades se alguma tiver valor.
+      const sumEspecialidades = com != null
+        ? [com.valor_eletrica, com.valor_isolamento, com.valor_civil,
+           com.valor_hidraulica, com.valor_fibra, com.valor_tijolo_antiacido,
+           com.valor_outros_terceiros]
+            .reduce((s, v) => s + (v != null ? Number(v) : 0), 0)
+        : 0
+      const valorTerceiros = com != null
+        ? (sumEspecialidades > 0 ? sumEspecialidades : (com.valor_terceiros != null ? Number(com.valor_terceiros) : null))
+        : null
       const valorMontagem   = com?.valor_montagem_mecanica != null ? Number(com.valor_montagem_mecanica) : null
       const valorFabricacao = com?.valor_fabricacao != null ? Number(com.valor_fabricacao) : null
       const valorSemTerc    = valorTotal != null ? valorTotal - (valorTerceiros ?? 0) : null
