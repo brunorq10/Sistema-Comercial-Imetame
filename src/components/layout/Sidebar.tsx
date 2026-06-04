@@ -30,6 +30,7 @@ const NAV_SECTIONS = [
       { label: 'Controle de faturamento', href: '/acordos/faturamento' },
       { label: 'Consolidado x Realizado', href: '/acordos/previsao' },
       { label: 'Dashboard Acordos',       href: '/acordos/dashboard' },
+      { label: 'Controle de HH',          href: '/acordos/hh' },
     ],
   },
 ]

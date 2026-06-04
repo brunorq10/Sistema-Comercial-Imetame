@@ -127,6 +127,8 @@ model User {
   notificacoes                Notificacao[]
   contratos_responsavel       Contrato[]             @relation("ContratoResponsavel")
   contratos_criados           Contrato[]             @relation("ContratoCriador")
+  hh_lancamentos              HhLancamento[]         @relation("HhLancamentoCriador")
+  hh_realizados               HhRealizado[]          @relation("HhRealizadoCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -386,6 +388,59 @@ model SolicitacaoInfo {
   @@map("solicitacoes_info")
 }
 
+model HhLancamento {
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  versao      Int      @default(1)
+  data_inicio DateTime
+  data_fim    DateTime
+  motivo      String?
+  created_at  DateTime @default(now())
+  created_by  Int
+
+  contrato Contrato        @relation(fields: [contrato_id], references: [id])
+  criador  User            @relation("HhLancamentoCriador", fields: [created_by], references: [id])
+  meses    HhLancamentoMes[]
+
+  @@unique([contrato_id, versao])
+  @@index([contrato_id])
+  @@map("hh_lancamentos")
+}
+
+model HhLancamentoMes {
+  id            Int  @id @default(autoincrement())
+  lancamento_id Int
+  mes           Int
+  ano           Int
+  hh_previsto   Int?
+  hh_planejado  Int?
+
+  lancamento HhLancamento @relation(fields: [lancamento_id], references: [id], onDelete: Cascade)
+
+  @@unique([lancamento_id, mes, ano])
+  @@index([lancamento_id])
+  @@map("hh_lancamento_mes")
+}
+
+model HhRealizado {
+  id           Int      @id @default(autoincrement())
+  contrato_id  Int
+  mes          Int
+  ano          Int
+  hh_realizado Int
+  observacoes  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   Int
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id])
+  criador  User     @relation("HhRealizadoCriador", fields: [created_by], references: [id])
+
+  @@unique([contrato_id, mes, ano])
+  @@index([contrato_id])
+  @@map("hh_realizado")
+}
+
 model Acordo {
   id                      Int          @id @default(autoincrement())
   numero                  String       @unique
@@ -462,8 +517,10 @@ model Contrato {
   responsavel  User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
   criador      User                   @relation("ContratoCriador", fields: [created_by], references: [id])
   solicitacao  Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
-  subindices   SubIndiceFaturamento[]
-  historico    HistoricoContrato[]
+  subindices     SubIndiceFaturamento[]
+  historico      HistoricoContrato[]
+  hh_lancamentos HhLancamento[]
+  hh_realizados  HhRealizado[]
 
   @@index([cliente_id])
   @@index([solicitacao_id])
