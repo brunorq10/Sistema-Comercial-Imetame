@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       hh_lancamentos: {
         orderBy: { versao: 'desc' },
         take: 1,
-        include: { meses: true },
+        include: { meses: true, criador: { select: { nome: true } } },
       },
       hh_realizados: {
         orderBy: [{ ano: 'asc' }, { mes: 'asc' }],
@@ -60,7 +60,10 @@ export async function GET(req: NextRequest) {
         id: lancamento.id, versao: lancamento.versao,
         data_inicio: lancamento.data_inicio.toISOString(),
         data_fim:    lancamento.data_fim.toISOString(),
-        motivo: lancamento.motivo, meses: lancamento.meses,
+        motivo: lancamento.motivo,
+        created_at: lancamento.created_at.toISOString(),
+        criador: (lancamento as typeof lancamento & { criador: { nome: string } }).criador.nome,
+        meses: lancamento.meses,
       } : null,
       realizados: c.hh_realizados,
     }

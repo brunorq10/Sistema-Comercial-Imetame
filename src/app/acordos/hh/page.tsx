@@ -33,10 +33,21 @@ interface ContratoHh {
   realizados: { id: number; mes: number; ano: number; hh_realizado: number; observacoes: string | null }[]
 }
 
+interface LancamentoDetalhe {
+  id: number; versao: number
+  data_inicio: string; data_fim: string
+  motivo: string | null; created_at: string; criador: string
+  meses: { mes: number; ano: number; hh_previsto: number | null; hh_planejado: number | null }[]
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const nowLabel = () => { const d = new Date(); return `${MESES_LABELS[d.getMonth()]} ${d.getFullYear()}` }
+const fmtMes   = (mes: number, ano: number) => `${MESES_LABELS[mes-1]}/${String(ano).slice(2)}`
+const fmtDate  = (iso: string) => {
+  const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`
+}
 
 function gerarMeses(inicio: string, fim: string) {
   const r: { mes: number; ano: number }[] = []
@@ -46,7 +57,7 @@ function gerarMeses(inicio: string, fim: string) {
   return r
 }
 
-// Nova regra: <90% verde | 90-100% âmbar | >100% vermelho
+// <90% verde | 90-100% âmbar | >100% vermelho
 function pctColor(pct: number): string {
   if (pct > 100) return '#C62828'
   if (pct >= 90)  return '#BA7517'
@@ -56,7 +67,7 @@ function pctColor(pct: number): string {
 function MiniBar({ pct }: { pct: number }) {
   const color = pctColor(pct)
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 justify-center">
       <div className="w-8 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
         <div className="h-full rounded-full" style={{ width: `${Math.min((pct / 120) * 100, 100)}%`, background: color }} />
       </div>
@@ -65,28 +76,243 @@ function MiniBar({ pct }: { pct: number }) {
   )
 }
 
-// ─── Ícones de ação ───────────────────────────────────────────────────────────
+// ─── Botão de ação (padrão das outras tabelas) ────────────────────────────────
 
-function IconEdit() {
+function ABtn({ onClick, title, color, children }: {
+  onClick: () => void; title: string; color: string; children: React.ReactNode
+}) {
+  const colors: Record<string, string> = {
+    blue:  'border-blue-400 text-blue-500 hover:bg-blue-50',
+    green: 'border-green-primary text-green-primary hover:bg-green-light',
+    gray:  'border-gray-300 text-gray-500 hover:bg-gray-100',
+    red:   'border-red-400 text-red-400 hover:bg-red-50',
+  }
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 2L11 4L4.5 10.5L2 11L2.5 8.5L9 2Z"/>
-    </svg>
+    <button onClick={onClick} title={title}
+      className={cn('border rounded px-1.5 py-0.5 text-[11px]', colors[color] ?? colors.gray)}>
+      {children}
+    </button>
   )
 }
-function IconLancamento() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-      <circle cx="6.5" cy="6.5" r="5"/>
-      <path d="M6.5 4.5V8.5M4.5 6.5H8.5"/>
-    </svg>
-  )
+
+// ─── Modal Visualizar Contrato HH ─────────────────────────────────────────────
+
+interface VisualizarContratoHhModalProps {
+  contrato: ContratoHh
+  onClose: () => void
 }
-function IconDelete() {
+
+function VisualizarContratoHhModal({ contrato, onClose }: VisualizarContratoHhModalProps) {
+  const [lancamentos, setLancamentos] = useState<LancamentoDetalhe[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [expandedRev, setExpandedRev] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/acordos/hh/${contrato.id}/lancamento`)
+      .then(r => r.json())
+      .then(j => { setLancamentos(j.data ?? []); if (j.data?.[0]) setExpandedRev(j.data[0].id) })
+      .finally(() => setLoading(false))
+  }, [contrato.id])
+
+  const loc = (n: number) => n.toLocaleString('pt-BR')
+  const pctPrev = contrato.hh_previsto && contrato.hh_previsto > 0 && contrato.hh_realizado != null
+    ? (contrato.hh_realizado / contrato.hh_previsto) * 100 : null
+  const pctPlan = contrato.hh_planejado && contrato.hh_planejado > 0 && contrato.hh_realizado != null
+    ? (contrato.hh_realizado / contrato.hh_planejado) * 100 : null
+
+  function PctChip({ pct }: { pct: number }) {
+    const c = pctColor(pct)
+    return <span className="text-[10px] font-bold ml-2" style={{ color: c }}>{pct.toFixed(1)}%</span>
+  }
+
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 3.5H11M5 3.5V2.5H8V3.5M4.5 3.5V10.5H8.5V3.5"/>
-    </svg>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end sm:justify-end bg-black/40" onClick={onClose}>
+      <div className="bg-white h-full w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="bg-[#1B5E20] text-white px-5 py-4 flex-shrink-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold bg-white/20 rounded px-2 py-0.5">{contrato.indice}</span>
+                {contrato.num_os && <span className="text-white/70 text-[11px]">OS: {contrato.num_os}</span>}
+              </div>
+              <p className="text-white font-semibold text-[14px] mt-1 leading-snug">{contrato.descricao ?? '—'}</p>
+              <p className="text-white/70 text-[11px] mt-0.5">
+                {contrato.cliente.nome}
+                {contrato.cliente_final && <> • <span className="text-white/50">Final: {contrato.cliente_final.nome}</span></>}
+              </p>
+              <div className="flex items-center gap-3 mt-1 text-white/60 text-[10px]">
+                {contrato.responsavel && <span>Resp.: {contrato.responsavel.nome}</span>}
+                {(contrato.cidade || contrato.estado) && <span>{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ')}</span>}
+                {contrato.data_inicio && contrato.data_fim && (
+                  <span>{fmtDate(contrato.data_inicio)} – {fmtDate(contrato.data_fim)}</span>
+                )}
+              </div>
+            </div>
+            <button onClick={onClose} className="text-white/60 hover:text-white text-[22px] leading-none ml-4">×</button>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-3 border-b border-gray-200 flex-shrink-0">
+          {[
+            { label: 'HH Previsto',  val: contrato.hh_previsto,  color: '#185FA5', pct: null },
+            { label: 'HH Planejado', val: contrato.hh_planejado, color: '#BA7517', pct: null },
+            { label: 'HH Realizado', val: contrato.hh_realizado, color: '#3B6D11', pct: pctPrev },
+          ].map(({ label, val, color, pct }) => (
+            <div key={label} className="px-4 py-3 border-r border-gray-100 last:border-r-0">
+              <p className="text-[9px] text-gray-400 uppercase tracking-wider">{label}</p>
+              <p className="text-[20px] font-bold leading-tight mt-0.5" style={{ color }}>
+                {val != null ? loc(val) : <span className="text-gray-300 text-[14px]">—</span>}
+              </p>
+              {pct != null && <PctChip pct={pct} />}
+              {label === 'HH Planejado' && pctPrev != null && (
+                <p className="text-[9px] text-gray-400 mt-0.5">
+                  {pctPlan != null ? <PctChip pct={pctPlan} /> : null}
+                  <span className="text-[9px] text-gray-400"> vs plan.</span>
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
+
+          {/* Lançamentos */}
+          <section>
+            <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
+              Lançamentos ({lancamentos.length})
+            </h3>
+            {loading ? (
+              <p className="text-gray-400 text-[11px]">Carregando...</p>
+            ) : lancamentos.length === 0 ? (
+              <p className="text-gray-400 text-[11px]">Nenhum lançamento registrado.</p>
+            ) : (
+              <div className="border border-gray-200 rounded-md overflow-hidden">
+                {lancamentos.map((lan, idx) => {
+                  const isAtual   = idx === 0
+                  const expanded  = expandedRev === lan.id
+                  const totPrev   = lan.meses.reduce((s, m) => s + (m.hh_previsto  ?? 0), 0)
+                  const totPlan   = lan.meses.reduce((s, m) => s + (m.hh_planejado ?? 0), 0)
+                  return (
+                    <div key={lan.id} className="border-b border-gray-100 last:border-b-0">
+                      <button className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                        onClick={() => setExpandedRev(expanded ? null : lan.id)}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-gray-700">
+                            Rev.{String(lan.versao).padStart(2,'0')}
+                          </span>
+                          {isAtual && <span className="text-[8px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">ATUAL</span>}
+                          {lan.motivo && <span className="text-[10px] text-gray-400 italic">"{lan.motivo}"</span>}
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] text-gray-500">
+                          <span>{fmtDate(lan.data_inicio)} – {fmtDate(lan.data_fim)}</span>
+                          <span className="text-[#185FA5] font-medium">Prev: {loc(totPrev)}</span>
+                          <span className="text-[#BA7517] font-medium">Plan: {loc(totPlan)}</span>
+                          <span className="text-gray-400">{expanded ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+                      {expanded && (
+                        <div className="border-t border-gray-100 overflow-x-auto bg-gray-50">
+                          <table className="text-[10px] w-full">
+                            <thead>
+                              <tr className="bg-gray-100 text-gray-500 text-[9px] uppercase">
+                                <th className="px-3 py-1.5 text-left">Mês</th>
+                                <th className="px-3 py-1.5 text-right text-[#185FA5]">HH Previsto</th>
+                                <th className="px-3 py-1.5 text-right text-[#BA7517]">HH Planejado</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lan.meses.map(m => (
+                                <tr key={`${m.mes}-${m.ano}`} className="border-t border-gray-100">
+                                  <td className="px-3 py-1 text-gray-600">{fmtMes(m.mes, m.ano)}</td>
+                                  <td className="px-3 py-1 text-right text-[#185FA5] font-medium">{m.hh_previsto != null ? loc(m.hh_previsto) : '—'}</td>
+                                  <td className="px-3 py-1 text-right text-[#BA7517] font-medium">{m.hh_planejado != null ? loc(m.hh_planejado) : '—'}</td>
+                                </tr>
+                              ))}
+                              <tr className="border-t-2 border-gray-300 bg-gray-100 font-bold">
+                                <td className="px-3 py-1.5 text-gray-700 text-[9px] uppercase">Total</td>
+                                <td className="px-3 py-1.5 text-right text-[#185FA5]">{loc(totPrev)}</td>
+                                <td className="px-3 py-1.5 text-right text-[#BA7517]">{loc(totPlan)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                          <p className="px-3 py-1.5 text-[9px] text-gray-400">
+                            Criado por {lan.criador} em {fmtDate(lan.created_at)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* HH Realizado */}
+          <section>
+            <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
+              HH Realizado ({contrato.realizados.length} {contrato.realizados.length === 1 ? 'mês' : 'meses'})
+            </h3>
+            {contrato.realizados.length === 0 ? (
+              <p className="text-gray-400 text-[11px]">Nenhum realizado lançado ainda.</p>
+            ) : (
+              <div className="border border-gray-200 rounded-md overflow-hidden">
+                <table className="text-[11px] w-full">
+                  <thead className="bg-gray-50">
+                    <tr className="text-[9px] text-gray-500 uppercase border-b border-gray-200">
+                      <th className="px-3 py-2 text-left">Mês / Ano</th>
+                      <th className="px-3 py-2 text-right text-[#3B6D11]">HH Realizado</th>
+                      <th className="px-3 py-2 text-right text-[#185FA5]">HH Planejado</th>
+                      <th className="px-3 py-2 text-center">% Real/Plan</th>
+                      <th className="px-3 py-2 text-left">Observações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contrato.realizados.map(r => {
+                      const mesLan = contrato.lancamento_atual?.meses.find(m => m.mes === r.mes && m.ano === r.ano)
+                      const plan   = mesLan?.hh_planejado ?? null
+                      const pct    = plan && plan > 0 ? (r.hh_realizado / plan) * 100 : null
+                      return (
+                        <tr key={r.id} className="border-b border-gray-50">
+                          <td className="px-3 py-2 font-medium text-gray-700">{fmtMes(r.mes, r.ano)}</td>
+                          <td className="px-3 py-2 text-right font-bold text-[#3B6D11]">{loc(r.hh_realizado)}</td>
+                          <td className="px-3 py-2 text-right text-[#BA7517]">{plan != null ? loc(plan) : '—'}</td>
+                          <td className="px-3 py-2 text-center">
+                            {pct != null
+                              ? <span className="text-[10px] font-bold" style={{ color: pctColor(pct) }}>{pct.toFixed(1)}%</span>
+                              : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-gray-400 text-[10px]">{r.observacoes ?? '—'}</td>
+                        </tr>
+                      )
+                    })}
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[11px]">
+                      <td className="px-3 py-2 text-gray-700 text-[9px] uppercase">Total</td>
+                      <td className="px-3 py-2 text-right text-[#3B6D11]">
+                        {loc(contrato.realizados.reduce((s, r) => s + r.hh_realizado, 0))}
+                      </td>
+                      <td colSpan={3} />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+        </div>
+
+        <div className="border-t border-gray-100 px-5 py-3 flex justify-end bg-gray-50 flex-shrink-0">
+          <button onClick={onClose}
+            className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -136,8 +362,7 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
-      onSuccess()
-      onClose()
+      onSuccess(); onClose()
     } finally { setSaving(false) }
   }
 
@@ -153,7 +378,6 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
         </div>
         <div className="p-5 flex flex-col gap-3 overflow-y-auto">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] px-3 py-2 rounded-md">{error}</div>}
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={iLbl}>Cliente Final</label>
@@ -170,7 +394,6 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
               </select>
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={iLbl}>Nº OS</label>
@@ -188,7 +411,6 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
               </select>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={iLbl}>Data Início</label>
@@ -199,14 +421,12 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
               <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className={iCls} />
             </div>
           </div>
-
           <div>
             <label className={iLbl}>Descrição / Escopo</label>
             <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={3}
               className="w-full border border-gray-300 rounded-md px-2.5 py-[5px] text-[11px] resize-none focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
           </div>
         </div>
-
         <div className="border-t border-gray-100 px-5 py-3 flex justify-end gap-2 bg-gray-50">
           <button onClick={onClose} className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">Cancelar</button>
           <button onClick={handleSave} disabled={saving}
@@ -223,8 +443,8 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
 
 function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c: ContratoHh) => void }) {
   const [disponivel, setDisponivel] = useState<ContratoHh[]>([])
-  const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
+  const [loading,    setLoading]    = useState(true)
+  const [query,      setQuery]      = useState('')
 
   useEffect(() => {
     fetch('/api/acordos/hh?disponivel=1')
@@ -240,13 +460,15 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
         (c.descricao ?? '').toLowerCase().includes(query.toLowerCase()) ||
         (c.num_os ?? '').toLowerCase().includes(query.toLowerCase()) ||
         (c.num_acordo ?? '').toLowerCase().includes(query.toLowerCase()) ||
-        (c.num_proposta ?? '').toLowerCase().includes(query.toLowerCase())
+        (c.num_proposta ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (c.cidade ?? '').toLowerCase().includes(query.toLowerCase())
       )
     : disponivel
 
+  const cols = ['Índice','Cliente','Cliente Final','Descrição / Evento','Nº Acordo','Nº Proposta','Cidade / UF','']
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="bg-[#1B5E20] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-[14px] font-bold">Novo Lançamento — Controle de HH</h2>
@@ -256,7 +478,7 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
         </div>
         <div className="p-4 border-b border-gray-100 flex-shrink-0">
           <input value={query} onChange={e => setQuery(e.target.value)}
-            placeholder="Pesquisar por CT, cliente, OS, Nº Acordo, Nº Proposta ou escopo..."
+            placeholder="Pesquisar por CT, cliente, OS, Nº Acordo, Nº Proposta, cidade ou escopo..."
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -270,8 +492,8 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
             <table className="w-full text-[11px]">
               <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['Índice','Cliente','Cliente Final','Descrição / Evento','Nº Acordo','Nº Proposta',''].map(h => (
-                    <th key={h} className="px-4 py-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  {cols.map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -280,15 +502,22 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
                   <tr key={c.id}
                     className={cn('border-b border-gray-50 hover:bg-green-50 cursor-pointer transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/40')}
                     onClick={() => onSelect(c)}>
-                    <td className="px-4 py-2.5 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
-                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap max-w-[140px] truncate">{c.cliente.nome}</td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap max-w-[130px] truncate">{c.cliente_final?.nome ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[220px]">
+                    <td className="px-3 py-2.5 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
+                    <td className="px-3 py-2.5 text-gray-700 max-w-[130px]">
+                      <span className="line-clamp-2 whitespace-normal">{c.cliente.nome}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-500 max-w-[110px]">
+                      <span className="line-clamp-2 whitespace-normal">{c.cliente_final?.nome ?? '—'}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-500 max-w-[200px]">
                       <span className="line-clamp-2 whitespace-normal" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
                     </td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{c.num_acordo ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{c.num_proposta ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{c.num_acordo ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{c.num_proposta ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">
+                      {[c.cidade, c.estado].filter(Boolean).join(' / ') || '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
                       <span className="text-green-primary text-[10px] font-semibold">Selecionar →</span>
                     </td>
                   </tr>
@@ -309,10 +538,10 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
 
 function useFilterOptions(contratos: ContratoHh[]) {
   return useMemo(() => ({
-    clientes:      Array.from(new Map(contratos.map(c => [c.cliente.id, c.cliente.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
-    clientesFinais:Array.from(new Map(contratos.filter(c=>c.cliente_final).map(c => [c.cliente_final!.id, c.cliente_final!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
+    clientes:       Array.from(new Map(contratos.map(c => [c.cliente.id, c.cliente.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
+    clientesFinais: Array.from(new Map(contratos.filter(c=>c.cliente_final).map(c => [c.cliente_final!.id, c.cliente_final!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
     oss:            Array.from(new Set(contratos.map(c => c.num_os).filter((v): v is string => v != null))).map(v => ({ value: v, label: v })),
-    responsaveis:  Array.from(new Map(contratos.filter(c=>c.responsavel).map(c=>[c.responsavel!.id, c.responsavel!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
+    responsaveis:   Array.from(new Map(contratos.filter(c=>c.responsavel).map(c=>[c.responsavel!.id, c.responsavel!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
     mercados:       Array.from(new Set(contratos.map(c => c.cliente.ramo_atuacao).filter((v): v is string => v != null && v !== ''))).map(v => ({ value: v, label: v })),
     escopos:        contratos.filter(c=>c.descricao).map(c => ({ value: c.descricao!, label: c.descricao! })),
   }), [contratos])
@@ -370,14 +599,15 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
   opts: ReturnType<typeof useFilterOptions>
   onRefresh: () => void
 }) {
-  const [modalLancamento, setModalLancamento] = useState<ContratoHh | null>(null)
-  const [modalEditar,     setModalEditar]     = useState<ContratoHh | null>(null)
-  const [novoModal,       setNovoModal]       = useState(false)
-  const [deleteId,        setDeleteId]        = useState<number | null>(null)
-  const [deleting,        setDeleting]        = useState(false)
-  const [filters,         setFilters]         = useState<FilterState>({})
-  const [clientes,        setClientes]        = useState<{ id: number; nome: string }[]>([])
-  const [responsaveis,    setResponsaveis]    = useState<{ id: number; nome: string }[]>([])
+  const [modalLancamento,  setModalLancamento]  = useState<ContratoHh | null>(null)
+  const [modalEditar,      setModalEditar]      = useState<ContratoHh | null>(null)
+  const [modalVisualizar,  setModalVisualizar]  = useState<ContratoHh | null>(null)
+  const [novoModal,        setNovoModal]        = useState(false)
+  const [deleteId,         setDeleteId]         = useState<number | null>(null)
+  const [deleting,         setDeleting]         = useState(false)
+  const [filters,          setFilters]          = useState<FilterState>({})
+  const [clientes,         setClientes]         = useState<{ id: number; nome: string }[]>([])
+  const [responsaveis,     setResponsaveis]     = useState<{ id: number; nome: string }[]>([])
 
   useEffect(() => {
     fetch('/api/clientes').then(r => r.json()).then(j => setClientes(j.data ?? []))
@@ -391,8 +621,7 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
     setDeleting(true)
     try {
       await fetch(`/api/acordos/hh/${id}`, { method: 'DELETE' })
-      setDeleteId(null)
-      onRefresh()
+      setDeleteId(null); onRefresh()
     } finally { setDeleting(false) }
   }
 
@@ -414,20 +643,20 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
             <tr className="bg-green-primary text-white">
               <th colSpan={5} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
               <th colSpan={5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
-              <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[72px]">Ações</th>
+              <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[100px]">Ações</th>
             </tr>
             <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[90px]">Índice</th>
-              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[110px]">OS</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[100px]">OS</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[130px]">Cliente</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[120px]">Cliente Final</th>
-              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 min-w-[200px]">Escopo</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 min-w-[210px]">Escopo</th>
               <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
               <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Plan.</th>
               <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Real.</th>
-              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Prev</th>
-              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Plan</th>
-              <th className="px-2 py-1.5 text-center font-semibold w-[72px]" />
+              <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Prev</th>
+              <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Plan</th>
+              <th className="px-2 py-1.5 text-center font-semibold w-[100px]" />
             </tr>
           </thead>
           <tbody>
@@ -444,12 +673,15 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
                 <tr key={c.id} style={{ background: bg }} className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors">
                   <td className="px-3 py-2 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
                   <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{c.num_os ?? '—'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap max-w-[130px] truncate" title={c.cliente.nome}>{c.cliente.nome}</td>
-                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap max-w-[120px] truncate" title={c.cliente_final?.nome}>{c.cliente_final?.nome ?? '—'}</td>
-                  <td className="px-3 py-2 min-w-[200px]">
+                  <td className="px-3 py-2 max-w-[130px]">
+                    <span className="line-clamp-2 whitespace-normal" title={c.cliente.nome}>{c.cliente.nome}</span>
+                  </td>
+                  <td className="px-3 py-2 text-gray-500 max-w-[120px]">
+                    <span className="line-clamp-2 whitespace-normal" title={c.cliente_final?.nome}>{c.cliente_final?.nome ?? '—'}</span>
+                  </td>
+                  <td className="px-3 py-2 min-w-[210px]">
                     <span className="line-clamp-2 whitespace-normal text-gray-600 leading-snug" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
                   </td>
-                  {/* HH cols */}
                   {[
                     { v: prev, color: '#185FA5' },
                     { v: plan, color: '#BA7517' },
@@ -460,13 +692,13 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
                     </td>
                   ))}
                   <td className="px-2 py-2 w-[90px]">
-                    {pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px] block text-right">—</span>}
+                    {pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
                   </td>
                   <td className="px-2 py-2 w-[90px]">
-                    {pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px] block text-right">—</span>}
+                    {pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
                   </td>
                   {/* Ações */}
-                  <td className="px-2 py-2 text-center w-[72px]">
+                  <td className="px-2 py-2 text-center w-[100px]">
                     {isDeleting ? (
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => handleDelete(c.id)} disabled={deleting}
@@ -476,13 +708,11 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
                         <button onClick={() => setDeleteId(null)} className="text-gray-400 hover:text-gray-600 text-[11px]">✕</button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => setModalEditar(c)} title="Editar dados cadastrais"
-                          className="text-gray-400 hover:text-green-primary transition-colors"><IconEdit /></button>
-                        <button onClick={() => setModalLancamento(c)} title="Lançamentos de HH"
-                          className="text-gray-400 hover:text-blue-600 transition-colors"><IconLancamento /></button>
-                        <button onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento"
-                          className="text-gray-400 hover:text-red-500 transition-colors"><IconDelete /></button>
+                      <div className="flex items-center justify-center gap-1">
+                        <ABtn onClick={() => setModalVisualizar(c)} title="Visualizar lançamentos" color="blue">👁</ABtn>
+                        <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">✎</ABtn>
+                        <ABtn onClick={() => setModalLancamento(c)} title="Lançar HH" color="gray">+</ABtn>
+                        <ABtn onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento" color="red">🗑</ABtn>
                       </div>
                     )}
                   </td>
@@ -516,6 +746,12 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
           responsaveis={responsaveis}
           onClose={() => setModalEditar(null)}
           onSuccess={() => { setModalEditar(null); onRefresh() }}
+        />
+      )}
+      {modalVisualizar && (
+        <VisualizarContratoHhModal
+          contrato={modalVisualizar}
+          onClose={() => setModalVisualizar(null)}
         />
       )}
     </>
@@ -556,7 +792,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const pctRealPrev = totPrev > 0 && totReal != null ? (totReal / totPrev) * 100 : null
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
 
-  const labels = mesData.map(m => m.label)
+  const labels  = mesData.map(m => m.label)
   const cumPrev = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, l + m.previsto] }, [])
   const cumPlan = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, l + m.planejado] }, [])
   const cumReal = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
