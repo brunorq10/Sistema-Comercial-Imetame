@@ -40,6 +40,7 @@ interface PropostaTecnicaObra {
   versao: number
   hh_total: number | null
   peso_montagem: string | null
+  nao_aplicavel?: boolean
   data_envio: string | null
 }
 
@@ -237,7 +238,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const [naoAplicavel, setNaoAplicavel] = useState(false)
   const [tecnicaId, setTecnicaId] = useState(() => {
     const latest = propostasTecnicas[0]
-    return latest?.data_envio ? String(latest.id) : ''
+    return latest ? String(latest.id) : ''
   })
   const [valorMontagem, setValorMontagem] = useState('')
   const [possuiTerceiros, setPossuiTerceiros] = useState(false)
@@ -351,30 +352,37 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
               <option value="">Selecione...</option>
               {propostasTecnicas.map((pt) => (
                 <option key={pt.id} value={pt.id}>
-                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}
+                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' — N/A' : ''}
                 </option>
               ))}
             </select>
           </Field>
           {tecnicaSel && (
-            <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mb-4 grid grid-cols-4 gap-3 text-[11px]">
-              <div>
-                <p className="text-[9px] text-gray-400 uppercase">Peso Total</p>
-                <p className="font-bold text-auto-value">
-                  {pesoTotalRef ? pesoTotalRef.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t' : '—'}
+            <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mb-4 text-[11px]">
+              {tecnicaSel.nao_aplicavel && (
+                <p className="text-amber-700 text-[10px] font-medium mb-2 pb-2 border-b border-amber-200">
+                  ⚠ Proposta técnica marcada como N/A — informe os valores comerciais normalmente.
                 </p>
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 uppercase">HH Total</p>
-                <p className="font-bold text-auto-value">{hhTotalRef?.toLocaleString('pt-BR') ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 uppercase">HH/ton</p>
-                <p className="font-bold text-auto-value">{hhPorTonRef ? hhPorTonRef + ' HH/t' : '—'}</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p>
-                <p className="font-bold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : '—'}</p>
+              )}
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <p className="text-[9px] text-gray-400 uppercase">Peso Total</p>
+                  <p className="font-bold text-auto-value">
+                    {pesoTotalRef ? pesoTotalRef.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t' : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 uppercase">HH Total</p>
+                  <p className="font-bold text-auto-value">{hhTotalRef?.toLocaleString('pt-BR') ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 uppercase">HH/ton</p>
+                  <p className="font-bold text-auto-value">{hhPorTonRef ? hhPorTonRef + ' HH/t' : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p>
+                  <p className="font-bold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : '—'}</p>
+                </div>
               </div>
             </div>
           )}
@@ -538,16 +546,17 @@ export function RegistrarObraModal({
         ))}
       </div>
 
-      {tab === 'tecnica' ? (
+      <div style={{ display: tab === 'tecnica' ? 'block' : 'none' }}>
         <TabTecnica solicitacaoId={solicitacaoId} onSuccess={onSuccess} onClose={onClose} />
-      ) : (
+      </div>
+      <div style={{ display: tab === 'comercial' ? 'block' : 'none' }}>
         <TabComercial
           solicitacaoId={solicitacaoId}
           propostasTecnicas={propostasTecnicas}
           onSuccess={onSuccess}
           onClose={onClose}
         />
-      )}
+      </div>
     </Modal>
   )
 }

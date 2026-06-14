@@ -19,6 +19,7 @@ interface PropostaTecnicaParada {
   dias_parada: number | null
   turno: string | null
   finais_de_semana: boolean | null
+  nao_aplicavel?: boolean
   data_envio: string | null
 }
 
@@ -205,7 +206,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const [naoAplicavel, setNaoAplicavel] = useState(false)
   const [tecnicaId, setTecnicaId] = useState(() => {
     const latest = propostasTecnicas[0]
-    return latest?.data_envio ? String(latest.id) : ''
+    return latest ? String(latest.id) : ''
   })
   const [valorTotal, setValorTotal] = useState('')
   const [valorTerceiros, setValorTerceiros] = useState('')
@@ -293,8 +294,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
               <option value="">Selecione...</option>
               {propostasTecnicas.map((pt) => (
                 <option key={pt.id} value={pt.id}>
-                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}
-                  {' — HH Total: '}{pt.hh_total ?? (pt.hh_direto !== null && pt.hh_indireto !== null ? pt.hh_direto + pt.hh_indireto : '—')}
+                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' — N/A' : ''}{!pt.nao_aplicavel ? (' — HH Total: ' + (pt.hh_total ?? (pt.hh_direto !== null && pt.hh_indireto !== null ? pt.hh_direto + pt.hh_indireto : '—'))) : ''}
                 </option>
               ))}
             </Select>
@@ -302,6 +302,11 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
           {tecnicaSel && (
             <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mt-2 mb-3">
+              {tecnicaSel.nao_aplicavel && (
+                <p className="text-amber-700 text-[10px] font-medium mb-2 pb-2 border-b border-amber-200">
+                  ⚠ Proposta técnica marcada como N/A — informe os valores comerciais normalmente.
+                </p>
+              )}
               <p className="text-[11px] font-bold text-green-dark mb-2">Dados da revisão técnica</p>
               <div className="grid grid-cols-4 gap-3">
                 <div>
@@ -443,20 +448,21 @@ export function RegistrarParadaModal({
         ))}
       </div>
 
-      {tab === 'tecnica' ? (
+      <div style={{ display: tab === 'tecnica' ? 'block' : 'none' }}>
         <TabTecnica
           solicitacaoId={solicitacaoId}
           onSuccess={onSuccess}
           onClose={onClose}
         />
-      ) : (
+      </div>
+      <div style={{ display: tab === 'comercial' ? 'block' : 'none' }}>
         <TabComercial
           solicitacaoId={solicitacaoId}
           propostasTecnicas={propostasTecnicas}
           onSuccess={onSuccess}
           onClose={onClose}
         />
-      )}
+      </div>
     </Modal>
   )
 }

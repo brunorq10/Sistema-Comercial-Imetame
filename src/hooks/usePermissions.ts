@@ -11,7 +11,7 @@ const GRUPOS = {
 }
 
 export function usePermissions() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const perfil = session?.user?.perfil
   const isAnalistaCritico = session?.user?.is_analista_critico ?? false
 
@@ -23,6 +23,7 @@ export function usePermissions() {
     userId: session?.user?.id ? Number(session.user.id) : null,
     userName: session?.user?.nome ?? '',
     isAnalistaCritico,
+    isLoading: status === 'loading',
 
     // Solicitações
     canCreateSolicitacao: is('ADM_COMERCIAL'),

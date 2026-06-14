@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { FaturamentoContratoTable } from '@/components/tables/FaturamentoContratoTable'
@@ -28,9 +28,17 @@ const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
 
 export default function FaturamentoPage() {
   const router = useRouter()
-  const { canLancarNF, canGerirAcordos, isAdmin } = usePermissions()
-  const canEditar = canGerirAcordos || isAdmin
-  const canCriar  = canGerirAcordos || isAdmin
+  const { canLancarNF: _canLancarNF, canGerirAcordos, isAdmin, isLoading: sessionLoading } = usePermissions()
+  // Keep last known permissions during session reload to prevent button flicker
+  const canEditarRef   = useRef(false)
+  const canLancarNFRef = useRef(false)
+  if (!sessionLoading) {
+    canEditarRef.current   = canGerirAcordos || isAdmin
+    canLancarNFRef.current = _canLancarNF
+  }
+  const canEditar   = canEditarRef.current
+  const canLancarNF = canLancarNFRef.current
+  const canCriar    = canEditar
 
   const anoAtual = new Date().getFullYear()
   const [aba, setAba] = useState<Aba>('controle')

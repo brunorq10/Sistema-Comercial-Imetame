@@ -44,6 +44,7 @@ export interface PainelItem {
     dias_parada: number | null
     turno: string | null
     finais_de_semana: boolean | null
+    nao_aplicavel?: boolean
     data_envio: string | null
   }[]
   propostas_comerciais: {
@@ -186,11 +187,11 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
             Enviar Proposta
           </Button>
         ) : isParadasType ? (
-          <Button size="sm" onClick={() => onRegistrarParada(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}>
+          <Button size="sm" onClick={() => onRegistrarParada(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
             Enviar Proposta
           </Button>
         ) : isObrasType ? (
-          <Button size="sm" onClick={() => onRegistrarObra(item, item.tecnica_enviada ? 'comercial' : 'tecnica')}>
+          <Button size="sm" onClick={() => onRegistrarObra(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
             Enviar Proposta
           </Button>
         ) : (
