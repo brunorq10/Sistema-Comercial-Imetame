@@ -23,6 +23,9 @@ const updateSchema = z.object({
   ano_referencia: z.number().int().min(2000).max(2100).optional(),
   status: z.enum(['A_FATURAR', 'FATURADO', 'PARCIAL', 'CANCELADO']).optional(),
   cliente_id: z.number().int().positive().optional(),
+  cliente_final_id: z.number().int().positive().optional().nullable(),
+  cidade: z.string().optional().nullable(),
+  estado: z.string().max(2).optional().nullable(),
   num_os: z.string().optional().nullable(),
   num_acordo: z.string().optional().nullable(),
   num_proposta: z.string().optional().nullable(),
@@ -73,8 +76,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const contrato = await prisma.contrato.findUnique({
     where: { id },
     include: {
-      cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
-      responsavel: { select: { id: true, nome: true } },
+      cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
+      cliente_final: { select: { id: true, nome: true } },
+      responsavel:   { select: { id: true, nome: true } },
       subindices: {
         orderBy: { ordem: 'asc' },
         include: { notas_fiscais: true },
@@ -141,8 +145,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id },
     data,
     include: {
-      cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
-      responsavel: { select: { id: true, nome: true } },
+      cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
+      cliente_final: { select: { id: true, nome: true } },
+      responsavel:   { select: { id: true, nome: true } },
       subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
     },
   })
@@ -228,6 +233,9 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, soli
     ano_referencia: c.ano_referencia,
     status: computeContratoStatus(c),
     cliente: c.cliente,
+    cliente_final: c.cliente_final ?? null,
+    cidade: c.cidade ?? null,
+    estado: c.estado ?? null,
     responsavel: c.responsavel,
     solicitacao: solicitacao ? serializeSolicitacao(solicitacao) : null,
     num_os: c.num_os,

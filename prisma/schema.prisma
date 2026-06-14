@@ -162,7 +162,8 @@ model Cliente {
   solicitacoes            Solicitacao[] @relation("SolicitacaoCliente")
   solicitacoes_como_final Solicitacao[] @relation("SolicitacaoClienteFinal")
   acordos                 Acordo[]
-  contratos               Contrato[]
+  contratos               Contrato[]    @relation("ContratoCliente")
+  contratos_como_final    Contrato[]    @relation("ContratoClienteFinal")
   filiais                 Filial[]
 
   @@map("clientes")
@@ -500,8 +501,11 @@ model Contrato {
   num_os         String?
   num_acordo     String?
   num_proposta   String?
-  solicitacao_id Int?
-  responsavel_id Int?
+  solicitacao_id    Int?
+  responsavel_id    Int?
+  cliente_final_id  Int?
+  cidade            String?
+  estado            String?          @db.VarChar(2)
   data_inicio    DateTime?
   data_fim       DateTime?
   descricao      String?
@@ -513,16 +517,18 @@ model Contrato {
   cancelled_at   DateTime?
   cancel_reason  String?
 
-  cliente      Cliente                @relation(fields: [cliente_id], references: [id])
-  responsavel  User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
-  criador      User                   @relation("ContratoCriador", fields: [created_by], references: [id])
-  solicitacao  Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
+  cliente        Cliente                @relation("ContratoCliente", fields: [cliente_id], references: [id])
+  cliente_final  Cliente?               @relation("ContratoClienteFinal", fields: [cliente_final_id], references: [id])
+  responsavel    User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
+  criador        User                   @relation("ContratoCriador", fields: [created_by], references: [id])
+  solicitacao    Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
   subindices     SubIndiceFaturamento[]
   historico      HistoricoContrato[]
   hh_lancamentos HhLancamento[]
   hh_realizados  HhRealizado[]
 
   @@index([cliente_id])
+  @@index([cliente_final_id])
   @@index([solicitacao_id])
   @@index([ano_referencia])
   @@index([status])

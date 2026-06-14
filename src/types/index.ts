@@ -417,6 +417,9 @@ export interface ContratoItem {
   ano_referencia: number
   status: StatusFaturamento
   cliente: { id: number; nome: string; ramo_atuacao?: string | null }
+  cliente_final: { id: number; nome: string } | null
+  cidade: string | null
+  estado: string | null
   responsavel: { id: number; nome: string } | null
   num_os: string | null
   num_acordo: string | null

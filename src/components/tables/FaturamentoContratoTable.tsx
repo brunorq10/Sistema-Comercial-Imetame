@@ -36,14 +36,20 @@ function fatColorClass(fat: number, prev: number): string {
 
 // ── Larguras ──────────────────────────────────────────────────────────────────
 const W = {
-  indice: 120, cliente: 125, descricao: 240,
+  indice: 120, cliente: 125, cliente_final: 130, cidade: 110, descricao: 240,
   classificacao: 110, ramo: 140, os: 110, anoRef: 70, acordo: 120, proposta: 110,
   dtInicio: 90, dtFim: 90, statusFat: 90,
   vlrTotal: 155, vlrFat: 150, saldo: 145,
   responsavel: 130, comentarios: 140,
   mes: 130, prevAnos: 130, acoes: 130,
 }
-const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
+const L = {
+  indice: 0,
+  cliente: W.indice,
+  cliente_final: W.indice + W.cliente,
+  cidade: W.indice + W.cliente + W.cliente_final,
+  descricao: W.indice + W.cliente + W.cliente_final + W.cidade,
+}
 const FROZEN_TOTAL = L.descricao + W.descricao
 
 const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acordo + W.proposta +
@@ -127,7 +133,7 @@ export function FaturamentoContratoTable({
     <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
       <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.descricao }} />
+          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.cliente_final }} /><col style={{ width: W.cidade }} /><col style={{ width: W.descricao }} />
           <col style={{ width: W.classificacao }} /><col style={{ width: W.ramo }} /><col style={{ width: W.os }} />
           <col style={{ width: W.anoRef }} /><col style={{ width: W.acordo }} /><col style={{ width: W.proposta }} />
           <col style={{ width: W.dtInicio }} /><col style={{ width: W.dtFim }} /><col style={{ width: W.statusFat }} />
@@ -146,6 +152,8 @@ export function FaturamentoContratoTable({
               <tr>
                 <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
                 <td className={tcF()} style={{ left: L.cliente }}></td>
+                <td className={tcF()} style={{ left: L.cliente_final }}></td>
+                <td className={tcF()} style={{ left: L.cidade }}></td>
                 <td className={tcF(true)} style={{ left: L.descricao }}></td>
                 {/* 9 cells: classificacao, ramo, os, anoRef, acordo, proposta, dtInicio, dtFim, statusFat */}
                 {Array.from({ length: 9 }, (_, i) => <td key={i} className={TC}></td>)}
@@ -190,6 +198,8 @@ export function FaturamentoContratoTable({
           <tr>
             <th className={thF()} style={{ left: L.indice }}>Índice</th>
             <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
+            <th className={thF()} style={{ left: L.cliente_final }}>Cliente Final</th>
+            <th className={thF()} style={{ left: L.cidade }}>Cidade/UF</th>
             <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
             <th className={thS}>Classificação</th><th className={thS}>Ramo</th>
             <th className={thS}>Nº OS</th><th className={thS}>Ano</th>
@@ -246,6 +256,12 @@ export function FaturamentoContratoTable({
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
                   <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: W.cliente - 16 }}>{contrato.cliente.nome}</span>
+                </td>
+                <td className={mF()} style={{ left: L.cliente_final, background: ctBg }}>
+                  <span className="text-gray-600 truncate block" style={{ maxWidth: W.cliente_final - 16 }}>{contrato.cliente_final?.nome ?? '—'}</span>
+                </td>
+                <td className={mF()} style={{ left: L.cidade, background: ctBg }}>
+                  <span className="text-gray-600 text-[10px]">{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ') || '—'}</span>
                 </td>
                 <td className={mF(true)} style={{ left: L.descricao, background: ctBg }}>
                   <span className="line-clamp-2 whitespace-normal" title={contrato.descricao ?? ''}>{contrato.descricao ?? '—'}</span>
@@ -352,6 +368,12 @@ export function FaturamentoContratoTable({
                     </td>
                     <td className={sF()} style={{ left: L.cliente, background: subBg }}>
                       <span className="text-gray-500 truncate block" style={{ maxWidth: W.cliente - 16 }}>{contrato.cliente.nome}</span>
+                    </td>
+                    <td className={sF()} style={{ left: L.cliente_final, background: subBg }}>
+                      <span className="text-gray-400 truncate block" style={{ maxWidth: W.cliente_final - 16 }}>{contrato.cliente_final?.nome ?? '—'}</span>
+                    </td>
+                    <td className={sF()} style={{ left: L.cidade, background: subBg }}>
+                      <span className="text-gray-400 text-[10px]">{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ') || '—'}</span>
                     </td>
                     <td className={sF(true)} style={{ left: L.descricao, background: subBg }}>
                       <span className="line-clamp-2 whitespace-normal" title={sub.descricao}>{sub.descricao}</span>

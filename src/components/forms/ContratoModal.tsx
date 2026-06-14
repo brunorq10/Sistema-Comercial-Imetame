@@ -72,6 +72,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [anoRef, setAnoRef] = useState(String(anoAtual))
   const [status, setStatus] = useState('A_FATURAR')
   const [clienteId, setClienteId] = useState('')
+  const [clienteFinalId, setClienteFinalId] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [estado, setEstado] = useState('')
   const [numAcordo, setNumAcordo] = useState('')
   const [numProposta, setNumProposta] = useState('')
   const [responsavelId, setResponsavelId] = useState('')
@@ -95,6 +98,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       setAnoRef(String(editando.ano_referencia))
       setStatus(editando.status)
       setClienteId(String(editando.cliente.id))
+      setClienteFinalId(editando.cliente_final ? String(editando.cliente_final.id) : '')
+      setCidade(editando.cidade ?? '')
+      setEstado(editando.estado ?? '')
       setNumAcordo(editando.num_acordo ?? '')
       setNumProposta(editando.num_proposta ?? '')
       setResponsavelId(editando.responsavel ? String(editando.responsavel.id) : '')
@@ -123,6 +129,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       }))
     } else {
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
+      setClienteFinalId(''); setCidade(''); setEstado('')
       setNumAcordo(''); setNumProposta(''); setResponsavelId('')
       setDataInicio(''); setDataFim(''); setDescricao(''); setClassificacao(''); setValorContrato('')
       setSubindices([emptySubindice(anoAtual)])
@@ -204,6 +211,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         ano_referencia: Number(anoRef),
         status,
         cliente_id: Number(clienteId),
+        cliente_final_id: clienteFinalId ? Number(clienteFinalId) : undefined,
+        cidade: cidade || undefined,
+        estado: estado || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
@@ -294,14 +304,33 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         </Field>
       </div>
 
-      <Field label="Cliente" className="mb-2.5">
-        <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-          <option value="">Selecione...</option>
-          {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </Select>
-      </Field>
-
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+        <Field label="Cliente *">
+          <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+            <option value="">Selecione...</option>
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Select>
+        </Field>
+        <Field label="Cliente Final">
+          <Select value={clienteFinalId} onChange={(e) => setClienteFinalId(e.target.value)}>
+            <option value="">Selecione...</option>
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </Select>
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+        <Field label="Cidade">
+          <Input placeholder="Ex: Volta Redonda" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+        </Field>
+        <Field label="UF">
+          <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
+            <option value="">Selecione...</option>
+            {['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(uf => (
+              <option key={uf} value={uf}>{uf}</option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Classificação">
           <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>
             <option value="">Selecione...</option>
@@ -310,14 +339,15 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             ))}
           </Select>
         </Field>
-        <Field label="Ramo de atuação (do cliente)">
-          <div className="border border-gray-200 bg-gray-50 rounded px-2.5 py-[5px] text-[12px] text-gray-500 min-h-[30px]">
-            {clienteId
-              ? (RAMO_ATUACAO_LABELS[(clientes.find((c) => String(c.id) === clienteId)?.ramo_atuacao ?? '') as keyof typeof RAMO_ATUACAO_LABELS] ?? '—')
-              : <span className="text-gray-300">Selecione o cliente</span>}
-          </div>
-        </Field>
       </div>
+
+      <Field label="Ramo de atuação (do cliente)" className="mb-2.5">
+        <div className="border border-gray-200 bg-gray-50 rounded px-2.5 py-[5px] text-[12px] text-gray-500 min-h-[30px]">
+          {clienteId
+            ? (RAMO_ATUACAO_LABELS[(clientes.find((c) => String(c.id) === clienteId)?.ramo_atuacao ?? '') as keyof typeof RAMO_ATUACAO_LABELS] ?? '—')
+            : <span className="text-gray-300">Selecione o cliente</span>}
+        </div>
+      </Field>
 
       <div className="grid grid-cols-3 gap-2.5 mb-2.5">
         <Field label="Nº Acordo">
