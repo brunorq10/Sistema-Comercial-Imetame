@@ -16,6 +16,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 interface ContratoHh {
   id: number; indice: string; num_os: string | null
+  num_acordo: string | null; num_proposta: string | null
   cidade: string | null; estado: string | null; classificacao: string | null
   cliente:       { id: number; nome: string; ramo_atuacao?: string | null }
   cliente_final: { id: number; nome: string } | null
@@ -34,8 +35,8 @@ interface ContratoHh {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const nowLabel = () => { const d = new Date(); return `${MESES[d.getMonth()]} ${d.getFullYear()}` }
+const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const nowLabel = () => { const d = new Date(); return `${MESES_LABELS[d.getMonth()]} ${d.getFullYear()}` }
 
 function gerarMeses(inicio: string, fim: string) {
   const r: { mes: number; ano: number }[] = []
@@ -45,14 +46,175 @@ function gerarMeses(inicio: string, fim: string) {
   return r
 }
 
+// Nova regra: <90% verde | 90-100% âmbar | >100% vermelho
+function pctColor(pct: number): string {
+  if (pct > 100) return '#C62828'
+  if (pct >= 90)  return '#BA7517'
+  return '#3B6D11'
+}
+
 function MiniBar({ pct }: { pct: number }) {
-  const color = pct >= 100 ? '#3B6D11' : pct >= 80 ? '#BA7517' : '#C62828'
+  const color = pctColor(pct)
   return (
     <div className="flex items-center gap-1.5">
-      <div className="w-9 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
-        <div className="h-full rounded-full" style={{ width: `${Math.min((pct / 150) * 100, 100)}%`, background: color }} />
+      <div className="w-8 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
+        <div className="h-full rounded-full" style={{ width: `${Math.min((pct / 120) * 100, 100)}%`, background: color }} />
       </div>
       <span className="text-[10px] font-bold" style={{ color }}>{pct.toFixed(0)}%</span>
+    </div>
+  )
+}
+
+// ─── Ícones de ação ───────────────────────────────────────────────────────────
+
+function IconEdit() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2L11 4L4.5 10.5L2 11L2.5 8.5L9 2Z"/>
+    </svg>
+  )
+}
+function IconLancamento() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+      <circle cx="6.5" cy="6.5" r="5"/>
+      <path d="M6.5 4.5V8.5M4.5 6.5H8.5"/>
+    </svg>
+  )
+}
+function IconDelete() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3.5H11M5 3.5V2.5H8V3.5M4.5 3.5V10.5H8.5V3.5"/>
+    </svg>
+  )
+}
+
+// ─── Modal Editar Contrato (dados cadastrais) ─────────────────────────────────
+
+interface EditarContratoHhModalProps {
+  contrato: ContratoHh
+  clientes: { id: number; nome: string }[]
+  responsaveis: { id: number; nome: string }[]
+  onClose: () => void
+  onSuccess: () => void
+}
+
+const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO']
+
+function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSuccess }: EditarContratoHhModalProps) {
+  const [clienteFinalId, setClienteFinalId] = useState(contrato.cliente_final ? String(contrato.cliente_final.id) : '')
+  const [cidade,         setCidade]         = useState(contrato.cidade ?? '')
+  const [estado,         setEstado]         = useState(contrato.estado ?? '')
+  const [responsavelId,  setResponsavelId]  = useState(contrato.responsavel ? String(contrato.responsavel.id) : '')
+  const [numOs,          setNumOs]          = useState(contrato.num_os ?? '')
+  const [dataInicio,     setDataInicio]     = useState(contrato.data_inicio?.split('T')[0] ?? '')
+  const [dataFim,        setDataFim]        = useState(contrato.data_fim?.split('T')[0] ?? '')
+  const [descricao,      setDescricao]      = useState(contrato.descricao ?? '')
+  const [saving,         setSaving]         = useState(false)
+  const [error,          setError]          = useState<string | null>(null)
+
+  const iLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider'
+  const iCls = 'w-full border border-gray-300 rounded-md px-2.5 py-[5px] text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30'
+
+  const handleSave = async () => {
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch(`/api/faturamento/contratos/${contrato.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_final_id: clienteFinalId ? Number(clienteFinalId) : null,
+          cidade: cidade || null,
+          estado: estado || null,
+          responsavel_id: responsavelId ? Number(responsavelId) : null,
+          num_os: numOs || null,
+          data_inicio: dataInicio || null,
+          data_fim: dataFim || null,
+          descricao: descricao || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
+      onSuccess()
+      onClose()
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
+        <div className="bg-[#1B5E20] text-white px-5 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-[14px] font-bold">Editar Contrato — {contrato.indice}</h2>
+            <p className="text-white/70 text-[11px] mt-0.5">Dados cadastrais do acompanhamento de HH</p>
+          </div>
+          <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
+        </div>
+        <div className="p-5 flex flex-col gap-3 overflow-y-auto">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] px-3 py-2 rounded-md">{error}</div>}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={iLbl}>Cliente Final</label>
+              <select value={clienteFinalId} onChange={e => setClienteFinalId(e.target.value)} className={iCls}>
+                <option value="">Nenhum</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={iLbl}>Responsável</label>
+              <select value={responsavelId} onChange={e => setResponsavelId(e.target.value)} className={iCls}>
+                <option value="">Nenhum</option>
+                {responsaveis.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={iLbl}>Nº OS</label>
+              <input value={numOs} onChange={e => setNumOs(e.target.value)} placeholder="Ex: OS-9001" className={iCls} />
+            </div>
+            <div>
+              <label className={iLbl}>Cidade</label>
+              <input value={cidade} onChange={e => setCidade(e.target.value)} placeholder="Ex: Volta Redonda" className={iCls} />
+            </div>
+            <div>
+              <label className={iLbl}>UF</label>
+              <select value={estado} onChange={e => setEstado(e.target.value)} className={iCls}>
+                <option value="">—</option>
+                {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={iLbl}>Data Início</label>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className={iCls} />
+            </div>
+            <div>
+              <label className={iLbl}>Data Fim</label>
+              <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className={iCls} />
+            </div>
+          </div>
+
+          <div>
+            <label className={iLbl}>Descrição / Escopo</label>
+            <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={3}
+              className="w-full border border-gray-300 rounded-md px-2.5 py-[5px] text-[11px] resize-none focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 px-5 py-3 flex justify-end gap-2 bg-gray-50">
+          <button onClick={onClose} className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">Cancelar</button>
+          <button onClick={handleSave} disabled={saving}
+            className="bg-green-primary text-white rounded-md px-4 py-1.5 text-[11px] font-semibold hover:bg-green-dark transition-colors disabled:opacity-60">
+            {saving ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -76,13 +238,15 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
         c.indice.toLowerCase().includes(query.toLowerCase()) ||
         c.cliente.nome.toLowerCase().includes(query.toLowerCase()) ||
         (c.descricao ?? '').toLowerCase().includes(query.toLowerCase()) ||
-        (c.num_os ?? '').toLowerCase().includes(query.toLowerCase())
+        (c.num_os ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (c.num_acordo ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (c.num_proposta ?? '').toLowerCase().includes(query.toLowerCase())
       )
     : disponivel
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
         <div className="bg-[#1B5E20] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-[14px] font-bold">Novo Lançamento — Controle de HH</h2>
@@ -91,7 +255,8 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
           <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
         </div>
         <div className="p-4 border-b border-gray-100 flex-shrink-0">
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Pesquisar por CT, cliente, OS ou escopo..."
+          <input value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Pesquisar por CT, cliente, OS, Nº Acordo, Nº Proposta ou escopo..."
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -105,20 +270,24 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
             <table className="w-full text-[11px]">
               <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['CT','Cliente','Cliente Final','Escopo'].map(h => (
-                    <th key={h} className="px-4 py-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  {['Índice','Cliente','Cliente Final','Descrição / Evento','Nº Acordo','Nº Proposta',''].map(h => (
+                    <th key={h} className="px-4 py-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
-                  <th className="px-4 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c, i) => (
-                  <tr key={c.id} className={cn('border-b border-gray-50 hover:bg-green-50 cursor-pointer transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/50')}
+                  <tr key={c.id}
+                    className={cn('border-b border-gray-50 hover:bg-green-50 cursor-pointer transition-colors', i % 2 === 0 ? '' : 'bg-gray-50/40')}
                     onClick={() => onSelect(c)}>
-                    <td className="px-4 py-2.5 font-bold text-green-dark whitespace-nowrap">{c.indice}{c.num_os ? ` / ${c.num_os}` : ''}</td>
-                    <td className="px-4 py-2.5 text-gray-700">{c.cliente.nome}</td>
-                    <td className="px-4 py-2.5 text-gray-500">{c.cliente_final?.nome ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-gray-500 max-w-[200px] truncate" title={c.descricao ?? ''}>{c.descricao ?? '—'}</td>
+                    <td className="px-4 py-2.5 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
+                    <td className="px-4 py-2.5 text-gray-700 whitespace-nowrap max-w-[140px] truncate">{c.cliente.nome}</td>
+                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap max-w-[130px] truncate">{c.cliente_final?.nome ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 max-w-[220px]">
+                      <span className="line-clamp-2 whitespace-normal" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{c.num_acordo ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">{c.num_proposta ?? '—'}</td>
                     <td className="px-4 py-2.5 text-right">
                       <span className="text-green-primary text-[10px] font-semibold">Selecionar →</span>
                     </td>
@@ -136,61 +305,84 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
   )
 }
 
-// ─── Visão Contratos ──────────────────────────────────────────────────────────
+// ─── Filtros + opções ─────────────────────────────────────────────────────────
 
 function useFilterOptions(contratos: ContratoHh[]) {
   return useMemo(() => ({
-    clientes:      Array.from(new Map(contratos.map(c => [c.cliente.id,       c.cliente.nome      ])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
+    clientes:      Array.from(new Map(contratos.map(c => [c.cliente.id, c.cliente.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
     clientesFinais:Array.from(new Map(contratos.filter(c=>c.cliente_final).map(c => [c.cliente_final!.id, c.cliente_final!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
     oss:            Array.from(new Set(contratos.map(c => c.num_os).filter((v): v is string => v != null))).map(v => ({ value: v, label: v })),
+    responsaveis:  Array.from(new Map(contratos.filter(c=>c.responsavel).map(c=>[c.responsavel!.id, c.responsavel!.nome])).entries()).map(([v,l]) => ({ value: String(v), label: l })),
     mercados:       Array.from(new Set(contratos.map(c => c.cliente.ramo_atuacao).filter((v): v is string => v != null && v !== ''))).map(v => ({ value: v, label: v })),
     escopos:        contratos.filter(c=>c.descricao).map(c => ({ value: c.descricao!, label: c.descricao! })),
   }), [contratos])
 }
 
+type FilterState = Record<string, string[]>
+
 function Filters({ opts, filters, onChange }: {
   opts: ReturnType<typeof useFilterOptions>
-  filters: Record<string, string[]>
+  filters: FilterState
   onChange: (k: string, v: string[]) => void
 }) {
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
+  const filterDefs = [
+    { key: 'clientes',       label: 'Cliente',       opts: opts.clientes },
+    { key: 'clientesFinais', label: 'Cliente Final', opts: opts.clientesFinais },
+    { key: 'oss',            label: 'OS',            opts: opts.oss },
+    { key: 'responsaveis',   label: 'Responsável',   opts: opts.responsaveis },
+    { key: 'mercados',       label: 'Mercado',       opts: opts.mercados },
+    { key: 'escopos',        label: 'Escopo',        opts: opts.escopos },
+  ]
+  const hasAny = Object.values(filters).some(v => v.length > 0)
   return (
     <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex gap-1.5 items-end mb-3 flex-wrap">
-      {[
-        { key: 'clientes',       label: 'Cliente',       opts: opts.clientes },
-        { key: 'clientesFinais', label: 'Cliente Final', opts: opts.clientesFinais },
-        { key: 'oss',            label: 'OS',            opts: opts.oss },
-        { key: 'mercados',       label: 'Mercado',       opts: opts.mercados },
-        { key: 'escopos',        label: 'Escopo',        opts: opts.escopos },
-      ].map(({ key, label, opts: o }) => (
-        <div key={key} className="flex-1 min-w-[120px]">
+      {filterDefs.map(({ key, label, opts: o }) => (
+        <div key={key} className="flex-1 min-w-[110px]">
           <label className={fLbl}>{label}</label>
           <SearchableMultiSelect values={filters[key] ?? []} onChange={v => onChange(key, v)} options={o} />
         </div>
       ))}
-      <button onClick={() => ['clientes','clientesFinais','oss','mercados','escopos'].forEach(k => onChange(k,[]))}
-        className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 flex-shrink-0">✕</button>
+      {hasAny && (
+        <button onClick={() => filterDefs.forEach(f => onChange(f.key, []))}
+          className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 flex-shrink-0">✕</button>
+      )}
     </div>
   )
 }
 
-function applyFilters(contratos: ContratoHh[], filters: Record<string, string[]>) {
+function applyFilters(contratos: ContratoHh[], filters: FilterState) {
   return contratos.filter(c => {
-    if (filters.clientes?.length       && !filters.clientes.includes(String(c.cliente.id)))           return false
-    if (filters.clientesFinais?.length && !filters.clientesFinais.includes(String(c.cliente_final?.id))) return false
-    if (filters.oss?.length            && !filters.oss.includes(c.num_os ?? ''))                       return false
-    if (filters.mercados?.length       && !filters.mercados.includes(c.cliente.ramo_atuacao ?? ''))    return false
-    if (filters.escopos?.length        && !filters.escopos.includes(c.descricao ?? ''))                return false
+    if (filters.clientes?.length       && !filters.clientes.includes(String(c.cliente.id)))                return false
+    if (filters.clientesFinais?.length && !filters.clientesFinais.includes(String(c.cliente_final?.id)))   return false
+    if (filters.oss?.length            && !filters.oss.includes(c.num_os ?? ''))                           return false
+    if (filters.responsaveis?.length   && !filters.responsaveis.includes(String(c.responsavel?.id)))       return false
+    if (filters.mercados?.length       && !filters.mercados.includes(c.cliente.ramo_atuacao ?? ''))        return false
+    if (filters.escopos?.length        && !filters.escopos.includes(c.descricao ?? ''))                    return false
     return true
   })
 }
 
-function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[]; opts: ReturnType<typeof useFilterOptions>; onRefresh: () => void }) {
-  const [modalItem,   setModalItem]   = useState<ContratoHh | null>(null)
-  const [novoModal,   setNovoModal]   = useState(false)
-  const [deleteId,    setDeleteId]    = useState<number | null>(null)
-  const [deleting,    setDeleting]    = useState(false)
-  const [filters,     setFilters]     = useState<Record<string, string[]>>({})
+// ─── Visão Contratos ──────────────────────────────────────────────────────────
+
+function VisaoContratos({ contratos, opts, onRefresh }: {
+  contratos: ContratoHh[]
+  opts: ReturnType<typeof useFilterOptions>
+  onRefresh: () => void
+}) {
+  const [modalLancamento, setModalLancamento] = useState<ContratoHh | null>(null)
+  const [modalEditar,     setModalEditar]     = useState<ContratoHh | null>(null)
+  const [novoModal,       setNovoModal]       = useState(false)
+  const [deleteId,        setDeleteId]        = useState<number | null>(null)
+  const [deleting,        setDeleting]        = useState(false)
+  const [filters,         setFilters]         = useState<FilterState>({})
+  const [clientes,        setClientes]        = useState<{ id: number; nome: string }[]>([])
+  const [responsaveis,    setResponsaveis]    = useState<{ id: number; nome: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/clientes').then(r => r.json()).then(j => setClientes(j.data ?? []))
+    fetch('/api/users/acordos').then(r => r.json()).then(j => setResponsaveis(j.data ?? []))
+  }, [])
 
   const filtered = applyFilters(contratos, filters)
   const setFilter = (k: string, v: string[]) => setFilters(p => ({ ...p, [k]: v }))
@@ -209,7 +401,7 @@ function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] text-gray-400">{filtered.length} contrato{filtered.length !== 1 ? 's' : ''}</span>
         <button onClick={() => setNovoModal(true)}
-          className="bg-green-primary text-white text-[11px] font-semibold px-3 py-1.5 rounded-md hover:bg-green-dark transition-colors flex items-center gap-1.5">
+          className="bg-green-primary text-white text-[11px] font-semibold px-3 py-1.5 rounded-md hover:bg-green-dark transition-colors">
           + Novo Lançamento
         </button>
       </div>
@@ -222,19 +414,20 @@ function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[
             <tr className="bg-green-primary text-white">
               <th colSpan={5} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
               <th colSpan={5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
-              <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[60px]">Ações</th>
+              <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[72px]">Ações</th>
             </tr>
             <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
-              {['Índice','OS','Cliente','Cliente Final','Escopo'].map(h => (
-                <th key={h} className={cn('px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap',
-                  h === 'Escopo' ? 'min-w-[180px]' : h.includes('Cliente') ? 'min-w-[120px]' : 'whitespace-nowrap')}>
-                  {h}
-                </th>
-              ))}
-              {['HH Prev.','HH Plan.','HH Real.','% R/P','% R/Pl'].map(h => (
-                <th key={h} className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[80px]">{h}</th>
-              ))}
-              <th className="px-2 py-1.5 text-center font-semibold w-[60px]" />
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[90px]">Índice</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[110px]">OS</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[130px]">Cliente</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[120px]">Cliente Final</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 min-w-[200px]">Escopo</th>
+              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
+              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Plan.</th>
+              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Real.</th>
+              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Prev</th>
+              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Plan</th>
+              <th className="px-2 py-1.5 text-center font-semibold w-[72px]" />
             </tr>
           </thead>
           <tbody>
@@ -246,41 +439,52 @@ function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[
               const { hh_previsto: prev, hh_planejado: plan, hh_realizado: real } = c
               const pctPrev = prev && prev > 0 && real != null ? (real / prev) * 100 : null
               const pctPlan = plan && plan > 0 && real != null ? (real / plan) * 100 : null
+              const isDeleting = deleteId === c.id
               return (
                 <tr key={c.id} style={{ background: bg }} className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors">
                   <td className="px-3 py-2 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
                   <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{c.num_os ?? '—'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap max-w-[140px] truncate" title={c.cliente.nome}>{c.cliente.nome}</td>
-                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap max-w-[130px] truncate" title={c.cliente_final?.nome}>{c.cliente_final?.nome ?? '—'}</td>
-                  <td className="px-3 py-2 text-gray-500 max-w-[200px] truncate" title={c.descricao ?? ''}>{c.descricao ?? '—'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap max-w-[130px] truncate" title={c.cliente.nome}>{c.cliente.nome}</td>
+                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap max-w-[120px] truncate" title={c.cliente_final?.nome}>{c.cliente_final?.nome ?? '—'}</td>
+                  <td className="px-3 py-2 min-w-[200px]">
+                    <span className="line-clamp-2 whitespace-normal text-gray-600 leading-snug" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
+                  </td>
+                  {/* HH cols */}
                   {[
                     { v: prev, color: '#185FA5' },
                     { v: plan, color: '#BA7517' },
                     { v: real, color: '#3B6D11' },
                   ].map(({ v, color }, i) => (
-                    <td key={i} className="px-2 py-2 text-right font-medium w-[80px]" style={{ color }}>
+                    <td key={i} className="px-2 py-2 text-right font-medium w-[72px]" style={{ color }}>
                       {v != null ? v.toLocaleString('pt-BR') : <span className="text-gray-300">—</span>}
                     </td>
                   ))}
-                  <td className="px-2 py-2 text-right w-[80px]">{pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px]">—</span>}</td>
-                  <td className="px-2 py-2 text-right w-[80px]">{pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px]">—</span>}</td>
-                  <td className="px-2 py-2 text-center w-[60px]">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => setModalItem(c)} title="Lançamentos"
-                        className="text-gray-400 hover:text-green-primary transition-colors text-[13px]">⊕</button>
-                      {deleteId === c.id ? (
-                        <div className="flex items-center gap-0.5">
-                          <button onClick={() => handleDelete(c.id)} disabled={deleting}
-                            className="text-red-600 hover:text-red-700 text-[10px] font-bold px-1 border border-red-300 rounded">
-                            {deleting ? '...' : 'OK'}
-                          </button>
-                          <button onClick={() => setDeleteId(null)} className="text-gray-400 hover:text-gray-600 text-[10px]">✕</button>
-                        </div>
-                      ) : (
+                  <td className="px-2 py-2 w-[90px]">
+                    {pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px] block text-right">—</span>}
+                  </td>
+                  <td className="px-2 py-2 w-[90px]">
+                    {pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px] block text-right">—</span>}
+                  </td>
+                  {/* Ações */}
+                  <td className="px-2 py-2 text-center w-[72px]">
+                    {isDeleting ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => handleDelete(c.id)} disabled={deleting}
+                          className="text-[9px] font-bold text-red-600 border border-red-300 rounded px-1.5 py-0.5 hover:bg-red-50 disabled:opacity-50">
+                          {deleting ? '...' : 'Confirmar'}
+                        </button>
+                        <button onClick={() => setDeleteId(null)} className="text-gray-400 hover:text-gray-600 text-[11px]">✕</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => setModalEditar(c)} title="Editar dados cadastrais"
+                          className="text-gray-400 hover:text-green-primary transition-colors"><IconEdit /></button>
+                        <button onClick={() => setModalLancamento(c)} title="Lançamentos de HH"
+                          className="text-gray-400 hover:text-blue-600 transition-colors"><IconLancamento /></button>
                         <button onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento"
-                          className="text-gray-400 hover:text-red-500 transition-colors text-[13px]">⊖</button>
-                      )}
-                    </div>
+                          className="text-gray-400 hover:text-red-500 transition-colors"><IconDelete /></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )
@@ -288,21 +492,30 @@ function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[
           </tbody>
         </table>
         <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
-          <p className="text-[9px] text-gray-400">ⓘ % acima de 100% indica consumo acima do previsto ou planejado. Verde ≥ 100%, âmbar &lt; 100%, vermelho &gt; 100%.</p>
+          <p className="text-[9px] text-gray-400">ⓘ Verde &lt;90%, Âmbar 90–100%, Vermelho &gt;100% do previsto ou planejado.</p>
         </div>
       </div>
 
       {novoModal && (
         <NovoLancamentoModal
           onClose={() => setNovoModal(false)}
-          onSelect={c => { setNovoModal(false); setModalItem(c) }}
+          onSelect={c => { setNovoModal(false); setModalLancamento(c) }}
         />
       )}
-      {modalItem && (
+      {modalLancamento && (
         <LancamentoHhModal
-          contrato={modalItem}
-          onClose={() => setModalItem(null)}
+          contrato={modalLancamento}
+          onClose={() => setModalLancamento(null)}
           onSuccess={() => { onRefresh() }}
+        />
+      )}
+      {modalEditar && (
+        <EditarContratoHhModal
+          contrato={modalEditar}
+          clientes={clientes}
+          responsaveis={responsaveis}
+          onClose={() => setModalEditar(null)}
+          onSuccess={() => { setModalEditar(null); onRefresh() }}
         />
       )}
     </>
@@ -312,9 +525,8 @@ function VisaoContratos({ contratos, opts, onRefresh }: { contratos: ContratoHh[
 // ─── Visão Resumo ─────────────────────────────────────────────────────────────
 
 function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: ReturnType<typeof useFilterOptions> }) {
-  const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [filters, setFilters] = useState<FilterState>({})
   const setFilter = (k: string, v: string[]) => setFilters(p => ({ ...p, [k]: v }))
-
   const selecionados = applyFilters(contratos, filters)
 
   const mesData = useMemo(() => {
@@ -323,7 +535,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
       if (!c.lancamento_atual) continue
       for (const { mes, ano } of gerarMeses(c.lancamento_atual.data_inicio.split('T')[0], c.lancamento_atual.data_fim.split('T')[0])) {
         const k = `${ano}-${String(mes).padStart(2,'0')}`
-        const ex = map.get(k) ?? { previsto: 0, planejado: 0, realizado: null, label: `${MESES[mes-1]}/${String(ano).slice(2)}` }
+        const ex = map.get(k) ?? { previsto: 0, planejado: 0, realizado: null, label: `${MESES_LABELS[mes-1]}/${String(ano).slice(2)}` }
         const mesL = c.lancamento_atual.meses.find(m => m.mes === mes && m.ano === ano)
         ex.previsto  += mesL?.hh_previsto  ?? 0
         ex.planejado += mesL?.hh_planejado ?? 0
@@ -354,7 +566,6 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
     plugins: { legend: { display: false }, tooltip: { mode: 'index' as const } },
     scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, grid: { color: '#f0f0f0' } } },
   }
-
   const makeSeries = (monthly: boolean) => ({
     labels,
     datasets: [
@@ -365,7 +576,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   })
 
   function PctBar({ pct, label }: { pct: number; label: string }) {
-    const color = pct >= 100 ? '#3B6D11' : pct >= 80 ? '#BA7517' : '#C62828'
+    const color = pctColor(pct)
     return (
       <div>
         <div className="flex justify-between items-center mb-1">
@@ -408,9 +619,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
               <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">HH Planejado Acumulado</p>
               <p className="text-[28px] font-bold text-[#BA7517] leading-tight">{totPlan > 0 ? totPlan.toLocaleString('pt-BR') : '—'}</p>
               <p className="text-[10px] text-gray-400 mt-1">distribuído nos meses</p>
-              {pctPlanPrev != null && (
-                <div className="border-t border-gray-100 mt-3 pt-3"><PctBar pct={pctPlanPrev} label="% do Previsto" /></div>
-              )}
+              {pctPlanPrev != null && <div className="border-t border-gray-100 mt-3 pt-3"><PctBar pct={pctPlanPrev} label="% do Previsto" /></div>}
             </div>
             <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col">
               <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">HH Realizado Acumulado</p>
