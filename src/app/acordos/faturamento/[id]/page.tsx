@@ -239,10 +239,10 @@ export default function ContratoVisaoGeralPage() {
         )}
       </section>
 
-      {/* Grid: info + eventos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Informações</h2>
+      {/* Informações */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informações</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2">
           <InfoRow label="Nº Acordo" value={contrato.num_acordo} />
           <InfoRow label="Nº Proposta" value={contrato.num_proposta} />
           <InfoRow label="Responsável" value={contrato.responsavel?.nome} />
@@ -251,24 +251,35 @@ export default function ContratoVisaoGeralPage() {
           <InfoRow label="Data início" value={formatDate(contrato.data_inicio)} />
           <InfoRow label="Data fim" value={formatDate(contrato.data_fim)} />
           <InfoRow label="Ano referência" value={String(contrato.ano_referencia)} />
-          {anualData.length > 1 && (
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-[10px] text-gray-400 uppercase mb-1">Previsão por ano</p>
+        </div>
+        {anualData.length > 1 && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase mb-1">Previsão por ano</p>
+            <div className="flex gap-6">
               {anualData.map((a) => (
-                <div key={a.ano} className="flex justify-between text-xs py-0.5">
+                <div key={a.ano} className="flex gap-2 text-xs">
                   <span className="text-gray-500">{a.ano}</span>
                   <span className="font-medium text-blue-600">{formatCurrency(a.previsto)}</span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg p-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">≡ Eventos de Medição</h2>
-          <EventosMedicaoTable contrato={contrato} totalContrato={totalContrato} />
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Eventos de Medição */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">≡ Eventos de Medição</h2>
+        <EventosMedicaoTable contrato={contrato} totalContrato={totalContrato} />
+      </div>
+
+      {/* Notas Fiscais */}
+      {contrato.subindices.some((s) => s.notas_fiscais.length > 0) && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">$ Notas Fiscais Lançadas</h2>
+          <NFsContratoTable contrato={contrato} />
+        </div>
+      )}
 
       {/* Histórico */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
@@ -315,18 +326,8 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
   const tdCls = 'px-2 py-2 text-[11px] whitespace-nowrap border-b border-gray-100'
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-hidden">
-      <table className="w-full border-collapse table-fixed">
-        <colgroup>
-          <col className="w-[80px]" />
-          <col />
-          <col className="w-[90px]" />
-          <col className="w-[90px]" />
-          <col className="w-[90px]" />
-          <col className="w-[90px]" />
-          <col className="w-[66px]" />
-          <col className="w-[76px]" />
-        </colgroup>
+    <div className="border border-gray-200 rounded-md overflow-x-auto">
+      <table className="w-full border-collapse" style={{ minWidth: 640 }}>
         <thead>
           <tr>
             <th className={thCls}>Índice</th>
@@ -379,6 +380,72 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
               {formatCurrency(contrato.subindices.reduce((a, s) => a + s.total_faturado, 0))}
             </td>
             <td colSpan={3} className="border-t border-gray-200" />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  )
+}
+
+function NFsContratoTable({ contrato }: { contrato: ContratoDetalhe }) {
+  const thCls = 'px-2 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
+  const tdCls = 'px-2 py-2 text-[11px] whitespace-nowrap border-b border-gray-100'
+
+  const allNFs = contrato.subindices.flatMap((s) =>
+    s.notas_fiscais.map((nf) => ({ ...nf, subIndice: s }))
+  ).sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
+
+  return (
+    <div className="border border-gray-200 rounded-md overflow-x-auto">
+      <table className="w-full border-collapse" style={{ minWidth: 700 }}>
+        <thead>
+          <tr>
+            <th className={thCls}>Sub-índice</th>
+            <th className={thCls}>Tipo</th>
+            <th className={thCls}>Nº Doc.</th>
+            <th className={thCls}>Dt. Emissão</th>
+            <th className={thCls}>Dt. Vencimento</th>
+            <th className={thCls}>Vlr. Total</th>
+            <th className={thCls}>%</th>
+            <th className={thCls}>Vlr. Atribuído</th>
+            <th className={thCls}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allNFs.map((nf) => (
+            <tr key={nf.id} className={nf.ativa ? 'hover:bg-gray-50' : 'bg-gray-50/50 opacity-60'}>
+              <td className={tdCls}>
+                <span className="text-[10px] font-mono bg-gray-100 text-gray-600 px-1 py-0.5 rounded">
+                  {contrato.indice}.{nf.subIndice.ordem}
+                </span>
+                <span className="ml-1.5 text-[11px] text-gray-500">{nf.subIndice.descricao}</span>
+              </td>
+              <td className={tdCls}>
+                <span className="text-[10px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">{(nf as any).tipo_documento ?? 'NF'}</span>
+              </td>
+              <td className={tdCls}>
+                <span className={`font-semibold ${nf.ativa ? 'text-green-dark' : 'line-through text-gray-400'}`}>{nf.numero_nf}</span>
+              </td>
+              <td className={tdCls}>{formatDate(nf.data_emissao)}</td>
+              <td className={tdCls}>{formatDate(nf.data_vencimento)}</td>
+              <td className={tdCls}><span className="text-gray-700">{formatCurrency(nf.valor_total_nf)}</span></td>
+              <td className={tdCls}>{Number(nf.percentual).toFixed(1)}%</td>
+              <td className={tdCls}><span className={nf.ativa ? 'font-semibold text-auto-value' : 'text-gray-400'}>{formatCurrency(nf.valor_atribuido)}</span></td>
+              <td className={tdCls}>
+                {nf.ativa
+                  ? <span className="text-[10px] font-semibold text-green-700">Ativa</span>
+                  : <span className="text-[10px] text-gray-400">Inativa</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-gray-50">
+            <td colSpan={7} className="px-2 py-2 text-[11px] font-bold text-gray-600 border-t border-gray-200">TOTAL FATURADO (ativas)</td>
+            <td className="px-2 py-2 text-[11px] font-bold text-green-700 border-t border-gray-200">
+              {formatCurrency(allNFs.filter((nf) => nf.ativa).reduce((a, nf) => a + nf.valor_atribuido, 0))}
+            </td>
+            <td className="border-t border-gray-200" />
           </tr>
         </tfoot>
       </table>

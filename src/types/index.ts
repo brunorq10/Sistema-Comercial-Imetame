@@ -381,6 +381,7 @@ export interface NFContratoItem {
   data_vencimento: string
   ativa: boolean
   motivo_inativacao: string | null
+  tipo_documento?: string | null
 }
 
 export interface SubIndiceItem {
@@ -431,6 +432,7 @@ export interface ContratoItem {
   valor_contrato: number | null
   cancelled_at: string | null
   prev_anos_seguintes: number
+  rascunho?: boolean
   subindices: SubIndiceItem[]
 }
 

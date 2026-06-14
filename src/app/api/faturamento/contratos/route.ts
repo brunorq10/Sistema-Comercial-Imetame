@@ -39,7 +39,8 @@ const schema = z.object({
   descricao: z.string().optional(),
   classificacao: z.enum(['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES']).optional().nullable(),
   valor_contrato: z.number().nonnegative().optional().nullable(),
-  subindices: z.array(subindiceSchema).min(1),
+  rascunho: z.boolean().optional().default(false),
+  subindices: z.array(subindiceSchema).min(0),
 })
 
 export async function GET(req: NextRequest) {
@@ -132,14 +133,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  // RN-CF-03: soma dos sub-índices deve coincidir com valor_contrato (quando informado)
-  if (parsed.data.valor_contrato != null) {
+  // Requer ao menos 1 sub-índice quando não for rascunho
+  if (!parsed.data.rascunho && parsed.data.subindices.length === 0) {
+    return NextResponse.json({ data: null, error: 'Adicione ao menos um evento de medição' }, { status: 400 })
+  }
+
+  // RN-CF-03: soma dos sub-índices deve coincidir com valor_contrato (apenas aviso — não bloqueia)
+  let sumWarning: string | null = null
+  if (!parsed.data.rascunho && parsed.data.valor_contrato != null && parsed.data.subindices.length > 0) {
     const soma = parsed.data.subindices.reduce((acc, s) => acc + s.valor_total, 0)
     if (Math.abs(soma - parsed.data.valor_contrato) > 0.01) {
-      return NextResponse.json({
-        data: null,
-        error: `Soma dos sub-índices (R$ ${soma.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) não corresponde ao Valor do Contrato (R$ ${parsed.data.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
-      }, { status: 400 })
+      sumWarning = `Soma dos sub-índices (R$ ${soma.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) difere do Valor do Contrato (R$ ${parsed.data.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`
     }
   }
 
@@ -165,6 +169,7 @@ export async function POST(req: NextRequest) {
       descricao: parsed.data.descricao ?? null,
       classificacao: parsed.data.classificacao ?? null,
       valor_contrato: parsed.data.valor_contrato ?? null,
+      rascunho: parsed.data.rascunho ?? false,
       created_by: Number(session.user.id),
       subindices: {
         create: parsed.data.subindices.map((s, i) => ({
@@ -190,7 +195,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ data: serializeContrato(contrato, undefined, {}), error: null }, { status: 201 })
+  return NextResponse.json({ data: serializeContrato(contrato, undefined, {}), warning: sumWarning, error: null }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/faturamento/contratos]', err)
     return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
@@ -257,6 +262,7 @@ function serializeContrato(c: any, anoFiltro?: number, nfTotalMap: Record<string
     valor_contrato: c.valor_contrato ? Number(c.valor_contrato) : null,
     cancelled_at: c.cancelled_at?.toISOString() ?? null,
     prev_anos_seguintes: prevProxAnos,
+    rascunho: c.rascunho ?? false,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     subindices: subsFiltrados.map((s: any) => serializeSubindice(s, c.subindices, anoFiltro, nfTotalMap)),
   }
@@ -320,6 +326,7 @@ function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number, n
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa,
       motivo_inativacao: nf.motivo_inativacao,
+      tipo_documento: nf.tipo_documento ?? 'NF',
     })) ?? [],
   }
 }

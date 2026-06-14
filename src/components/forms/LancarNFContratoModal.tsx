@@ -19,6 +19,7 @@ type Aba = 'lancar' | 'historico'
 
 export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice }: Props) {
   const [aba, setAba] = useState<Aba>('lancar')
+  const [tipoDocumento, setTipoDocumento] = useState<'NF' | 'Recibo' | 'Outros'>('NF')
   const [numeroNF, setNumeroNF] = useState('')
   const [dataEmissao, setDataEmissao] = useState('')
   const [dataVencimento, setDataVencimento] = useState('')
@@ -36,6 +37,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   useEffect(() => {
     if (open) {
       setAba('lancar')
+      setTipoDocumento('NF')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
       setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null)
     }
@@ -75,6 +77,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           percentual: Number(percentual),
           data_emissao: dataEmissao,
           data_vencimento: dataVencimento,
+          tipo_documento: tipoDocumento,
         }),
       })
       const json = await res.json()
@@ -179,7 +182,26 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
             </div>
           </div>
 
-          <ModalSection>Dados da nota fiscal</ModalSection>
+          <ModalSection>Dados do documento fiscal</ModalSection>
+
+          <div className="mb-3">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo de documento *</p>
+            <div className="flex gap-3">
+              {(['NF', 'Recibo', 'Outros'] as const).map((tipo) => (
+                <label key={tipo} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipo_documento"
+                    value={tipo}
+                    checked={tipoDocumento === tipo}
+                    onChange={() => setTipoDocumento(tipo)}
+                    className="accent-green-primary"
+                  />
+                  <span className="text-[12px] font-medium text-gray-700">{tipo}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Número da NF *" className="col-span-2">
@@ -302,10 +324,11 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className={thCls}>Nº NF</th>
+            <th className={thCls}>Tipo</th>
+            <th className={thCls}>Nº Doc.</th>
             <th className={thCls}>Dt. Emissão</th>
             <th className={thCls}>Dt. Vencimento</th>
-            <th className={thCls}>Vlr. Total NF</th>
+            <th className={thCls}>Vlr. Total</th>
             <th className={thCls}>% Item</th>
             <th className={thCls}>% Lançado</th>
             <th className={thCls}>Vlr. Atribuído</th>
@@ -315,6 +338,9 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
         <tbody>
           {nfs.map((nf) => (
             <tr key={nf.id} className={inativa ? 'bg-gray-50/50' : 'hover:bg-gray-50'}>
+              <td className={tdCls}>
+                <span className="text-[10px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">{nf.tipo_documento ?? 'NF'}</span>
+              </td>
               <td className={tdCls}>
                 <span className={`font-semibold ${inativa ? 'line-through text-gray-400' : 'text-green-dark'}`}>
                   {nf.numero_nf}

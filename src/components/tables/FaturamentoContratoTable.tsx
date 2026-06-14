@@ -93,7 +93,7 @@ export function FaturamentoContratoTable({
   onExcluirSubindice, onHistoricoSubindice, onHistoricoContrato, onComentario,
   canEditar, canLancarNF,
 }: Props) {
-  const [expandidos, setExpandidos] = useState<Set<number>>(() => new Set(contratos.map((c) => c.id)))
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
@@ -106,8 +106,13 @@ export function FaturamentoContratoTable({
   if (contratos.length === 0)
     return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</p>
 
-  const rowBgContract = (key: string) =>
-    selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
+  const rowBgContract = (key: string, mismatch?: boolean, draft?: boolean) => {
+    if (selectedKey === key) return '#E0E0E0'
+    if (hoveredKey === key) return draft ? '#E0E0E0' : mismatch ? '#FFCDD2' : '#C8E6C9'
+    if (draft) return '#F5F5F5'
+    if (mismatch) return '#FFF0F0'
+    return '#EAF4EA'
+  }
   const rowBgSub = (key: string) =>
     selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
@@ -221,7 +226,10 @@ export function FaturamentoContratoTable({
             const expanded = expandidos.has(contrato.id)
             const anoRef   = anoFiltro ?? contrato.ano_referencia
             const ctKey    = `ct-${contrato.id}`
-            const ctBg     = rowBgContract(ctKey)
+            const sumMismatch = !anoFiltro && contrato.valor_contrato != null &&
+              Math.abs(contrato.subindices.reduce((a, s) => a + s.valor_total, 0) - contrato.valor_contrato) > 0.01
+            const isDraft = contrato.rascunho === true
+            const ctBg     = rowBgContract(ctKey, sumMismatch, isDraft)
 
             // Valor Total Contrato (filtrado por ano ou total do contrato)
             const ctVlrTotal = anoFiltro
@@ -252,6 +260,8 @@ export function FaturamentoContratoTable({
                     className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary">
                     <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
                     {contrato.indice}
+                    {isDraft && <span className="text-[8px] text-gray-400 font-normal ml-1">rascunho</span>}
+                    {sumMismatch && !isDraft && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do contrato">⚠</span>}
                   </button>
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
@@ -446,7 +456,7 @@ export function FaturamentoContratoTable({
                         {canLancarNF && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onLancarNF(contrato, sub)}
                             className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
-                            title="Lançar NF">NF</button>
+                            title="Lançar NF">$</button>
                         )}
                         {canEditar && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onEditarSubindice(contrato, sub)}

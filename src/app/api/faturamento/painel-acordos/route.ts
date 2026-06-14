@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ indice: 'asc' }],
       include: {
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
+        cliente_final: { select: { id: true, nome: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
           orderBy: { ordem: 'asc' },
@@ -122,6 +123,9 @@ export async function GET(req: NextRequest) {
         ano_referencia: c.ano_referencia,
         status: c.status,
         cliente: c.cliente,
+        cliente_final: (c as any).cliente_final ?? null,
+        cidade: c.cidade ?? null,
+        estado: c.estado ?? null,
         responsavel: c.responsavel,
         num_os: c.num_os,
         num_acordo: c.num_acordo,

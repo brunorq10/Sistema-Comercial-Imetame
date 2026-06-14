@@ -338,12 +338,42 @@ export default function FaturamentoPage() {
     const linhas: (string | number | null)[][] = [cabecalho]
 
     for (const ct of contratos) {
+      const anoNum = anoFiltroNum ?? ct.ano_referencia
+      // Linha macro (contrato)
+      const ctVlrFat = ct.subindices.reduce((a, s) =>
+        a + s.notas_fiscais.filter((nf) => nf.ativa).reduce((b, nf) => b + nf.valor_atribuido, 0), 0)
+      const ctMesesRow: (number | null)[] = []
+      for (const mk of mesKeys) {
+        const prev = ct.subindices.reduce((a, s) => a + (s[mk] ?? 0), 0)
+        const mesIdx = mesKeys.indexOf(mk)
+        const fat = ct.subindices.reduce((a, s) =>
+          a + s.notas_fiscais.filter((nf) => nf.ativa)
+            .filter((nf) => { const d = new Date(nf.data_emissao); return d.getFullYear() === anoNum && d.getMonth() === mesIdx })
+            .reduce((b, nf) => b + nf.valor_atribuido, 0), 0)
+        ctMesesRow.push(prev || null)
+        ctMesesRow.push(fat || null)
+      }
+      linhas.push([
+        ct.indice,
+        ct.cliente.nome,
+        ct.descricao ?? '',
+        ct.responsavel?.nome ?? '',
+        ct.status,
+        ct.ano_referencia,
+        ct.num_os ?? '',
+        ct.num_acordo ?? '',
+        ct.num_proposta ?? '',
+        ct.valor_contrato ?? '',
+        ct.valor_contrato ?? '',
+        ctVlrFat,
+        (ct.valor_contrato ?? 0) - ctVlrFat,
+        ...ctMesesRow,
+      ])
+
       for (const sub of ct.subindices) {
-        const anoNum = anoFiltroNum ?? ct.ano_referencia
         const mesesRow: (number | null)[] = []
         for (const mk of mesKeys) {
           mesesRow.push(sub[mk] ?? null)
-          // Faturado do mês: soma das NFs ativas emitidas nesse mês
           const mesIdx = mesKeys.indexOf(mk)
           const fat = sub.notas_fiscais
             .filter((nf) => nf.ativa)
@@ -352,13 +382,13 @@ export default function FaturamentoPage() {
           mesesRow.push(fat || null)
         }
         linhas.push([
-          ct.indice,
+          `  ${ct.indice}.${sub.ordem}`,
           ct.cliente.nome,
           sub.descricao,
           ct.responsavel?.nome ?? '',
-          ct.status,
+          sub.status_faturamento,
           ct.ano_referencia,
-          ct.num_os ?? '',
+          sub.num_os ?? '',
           ct.num_acordo ?? '',
           ct.num_proposta ?? '',
           ct.valor_contrato ?? '',

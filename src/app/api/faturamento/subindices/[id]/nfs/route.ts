@@ -9,6 +9,7 @@ const schema = z.object({
   percentual: z.number().min(0.01).max(100),
   data_emissao: z.string(),
   data_vencimento: z.string(),
+  tipo_documento: z.string().optional().default('NF'),
 })
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       valor_atribuido,
       data_emissao: new Date(parsed.data.data_emissao),
       data_vencimento: new Date(parsed.data.data_vencimento),
+      tipo_documento: parsed.data.tipo_documento ?? 'NF',
       created_by: Number(session.user.id),
     },
   })
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       data_emissao: nf.data_emissao.toISOString(),
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa,
+      tipo_documento: nf.tipo_documento ?? 'NF',
     },
     warning,
     error: null,

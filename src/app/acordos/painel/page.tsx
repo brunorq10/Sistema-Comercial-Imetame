@@ -5,23 +5,35 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
-import { cn, formatCurrency } from '@/lib/utils'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
+import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 type MesKey = typeof MESES[number]
 
-// ── Column widths ─────────────────────────────────────────────────────────────
+// ── Column widths (mirrors FaturamentoContratoTable) ─────────────────────────
 const W = {
-  indice: 110, cliente: 120,
-  os: 100, ano: 65, acordo: 115,
-  responsavel: 130, status: 90,
-  acoes: 110,
+  indice: 120, cliente: 125, cliente_final: 130, cidade: 110, descricao: 240,
+  classificacao: 110, ramo: 140, os: 110, anoRef: 70, acordo: 120, proposta: 110,
+  dtInicio: 90, dtFim: 90, statusFat: 90,
+  vlrTotal: 155, vlrFat: 150, saldo: 145,
+  responsavel: 130, comentarios: 140,
+  mes: 130, prevAnos: 130, acoes: 120,
 }
-const L = { indice: 0, cliente: W.indice, descricao: W.indice + W.cliente }
-// descricao é flexível — não tem width fixo, ocupa o espaço restante
-const MIN_W = W.indice + W.cliente + 200 + W.os + W.ano + W.acordo + W.responsavel + W.status + W.acoes
+const L = {
+  indice: 0,
+  cliente: W.indice,
+  cliente_final: W.indice + W.cliente,
+  cidade: W.indice + W.cliente + W.cliente_final,
+  descricao: W.indice + W.cliente + W.cliente_final + W.cidade,
+}
+const FROZEN_TOTAL = L.descricao + W.descricao
+const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acordo + W.proposta +
+              W.dtInicio + W.dtFim + W.statusFat + W.vlrTotal + W.vlrFat + W.saldo +
+              W.responsavel + W.comentarios + 12 * W.mes + W.prevAnos + W.acoes
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubIndiceComAlteracao extends SubIndiceItem {
@@ -41,7 +53,11 @@ interface ContratoComAlteracoes {
   data_inicio: string | null
   data_fim: string | null
   prev_anos_seguintes: number
-  cliente: { id: number; nome: string }
+  classificacao: string | null
+  cidade: string | null
+  estado: string | null
+  cliente: { id: number; nome: string; ramo_atuacao?: string | null }
+  cliente_final: { id: number; nome: string } | null
   responsavel: { id: number; nome: string } | null
   subindices: SubIndiceComAlteracao[]
 }
@@ -100,6 +116,9 @@ export default function MeuPainelAcordosPage() {
 
   const [modalEditar, setModalEditar] = useState<{
     subindice: SubIndiceItem; indiceLabel: string; anoRef: number
+  } | null>(null)
+  const [modalHistorico, setModalHistorico] = useState<{
+    tipo: 'contrato' | 'subindice'; id: number; titulo: string
   } | null>(null)
 
   useEffect(() => {
@@ -296,6 +315,7 @@ export default function MeuPainelAcordosPage() {
             onToggle={toggleExpand}
             canEdit={isGestao || responsavelId === String(userId)}
             onEditar={(sub, label, anoRef) => setModalEditar({ subindice: sub, indiceLabel: label, anoRef })}
+            onHistorico={(tipo, id, titulo) => setModalHistorico({ tipo, id, titulo })}
           />
         )}
       </div>
@@ -314,8 +334,34 @@ export default function MeuPainelAcordosPage() {
           useApprovalFlow={!isGestao && responsavelId === String(userId)}
         />
       )}
+      {modalHistorico && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setModalHistorico(null)}
+          tipo={modalHistorico.tipo}
+          itemId={modalHistorico.id}
+          titulo={modalHistorico.titulo}
+        />
+      )}
     </div>
   )
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function nfFaturadoMes(notas: SubIndiceItem['notas_fiscais'], mesIdx: number, ano: number): number {
+  return notas
+    .filter((nf) => nf.ativa)
+    .filter((nf) => { const d = new Date(nf.data_emissao); return d.getFullYear() === ano && d.getMonth() === mesIdx })
+    .reduce((acc, nf) => acc + nf.valor_atribuido, 0)
+}
+function nfFaturadoAnual(notas: SubIndiceItem['notas_fiscais']): number {
+  return notas.filter((nf) => nf.ativa).reduce((acc, nf) => acc + nf.valor_atribuido, 0)
+}
+function fatColorClass(fat: number, prev: number) { return fat < prev ? 'text-red-400' : 'text-green-500' }
+function SaldoCell({ saldo, className }: { saldo: number; className?: string }) {
+  if (saldo > 0.01) return <span className={cn('text-orange-600 font-bold', className)}>{formatCurrency(saldo)}</span>
+  if (saldo < -0.01) return <span className={cn('text-blue-600 font-bold', className)}>{formatCurrency(Math.abs(saldo))} acima</span>
+  return <span className={cn('text-green-600 font-bold', className)}>{formatCurrency(0)}</span>
 }
 
 // ── Tabela ────────────────────────────────────────────────────────────────────
@@ -326,42 +372,101 @@ interface PainelTableProps {
   onToggle: (id: number) => void
   canEdit: boolean
   onEditar: (sub: SubIndiceItem, indiceLabel: string, anoRef: number) => void
+  onHistorico: (tipo: 'contrato' | 'subindice', id: number, titulo: string) => void
 }
 
-function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: PainelTableProps) {
+function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHistorico }: PainelTableProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
-  // top-0 — sem linha TOTAIS acima
-  const TH  = 'sticky top-0 bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark z-[10]'
-  const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
+  const TH   = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  const thF  = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
+  const thS  = cn(TH, 'z-[10]')
+  const thP  = cn(TH, 'bg-[#6A1B9A] z-[10]')
 
   const rowBgContract = (key: string) =>
     selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
   const rowBgSub = (key: string) =>
     selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
+  // ── Totalizadores ──────────────────────────────────────────────────────────
+  const totVlrTotal = contratos.reduce((a, c) => a + (c.valor_contrato ?? 0), 0)
+  const totVlrFat   = contratos.reduce((a, c) =>
+    a + c.subindices.reduce((b, s) => b + nfFaturadoAnual(s.notas_fiscais), 0), 0)
+  const totMeses = MESES.map((m, mi) => ({
+    prev: contratos.reduce((a, c) => a + c.subindices.reduce((b, s) => b + (s[m] ?? 0), 0), 0),
+    fat:  contratos.reduce((a, c) => a + c.subindices.reduce((b, s) =>
+      b + nfFaturadoMes(s.notas_fiscais, mi, getSubAno(s.data_inicio, c.ano_referencia)), 0), 0),
+  }))
+
   return (
     <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
-      <table className="border-collapse text-[11px]" style={{ width: '100%', minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
+      <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
         <colgroup>
-          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col />{/* descricao — flexível */}
-          <col style={{ width: W.os }} /><col style={{ width: W.ano }} /><col style={{ width: W.acordo }} />
-          <col style={{ width: W.responsavel }} /><col style={{ width: W.status }} />
-          <col style={{ width: W.acoes }} />
+          <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.cliente_final }} /><col style={{ width: W.cidade }} /><col style={{ width: W.descricao }} />
+          <col style={{ width: W.classificacao }} /><col style={{ width: W.ramo }} /><col style={{ width: W.os }} />
+          <col style={{ width: W.anoRef }} /><col style={{ width: W.acordo }} /><col style={{ width: W.proposta }} />
+          <col style={{ width: W.dtInicio }} /><col style={{ width: W.dtFim }} /><col style={{ width: W.statusFat }} />
+          <col style={{ width: W.vlrTotal }} /><col style={{ width: W.vlrFat }} /><col style={{ width: W.saldo }} />
+          <col style={{ width: W.responsavel }} /><col style={{ width: W.comentarios }} />
+          {MESES.map((m) => <col key={m} style={{ width: W.mes }} />)}
+          <col style={{ width: W.prevAnos }} /><col style={{ width: W.acoes }} />
         </colgroup>
 
         <thead>
+          {/* ── Linha totalizadora ── */}
+          {(() => {
+            const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
+            const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
+            return (
+              <tr>
+                <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
+                <td className={tcF()} style={{ left: L.cliente }}></td>
+                <td className={tcF()} style={{ left: L.cliente_final }}></td>
+                <td className={tcF()} style={{ left: L.cidade }}></td>
+                <td className={tcF(true)} style={{ left: L.descricao }}></td>
+                {Array.from({ length: 9 }, (_, i) => <td key={i} className={TC}></td>)}
+                <td className={TC}><span className="font-bold text-[#1565C0]">{formatCurrency(totVlrTotal)}</span></td>
+                <td className={TC}><span className="font-bold text-green-700">{formatCurrency(totVlrFat)}</span></td>
+                <td className={TC}><SaldoCell saldo={totVlrTotal - totVlrFat} /></td>
+                <td className={TC}></td><td className={TC}></td>
+                {totMeses.map(({ prev, fat }, mi) => (
+                  <td key={mi} className={TC}>
+                    {prev === 0 && fat === 0 ? <span className="text-gray-400">—</span> : (
+                      <div className="flex flex-col gap-0.5">
+                        {prev > 0 && <span className="text-[10px] text-[#1565C0] font-semibold">P {formatCurrency(prev)}</span>}
+                        {fat  > 0 && <span className={cn('text-[10px] font-semibold', fatColorClass(fat, prev))}>F {formatCurrency(fat)}</span>}
+                      </div>
+                    )}
+                  </td>
+                ))}
+                <td className={TC}>
+                  {(() => { const t = contratos.reduce((a, c) => a + c.prev_anos_seguintes, 0); return t > 0 ? <span className="text-[#6A1B9A] font-semibold">{formatCurrency(t)}</span> : <span className="text-gray-400">—</span> })()}
+                </td>
+                <td className={TC}></td>
+              </tr>
+            )
+          })()}
+
+          {/* ── Cabeçalhos ── */}
           <tr>
             <th className={thF()} style={{ left: L.indice }}>Índice</th>
             <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
+            <th className={thF()} style={{ left: L.cliente_final }}>Cliente Final</th>
+            <th className={thF()} style={{ left: L.cidade }}>Cidade/UF</th>
             <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
-            <th className={TH}>Nº OS</th>
-            <th className={TH}>Ano</th>
-            <th className={TH}>Nº Acordo</th>
-            <th className={TH}>Responsável</th>
-            <th className={TH}>Status Fat.</th>
-            <th className={TH}>Ações</th>
+            <th className={thS}>Classificação</th><th className={thS}>Ramo</th>
+            <th className={thS}>Nº OS</th><th className={thS}>Ano</th>
+            <th className={thS}>Nº Acordo</th><th className={thS}>Nº Proposta</th>
+            <th className={thS}>Dt. Início</th><th className={thS}>Dt. Fim</th>
+            <th className={thS}>Status Fat.</th>
+            <th className={thS}>Valor Total Contrato</th>
+            <th className={thS}>Valor Total Faturado</th>
+            <th className={thS}>Saldo a Faturar</th>
+            <th className={thS}>Responsável</th><th className={thS}>Comentários</th>
+            {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
+            <th className={thP}>Previsão prox. anos</th>
+            <th className={thS}>Ações</th>
           </tr>
         </thead>
 
@@ -370,6 +475,10 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: Pai
             const expanded = expandidos.has(contrato.id)
             const ctKey    = `ct-${contrato.id}`
             const ctBg     = rowBgContract(ctKey)
+
+            const ctVlrFat = contrato.subindices.reduce((a, s) => a + nfFaturadoAnual(s.notas_fiscais), 0)
+            const ctVlrTotal = contrato.valor_contrato ?? 0
+            const ctSaldo = ctVlrTotal - ctVlrFat
 
             const mF = (shadow?: boolean) =>
               cn('px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
@@ -386,39 +495,83 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: Pai
               /* ── Linha do contrato ── */
               <tr key={ctKey} className="border-b border-gray-200" {...trProps}>
                 <td className={mF()} style={{ left: L.indice, background: ctBg }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onToggle(contrato.id) }}
-                    className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary"
-                  >
+                  <button onClick={(e) => { e.stopPropagation(); onToggle(contrato.id) }}
+                    className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary">
                     <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
                     {contrato.indice}
                   </button>
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
-                  <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: W.cliente - 16 }}>
-                    {contrato.cliente.nome}
-                  </span>
+                  <span className="font-semibold text-blue-700 truncate block" style={{ maxWidth: W.cliente - 16 }}>{contrato.cliente.nome}</span>
+                </td>
+                <td className={mF()} style={{ left: L.cliente_final, background: ctBg }}>
+                  <span className="text-gray-600 truncate block" style={{ maxWidth: W.cliente_final - 16 }}>{contrato.cliente_final?.nome ?? '—'}</span>
+                </td>
+                <td className={mF()} style={{ left: L.cidade, background: ctBg }}>
+                  <span className="text-gray-600 text-[10px]">{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ') || '—'}</span>
                 </td>
                 <td className={mF(true)} style={{ left: L.descricao, background: ctBg }}>
-                  <span className="line-clamp-2 whitespace-normal" title={contrato.descricao ?? ''}>
-                    {contrato.descricao ?? '—'}
-                  </span>
+                  <span className="line-clamp-2 whitespace-normal" title={contrato.descricao ?? ''}>{contrato.descricao ?? '—'}</span>
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {contrato.classificacao
+                    ? <span className="bg-blue-50 text-blue-700 rounded px-1.5 text-[10px] font-semibold">{CLASSIFICACAO_LABELS[contrato.classificacao as keyof typeof CLASSIFICACAO_LABELS]}</span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {contrato.cliente.ramo_atuacao
+                    ? <span className="text-gray-600 text-[10px]">{RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] ?? contrato.cliente.ramo_atuacao}</span>
+                    : <span className="text-gray-300">—</span>}
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>—</td>
                 <td className={mBase} style={{ background: ctBg }}>
                   <span className="bg-gray-200 text-gray-700 rounded px-1 text-[10px]">{contrato.ano_referencia}</span>
                 </td>
                 <td className={mBase} style={{ background: ctBg }}>{contrato.num_acordo ?? '—'}</td>
-                <td className={mBase} style={{ background: ctBg }}>{contrato.responsavel?.nome ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}>{contrato.num_proposta ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}>{formatDate(contrato.data_inicio)}</td>
+                <td className={mBase} style={{ background: ctBg }}>{formatDate(contrato.data_fim)}</td>
+                <td className={mBase} style={{ background: ctBg }}><StatusBadge status={contrato.status} /></td>
                 <td className={mBase} style={{ background: ctBg }}>
-                  <StatusBadge status={contrato.status} />
+                  {ctVlrTotal > 0 ? <span className="font-bold text-[#1565C0]">{formatCurrency(ctVlrTotal)}</span> : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrFat > 0 ? <span className="font-bold text-green-700">{formatCurrency(ctVlrFat)}</span> : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {ctVlrTotal > 0 ? <SaldoCell saldo={ctSaldo} /> : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={mBase} style={{ background: ctBg }}>{contrato.responsavel?.nome ?? '—'}</td>
+                <td className={mBase} style={{ background: ctBg }}>—</td>
+                {MESES.map((m, mi) => {
+                  const prev = contrato.subindices.reduce((a, s) => a + (s[m] ?? 0), 0)
+                  const fat  = contrato.subindices.reduce((a, s) =>
+                    a + nfFaturadoMes(s.notas_fiscais, mi, getSubAno(s.data_inicio, contrato.ano_referencia)), 0)
+                  return (
+                    <td key={m} className={mBase} style={{ background: ctBg }}>
+                      {prev === 0 && fat === 0 ? <span className="text-gray-300">—</span> : (
+                        <div className="flex flex-col gap-0.5">
+                          {prev > 0 && <span className="text-[10px] text-[#1565C0]">P {formatCurrency(prev)}</span>}
+                          {fat  > 0 && <span className={cn('text-[10px]', fatColorClass(fat, prev))}>F {formatCurrency(fat)}</span>}
+                        </div>
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="px-2 py-[5px] font-semibold text-[11px] whitespace-nowrap cursor-pointer" style={{ background: '#F3E5F5' }}>
+                  {contrato.prev_anos_seguintes > 0
+                    ? <span className="text-[#6A1B9A] font-bold">{formatCurrency(contrato.prev_anos_seguintes)}</span>
+                    : <span className="text-gray-300">—</span>}
                 </td>
                 <td className={mBase} style={{ background: ctBg }} onClick={(e) => e.stopPropagation()}>
-                  <Link
-                    href={`/acordos/faturamento/${contrato.id}?from=painel`}
-                    className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
-                    title="Visão geral"
-                  >👁</Link>
+                  <div className="flex gap-1">
+                    <Link href={`/acordos/faturamento/${contrato.id}?from=painel`}
+                      className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
+                      title="Visão geral">👁</Link>
+                    <button onClick={() => onHistorico('contrato', contrato.id, contrato.indice)}
+                      className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
+                      title="Histórico">📋</button>
+                  </div>
                 </td>
               </tr>,
 
@@ -428,6 +581,8 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: Pai
                 const subKey      = `sub-${sub.id}`
                 const subBg       = rowBgSub(subKey)
                 const subAno      = getSubAno(sub.data_inicio, contrato.ano_referencia)
+                const subVlrFat   = nfFaturadoAnual(sub.notas_fiscais)
+                const subSaldo    = sub.valor_total - subVlrFat
 
                 const sF = (shadow?: boolean) =>
                   cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
@@ -444,45 +599,88 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar }: Pai
                       <span className="pl-4 text-[10px] text-gray-500">{indiceLabel}</span>
                     </td>
                     <td className={sF()} style={{ left: L.cliente, background: subBg }}>
-                      <span className="text-gray-500 truncate block" style={{ maxWidth: W.cliente - 16 }}>
-                        {contrato.cliente.nome}
-                      </span>
+                      <span className="text-gray-500 truncate block" style={{ maxWidth: W.cliente - 16 }}>{contrato.cliente.nome}</span>
+                    </td>
+                    <td className={sF()} style={{ left: L.cliente_final, background: subBg }}>
+                      <span className="text-gray-400 truncate block" style={{ maxWidth: W.cliente_final - 16 }}>{contrato.cliente_final?.nome ?? '—'}</span>
+                    </td>
+                    <td className={sF()} style={{ left: L.cidade, background: subBg }}>
+                      <span className="text-gray-400 text-[10px]">{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ') || '—'}</span>
                     </td>
                     <td className={sF(true)} style={{ left: L.descricao, background: subBg }}>
                       <div className="flex items-start gap-1.5">
-                        <span className="line-clamp-2 whitespace-normal flex-1" title={sub.descricao}>
-                          {sub.descricao}
-                        </span>
+                        <span className="line-clamp-2 whitespace-normal flex-1" title={sub.descricao}>{sub.descricao}</span>
                         {sub.alteracao_pendente && (
                           <span className="text-[8px] font-semibold px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 whitespace-nowrap shrink-0">
-                            Prop. pendente
+                            Em aprovação
                           </span>
                         )}
                       </div>
                     </td>
                     <td className={sBase} style={{ background: subBg }}>
-                      <span className="text-gray-600">{sub.num_os ?? '—'}</span>
+                      {contrato.classificacao
+                        ? <span className="text-blue-400 text-[10px]">{CLASSIFICACAO_LABELS[contrato.classificacao as keyof typeof CLASSIFICACAO_LABELS]}</span>
+                        : <span className="text-gray-200">—</span>}
                     </td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      {contrato.cliente.ramo_atuacao
+                        ? <span className="text-gray-400 text-[10px]">{RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] ?? contrato.cliente.ramo_atuacao}</span>
+                        : <span className="text-gray-200">—</span>}
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-600">{sub.num_os ?? '—'}</span></td>
                     <td className={sBase} style={{ background: subBg }}>
                       <span className="bg-gray-100 text-gray-400 rounded px-1 text-[10px]">{subAno}</span>
                     </td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
                     <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
+                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-400">{formatDate(sub.data_inicio)}</span></td>
+                    <td className={sBase} style={{ background: subBg }}><span className="text-gray-400">{formatDate(sub.data_fim)}</span></td>
+                    <td className={sBase} style={{ background: subBg }}><StatusBadge status={sub.status_faturamento} /></td>
+                    <td className={sBase} style={{ background: subBg }}><span className="text-[#1565C0]">{formatCurrency(sub.valor_total)}</span></td>
                     <td className={sBase} style={{ background: subBg }}>
-                      <StatusBadge status={sub.status_faturamento} />
+                      {subVlrFat > 0 ? <span className="text-green-700">{formatCurrency(subVlrFat)}</span> : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className={sBase} style={{ background: subBg }}><SaldoCell saldo={subSaldo} className="!font-normal" /></td>
+                    <td className={cn(sBase, 'text-gray-400')} style={{ background: subBg }}>—</td>
+                    <td className={sBase} style={{ background: subBg }}>
+                      <span className="text-gray-400 text-[11px]">{sub.comentarios ?? '—'}</span>
+                    </td>
+                    {MESES.map((m, mi) => {
+                      const prev = sub[m] ?? 0
+                      const fat  = nfFaturadoMes(sub.notas_fiscais, mi, subAno)
+                      return (
+                        <td key={m} className={sBase} style={{ background: subBg }}>
+                          {prev === 0 && fat === 0 ? <span className="text-gray-300">—</span> : (
+                            <div className="flex flex-col gap-0.5">
+                              {prev > 0 && <span className="text-[10px] text-[#1565C0]">P {formatCurrency(prev)}</span>}
+                              {fat  > 0 && <span className={cn('text-[10px]', fatColorClass(fat, prev))}>F {formatCurrency(fat)}</span>}
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })}
+                    <td style={{ background: '#F3E5F5' }} className="px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer">
+                      {sub.prev_anos_seguintes > 0
+                        ? <span className="text-[#6A1B9A]">{formatCurrency(sub.prev_anos_seguintes)}</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
                     <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onEditar(sub, indiceLabel, contrato.ano_referencia)}
-                        className={cn(
-                          'rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap',
-                          canEdit
-                            ? 'bg-green-primary text-white hover:bg-green-dark'
-                            : 'border border-gray-300 text-gray-500 hover:bg-gray-50',
-                        )}
-                      >
-                        {canEdit ? 'Editar prev.' : 'Ver prev.'}
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => onEditar(sub, indiceLabel, contrato.ano_referencia)}
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap',
+                            canEdit
+                              ? 'bg-green-primary text-white hover:bg-green-dark'
+                              : 'border border-gray-300 text-gray-500 hover:bg-gray-50',
+                          )}
+                        >
+                          {canEdit ? 'Editar prev.' : 'Ver prev.'}
+                        </button>
+                        <button onClick={() => onHistorico('subindice', sub.id, indiceLabel)}
+                          className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
+                          title="Histórico">📋</button>
+                      </div>
                     </td>
                   </tr>
                 )

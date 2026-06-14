@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, CurrencyInput } from '@/components/ui/Input'
@@ -86,6 +86,8 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [subindices, setSubindices] = useState<SubIndiceForm[]>([emptySubindice(anoAtual)])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const savedRef = useRef(false)
+  const savingDraftRef = useRef(false)
 
   useEffect(() => {
     fetch('/api/clientes').then((r) => r.json()).then((j) => setClientes(j.data ?? []))
@@ -94,6 +96,8 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
 
   useEffect(() => {
     if (!open) return
+    savedRef.current = false
+    savingDraftRef.current = false
     if (editando) {
       setAnoRef(String(editando.ano_referencia))
       setStatus(editando.status)
@@ -136,6 +140,50 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     }
     setError(null)
   }, [open, editando, anoAtual])
+
+  const saveDraft = async () => {
+    if (savingDraftRef.current || savedRef.current || isEdit) return
+    savingDraftRef.current = true
+    try {
+      const body = {
+        ano_referencia: Number(anoRef) || new Date().getFullYear(),
+        cliente_id: clienteId ? Number(clienteId) : 0,
+        rascunho: true,
+        descricao: descricao || undefined,
+        num_acordo: numAcordo || undefined,
+        num_proposta: numProposta || undefined,
+        responsavel_id: responsavelId ? Number(responsavelId) : undefined,
+        valor_contrato: valorContrato ? Number(valorContrato) : undefined,
+        subindices: subindices
+          .filter((s) => s.descricao.trim())
+          .flatMap((s) => {
+            const anos = getAnosFromDates(s.data_inicio, s.data_fim, Number(anoRef))
+            return anos.map((ano, idx) => {
+              const section = s.anos[ano] ?? emptySection()
+              const isFirst = idx === 0; const isLast = idx === anos.length - 1
+              const vtAno = Number(s.valor_total) || 0
+              return {
+                descricao: s.descricao,
+                num_os: s.num_os || undefined,
+                valor_total: vtAno,
+                data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
+                data_fim: isLast && s.data_fim ? s.data_fim : `${ano}-12-31`,
+              }
+            })
+          }),
+      }
+      if (!body.cliente_id) return
+      await fetch('/api/faturamento/contratos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    } catch { /* silent */ } finally { savingDraftRef.current = false }
+  }
+
+  const handleClose = async () => {
+    const hasData = clienteId && subindices.some((s) => s.descricao.trim())
+    if (!isEdit && !savedRef.current && hasData) {
+      await saveDraft()
+    }
+    onClose()
+  }
 
   const addSubindice = () =>
     setSubindices((prev) => [...prev, emptySubindice(Number(anoRef))])
@@ -197,14 +245,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       }
     }
 
-    if (!isEdit) {
-      const totalSubs = subindices.reduce((acc, s) => acc + (Number(s.valor_total) || 0), 0)
-      const vc = Number(valorContrato)
-      if (Math.abs(totalSubs - vc) > 0.01) {
-        setError(`A soma dos eventos (R$ ${fmt(totalSubs)}) deve ser igual ao valor total do contrato (R$ ${fmt(vc)})`); return
-      }
-    }
-
     setLoading(true); setError(null)
     try {
       const body = {
@@ -254,6 +294,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
+      savedRef.current = true
       onSuccess(); onClose()
     } finally {
       setLoading(false)
@@ -263,12 +304,12 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={isEdit ? `Editar Contrato · ${editando!.indice}` : 'Novo Lançamento — Contrato'}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Salvando...' : 'Salvar contrato'}
           </Button>

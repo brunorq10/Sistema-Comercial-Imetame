@@ -516,6 +516,7 @@ model Contrato {
   created_by     Int
   cancelled_at   DateTime?
   cancel_reason  String?
+  rascunho       Boolean               @default(false)
 
   cliente        Cliente                @relation("ContratoCliente", fields: [cliente_id], references: [id])
   cliente_final  Cliente?               @relation("ContratoClienteFinal", fields: [cliente_final_id], references: [id])
@@ -619,6 +620,7 @@ model NotaFiscalContrato {
   data_vencimento   DateTime
   ativa             Boolean  @default(true)
   motivo_inativacao String?
+  tipo_documento    String?  @default("NF")
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   created_by        Int
