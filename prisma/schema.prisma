@@ -280,6 +280,7 @@ model PropostaTecnica {
   peso_suportes      Decimal? @db.Decimal(10, 3)
   peso_estruturas    Decimal? @db.Decimal(10, 3)
   nao_aplicavel      Boolean  @default(false)
+  data_base          DateTime?
   data_envio         DateTime?
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt

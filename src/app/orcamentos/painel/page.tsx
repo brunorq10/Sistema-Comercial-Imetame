@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { SolicitacaoCard, type PainelItem } from '@/components/painel/SolicitacaoCard'
 import { RegistrarTecnicaModal } from '@/components/forms/RegistrarTecnicaModal'
 import { RegistrarComercialModal } from '@/components/forms/RegistrarComercialModal'
@@ -15,6 +16,7 @@ type FiltroIndicador = 'todas' | 'elaboracao' | 'atrasado' | 'tecnica' | 'enviad
 type SubFiltro = 'tec' | 'com' | null
 
 export default function PainelOrcamentosPage() {
+  const router = useRouter()
   const [items, setItems] = useState<PainelItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -244,6 +246,7 @@ export default function PainelOrcamentosPage() {
             onRegistrarParada={(item, tab) => setModalParada({ item, tab })}
             onRegistrarObra={(item, tab) => setModalObra({ item, tab })}
             onRegistrarInfo={setModalInfo}
+            onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico?from=/orcamentos/painel`)}
           />
         ))
       )}

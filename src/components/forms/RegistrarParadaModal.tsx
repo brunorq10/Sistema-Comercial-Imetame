@@ -50,6 +50,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const [diasParada, setDiasParada] = useState('')
   const [turno, setTurno] = useState('')
   const [finaisDeSemana, setFinaisDeSemana] = useState(false)
+  const [dataBase, setDataBase] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
 
   const [loading, setLoading] = useState(false)
@@ -71,7 +72,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
     setLoading(true)
     setError(null)
     try {
-      const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_envio: dataEnvio }
+      const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_base: dataBase || undefined, data_envio: dataEnvio }
       if (!naoAplicavel) {
         body.hh_direto = numHhDireto
         body.hh_indireto = numHhIndireto
@@ -176,10 +177,15 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             </label>
           </div>
 
-          <ModalSection>3. Data de Envio</ModalSection>
-          <Field label="Data de envio — técnica">
-            <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
-          </Field>
+          <ModalSection>3. Datas</ModalSection>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label="Data base">
+              <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
+            </Field>
+            <Field label="Data de envio — técnica">
+              <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
+            </Field>
+          </div>
         </>
       )}
 

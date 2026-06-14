@@ -6,6 +6,7 @@ import { createNotificacao } from '@/lib/notifications'
 
 const schema = z.object({
   nao_aplicavel: z.boolean().optional(),
+  data_base: z.string().optional(),
   // Campos comuns (Obras/Paradas)
   hh_direto: z.number().int().positive().optional(),
   hh_indireto: z.number().int().min(0).optional(),
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       dias_parada: naoAplicavel ? null : (d.dias_parada ?? null),
       turno: naoAplicavel ? null : (d.turno ?? null),
       finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
+      data_base: d.data_base ? new Date(d.data_base) : null,
       data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
       created_by: Number(session.user.id),
     },
@@ -164,6 +166,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       dias_parada: d.dias_parada ?? null,
       turno: d.turno ?? null,
       finais_de_semana: d.finais_de_semana ?? null,
+      data_base: d.data_base ? new Date(d.data_base) : latest.data_base,
       data_envio: d.data_envio ? new Date(d.data_envio) : latest.data_envio,
     },
   })

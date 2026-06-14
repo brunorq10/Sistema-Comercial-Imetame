@@ -28,6 +28,7 @@ interface TecData {
   peso_montagem: string | null
   peso_equipamentos: string | null; peso_tubulacoes: string | null
   peso_suportes: string | null; peso_estruturas: string | null
+  data_base: string | null
   data_envio: string | null
 }
 interface ComData {
@@ -163,8 +164,9 @@ function mkChart(labels: string[], series: { vals: (number | null)[]; color: str
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function HistoricoPage({ params }: { params: { id: string } }) {
+export default function HistoricoPage({ params, searchParams }: { params: { id: string }; searchParams?: { from?: string } }) {
   const router = useRouter()
+  const fromUrl = searchParams?.from ?? '/orcamentos/propostas'
   const [raw, setRaw] = useState<HistoricoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
@@ -228,7 +230,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
   // Fabricações usa modelo próprio
   if (isFab) {
-    return <HistoricoFabricacao raw={raw} router={router} />
+    return <HistoricoFabricacao raw={raw} router={router} fromUrl={fromUrl} />
   }
 
   if (revisions.length === 0) return <div className="p-8 text-center text-gray-400 text-sm">Nenhuma revisão registrada.</div>
@@ -317,6 +319,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
   // ── Rows da tabela por classificação ──────────────────────────────────────
   type NumRow = { key: string; vals: (number | null)[]; fmt?: 'currency' | 'pct' | 'decimal3' | 'ton0'; bold?: boolean; highlight?: boolean }
+  type DateRow = { key: string; isDate: true; vals: (string | null)[] }
 
   const tecRows: NumRow[] = isObra ? [
     { key: 'Peso Equipamentos (t)',  vals: revisions.map(r => r.tec.peso_equipamentos != null ? Number(r.tec.peso_equipamentos) : null), fmt: 'ton0' },
@@ -363,7 +366,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
     <div className="p-4 h-full overflow-y-auto bg-gray-50">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <HeaderBar raw={raw} onBack={() => router.push('/orcamentos/propostas')} onExport={exportXLSX} />
+      <HeaderBar raw={raw} onBack={() => router.push(fromUrl)} onExport={exportXLSX} />
 
       {/* ── Linha do Tempo ──────────────────────────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-3">
@@ -459,6 +462,14 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
             </thead>
             <tbody>
               <SectionRow label="TÉCNICA" colSpan={1 + N} />
+              <tr className="border-t border-gray-50 group hover:bg-gray-50">
+                <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-3 py-2 text-gray-500 whitespace-nowrap border-r border-gray-100">Data base</td>
+                {revisions.map((rev) => (
+                  <td key={rev.versao} className="px-2 py-2 text-center border-l border-gray-100">
+                    <div className="font-medium">{rev.tec.data_base ? formatDate(rev.tec.data_base) : '—'}</div>
+                  </td>
+                ))}
+              </tr>
               {tecRows.map(row => (
                 <DataRow key={row.key} label={row.key} revisions={revisions} vals={row.vals} fmt={row.fmt} bold={row.bold} highlight={row.highlight} />
               ))}
@@ -511,7 +522,7 @@ export default function HistoricoPage({ params }: { params: { id: string } }) {
 
 // ─── Fabricação layout ────────────────────────────────────────────────────────
 
-function HistoricoFabricacao({ raw, router }: { raw: HistoricoData; router: ReturnType<typeof useRouter> }) {
+function HistoricoFabricacao({ raw, router, fromUrl }: { raw: HistoricoData; router: ReturnType<typeof useRouter>; fromUrl: string }) {
   const fabs = raw.propostas_fabricacao
 
   function exportXLSX() {
@@ -542,7 +553,7 @@ function HistoricoFabricacao({ raw, router }: { raw: HistoricoData; router: Retu
 
   if (fabs.length === 0) return (
     <div className="p-4 h-full overflow-y-auto bg-gray-50">
-      <HeaderBar raw={raw} onBack={() => router.push('/orcamentos/propostas')} onExport={exportXLSX} />
+      <HeaderBar raw={raw} onBack={() => router.push(fromUrl)} onExport={exportXLSX} />
       <div className="p-8 text-center text-gray-400 text-sm">Nenhuma proposta registrada.</div>
     </div>
   )
@@ -562,7 +573,7 @@ function HistoricoFabricacao({ raw, router }: { raw: HistoricoData; router: Retu
 
   return (
     <div className="p-4 h-full overflow-y-auto bg-gray-50">
-      <HeaderBar raw={raw} onBack={() => router.push('/orcamentos/propostas')} onExport={exportXLSX} />
+      <HeaderBar raw={raw} onBack={() => router.push(fromUrl)} onExport={exportXLSX} />
 
       {/* Timeline */}
       <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 mb-3">

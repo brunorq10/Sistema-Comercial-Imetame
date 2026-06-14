@@ -111,8 +111,11 @@ export default function MeuPainelAcordosPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [filtroClienteId, setFiltroClienteId] = useState('')
-  const [filtroNumOs, setFiltroNumOs] = useState('')
+  const [filtroNumOs,          setFiltroNumOs]          = useState('')
+  const [filtroClienteId,      setFiltroClienteId]      = useState('')
+  const [filtroClienteFinalId, setFiltroClienteFinalId] = useState('')
+  const [filtroStatusFat,      setFiltroStatusFat]      = useState('')
+  const [filtroRamo,           setFiltroRamo]           = useState('')
 
   const [modalEditar, setModalEditar] = useState<{
     subindice: SubIndiceItem; indiceLabel: string; anoRef: number
@@ -174,13 +177,47 @@ export default function MeuPainelAcordosPage() {
     return opts
   }, [contratos])
 
+  const clienteFinalOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const opts: { value: string; label: string }[] = []
+    contratos.forEach((c) => {
+      const cf = (c as ContratoComAlteracoes).cliente_final
+      if (cf) {
+        const k = String(cf.id)
+        if (!seen.has(k)) { seen.add(k); opts.push({ value: k, label: cf.nome }) }
+      }
+    })
+    return opts
+  }, [contratos])
+
+  const ramoOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const opts: { value: string; label: string }[] = []
+    contratos.forEach((c) => {
+      const r = c.cliente.ramo_atuacao
+      if (r && !seen.has(r)) {
+        seen.add(r)
+        const labels: Record<string, string> = {
+          PAPEL_CELULOSE: 'Papel e Celulose', SIDERURGIA: 'Siderurgia',
+          MINERACAO: 'Mineração', OLEO_GAS: 'Óleo e Gás', OUTROS: 'Outros',
+        }
+        opts.push({ value: r, label: labels[r] ?? r })
+      }
+    })
+    return opts
+  }, [contratos])
+
   const filteredContratos = useMemo(() => {
     return contratos.filter((c) => {
-      if (filtroClienteId && String(c.cliente.id) !== filtroClienteId) return false
-      if (filtroNumOs && !c.subindices.some((s) => s.num_os === filtroNumOs)) return false
+      if (filtroClienteId      && String(c.cliente.id) !== filtroClienteId) return false
+      if (filtroNumOs          && !c.subindices.some((s) => s.num_os === filtroNumOs)) return false
+      const cf = (c as ContratoComAlteracoes).cliente_final
+      if (filtroClienteFinalId && String(cf?.id ?? '') !== filtroClienteFinalId) return false
+      if (filtroStatusFat      && !c.subindices.some((s) => s.status_faturamento === filtroStatusFat)) return false
+      if (filtroRamo           && c.cliente.ramo_atuacao !== filtroRamo) return false
       return true
     })
-  }, [contratos, filtroClienteId, filtroNumOs])
+  }, [contratos, filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo])
 
   const indicators = useMemo(() => {
     const allSubs = filteredContratos.flatMap((c) => c.subindices)
@@ -261,8 +298,8 @@ export default function MeuPainelAcordosPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
-          <div className="flex-1 min-w-0">
+        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end flex-wrap">
+          <div className="flex-1 min-w-[130px]">
             <label className={fLbl}>Responsável</label>
             <SearchableSelect
               value={responsavelId}
@@ -271,17 +308,38 @@ export default function MeuPainelAcordosPage() {
               emptyLabel={isGestao ? 'Todos os responsáveis' : 'Selecione um responsável'}
             />
           </div>
-          <div className="flex-[2] min-w-0">
-            <label className={fLbl}>Cliente</label>
-            <SearchableSelect value={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
-          </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[110px]">
             <label className={fLbl}>Nº OS</label>
             <SearchableSelect value={filtroNumOs} onChange={setFiltroNumOs} options={osOptions} emptyLabel="Todas" />
           </div>
+          <div className="flex-[2] min-w-[130px]">
+            <label className={fLbl}>Cliente</label>
+            <SearchableSelect value={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
+          </div>
+          <div className="flex-1 min-w-[130px]">
+            <label className={fLbl}>Cliente Final</label>
+            <SearchableSelect value={filtroClienteFinalId} onChange={setFiltroClienteFinalId} options={clienteFinalOptions} />
+          </div>
+          <div className="flex-1 min-w-[110px]">
+            <label className={fLbl}>Status Fat.</label>
+            <SearchableSelect
+              value={filtroStatusFat}
+              onChange={setFiltroStatusFat}
+              options={[
+                { value: 'A_FATURAR', label: 'A faturar' },
+                { value: 'FATURADO',  label: 'Faturado' },
+                { value: 'PARCIAL',   label: 'Parcial' },
+                { value: 'CANCELADO', label: 'Cancelado' },
+              ]}
+            />
+          </div>
+          <div className="flex-1 min-w-[130px]">
+            <label className={fLbl}>Ramo</label>
+            <SearchableSelect value={filtroRamo} onChange={setFiltroRamo} options={ramoOptions} />
+          </div>
           <div className="flex-shrink-0 flex items-end">
             <button
-              onClick={() => { setFiltroClienteId(''); setFiltroNumOs('') }}
+              onClick={() => { setFiltroClienteId(''); setFiltroNumOs(''); setFiltroClienteFinalId(''); setFiltroStatusFat(''); setFiltroRamo('') }}
               className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
             >✕</button>
           </div>

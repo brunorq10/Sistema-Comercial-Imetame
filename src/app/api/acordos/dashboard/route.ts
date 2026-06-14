@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma, RamoAtuacao } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -19,21 +20,30 @@ const RAMO_LABELS: Record<string, string> = {
   OUTROS:         'Outros',
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
+  const { searchParams } = new URL(req.url)
+  const anoParam    = searchParams.get('ano')
+  const clienteId   = searchParams.get('clienteId')
+  const ramoFiltro  = searchParams.get('ramo')
+
   const hoje        = new Date()
-  const anoAtual    = hoje.getFullYear()
+  const anoAtual    = anoParam ? parseInt(anoParam, 10) : hoje.getFullYear()
   const mesAtual    = hoje.getMonth() + 1
   const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1
   const anoMesAnt   = mesAtual === 1 ? anoAtual - 1 : anoAtual
   const mesProximo  = mesAtual === 12 ? 1  : mesAtual + 1
   const anoMesProx  = mesAtual === 12 ? anoAtual + 1 : anoAtual
 
-  const [contratos, consolidados] = await Promise.all([
+  const whereContrato: Prisma.ContratoWhereInput = { cancelled_at: null }
+  if (clienteId)  whereContrato.cliente_id = parseInt(clienteId, 10)
+  if (ramoFiltro) whereContrato.cliente    = { is: { ramo_atuacao: ramoFiltro as RamoAtuacao } }
+
+  const [contratos, consolidados, clientes] = await Promise.all([
     prisma.contrato.findMany({
-      where: { cancelled_at: null },
+      where: whereContrato,
       include: {
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
         subindices: {
@@ -44,6 +54,11 @@ export async function GET() {
     prisma.consolidadoMes.findMany({
       where: { ano: anoAtual },
       include: { itens: true },
+    }),
+    prisma.cliente.findMany({
+      where: { ativo: true },
+      select: { id: true, nome: true },
+      orderBy: { nome: 'asc' },
     }),
   ])
 
@@ -138,18 +153,21 @@ export async function GET() {
   // Por mês: usa consolidado quando disponível, senão usa previsto dos subíndices
   const MES_LABEL_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
   const porMes = Array.from({ length: 12 }, (_, i) => {
-    const mes      = i + 1
-    const previsto = consolidadosPorMes.has(mes) ? (consolidadosPorMes.get(mes) ?? 0) : previstoSubPorMes[i]
-    const faturado = faturadoPorMes[i]
-    const pct      = previsto > 0 ? (faturado / previsto) * 100 : 0
+    const mes           = i + 1
+    const hasConsolidado = consolidadosPorMes.has(mes)
+    const valorFixado   = hasConsolidado ? (consolidadosPorMes.get(mes) ?? 0) : null
+    const previsto      = hasConsolidado ? (valorFixado ?? 0) : previstoSubPorMes[i]
+    const faturado      = faturadoPorMes[i]
+    const pct           = previsto > 0 ? (faturado / previsto) * 100 : 0
     return {
       mes,
-      label:       MES_LABEL_PT[i],
+      label:        MES_LABEL_PT[i],
       previsto,
+      valor_fixado: valorFixado,
       faturado,
-      percentual:  Number(pct.toFixed(1)),
-      resultado:   faturado - previsto,
-      consolidado: consolidadosPorMes.has(mes),
+      percentual:   Number(pct.toFixed(1)),
+      resultado:    faturado - previsto,
+      consolidado:  hasConsolidado,
     }
   })
 
@@ -157,6 +175,7 @@ export async function GET() {
     data: {
       anoAtual,
       mesAtual,
+      clientes,
       totalFaturadoAno,
       prevFaturamentoAno,
       aFaturarAno,

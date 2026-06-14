@@ -66,9 +66,10 @@ interface Props {
   onRegistrarParada: (item: PainelItem, tab: 'tecnica' | 'comercial') => void
   onRegistrarObra: (item: PainelItem, tab: 'tecnica' | 'comercial') => void
   onRegistrarInfo: (item: PainelItem) => void
+  onHistorico?: (item: PainelItem) => void
 }
 
-export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo }: Props) {
+export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onHistorico }: Props) {
   const isFabricacaoType = item.classificacao === 'FABRICACOES' || item.classificacao === 'OLEO_GAS'
   const isParadasType = item.classificacao === 'PARADAS'
   const isObrasType = item.classificacao === 'OBRAS'
@@ -202,6 +203,11 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
         <Button size="sm" variant="outline" onClick={() => onRegistrarInfo(item)}>
           Registrar Informação
         </Button>
+        {onHistorico && item.versao_atual > 1 && (
+          <Button size="sm" variant="outline" onClick={() => onHistorico(item)}>
+            Histórico
+          </Button>
+        )}
       </div>
     </div>
   )

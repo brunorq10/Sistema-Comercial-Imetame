@@ -17,6 +17,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
   const [hhDireto, setHhDireto] = useState('')
   const [hhIndireto, setHhIndireto] = useState('')
   const [pesoMontagem, setPesoMontagem] = useState('')
+  const [dataBase, setDataBase] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,13 +43,14 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
           hh_direto: Number(hhDireto),
           hh_indireto: Number(hhIndireto),
           peso_montagem: pesoMontagem ? Number(pesoMontagem) : undefined,
+          data_base: dataBase || undefined,
           data_envio: dataEnvio,
         }),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
 
-      setHhDireto(''); setHhIndireto(''); setPesoMontagem('')
+      setHhDireto(''); setHhIndireto(''); setPesoMontagem(''); setDataBase('')
       setDataEnvio(new Date().toISOString().split('T')[0])
       onSuccess()
       onClose()
@@ -95,10 +97,22 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
         </Field>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Peso Total Montagem (t)">
           <CurrencyInput placeholder="Ex: 148,50" value={pesoMontagem} onChange={setPesoMontagem} />
         </Field>
+        <Field label="Data base">
+          <input
+            type="date"
+            value={dataBase}
+            onChange={(e) => setDataBase(e.target.value)}
+            className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <div />
         <Field label="Data de envio — técnica">
           <input
             type="date"

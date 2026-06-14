@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const TREEMAP_COLORS = [
@@ -14,13 +14,14 @@ function fmt(v: number) {
 }
 
 interface MesData {
-  mes:         number
-  label:       string
-  previsto:    number
-  faturado:    number
-  percentual:  number
-  resultado:   number
-  consolidado: boolean
+  mes:          number
+  label:        string
+  previsto:     number
+  valor_fixado: number | null
+  faturado:     number
+  percentual:   number
+  resultado:    number
+  consolidado:  boolean
 }
 
 interface DashData {
@@ -38,7 +39,16 @@ interface DashData {
   porRamo:    { ramo: string; valor: number; percentual: number }[]
   porCliente: { nome: string; valor: number; percentual: number }[]
   porMes:     MesData[]
+  clientes:   { id: number; nome: string }[]
 }
+
+const RAMO_OPTIONS = [
+  { value: 'PAPEL_CELULOSE', label: 'Papel e Celulose' },
+  { value: 'SIDERURGIA',     label: 'Siderurgia' },
+  { value: 'MINERACAO',      label: 'Mineração' },
+  { value: 'OLEO_GAS',       label: 'Óleo e Gás' },
+  { value: 'OUTROS',         label: 'Outros' },
+]
 
 // ── Card de métrica ──────────────────────────────────────────────────────────
 function MetricCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
@@ -272,10 +282,11 @@ function Treemap({ data }: { data: { nome: string; valor: number; percentual: nu
 
 // ── Tabela Previsão x Realizado por Mês ──────────────────────────────────────
 function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
-  const totPrev = data.reduce((s, d) => s + d.previsto, 0)
-  const totFat  = data.reduce((s, d) => s + d.faturado, 0)
-  const totRes  = data.reduce((s, d) => s + d.resultado, 0)
-  const totPct  = totPrev > 0 ? (totFat / totPrev) * 100 : 0
+  const totPrev  = data.reduce((s, d) => s + d.previsto, 0)
+  const totFat   = data.reduce((s, d) => s + d.faturado, 0)
+  const totRes   = data.reduce((s, d) => s + d.resultado, 0)
+  const totFixed = data.reduce((s, d) => s + (d.valor_fixado ?? 0), 0)
+  const totPct   = totPrev > 0 ? (totFat / totPrev) * 100 : 0
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -283,16 +294,17 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
         <h3 className="text-[12px] font-semibold text-white uppercase tracking-wide">
           Previsão x Realizado por Mês — {ano}
         </h3>
-        <p className="text-[9px] text-white/50 mt-0.5">Verde = mês com consolidado gerado</p>
+        <p className="text-[9px] text-white/50 mt-0.5">Verde = mês com consolidado gerado · Valor Fixado = snapshot do consolidado</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] border-collapse">
           <thead>
             <tr className="bg-green-dark text-white text-[11px]">
               <th className="text-left   px-4 py-2 font-semibold w-32">Mês</th>
-              <th className="text-right  px-4 py-2 font-semibold">Previsto Fixado {ano}</th>
+              <th className="text-right  px-4 py-2 font-semibold">Valor Fixado</th>
+              <th className="text-right  px-4 py-2 font-semibold">Previsto {ano}</th>
               <th className="text-right  px-4 py-2 font-semibold">Valor Total Faturado {ano}</th>
-              <th className="text-center px-4 py-2 font-semibold w-32">% Fat. / Fixado</th>
+              <th className="text-center px-4 py-2 font-semibold w-32">% Fat. / Previsto</th>
               <th className="text-right  px-4 py-2 font-semibold">Resultado</th>
             </tr>
           </thead>
@@ -310,6 +322,11 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
                   {row.consolidado && (
                     <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-green-500 align-middle" />
                   )}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums">
+                  {row.valor_fixado != null
+                    ? <span className="text-[#6A1B9A] font-semibold">{fmt(row.valor_fixado)}</span>
+                    : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="px-4 py-2 text-right text-gray-700 tabular-nums">{fmt(row.previsto)}</td>
                 <td className="px-4 py-2 text-right text-gray-700 tabular-nums">{fmt(row.faturado)}</td>
@@ -331,6 +348,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
           <tfoot>
             <tr className="bg-green-dark text-white font-bold text-[12px]">
               <td className="px-4 py-2.5">Total</td>
+              <td className="px-4 py-2.5 text-right tabular-nums text-purple-200">{totFixed > 0 ? fmt(totFixed) : '—'}</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{fmt(totPrev)}</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{fmt(totFat)}</td>
               <td className="px-4 py-2.5 text-center">{totPct.toFixed(1).replace('.', ',')}%</td>
@@ -346,13 +364,28 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
 }
 
 // ── Página principal ──────────────────────────────────────────────────────────
+const ANO_ATUAL = new Date().getFullYear()
+const ANOS = Array.from({ length: 5 }, (_, i) => ANO_ATUAL - i)
+
 export default function DashboardAcordosPage() {
   const [data, setData]       = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/acordos/dashboard')
+  // Filtros
+  const [ano,       setAno]       = useState(String(ANO_ATUAL))
+  const [clienteId, setClienteId] = useState('')
+  const [ramo,      setRamo]      = useState('')
+
+  const fetchData = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    const params = new URLSearchParams()
+    if (ano && ano !== String(ANO_ATUAL)) params.set('ano', ano)
+    if (clienteId) params.set('clienteId', clienteId)
+    if (ramo)      params.set('ramo', ramo)
+    const qs = params.toString()
+    fetch(`/api/acordos/dashboard${qs ? '?' + qs : ''}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.error) setError(j.error)
@@ -360,72 +393,111 @@ export default function DashboardAcordosPage() {
       })
       .catch(() => setError('Falha ao carregar dados'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [ano, clienteId, ramo])
 
-  if (loading) return <p className="text-center text-gray-400 py-16 text-sm">Carregando...</p>
-  if (error)   return <p className="text-center text-red-500 py-16 text-sm">{error}</p>
-  if (!data)   return null
+  useEffect(() => { fetchData() }, [fetchData])
 
-  const mesLabel     = MES_LABEL[data.mesAtual - 1]
-  const mesAntLabel  = MES_LABEL[data.mesAtual === 1 ? 11 : data.mesAtual - 2]
-  const mesProxLabel = MES_LABEL[data.mesAtual === 12 ? 0 : data.mesAtual]
+  const anoNum = parseInt(ano, 10) || ANO_ATUAL
+  const mesAtual = data?.mesAtual ?? (new Date().getMonth() + 1)
+  const mesLabel     = MES_LABEL[mesAtual - 1]
+  const mesAntLabel  = MES_LABEL[mesAtual === 1 ? 11 : mesAtual - 2]
+  const mesProxLabel = MES_LABEL[mesAtual === 12 ? 0 : mesAtual]
+
+  const clientes = data?.clientes ?? []
+
+  const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em]'
+  const selectCls = 'w-full px-2 py-[5px] border border-gray-300 rounded text-[11px] text-gray-800 bg-white outline-none focus:border-green-primary transition-colors'
 
   return (
     <div className="p-4 space-y-4 h-full overflow-y-auto">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold">Dashboard Acordos</h2>
-        <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>
+        {data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
       </div>
 
-      {/* ── Linha 1: Cards anuais ─────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3">
-        <MetricCard label="Valor Total Faturado" sub={`Ano ${data.anoAtual}`}         value={data.totalFaturadoAno} />
-        <MetricCard label="Prev. Faturamento"    sub={`Ano ${data.anoAtual}`}         value={data.prevFaturamentoAno} />
-        <MetricCard label="À Faturar"            sub={`Ano ${data.anoAtual}`}         value={data.aFaturarAno} />
-        <MetricCard label="Fat. Próximos Anos"   sub="Anos seguintes"                 value={data.faturamentoProxAnos} />
-      </div>
-
-      {/* ── Linha 2: Cards mensais ────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3">
-        <MetricCard label={`Previsão Fat. ${mesLabel}`}    sub="Mês atual"   value={data.prevMesAtual} />
-        <MetricCard label={`Faturado ${mesLabel}`}         sub="Mês atual"   value={data.faturadoMesAtual} />
-        <MetricCard label={`Faturado ${mesAntLabel}`}      sub="Último mês"  value={data.faturadoUltimoMes} />
-        <MetricCard label={`Previsão ${mesProxLabel}`}     sub="Próximo mês" value={data.prevProxMes} />
-      </div>
-
-      {/* ── Linha 3: Gauge + Barras horizontais ───────────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Gauge */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 className="text-[12px] font-semibold text-gray-700 mb-4 text-center uppercase tracking-wide">
-            % Faturado Geral — {data.anoAtual}
-          </h3>
-          <PercConcluido
-            percent={data.percFaturadoGeral}
-            faturado={data.totalFaturadoAno}
-            previsto={data.prevFaturamentoAno}
-          />
+      {/* ── Filtros ───────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 flex flex-wrap gap-2.5 items-end">
+        <div className="min-w-[90px]">
+          <label className={fLbl}>Ano</label>
+          <select value={ano} onChange={(e) => setAno(e.target.value)} className={selectCls}>
+            {ANOS.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
         </div>
-
-        {/* Barras por ramo */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h3 className="text-[12px] font-semibold text-gray-700 mb-4 uppercase tracking-wide">
-            % Faturado por Ramo — {data.anoAtual}
-          </h3>
-          <BarrasRamo data={data.porRamo} />
+        <div className="min-w-[180px] flex-1">
+          <label className={fLbl}>Cliente</label>
+          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={selectCls}>
+            <option value="">Todos</option>
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
         </div>
+        <div className="min-w-[150px]">
+          <label className={fLbl}>Ramo</label>
+          <select value={ramo} onChange={(e) => setRamo(e.target.value)} className={selectCls}>
+            <option value="">Todos</option>
+            {RAMO_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={() => { setAno(String(ANO_ATUAL)); setClienteId(''); setRamo('') }}
+          className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
+        >
+          ✕ Limpar
+        </button>
       </div>
 
-      {/* ── Linha 4: Treemap por Cliente ─────────────────────────────── */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-        <h3 className="text-[12px] font-semibold text-gray-700 mb-4 text-center uppercase tracking-wide">
-          Distribuição por Cliente — {data.anoAtual}
-        </h3>
-        <Treemap data={data.porCliente} />
-      </div>
+      {loading && <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>}
+      {error   && <p className="text-center text-red-500 py-8 text-sm">{error}</p>}
 
-      {/* ── Linha 5: Tabela Previsão x Realizado ─────────────────────── */}
-      <TabelaMensal data={data.porMes} ano={data.anoAtual} />
+      {!loading && !error && data && (
+        <>
+          {/* ── Linha 1: Cards anuais ─────────────────────────────────────── */}
+          <div className="grid grid-cols-4 gap-3">
+            <MetricCard label="Valor Total Faturado" sub={`Ano ${data.anoAtual}`}         value={data.totalFaturadoAno} />
+            <MetricCard label="Prev. Faturamento"    sub={`Ano ${data.anoAtual}`}         value={data.prevFaturamentoAno} />
+            <MetricCard label="À Faturar"            sub={`Ano ${data.anoAtual}`}         value={data.aFaturarAno} />
+            <MetricCard label="Fat. Próximos Anos"   sub="Anos seguintes"                 value={data.faturamentoProxAnos} />
+          </div>
+
+          {/* ── Linha 2: Cards mensais ────────────────────────────────────── */}
+          <div className="grid grid-cols-4 gap-3">
+            <MetricCard label={`Previsão Fat. ${mesLabel}`}    sub="Mês atual"   value={data.prevMesAtual} />
+            <MetricCard label={`Faturado ${mesLabel}`}         sub="Mês atual"   value={data.faturadoMesAtual} />
+            <MetricCard label={`Faturado ${mesAntLabel}`}      sub="Último mês"  value={data.faturadoUltimoMes} />
+            <MetricCard label={`Previsão ${mesProxLabel}`}     sub="Próximo mês" value={data.prevProxMes} />
+          </div>
+
+          {/* ── Linha 3: Gauge + Barras horizontais ───────────────────────── */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+              <h3 className="text-[12px] font-semibold text-gray-700 mb-4 text-center uppercase tracking-wide">
+                % Faturado Geral — {data.anoAtual}
+              </h3>
+              <PercConcluido
+                percent={data.percFaturadoGeral}
+                faturado={data.totalFaturadoAno}
+                previsto={data.prevFaturamentoAno}
+              />
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+              <h3 className="text-[12px] font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+                % Faturado por Ramo — {data.anoAtual}
+              </h3>
+              <BarrasRamo data={data.porRamo} />
+            </div>
+          </div>
+
+          {/* ── Linha 4: Treemap por Cliente ─────────────────────────────── */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+            <h3 className="text-[12px] font-semibold text-gray-700 mb-4 text-center uppercase tracking-wide">
+              Distribuição por Cliente — {data.anoAtual}
+            </h3>
+            <Treemap data={data.porCliente} />
+          </div>
+
+          {/* ── Linha 5: Tabela Previsão x Realizado ─────────────────────── */}
+          <TabelaMensal data={data.porMes} ano={anoNum} />
+        </>
+      )}
     </div>
   )
 }

@@ -60,6 +60,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         peso_suportes: pt.peso_suportes?.toString() ?? null,
         peso_estruturas: pt.peso_estruturas?.toString() ?? null,
         nao_aplicavel: pt.nao_aplicavel,
+        data_base: pt.data_base?.toISOString() ?? null,
         data_envio: pt.data_envio?.toISOString() ?? null,
       })),
       propostas_comerciais: sol.propostas_comerciais.map((pc) => ({
