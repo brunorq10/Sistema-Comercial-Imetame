@@ -5,7 +5,7 @@ import type { Perfil } from '@/types'
 
 const GRUPOS = {
   gestores: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL'] as Perfil[],
-  comercial: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA'] as Perfil[],
+  comercial: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'ADM_GERAL'] as Perfil[],
   acordos: ['ADM_COMERCIAL', 'GESTAO_ACORDOS', 'ACORDOS', 'ADM_GERAL'] as Perfil[],
   admin: ['ADM_COMERCIAL', 'ADM_GERAL'] as Perfil[],
 }
@@ -18,6 +18,10 @@ export function usePermissions() {
   const is = (...perfis: Perfil[]) => !!perfil && perfis.includes(perfil)
   const inGroup = (grupo: keyof typeof GRUPOS) => !!perfil && GRUPOS[grupo].includes(perfil)
 
+  // ADM_GERAL has unrestricted access to everything
+  const isAdmGeral = is('ADM_GERAL')
+  const can = (check: boolean) => isAdmGeral || check
+
   return {
     perfil,
     userId: session?.user?.id ? Number(session.user.id) : null,
@@ -26,23 +30,23 @@ export function usePermissions() {
     isLoading: status === 'loading',
 
     // Solicitações
-    canCreateSolicitacao: is('ADM_COMERCIAL'),
-    canEditSolicitacao: inGroup('comercial') || isAnalistaCritico,
-    canCancelSolicitacao: is('ADM_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
-    canAtribuirOrcamentista: isAnalistaCritico,
-    canRecusarSolicitacao: isAnalistaCritico,
-    canVerTodasSolicitacoes: is('ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico,
-    canCriarRevisao: is('ADM_COMERCIAL'),
-    canTransferirOrcamentista: is('ADM_COMERCIAL'),
-    canAnalisarSolicitacao: isAnalistaCritico,
+    canCreateSolicitacao: can(is('ADM_COMERCIAL')),
+    canEditSolicitacao: can(inGroup('comercial') || isAnalistaCritico),
+    canCancelSolicitacao: can(is('ADM_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico),
+    canAtribuirOrcamentista: can(isAnalistaCritico),
+    canRecusarSolicitacao: can(isAnalistaCritico),
+    canVerTodasSolicitacoes: can(is('ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico),
+    canCriarRevisao: can(is('ADM_COMERCIAL')),
+    canTransferirOrcamentista: can(is('ADM_COMERCIAL')),
+    canAnalisarSolicitacao: can(isAnalistaCritico),
 
     // Propostas
-    canRegistrarTecnica: is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL'),
-    canRegistrarComercial: is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL'),
+    canRegistrarTecnica: can(is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL')),
+    canRegistrarComercial: can(is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL')),
 
     // Acordos
-    canGerirAcordos: inGroup('acordos'),
-    canLancarNF: is('ACORDOS', 'GESTAO_ACORDOS', 'ADM_COMERCIAL'),
+    canGerirAcordos: can(inGroup('acordos')),
+    canLancarNF: can(is('ACORDOS', 'GESTAO_ACORDOS', 'ADM_COMERCIAL')),
 
     // Admin
     isAdmin: inGroup('admin'),

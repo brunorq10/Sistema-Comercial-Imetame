@@ -360,9 +360,9 @@ export function FaturamentoContratoTable({
                 const subKey      = `sub-${sub.id}`
                 const subBg       = rowBgSub(subKey)
                 const subAno      = getSubAno(sub.data_inicio, contrato.ano_referencia)
-                const sF = (shadow?: boolean) => cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
+                const sF = (shadow?: boolean) => cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5]',
                   shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.07)]')
-                const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer'
+                const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap'
 
                 const subVlrFat = nfFaturadoAnual(sub.notas_fiscais, anoFiltro)
                 const subSaldo  = sub.valor_total - subVlrFat

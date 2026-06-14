@@ -643,9 +643,9 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                 const subSaldo    = sub.valor_total - subVlrFat
 
                 const sF = (shadow?: boolean) =>
-                  cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5] cursor-pointer',
+                  cn('px-2 py-[4px] text-[11px] whitespace-nowrap sticky z-[5]',
                     shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.07)]')
-                const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap cursor-pointer'
+                const sBase = 'px-2 py-[4px] text-[11px] whitespace-nowrap'
 
                 return (
                   <tr key={subKey} className="border-b border-gray-100"

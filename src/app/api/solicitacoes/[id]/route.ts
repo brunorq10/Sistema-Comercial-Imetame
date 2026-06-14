@@ -69,7 +69,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   // CRÍTICO-3: apenas perfis do grupo comercial ou analista crítico podem editar
-  const EDIT_PERFIS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA']
+  const EDIT_PERFIS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'ADM_GERAL']
   if (!EDIT_PERFIS.includes(session.user.perfil as string) && !session.user.is_analista_critico) {
     return NextResponse.json({ data: null, error: 'Sem permissão para editar solicitações' }, { status: 403 })
   }

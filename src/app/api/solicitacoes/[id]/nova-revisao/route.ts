@@ -34,8 +34,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  if (session.user.perfil !== 'ADM_COMERCIAL') {
-    return NextResponse.json({ data: null, error: 'Apenas ADM_COMERCIAL pode criar revisões' }, { status: 403 })
+  if (!['ADM_COMERCIAL', 'ADM_GERAL'].includes(session.user.perfil as string)) {
+    return NextResponse.json({ data: null, error: 'Apenas administradores podem criar revisões' }, { status: 403 })
   }
 
   const id = Number(params.id)
