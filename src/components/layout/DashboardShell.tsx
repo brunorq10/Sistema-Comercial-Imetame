@@ -17,7 +17,7 @@ export async function DashboardShell({ children, title }: DashboardShellProps) {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <Topbar title={title} />
-        <main className="flex-1 overflow-hidden bg-[#F0F0F0]">
+        <main className="flex-1 overflow-hidden bg-[#F5F5F5]">
           {children}
         </main>
       </div>
