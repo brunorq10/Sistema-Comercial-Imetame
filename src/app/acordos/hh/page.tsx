@@ -760,6 +760,12 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
 
 // ─── Visão Resumo ─────────────────────────────────────────────────────────────
 
+function barColors(pct: number) {
+  if (pct > 100) return { text: '#DC2626', bg: '#EF4444' }
+  if (pct >= 90)  return { text: '#CA8A04', bg: '#EAB308' }
+  return { text: '#16A34A', bg: '#22C55E' }
+}
+
 function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: ReturnType<typeof useFilterOptions> }) {
   const [filters, setFilters] = useState<FilterState>({})
   const setFilter = (k: string, v: string[]) => setFilters(p => ({ ...p, [k]: v }))
@@ -793,93 +799,287 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
 
   const labels  = mesData.map(m => m.label)
-  const cumPrev = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, l + m.previsto] }, [])
-  const cumPlan = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, l + m.planejado] }, [])
-  const cumReal = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] ?? 0 : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
+  const cumPrev = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.previsto] }, [])
+  const cumPlan = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.planejado] }, [])
+  const cumReal = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length-1] ?? 0) : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
+
+  const loc = (n: number) => n.toLocaleString('pt-BR')
 
   const chartOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { mode: 'index' as const } },
-    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, grid: { color: '#f0f0f0' } } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+            const v = ctx.parsed.y
+            if (v == null) return ''
+            return `${ctx.dataset.label}: ${v.toLocaleString('pt-BR')}`
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: {
+        ticks: {
+          font: { size: 10 },
+          callback: (value: string | number) => typeof value === 'number' ? value.toLocaleString('pt-BR') : value,
+        },
+        grid: { color: '#f0f0f0' },
+      },
+    },
   }
+
   const makeSeries = (monthly: boolean) => ({
     labels,
     datasets: [
-      { label: 'Previsto',  data: monthly ? mesData.map(m => m.previsto)  : cumPrev,  borderColor: '#185FA5', backgroundColor: '#185FA515', borderDash: [5,3], tension: 0.3, pointRadius: 4, spanGaps: true  },
-      { label: 'Planejado', data: monthly ? mesData.map(m => m.planejado) : cumPlan,  borderColor: '#BA7517', backgroundColor: '#BA751715', tension: 0.3, pointRadius: 4, spanGaps: true  },
-      { label: 'Realizado', data: monthly ? mesData.map(m => m.realizado) : cumReal,  borderColor: '#3B6D11', backgroundColor: '#3B6D1115', tension: 0.3, pointRadius: 4, spanGaps: false },
+      { label: 'Previsto',  data: monthly ? mesData.map(m => m.previsto)  : cumPrev, borderColor: '#185FA5', backgroundColor: 'transparent', borderDash: [6,3], tension: 0.4, pointRadius: 4, pointBackgroundColor: '#185FA5', spanGaps: true  },
+      { label: 'Planejado', data: monthly ? mesData.map(m => m.planejado) : cumPlan, borderColor: '#BA7517', backgroundColor: 'transparent', borderDash: [4,2], tension: 0.4, pointRadius: 4, pointBackgroundColor: '#BA7517', spanGaps: true  },
+      { label: 'Realizado', data: monthly ? mesData.map(m => m.realizado) : cumReal, borderColor: '#16A34A', backgroundColor: 'transparent', tension: 0.4, pointRadius: 4, pointBackgroundColor: '#16A34A', spanGaps: false },
     ],
   })
 
-  function PctBar({ pct, label }: { pct: number; label: string }) {
-    const color = pctColor(pct)
-    return (
-      <div>
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[9px] text-gray-500 uppercase font-semibold">{label}</span>
-          <span className="text-[10px] font-bold" style={{ color }}>{pct.toFixed(1)}%</span>
-        </div>
-        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
-        </div>
-      </div>
-    )
-  }
+  // Tabela: desvio mensal (realizado_mes vs previsto_mes / planejado_mes)
+  const tabelaRows = mesData.map((m, i) => {
+    const prevAcum = cumPrev[i] ?? 0
+    const planAcum = cumPlan[i] ?? 0
+    const realAcum = cumReal[i] ?? null
+    const pctRealMes  = m.previsto > 0 && m.realizado != null ? (m.realizado / m.previsto) * 100 : null
+    const pctRealAcum = prevAcum > 0 && realAcum != null ? (realAcum / prevAcum) * 100 : null
+    const desvPrev = m.previsto > 0 && m.realizado != null ? ((m.realizado - m.previsto)  / m.previsto)  * 100 : null
+    const desvPlan = m.planejado > 0 && m.realizado != null ? ((m.realizado - m.planejado) / m.planejado) * 100 : null
+    return { ...m, prevAcum, planAcum, realAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
+  })
 
   const chartLegend = (
-    <div className="flex items-center gap-4 mb-2">
-      {([['#185FA5','Previsto'],['#BA7517','Planejado'],['#3B6D11','Realizado']] as [string,string][]).map(([c,l]) => (
-        <span key={l} className="flex items-center gap-1.5 text-[11px] text-gray-600">
-          <span className="inline-block w-4 h-[2px] rounded" style={{ background: c }} />{l}
+    <div className="flex items-center gap-5 mb-3">
+      {([
+        ['#185FA5', 'Previsto',  'dashed'],
+        ['#BA7517', 'Planejado', 'dashed'],
+        ['#16A34A', 'Realizado', 'solid'],
+      ] as [string, string, string][]).map(([c, l, style]) => (
+        <span key={l} className="flex items-center gap-2 text-[11px] text-gray-500">
+          <span className="inline-block w-5 h-0.5" style={{
+            background: style === 'solid' ? c
+              : `repeating-linear-gradient(90deg,${c} 0,${c} 4px,transparent 4px,transparent 8px)`,
+          }} />
+          {l}
         </span>
       ))}
     </div>
   )
 
+  const hasData = selecionados.length > 0 && selecionados.some(c => c.tem_lancamento)
+
   return (
-    <div>
+    <div className="space-y-4">
       <Filters opts={opts} filters={filters} onChange={setFilter} />
-      {selecionados.length === 0 || !selecionados.some(c => c.tem_lancamento) ? (
+
+      {!hasData ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-4 py-3 rounded-md">
           Nenhum contrato com lançamento de HH corresponde aos filtros selecionados.
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">HH Previsto</p>
-              <p className="text-[28px] font-bold text-[#185FA5] leading-tight">{totPrev > 0 ? totPrev.toLocaleString('pt-BR') : '—'}</p>
-              <p className="text-[10px] text-gray-400 mt-1">contrato completo</p>
+          {/* ── KPI Cards ── */}
+          <div className="grid grid-cols-3 gap-4">
+
+            {/* Card 1 — HH Previsto */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+              <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="#185FA5" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-normal text-gray-500 mb-1">HH Previsto</p>
+                <p className="text-[30px] font-bold text-[#185FA5] leading-none tracking-tight">
+                  {totPrev > 0 ? loc(totPrev) : '—'}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1.5">contrato completo</p>
+              </div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col">
-              <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">HH Planejado Acumulado</p>
-              <p className="text-[28px] font-bold text-[#BA7517] leading-tight">{totPlan > 0 ? totPlan.toLocaleString('pt-BR') : '—'}</p>
-              <p className="text-[10px] text-gray-400 mt-1">distribuído nos meses</p>
-              {pctPlanPrev != null && <div className="border-t border-gray-100 mt-3 pt-3"><PctBar pct={pctPlanPrev} label="% do Previsto" /></div>}
+
+            {/* Card 2 — HH Planejado Acumulado */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+              <div className="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="#BA7517" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-normal text-gray-500 mb-1">HH Planejado Acumulado</p>
+                <p className="text-[30px] font-bold text-[#BA7517] leading-none tracking-tight">
+                  {totPlan > 0 ? loc(totPlan) : '—'}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1.5">distribuído nos meses</p>
+                {pctPlanPrev != null && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Previsto</span>
+                      <span className="text-[11px] font-bold" style={{ color: barColors(pctPlanPrev).text }}>{pctPlanPrev.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(pctPlanPrev, 100)}%`, backgroundColor: barColors(pctPlanPrev).bg }} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col">
-              <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">HH Realizado Acumulado</p>
-              <p className="text-[28px] font-bold text-[#3B6D11] leading-tight">{totReal != null ? totReal.toLocaleString('pt-BR') : '—'}</p>
-              <p className="text-[10px] text-gray-400 mt-1">{totReal != null ? 'acumulado até o último lançamento' : 'sem lançamento'}</p>
-              {(pctRealPrev != null || pctRealPlan != null) && (
-                <div className="border-t border-gray-100 mt-3 pt-3 flex flex-col gap-2">
-                  {pctRealPrev != null && <PctBar pct={pctRealPrev} label="% do Previsto" />}
-                  {pctRealPlan != null && <PctBar pct={pctRealPlan} label="% do Planejado" />}
-                </div>
-              )}
+
+            {/* Card 3 — HH Realizado Acumulado */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+              <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="#16A34A" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-normal text-gray-500 mb-1">HH Realizado Acumulado</p>
+                <p className="text-[30px] font-bold text-[#16A34A] leading-none tracking-tight">
+                  {totReal != null ? loc(totReal) : '—'}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  {totReal != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}
+                </p>
+                {(pctRealPrev != null || pctRealPlan != null) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
+                    {pctRealPrev != null && (
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Previsto</span>
+                          <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPrev).text }}>{pctRealPrev.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPrev, 100)}%`, backgroundColor: barColors(pctRealPrev).bg }} />
+                        </div>
+                      </div>
+                    )}
+                    {pctRealPlan != null && (
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Planejado</span>
+                          <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPlan).text }}>{pctRealPlan.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPlan, 100)}%`, backgroundColor: barColors(pctRealPlan).bg }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
           {mesData.length > 0 && (
             <>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
-                <p className="text-[12px] font-semibold text-gray-700 mb-1">HH Mensal</p>
+              {/* ── Gráficos ── */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Mensal</p>
+                <p className="text-[11px] text-gray-400 mb-3">Comparativo mês a mês</p>
                 {chartLegend}
-                <div style={{ height: 220 }}><Line data={makeSeries(true)} options={chartOpts} /></div>
+                <div style={{ height: 230 }}><Line data={makeSeries(true)} options={chartOpts} /></div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <p className="text-[12px] font-semibold text-gray-700 mb-1">HH Acumulado</p>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Acumulado</p>
+                <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada ao longo do contrato</p>
                 {chartLegend}
-                <div style={{ height: 220 }}><Line data={makeSeries(false)} options={chartOpts} /></div>
+                <div style={{ height: 230 }}><Line data={makeSeries(false)} options={chartOpts} /></div>
+              </div>
+
+              {/* ── Tabela ── */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Mês</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#185FA5] whitespace-nowrap">Previsto</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#BA7517] whitespace-nowrap">Planejado</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#16A34A] whitespace-nowrap">Realizado</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#185FA5] whitespace-nowrap">Previsto (Acum.)</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#BA7517] whitespace-nowrap">Planejado (Acum.)</th>
+                        <th className="px-4 py-3 text-right font-semibold text-[#16A34A] whitespace-nowrap">Realizado (Acum.)</th>
+                        <th className="px-4 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">Desvio (Prev. x Real)</th>
+                        <th className="px-4 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">Desvio (Plan. x Real)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {tabelaRows.map((row, i) => {
+                        const rcPrev = row.pctRealMes  != null ? barColors(row.pctRealMes).text  : undefined
+                        const rcAcum = row.pctRealAcum != null ? barColors(row.pctRealAcum).text : undefined
+                        const dcPrev = row.desvPrev != null ? (row.desvPrev <= 0 ? '#16A34A' : '#DC2626') : undefined
+                        const dcPlan = row.desvPlan != null ? (row.desvPlan <= 0 ? '#16A34A' : '#DC2626') : undefined
+                        return (
+                          <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-2.5 font-semibold text-gray-700">{row.label}</td>
+                            <td className="px-4 py-2.5 text-right text-[#185FA5]">{loc(row.previsto)}</td>
+                            <td className="px-4 py-2.5 text-right text-[#BA7517]">{loc(row.planejado)}</td>
+                            <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcPrev ?? '#9CA3AF' }}>
+                              {row.realizado != null ? loc(row.realizado) : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-[#185FA5]">{loc(row.prevAcum)}</td>
+                            <td className="px-4 py-2.5 text-right text-[#BA7517]">{loc(row.planAcum)}</td>
+                            <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcAcum ?? '#9CA3AF' }}>
+                              {row.realAcum != null ? loc(row.realAcum) : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold" style={{ color: dcPrev }}>
+                              {row.desvPrev != null
+                                ? `${row.desvPrev > 0 ? '+' : ''}${row.desvPrev.toFixed(1)}%`
+                                : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold" style={{ color: dcPlan }}>
+                              {row.desvPlan != null
+                                ? `${row.desvPlan > 0 ? '+' : ''}${row.desvPlan.toFixed(1)}%`
+                                : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                        <td className="px-4 py-3 text-[11px] uppercase tracking-wide text-gray-700">Total</td>
+                        <td className="px-4 py-3 text-right text-[#185FA5]">{loc(totPrev)}</td>
+                        <td className="px-4 py-3 text-right text-[#BA7517]">{loc(totPlan)}</td>
+                        <td className="px-4 py-3 text-right" style={{ color: pctRealPrev != null ? barColors(pctRealPrev).text : '#9CA3AF' }}>
+                          {totReal != null ? loc(totReal) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-400">—</td>
+                        <td className="px-4 py-3 text-right text-gray-400">—</td>
+                        <td className="px-4 py-3 text-right text-gray-400">—</td>
+                        {/* Desvio total Prev x Real */}
+                        {(() => {
+                          const d = totPrev > 0 && totReal != null ? ((totReal - totPrev) / totPrev) * 100 : null
+                          return (
+                            <td className="px-4 py-3 text-right" style={{ color: d != null ? (d <= 0 ? '#16A34A' : '#DC2626') : undefined }}>
+                              {d != null ? `${d > 0 ? '+' : ''}${d.toFixed(1)}%` : '—'}
+                            </td>
+                          )
+                        })()}
+                        {/* Desvio total Plan x Real */}
+                        {(() => {
+                          const d = totPlan > 0 && totReal != null ? ((totReal - totPlan) / totPlan) * 100 : null
+                          return (
+                            <td className="px-4 py-3 text-right" style={{ color: d != null ? (d <= 0 ? '#16A34A' : '#DC2626') : undefined }}>
+                              {d != null ? `${d > 0 ? '+' : ''}${d.toFixed(1)}%` : '—'}
+                            </td>
+                          )
+                        })()}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50">
+                  <p className="text-[10px] text-gray-400">
+                    ⓘ Realizado: <span className="text-green-600 font-medium">Verde &lt;90%</span> · <span className="text-yellow-500 font-medium">Âmbar 90–100%</span> · <span className="text-red-500 font-medium">Vermelho &gt;100%</span> do previsto · Desvio: verde = economia, vermelho = estouro
+                  </p>
+                </div>
               </div>
             </>
           )}
