@@ -997,16 +997,16 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                 <div className="overflow-x-auto">
                   <table className="w-full text-[12px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-4 py-3 text-left font-semibold text-gray-600 whitespace-nowrap">Mês</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#185FA5] whitespace-nowrap">Previsto</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#BA7517] whitespace-nowrap">Planejado</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#16A34A] whitespace-nowrap">Realizado</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#185FA5] whitespace-nowrap">Previsto (Acum.)</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#BA7517] whitespace-nowrap">Planejado (Acum.)</th>
-                        <th className="px-4 py-3 text-right font-semibold text-[#16A34A] whitespace-nowrap">Realizado (Acum.)</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">Desvio (Prev. x Real)</th>
-                        <th className="px-4 py-3 text-right font-semibold text-gray-600 whitespace-nowrap">Desvio (Plan. x Real)</th>
+                      <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
+                        <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Mês</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto (Acum.)</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado (Acum.)</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado (Acum.)</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Prev. x Real)</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Plan. x Real)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
