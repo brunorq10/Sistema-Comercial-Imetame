@@ -342,6 +342,7 @@ export interface ClienteListItem {
   cidade: string | null
   estado: string | null
   ramo_atuacao: RamoAtuacao | null
+  segmento: Segmento | null
   ativo: boolean
   created_at: string
 }

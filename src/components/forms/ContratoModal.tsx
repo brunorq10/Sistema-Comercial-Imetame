@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, CurrencyInput } from '@/components/ui/Input'
@@ -66,7 +66,15 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const isEdit = !!editando
   const anoAtual = new Date().getFullYear()
 
-  const [clientes, setClientes] = useState<{ id: number; nome: string; ramo_atuacao?: string | null }[]>([])
+  const [clientes, setClientes] = useState<{
+    id: number
+    nome: string
+    ramo_atuacao?: string | null
+    cidade: string | null
+    estado: string | null
+    segmento?: string | null
+    filiais: { id: number; nome: string | null; cidade: string; estado: string }[]
+  }[]>([])
   const [responsaveis, setResponsaveis] = useState<{ id: number; nome: string }[]>([])
 
   const [anoRef, setAnoRef] = useState(String(anoAtual))
@@ -88,6 +96,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [error, setError] = useState<string | null>(null)
   const savedRef = useRef(false)
   const savingDraftRef = useRef(false)
+  const prevClienteFinalRef = useRef('')
 
   useEffect(() => {
     fetch('/api/clientes').then((r) => r.json()).then((j) => setClientes(j.data ?? []))
@@ -99,10 +108,12 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     savedRef.current = false
     savingDraftRef.current = false
     if (editando) {
+      const initCFId = editando.cliente_final ? String(editando.cliente_final.id) : ''
+      prevClienteFinalRef.current = initCFId
       setAnoRef(String(editando.ano_referencia))
       setStatus(editando.status)
       setClienteId(String(editando.cliente.id))
-      setClienteFinalId(editando.cliente_final ? String(editando.cliente_final.id) : '')
+      setClienteFinalId(initCFId)
       setCidade(editando.cidade ?? '')
       setEstado(editando.estado ?? '')
       setNumAcordo(editando.num_acordo ?? '')
@@ -132,6 +143,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         }
       }))
     } else {
+      prevClienteFinalRef.current = ''
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
       setClienteFinalId(''); setCidade(''); setEstado('')
       setNumAcordo(''); setNumProposta(''); setResponsavelId('')
@@ -140,6 +152,26 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     }
     setError(null)
   }, [open, editando, anoAtual])
+
+  // Reset cidade/estado when cliente_final changes (skip initial load via ref)
+  useEffect(() => {
+    if (prevClienteFinalRef.current === clienteFinalId) return
+    prevClienteFinalRef.current = clienteFinalId
+    setCidade('')
+    setEstado('')
+  }, [clienteFinalId])
+
+  // Auto-fill estado from selected cidade's filial
+  useEffect(() => {
+    if (!cidade) { setEstado(''); return }
+    const cf = clientes.find((c) => String(c.id) === clienteFinalId)
+    if (!cf) return
+    const filiais = cf.filiais.length > 0
+      ? cf.filiais
+      : (cf.cidade ? [{ id: 0, nome: null, cidade: cf.cidade, estado: cf.estado ?? '' }] : [])
+    const filial = filiais.find((f) => f.cidade === cidade)
+    if (filial) setEstado(filial.estado)
+  }, [cidade, clienteFinalId, clientes])
 
   const saveDraft = async () => {
     if (savingDraftRef.current || savedRef.current || isEdit) return
@@ -214,8 +246,20 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       }
     ))
 
+  const clienteFinalObj = useMemo(
+    () => clientes.find((c) => String(c.id) === clienteFinalId) ?? null,
+    [clientes, clienteFinalId],
+  )
+  const filiaisDisponiveis = useMemo(() => {
+    if (!clienteFinalObj) return []
+    if (clienteFinalObj.filiais.length > 0) return clienteFinalObj.filiais
+    if (clienteFinalObj.cidade) return [{ id: 0, nome: null, cidade: clienteFinalObj.cidade, estado: clienteFinalObj.estado ?? '' }]
+    return []
+  }, [clienteFinalObj])
+
   const handleSubmit = async () => {
     if (!clienteId) { setError('Selecione o cliente'); return }
+    if (!clienteFinalId) { setError('Selecione o cliente final'); return }
     if (!anoRef) { setError('Ano de referência obrigatório'); return }
     if (!valorContrato || isNaN(Number(valorContrato)) || Number(valorContrato) <= 0) {
       setError('Valor total do contrato é obrigatório'); return
@@ -352,7 +396,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </Select>
         </Field>
-        <Field label="Cliente Final">
+        <Field label="Cliente Final *">
           <Select value={clienteFinalId} onChange={(e) => setClienteFinalId(e.target.value)}>
             <option value="">Selecione...</option>
             {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -361,16 +405,18 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5 mb-2.5">
-        <Field label="Cidade">
-          <Input placeholder="Ex: Volta Redonda" value={cidade} onChange={(e) => setCidade(e.target.value)} />
-        </Field>
-        <Field label="UF">
-          <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value="">Selecione...</option>
-            {['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(uf => (
-              <option key={uf} value={uf}>{uf}</option>
+        <Field label="Cidade *">
+          <Select value={cidade} onChange={(e) => setCidade(e.target.value)} disabled={!clienteFinalId}>
+            <option value="">{clienteFinalId ? 'Selecione...' : 'Selecione o cliente final primeiro'}</option>
+            {filiaisDisponiveis.map((f, i) => (
+              <option key={`${f.cidade}-${i}`} value={f.cidade}>{f.cidade}</option>
             ))}
           </Select>
+        </Field>
+        <Field label="UF">
+          <div className="border border-gray-200 bg-[#EEF7EE] rounded px-2.5 py-[5px] text-[12px] text-[#1565C0] font-medium min-h-[30px]">
+            {estado || <span className="text-gray-300">—</span>}
+          </div>
         </Field>
         <Field label="Classificação">
           <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>

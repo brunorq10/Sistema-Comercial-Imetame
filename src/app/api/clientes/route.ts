@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 const schema = z.object({
   nome: z.string().min(2, 'Razão Social obrigatória'),
-  cnpj: z.string().min(1, 'CNPJ obrigatório'),
+  cnpj: z.string().optional(),
   contato_nome: z.string().optional(),
   contato_email: z.string().email().optional().or(z.literal('')),
   contato_telefone: z.string().optional(),
@@ -15,6 +15,11 @@ const schema = z.object({
     required_error: 'Ramo de atuação obrigatório',
     invalid_type_error: 'Ramo de atuação obrigatório',
   }),
+  segmento: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'OLEO_GAS', 'OUTROS']).nullable().optional(),
+  filiais: z.array(z.object({
+    cidade: z.string().min(1),
+    estado: z.string().length(2),
+  })).optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -68,6 +73,7 @@ export async function GET(req: NextRequest) {
     cidade: c.cidade,
     estado: c.estado,
     ramo_atuacao: c.ramo_atuacao,
+    segmento: c.segmento,
     ativo: c.ativo,
     created_at: c.created_at.toISOString(),
   }))
@@ -92,16 +98,28 @@ export async function POST(req: NextRequest) {
   const cliente = await prisma.cliente.create({
     data: {
       nome: d.nome,
-      cnpj: d.cnpj,
+      cnpj: d.cnpj || null,
       contato_nome: d.contato_nome || null,
       contato_email: d.contato_email || null,
       contato_telefone: d.contato_telefone || null,
       cidade: d.cidade,
       estado: d.estado,
       ramo_atuacao: d.ramo_atuacao,
+      segmento: d.segmento ?? null,
       created_by: Number(session.user.id),
     },
   })
+
+  if (d.filiais && d.filiais.length > 0) {
+    await prisma.filial.createMany({
+      data: d.filiais.map((f) => ({
+        cliente_id: cliente.id,
+        cidade: f.cidade,
+        estado: f.estado,
+        created_by: Number(session.user.id),
+      })),
+    })
+  }
 
   const codigo = `CLI-${String(cliente.id).padStart(4, '0')}`
   await prisma.cliente.update({ where: { id: cliente.id }, data: { codigo } })
