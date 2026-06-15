@@ -61,7 +61,7 @@ export function Sidebar() {
         <img
           src="/logo.svg"
           alt="Imetame"
-          width={150}
+          width={120}
           style={{ filter: 'brightness(0) invert(1)' }}
           className="select-none"
         />
