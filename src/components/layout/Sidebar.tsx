@@ -57,10 +57,14 @@ export function Sidebar() {
       {/* ── Cabeçalho verde ────────────────────────────────────────────── */}
       <div className="bg-green-primary flex flex-col items-center pt-5 pb-5">
         {/* Logo */}
-        <span className="text-white text-[18px] font-bold tracking-[0.15em]">IMETAME</span>
-        <span className="text-white/55 text-[7.5px] tracking-[0.08em] uppercase mt-0.5">
-          Pessoas que fazem a diferença
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.svg"
+          alt="Imetame"
+          width={150}
+          style={{ filter: 'brightness(0) invert(1)' }}
+          className="select-none"
+        />
 
         {/* Divider */}
         <div className="w-full border-t border-white/20 mt-4 mb-4" />

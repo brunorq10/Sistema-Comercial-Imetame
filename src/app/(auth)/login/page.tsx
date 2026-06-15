@@ -38,9 +38,15 @@ export default function LoginPage() {
       {/* Card */}
       <div className="w-full max-w-[380px] mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Topo verde */}
-        <div className="bg-[#2E7D32] flex flex-col items-center pt-8 pb-6">
-          <span className="text-white text-[28px] font-extrabold tracking-[0.15em]">IMETAME</span>
-          <span className="text-white/60 text-[9px] tracking-[0.1em] uppercase mt-0.5">Pessoas que fazem a diferença</span>
+        <div className="bg-[#2E7D32] flex flex-col items-center pt-8 pb-6 px-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.svg"
+            alt="Imetame"
+            width={200}
+            style={{ filter: 'brightness(0) invert(1)' }}
+            className="select-none"
+          />
         </div>
 
         {/* Formulário */}
