@@ -42,6 +42,7 @@ export function RegistrarComercialModal({
   const [valOutros, setValOutros] = useState('')
   const [possuiFabricacao, setPossuiFabricacao] = useState(false)
   const [valorFabricacao, setValorFabricacao] = useState('')
+  const [dataBase, setDataBase] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +77,7 @@ export function RegistrarComercialModal({
     setValEletrica(''); setValIsolamento(''); setValCivil(''); setValFibra(''); setValOutros('')
     setPossuiFabricacao(false)
     setValorFabricacao('')
+    setDataBase('')
     setError(null)
   }
 
@@ -92,12 +94,15 @@ export function RegistrarComercialModal({
         const json = await res.json()
         if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
         resetForm(); onSuccess(); onClose()
+      } catch (err) {
+        setError(String(err))
       } finally { setLoading(false) }
       return
     }
 
     if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
     if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor Total da Montagem Mecânica'); return }
+    if (!dataBase) { setError('Informe a Data base do contrato'); return }
 
     setLoading(true)
     setError(null)
@@ -107,6 +112,7 @@ export function RegistrarComercialModal({
         valor_montagem_mecanica: numMontagem,
         possui_terceiros: possuiTerceiros,
         possui_fabricacao: possuiFabricacao,
+        data_base: dataBase,
         data_envio: dataEnvio,
       }
       if (possuiTerceiros) {
@@ -129,6 +135,8 @@ export function RegistrarComercialModal({
       resetForm()
       onSuccess()
       onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -305,6 +313,10 @@ export function RegistrarComercialModal({
           </div>
         </div>
       )}
+
+      <Field label="Data base do contrato *" className="mt-3 max-w-[200px]">
+        <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
+      </Field>
       </>
       )}
 

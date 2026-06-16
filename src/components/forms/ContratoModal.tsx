@@ -76,6 +76,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     filiais: { id: number; nome: string | null; cidade: string; estado: string }[]
   }[]>([])
   const [responsaveis, setResponsaveis] = useState<{ id: number; nome: string }[]>([])
+  const [propostasCliente, setPropostasCliente] = useState<{ id: number; numero: string }[]>([])
 
   const [anoRef, setAnoRef] = useState(String(anoAtual))
   const [status, setStatus] = useState('A_FATURAR')
@@ -102,6 +103,15 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     fetch('/api/clientes').then((r) => r.json()).then((j) => setClientes(j.data ?? []))
     fetch('/api/users/acordos').then((r) => r.json()).then((j) => setResponsaveis(j.data ?? []))
   }, [])
+
+  // Ajuste 1: lista de propostas (Solicitacao.numero) do cliente selecionado, para vincular ao contrato
+  useEffect(() => {
+    if (!clienteId) { setPropostasCliente([]); return }
+    fetch(`/api/solicitacoes?modo=autocomplete&cliente_id=${clienteId}`)
+      .then((r) => r.json())
+      .then((j) => setPropostasCliente((j.data ?? []).map((r: { id: number; numero: string }) => ({ id: r.id, numero: r.numero }))))
+      .catch(() => setPropostasCliente([]))
+  }, [clienteId])
 
   useEffect(() => {
     if (!open) return
@@ -441,7 +451,13 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
           <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
         <Field label="Nº Proposta">
-          <Input placeholder="Ex: PROP-0848" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} />
+          <Select value={numProposta} onChange={(e) => setNumProposta(e.target.value)} disabled={!clienteId}>
+            <option value="">{clienteId ? 'Selecione...' : 'Selecione o cliente primeiro'}</option>
+            {numProposta && !propostasCliente.some((p) => p.numero === numProposta) && (
+              <option value={numProposta}>{numProposta}</option>
+            )}
+            {propostasCliente.map((p) => <option key={p.id} value={p.numero}>{p.numero}</option>)}
+          </Select>
         </Field>
         <Field label="Valor total do contrato (R$)">
           <CurrencyInput value={valorContrato} onChange={setValorContrato} />

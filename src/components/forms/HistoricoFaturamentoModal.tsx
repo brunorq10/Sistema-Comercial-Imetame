@@ -16,7 +16,7 @@ interface HistoricoEntry {
 interface Props {
   open: boolean
   onClose: () => void
-  tipo: 'subindice' | 'contrato'
+  tipo: 'subindice' | 'contrato' | 'proposta'
   itemId: number
   titulo: string
 }
@@ -32,6 +32,8 @@ export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo 
     setError(null)
     const endpoint = tipo === 'subindice'
       ? `/api/faturamento/subindices/${itemId}/historico`
+      : tipo === 'proposta'
+      ? `/api/solicitacoes/${itemId}/historico`
       : `/api/faturamento/contratos/${itemId}/historico`
     fetch(endpoint)
       .then((r) => r.json())

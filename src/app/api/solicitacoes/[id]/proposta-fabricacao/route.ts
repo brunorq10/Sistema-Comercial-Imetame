@@ -17,6 +17,7 @@ const schemaPost = z.object({
   valor_testes: z.number().min(0).optional(),
   possui_montagem: z.boolean().default(false),
   valor_montagem: z.number().min(0).optional(),
+  data_base: z.string().optional(),
   data_envio: z.string().min(1),
 })
 
@@ -98,40 +99,46 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const valorTotal = valorEquipamentos + valorTestes + valorMontagem
   const proximaVersao = (sol.propostas_fabricacao[0]?.versao ?? 0) + 1
 
-  const proposta = await prisma.$transaction(async (tx) => {
-    const pf = await tx.propostaFabricacao.create({
-      data: {
-        solicitacao_id: id,
-        versao: proximaVersao,
-        possui_testes: d.possui_testes,
-        descricao_testes: d.possui_testes ? (d.descricao_testes ?? null) : null,
-        valor_testes: d.possui_testes ? valorTestes : null,
-        possui_montagem: d.possui_montagem,
-        valor_montagem: d.possui_montagem ? valorMontagem : null,
-        peso_total: pesoTotal,
-        valor_total: valorTotal,
-        data_envio: new Date(d.data_envio),
-        created_by: Number(session.user.id),
-        equipamentos: {
-          create: d.equipamentos.map((e, i) => ({
-            ordem: i + 1,
-            descricao: e.descricao,
-            peso_ton: e.peso_ton,
-            valor_total: e.valor_total,
-            observacoes: e.observacoes ?? null,
-          })),
+  try {
+    const proposta = await prisma.$transaction(async (tx) => {
+      const pf = await tx.propostaFabricacao.create({
+        data: {
+          solicitacao_id: id,
+          versao: proximaVersao,
+          possui_testes: d.possui_testes,
+          descricao_testes: d.possui_testes ? (d.descricao_testes ?? null) : null,
+          valor_testes: d.possui_testes ? valorTestes : null,
+          possui_montagem: d.possui_montagem,
+          valor_montagem: d.possui_montagem ? valorMontagem : null,
+          peso_total: pesoTotal,
+          valor_total: valorTotal,
+          data_base: d.data_base ? new Date(d.data_base) : null,
+          data_envio: new Date(d.data_envio),
+          created_by: Number(session.user.id),
+          equipamentos: {
+            create: d.equipamentos.map((e, i) => ({
+              ordem: i + 1,
+              descricao: e.descricao,
+              peso_ton: e.peso_ton,
+              valor_total: e.valor_total,
+              observacoes: e.observacoes ?? null,
+            })),
+          },
         },
-      },
-      include: { equipamentos: true },
+        include: { equipamentos: true },
+      })
+      await tx.solicitacao.update({
+        where: { id },
+        data: { status: 'PROPOSTA_ENVIADA' },
+      })
+      return pf
     })
-    await tx.solicitacao.update({
-      where: { id },
-      data: { status: 'PROPOSTA_ENVIADA' },
-    })
-    return pf
-  })
 
-  return NextResponse.json({ data: proposta, error: null }, { status: 201 })
+    return NextResponse.json({ data: proposta, error: null }, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/solicitacoes/[id]/proposta-fabricacao]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -173,6 +180,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         valor_montagem: d.possui_montagem ? valorMontPut : null,
         peso_total: pesoTotal,
         valor_total: valorTotal,
+        data_base: d.data_base ? new Date(d.data_base) : latest.data_base,
         data_envio: new Date(d.data_envio),
         equipamentos: {
           deleteMany: {},

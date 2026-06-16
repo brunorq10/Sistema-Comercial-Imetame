@@ -61,7 +61,15 @@ const SOLICITACAO_INCLUDE = {
       valor_hidraulica: true, valor_fibra: true,
       valor_tijolo_antiacido: true, valor_outros_terceiros: true,
       valor_terceiros: true, valor_total: true,
-      data_envio: true, resultado: true,
+      data_base: true, data_envio: true, resultado: true,
+    },
+  },
+  propostas_fabricacao: {
+    orderBy: { versao: 'desc' as const },
+    select: {
+      id: true, versao: true,
+      peso_total: true, valor_total: true,
+      data_base: true, data_envio: true, resultado: true,
     },
   },
 }
@@ -256,9 +264,15 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, soli
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function serializeSolicitacao(s: any) {
+  const dataBase =
+    s.propostas_comerciais.slice().reverse().find((pc: any) => pc.data_base)?.data_base ??
+    s.propostas_fabricacao?.slice().reverse().find((pf: any) => pf.data_base)?.data_base ??
+    null
+
   return {
     id: s.id,
     numero: s.numero,
+    data_base: dataBase?.toISOString() ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     propostas_tecnicas: s.propostas_tecnicas.map((pt: any) => ({
       id: pt.id,
@@ -281,8 +295,19 @@ function serializeSolicitacao(s: any) {
       valor_montagem_mecanica: pc.valor_montagem_mecanica ? Number(pc.valor_montagem_mecanica) : null,
       valor_terceiros: pc.valor_terceiros ? Number(pc.valor_terceiros) : null,
       valor_total: pc.valor_total ? Number(pc.valor_total) : null,
+      data_base: pc.data_base?.toISOString() ?? null,
       data_envio: pc.data_envio?.toISOString() ?? null,
       resultado: pc.resultado,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    propostas_fabricacao: (s.propostas_fabricacao ?? []).map((pf: any) => ({
+      id: pf.id,
+      versao: pf.versao,
+      peso_total: pf.peso_total ? Number(pf.peso_total) : null,
+      valor_total: pf.valor_total ? Number(pf.valor_total) : null,
+      data_base: pf.data_base?.toISOString() ?? null,
+      data_envio: pf.data_envio?.toISOString() ?? null,
+      resultado: pf.resultado,
     })),
   }
 }

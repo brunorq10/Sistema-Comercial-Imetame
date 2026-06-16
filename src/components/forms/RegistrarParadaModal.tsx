@@ -93,6 +93,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
 
       onSuccess()
       onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -217,6 +219,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const [valorTotal, setValorTotal] = useState('')
   const [valorTerceiros, setValorTerceiros] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataBase, setDataBase] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -234,6 +237,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
     if (!naoAplicavel) {
       if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
       if (!valorTotal || numValorTotal <= 0) { setError('Informe o Valor Total'); return }
+      if (!dataBase) { setError('Informe a Data base do contrato'); return }
     }
 
     setLoading(true)
@@ -244,6 +248,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         body.proposta_tecnica_id = Number(tecnicaId)
         body.valor_total_direto = numValorTotal
         if (numTerceiros > 0) body.valor_terceiros = numTerceiros
+        body.data_base = dataBase
       }
 
       const res = await fetch(`/api/solicitacoes/${solicitacaoId}/proposta-comercial`, {
@@ -256,6 +261,8 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
       onSuccess()
       onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -391,6 +398,10 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
           </div>
         </div>
       )}
+
+      <Field label="Data base do contrato *" className="mb-3 max-w-[200px]">
+        <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
+      </Field>
 
       <ModalSection>3. Data de Envio</ModalSection>
 

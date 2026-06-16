@@ -4,7 +4,28 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailStatusAlterado } from '@/lib/notifications'
 import { createNotificacao } from '@/lib/notifications'
+import { formatDate } from '@/lib/utils'
 import type { Classificacao, Interesse, Origem, Segmento, StatusSolicitacao } from '@prisma/client'
+
+const CAMPO_LABELS: Record<string, string> = {
+  cliente_id: 'Cliente', cliente_final_id: 'Cliente Final', data_recebimento: 'Data Recebimento',
+  segmento: 'Segmento', contato: 'Contato', referencia_cliente: 'Referência Cliente',
+  comprador: 'Comprador', telefone_comprador: 'Telefone Comprador', email_comprador: 'E-mail Comprador',
+  cidade: 'Cidade', estado: 'Estado', origem: 'Origem', escopo: 'Escopo',
+  classificacao: 'Classificação', interesse: 'Interesse', status: 'Status',
+  prazo_tecnica: 'Prazo Técnica', prazo_comercial: 'Prazo Comercial',
+  orcamentista_id: 'Orçamentista', visita_tecnica: 'Visita Técnica', data_visita: 'Data Visita',
+  motivo_recusa: 'Motivo Recusa',
+}
+
+const CAMPOS_DATA = new Set(['data_recebimento', 'prazo_tecnica', 'prazo_comercial', 'data_visita'])
+
+function formatSolicitacaoVal(campo: string, val: unknown): string {
+  if (val == null) return '—'
+  if (CAMPOS_DATA.has(campo)) return formatDate(val instanceof Date ? val.toISOString() : String(val)) ?? '—'
+  if (typeof val === 'boolean') return val ? 'Sim' : 'Não'
+  return String(val)
+}
 
 // ─── GET /api/solicitacoes/:id ────────────────────────────────────────────────
 
@@ -146,6 +167,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     },
     include: { orcamentista: { select: { id: true, nome: true, email: true } } },
   })
+
+  // Registra campos alterados no histórico de alterações
+  const camposVerificar = Object.keys(CAMPO_LABELS) as (keyof typeof CAMPO_LABELS)[]
+  const historico: { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+  for (const campo of camposVerificar) {
+    const antigo = (existing as Record<string, unknown>)[campo]
+    const novo = (updated as Record<string, unknown>)[campo]
+    const antigoStr = antigo == null ? null : String(antigo instanceof Date ? antigo.toISOString() : antigo)
+    const novoStr = novo == null ? null : String(novo instanceof Date ? novo.toISOString() : novo)
+    if (antigoStr !== novoStr) {
+      historico.push({
+        solicitacao_id: id,
+        campo: CAMPO_LABELS[campo],
+        valor_de: formatSolicitacaoVal(campo, antigo),
+        valor_para: formatSolicitacaoVal(campo, novo),
+        created_by: Number(session.user.id),
+      })
+    }
+  }
+  if (historico.length > 0) {
+    await prisma.historicoSolicitacao.createMany({ data: historico })
+  }
 
   // Notifica quando orçamentista é transferido via edição
   if (data.orcamentista_id !== undefined && data.orcamentista_id !== existing.orcamentista_id) {

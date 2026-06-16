@@ -133,6 +133,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
       onSuccess(); onClose()
+    } catch (err) {
+      setError(String(err))
     } finally { setLoading(false) }
   }
 
@@ -255,6 +257,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   const [valorFabricacao, setValorFabricacao] = useState('')
   const [pesoFabricacao, setPesoFabricacao] = useState('')
   const [dataEnvio, setDataEnvio] = useState(today())
+  const [dataBase, setDataBase] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -285,6 +288,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
     if (!naoAplicavel) {
       if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
       if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor da Montagem'); return }
+      if (!dataBase) { setError('Informe a Data base do contrato'); return }
       if (!dataEnvio) { setError('Informe a data de envio'); return }
     }
 
@@ -296,6 +300,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         body.valor_montagem_mecanica = numMontagem
         body.possui_terceiros = possuiTerceiros
         body.possui_fabricacao = possuiFabricacao
+        body.data_base = dataBase
         if (possuiTerceiros) {
           for (const { key, apiKey } of TERCEIROS) {
             const v = Number(terceiros[key]) || 0
@@ -314,6 +319,8 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
       onSuccess(); onClose()
+    } catch (err) {
+      setError(String(err))
     } finally { setLoading(false) }
   }
 
@@ -498,6 +505,10 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
           </div>
         )}
       </div>
+
+      <Field label="Data base do contrato *" className="mb-4 max-w-[200px]">
+        <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
+      </Field>
 
       {/* Data de envio */}
       <ModalSection>Data de Envio</ModalSection>

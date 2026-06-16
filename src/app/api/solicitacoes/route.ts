@@ -53,11 +53,17 @@ export async function GET(req: NextRequest) {
 
   if (searchParams.get('modo') === 'autocomplete') {
     const busca = searchParams.get('busca') ?? ''
+    const clienteIdParam = searchParams.get('cliente_id')
+    const clienteId = clienteIdParam ? Number(clienteIdParam) : undefined
     const rows = await prisma.solicitacao.findMany({
-      where: { numero: { contains: busca, mode: 'insensitive' }, cancelled_at: null },
+      where: {
+        numero: { contains: busca, mode: 'insensitive' },
+        cancelled_at: null,
+        ...(clienteId !== undefined && { cliente_id: clienteId }),
+      },
       select: { id: true, numero: true, cliente: { select: { nome: true } } },
       orderBy: { numero: 'asc' },
-      take: 10,
+      take: clienteId !== undefined ? undefined : 10,
     })
     return NextResponse.json({ data: rows.map((r) => ({ id: r.id, numero: r.numero, cliente: r.cliente.nome })), error: null })
   }

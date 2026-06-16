@@ -60,32 +60,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const maxOrdem = await prisma.subIndiceFaturamento.aggregate({
-    _max: { ordem: true },
-    where: { contrato_id: parsed.data.contrato_id },
-  })
-  const ordem = (maxOrdem._max.ordem ?? 0) + 1
+  try {
+    const maxOrdem = await prisma.subIndiceFaturamento.aggregate({
+      _max: { ordem: true },
+      where: { contrato_id: parsed.data.contrato_id },
+    })
+    const ordem = (maxOrdem._max.ordem ?? 0) + 1
 
-  const { set: set_val, contrato_id, data_inicio, data_fim, num_os, ...rest } = parsed.data
+    const { set: set_val, contrato_id, data_inicio, data_fim, num_os, ...rest } = parsed.data
 
-  const subindice = await prisma.subIndiceFaturamento.create({
-    data: {
-      contrato_id,
-      ordem,
-      descricao: rest.descricao,
-      num_os: num_os ?? null,
-      valor_total: rest.valor_total,
-      data_inicio: data_inicio ? new Date(data_inicio) : null,
-      data_fim: data_fim ? new Date(data_fim) : null,
-      comentarios: rest.comentarios ?? null,
-      jan: rest.jan ?? null, fev: rest.fev ?? null, mar: rest.mar ?? null,
-      abr: rest.abr ?? null, mai: rest.mai ?? null, jun: rest.jun ?? null,
-      jul: rest.jul ?? null, ago: rest.ago ?? null,
-      set: set_val ?? null,
-      out: rest.out ?? null, nov: rest.nov ?? null, dez: rest.dez ?? null,
-      created_by: Number(session.user.id),
-    },
-  })
+    const subindice = await prisma.subIndiceFaturamento.create({
+      data: {
+        contrato_id,
+        ordem,
+        descricao: rest.descricao,
+        num_os: num_os ?? null,
+        valor_total: rest.valor_total,
+        data_inicio: data_inicio ? new Date(data_inicio) : null,
+        data_fim: data_fim ? new Date(data_fim) : null,
+        comentarios: rest.comentarios ?? null,
+        jan: rest.jan ?? null, fev: rest.fev ?? null, mar: rest.mar ?? null,
+        abr: rest.abr ?? null, mai: rest.mai ?? null, jun: rest.jun ?? null,
+        jul: rest.jul ?? null, ago: rest.ago ?? null,
+        set: set_val ?? null,
+        out: rest.out ?? null, nov: rest.nov ?? null, dez: rest.dez ?? null,
+        created_by: Number(session.user.id),
+      },
+    })
 
-  return NextResponse.json({ data: subindice, error: null }, { status: 201 })
+    return NextResponse.json({ data: subindice, error: null }, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/faturamento/subindices]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+  }
 }

@@ -64,6 +64,7 @@ interface HistoricoData {
   cliente: string; cliente_final: string | null; cidade: string | null; estado: string | null
   escopo: string | null; orcamentista: string | null; as_sold: boolean
   classificacao: string | null
+  data_base: string | null
   propostas_tecnicas: TecData[]
   propostas_comerciais: ComData[]
   propostas_fabricacao: FabData[]
@@ -790,6 +791,8 @@ function HeaderBar({ raw, onBack, onExport }: { raw: HistoricoData; onBack: () =
         <div className="shrink-0"><InfoChip label="Local" value={[raw.cidade, raw.estado].filter(Boolean).join(' / ') || '—'} /></div>
         <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
         <div className="min-w-0 flex-[3]"><InfoChip label="Escopo Resumido" value={raw.escopo ?? '—'} truncate /></div>
+        <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
+        <div className="shrink-0"><InfoChip label="Data base" value={raw.data_base ? formatDate(raw.data_base) : '—'} /></div>
       </div>
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <button onClick={onBack} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">

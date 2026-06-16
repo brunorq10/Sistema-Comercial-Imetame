@@ -23,6 +23,7 @@ const schemaPost = z.object({
   // Paradas: valor total direto + terceiros opcionais
   valor_total_direto: z.number().min(0).optional(),
   valor_terceiros: z.number().min(0).optional(),
+  data_base: z.string().optional(),
   data_envio: z.string().optional(),
 })
 
@@ -173,54 +174,60 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  const [proposta] = await prisma.$transaction([
-    prisma.propostaComercial.create({
-      data: {
-        solicitacao_id: id,
-        proposta_tecnica_id: tecnicaId,
-        versao: versaoFinal,
-        nao_aplicavel: naoAplicavel,
-        valor_montagem_mecanica: naoAplicavel ? null : (d.valor_montagem_mecanica ?? null),
-        possui_terceiros: naoAplicavel ? false : d.possui_terceiros,
-        valor_eletrica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_eletrica ?? null) : null,
-        valor_isolamento: (!naoAplicavel && d.possui_terceiros) ? (d.valor_isolamento ?? null) : null,
-        valor_civil: (!naoAplicavel && d.possui_terceiros) ? (d.valor_civil ?? null) : null,
-        valor_hidraulica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_hidraulica ?? null) : null,
-        valor_fibra: (!naoAplicavel && d.possui_terceiros) ? (d.valor_fibra ?? null) : null,
-        valor_tijolo_antiacido: (!naoAplicavel && d.possui_terceiros) ? (d.valor_tijolo_antiacido ?? null) : null,
-        valor_outros_terceiros: (!naoAplicavel && d.possui_terceiros) ? (d.valor_outros_terceiros ?? null) : null,
-        possui_fabricacao: naoAplicavel ? false : d.possui_fabricacao,
-        valor_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.valor_fabricacao ?? null) : null,
-        peso_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.peso_fabricacao ?? null) : null,
-        valor_terceiros: naoAplicavel ? null : (d.valor_terceiros ?? null),
-        valor_total: valorTotalGeral,
-        data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
-        created_by: Number(session.user.id),
-      },
-    }),
-    // Submitting comercial (normal or N/A) always finalizes the revision
-    prisma.solicitacao.update({
-      where: { id },
-      data: { status: 'PROPOSTA_ENVIADA' },
-    }),
-  ])
+  try {
+    const [proposta] = await prisma.$transaction([
+      prisma.propostaComercial.create({
+        data: {
+          solicitacao_id: id,
+          proposta_tecnica_id: tecnicaId,
+          versao: versaoFinal,
+          nao_aplicavel: naoAplicavel,
+          valor_montagem_mecanica: naoAplicavel ? null : (d.valor_montagem_mecanica ?? null),
+          possui_terceiros: naoAplicavel ? false : d.possui_terceiros,
+          valor_eletrica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_eletrica ?? null) : null,
+          valor_isolamento: (!naoAplicavel && d.possui_terceiros) ? (d.valor_isolamento ?? null) : null,
+          valor_civil: (!naoAplicavel && d.possui_terceiros) ? (d.valor_civil ?? null) : null,
+          valor_hidraulica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_hidraulica ?? null) : null,
+          valor_fibra: (!naoAplicavel && d.possui_terceiros) ? (d.valor_fibra ?? null) : null,
+          valor_tijolo_antiacido: (!naoAplicavel && d.possui_terceiros) ? (d.valor_tijolo_antiacido ?? null) : null,
+          valor_outros_terceiros: (!naoAplicavel && d.possui_terceiros) ? (d.valor_outros_terceiros ?? null) : null,
+          possui_fabricacao: naoAplicavel ? false : d.possui_fabricacao,
+          valor_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.valor_fabricacao ?? null) : null,
+          peso_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.peso_fabricacao ?? null) : null,
+          valor_terceiros: naoAplicavel ? null : (d.valor_terceiros ?? null),
+          valor_total: valorTotalGeral,
+          data_base: d.data_base ? new Date(d.data_base) : null,
+          data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
+          created_by: Number(session.user.id),
+        },
+      }),
+      // Submitting comercial (normal or N/A) always finalizes the revision
+      prisma.solicitacao.update({
+        where: { id },
+        data: { status: 'PROPOSTA_ENVIADA' },
+      }),
+    ])
 
-  // RN-50: Notificar ADM_COMERCIAL sobre nova proposta comercial (não-bloqueante)
-  const admins = await prisma.user.findMany({
-    where: { perfil: 'ADM_COMERCIAL', ativo: true },
-    select: { id: true },
-  })
-  const linkSol = `/orcamentos/solicitacoes/${id}`
-  for (const admin of admins) {
-    createNotificacao(
-      admin.id,
-      `Proposta comercial enviada — ${sol.numero}`,
-      `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
-      linkSol,
-    )
+    // RN-50: Notificar ADM_COMERCIAL sobre nova proposta comercial (não-bloqueante)
+    const admins = await prisma.user.findMany({
+      where: { perfil: 'ADM_COMERCIAL', ativo: true },
+      select: { id: true },
+    })
+    const linkSol = `/orcamentos/solicitacoes/${id}`
+    for (const admin of admins) {
+      createNotificacao(
+        admin.id,
+        `Proposta comercial enviada — ${sol.numero}`,
+        `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
+        linkSol,
+      )
+    }
+
+    return NextResponse.json({ data: proposta, error: null }, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/solicitacoes/[id]/proposta-comercial]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
   }
-
-  return NextResponse.json({ data: proposta, error: null }, { status: 201 })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -272,6 +279,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       valor_fabricacao: d.possui_fabricacao ? (d.valor_fabricacao ?? null) : null,
       valor_terceiros: d.valor_terceiros ?? null,
       valor_total: valorTotalGeral,
+      data_base: d.data_base ? new Date(d.data_base) : latest.data_base,
       data_envio: d.data_envio ? new Date(d.data_envio) : latest.data_envio,
     },
   })

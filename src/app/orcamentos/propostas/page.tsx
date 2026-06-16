@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils'
 import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import type { PropostasItem } from '@/types'
@@ -58,6 +59,7 @@ export default function PropostasPage() {
   })
 
   const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
+  const [modalHistAlteracoes, setModalHistAlteracoes] = useState<PropostasItem | null>(null)
 
   useEffect(() => {
     fetch('/api/propostas?modo=filtros').then(r => r.json()).then(j => {
@@ -211,6 +213,7 @@ export default function PropostasPage() {
                 data={items}
                 onEditar={setModalEditar}
                 onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico`)}
+                onHistoricoAlteracoes={setModalHistAlteracoes}
                 canEditar={canEditar}
               />
             </div>
@@ -228,6 +231,16 @@ export default function PropostasPage() {
           canRegistrarTecnica={canRegistrarTecnica}
           canRegistrarComercial={canRegistrarComercial}
           canCancelar={canCancelSolicitacao}
+        />
+      )}
+
+      {modalHistAlteracoes && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setModalHistAlteracoes(null)}
+          tipo="proposta"
+          itemId={modalHistAlteracoes.id}
+          titulo={modalHistAlteracoes.numero}
         />
       )}
     </div>

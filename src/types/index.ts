@@ -413,6 +413,12 @@ export interface SubIndiceItem {
   notas_fiscais: NFContratoItem[]
 }
 
+export interface ContratoSolicitacaoVinculada {
+  id: number
+  numero: string
+  data_base: string | null
+}
+
 export interface ContratoItem {
   id: number
   indice: string
@@ -423,6 +429,7 @@ export interface ContratoItem {
   cidade: string | null
   estado: string | null
   responsavel: { id: number; nome: string } | null
+  solicitacao?: ContratoSolicitacaoVinculada | null
   num_os: string | null
   num_acordo: string | null
   num_proposta: string | null

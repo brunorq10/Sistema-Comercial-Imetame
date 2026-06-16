@@ -82,50 +82,55 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const revisaoEsperada = Math.max(sol.revisao_esperada, maxVersaoTecnica)
   const versaoFinal = maxVersaoTecnica < revisaoEsperada ? revisaoEsperada : maxVersaoTecnica + 1
 
-  const proposta = await prisma.propostaTecnica.create({
-    data: {
-      solicitacao_id: id,
-      versao: versaoFinal,
-      nao_aplicavel: naoAplicavel,
-      hh_direto: naoAplicavel ? null : (d.hh_direto ?? null),
-      hh_indireto: naoAplicavel ? null : (d.hh_indireto ?? null),
-      hh_total: naoAplicavel ? null : resolveHhTotal(d),
-      peso_montagem: naoAplicavel ? null : resolvePesoMontagem(d),
-      peso_equipamentos: naoAplicavel ? null : (d.peso_equipamentos ?? null),
-      peso_tubulacoes: naoAplicavel ? null : (d.peso_tubulacoes ?? null),
-      peso_suportes: naoAplicavel ? null : (d.peso_suportes ?? null),
-      peso_estruturas: naoAplicavel ? null : (d.peso_estruturas ?? null),
-      efetivo_pico: naoAplicavel ? null : (d.efetivo_pico ?? null),
-      dias_parada: naoAplicavel ? null : (d.dias_parada ?? null),
-      turno: naoAplicavel ? null : (d.turno ?? null),
-      finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
-      data_base: d.data_base ? new Date(d.data_base) : null,
-      data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
-      created_by: Number(session.user.id),
-    },
-  })
+  try {
+    const proposta = await prisma.propostaTecnica.create({
+      data: {
+        solicitacao_id: id,
+        versao: versaoFinal,
+        nao_aplicavel: naoAplicavel,
+        hh_direto: naoAplicavel ? null : (d.hh_direto ?? null),
+        hh_indireto: naoAplicavel ? null : (d.hh_indireto ?? null),
+        hh_total: naoAplicavel ? null : resolveHhTotal(d),
+        peso_montagem: naoAplicavel ? null : resolvePesoMontagem(d),
+        peso_equipamentos: naoAplicavel ? null : (d.peso_equipamentos ?? null),
+        peso_tubulacoes: naoAplicavel ? null : (d.peso_tubulacoes ?? null),
+        peso_suportes: naoAplicavel ? null : (d.peso_suportes ?? null),
+        peso_estruturas: naoAplicavel ? null : (d.peso_estruturas ?? null),
+        efetivo_pico: naoAplicavel ? null : (d.efetivo_pico ?? null),
+        dias_parada: naoAplicavel ? null : (d.dias_parada ?? null),
+        turno: naoAplicavel ? null : (d.turno ?? null),
+        finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
+        data_base: d.data_base ? new Date(d.data_base) : null,
+        data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
+        created_by: Number(session.user.id),
+      },
+    })
 
-  const novoStatus = sol.status === 'AGUARDANDO_ANALISE' ? 'EM_ELABORACAO' : undefined
-  if (novoStatus) {
-    await prisma.solicitacao.update({ where: { id }, data: { status: novoStatus } })
+    const novoStatus = sol.status === 'AGUARDANDO_ANALISE' ? 'EM_ELABORACAO' : undefined
+    if (novoStatus) {
+      await prisma.solicitacao.update({ where: { id }, data: { status: novoStatus } })
+    }
+
+    // RN-50: Notificar ADM_COMERCIAL sobre nova proposta técnica (não-bloqueante)
+    const admins = await prisma.user.findMany({
+      where: { perfil: 'ADM_COMERCIAL', ativo: true },
+      select: { id: true },
+    })
+    const linkSol = `/orcamentos/solicitacoes/${id}`
+    for (const admin of admins) {
+      createNotificacao(
+        admin.id,
+        `Proposta técnica enviada — ${sol.numero}`,
+        `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
+        linkSol,
+      )
+    }
+
+    return NextResponse.json({ data: proposta, error: null }, { status: 201 })
+  } catch (err) {
+    console.error('[POST /api/solicitacoes/[id]/proposta-tecnica]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
   }
-
-  // RN-50: Notificar ADM_COMERCIAL sobre nova proposta técnica (não-bloqueante)
-  const admins = await prisma.user.findMany({
-    where: { perfil: 'ADM_COMERCIAL', ativo: true },
-    select: { id: true },
-  })
-  const linkSol = `/orcamentos/solicitacoes/${id}`
-  for (const admin of admins) {
-    createNotificacao(
-      admin.id,
-      `Proposta técnica enviada — ${sol.numero}`,
-      `Rev${String(versaoFinal - 1).padStart(2, '0')} registrada${naoAplicavel ? ' (N/A)' : ''}.`,
-      linkSol,
-    )
-  }
-
-  return NextResponse.json({ data: proposta, error: null }, { status: 201 })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {

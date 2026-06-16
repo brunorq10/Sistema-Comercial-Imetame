@@ -76,38 +76,43 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     data.comentario_updated_by = Number(session.user.id)
   }
 
-  const subindice = await prisma.subIndiceFaturamento.update({
-    where: { id },
-    data,
-    include: { notas_fiscais: true },
-  })
+  try {
+    const subindice = await prisma.subIndiceFaturamento.update({
+      where: { id },
+      data,
+      include: { notas_fiscais: true },
+    })
 
-  // Registra cada campo alterado no histórico
-  const historico: { subindice_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
-  const camposVerificar = ['descricao', 'num_os', 'valor_total', 'data_inicio', 'data_fim', 'comentarios', ...MESES] as const
+    // Registra cada campo alterado no histórico
+    const historico: { subindice_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+    const camposVerificar = ['descricao', 'num_os', 'valor_total', 'data_inicio', 'data_fim', 'comentarios', ...MESES] as const
 
-  for (const campo of camposVerificar) {
-    const rawKey = campo === 'set' ? 'set' : campo
-    const antigo = (atual as Record<string, unknown>)[rawKey]
-    const novo   = (subindice as Record<string, unknown>)[rawKey]
-    const antigoStr = antigo == null ? null : String(antigo)
-    const novoStr   = novo   == null ? null : String(novo)
-    if (antigoStr !== novoStr) {
-      historico.push({
-        subindice_id: id,
-        campo: CAMPO_LABELS[campo] ?? campo,
-        valor_de:   formatVal(campo, antigo),
-        valor_para: formatVal(campo, novo),
-        created_by: Number(session.user.id),
-      })
+    for (const campo of camposVerificar) {
+      const rawKey = campo === 'set' ? 'set' : campo
+      const antigo = (atual as Record<string, unknown>)[rawKey]
+      const novo   = (subindice as Record<string, unknown>)[rawKey]
+      const antigoStr = antigo == null ? null : String(antigo)
+      const novoStr   = novo   == null ? null : String(novo)
+      if (antigoStr !== novoStr) {
+        historico.push({
+          subindice_id: id,
+          campo: CAMPO_LABELS[campo] ?? campo,
+          valor_de:   formatVal(campo, antigo),
+          valor_para: formatVal(campo, novo),
+          created_by: Number(session.user.id),
+        })
+      }
     }
-  }
 
-  if (historico.length > 0) {
-    await prisma.historicoSubIndice.createMany({ data: historico })
-  }
+    if (historico.length > 0) {
+      await prisma.historicoSubIndice.createMany({ data: historico })
+    }
 
-  return NextResponse.json({ data: subindice, error: null })
+    return NextResponse.json({ data: subindice, error: null })
+  } catch (err) {
+    console.error('[PUT /api/faturamento/subindices/[id]]', err)
+    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

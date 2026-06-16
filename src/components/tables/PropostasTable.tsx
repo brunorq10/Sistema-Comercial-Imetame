@@ -11,6 +11,7 @@ interface Props {
   data: PropostasItem[]
   onEditar: (item: PropostasItem) => void
   onHistorico: (item: PropostasItem) => void
+  onHistoricoAlteracoes: (item: PropostasItem) => void
   canEditar: boolean
 }
 
@@ -34,7 +35,7 @@ function ResultadoCell({ resultado }: { resultado: string | null }) {
   return <span className={cn('text-[10px]', cls)}>{RESULTADO_LABELS[resultado] ?? resultado}</span>
 }
 
-export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props) {
+export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, canEditar }: Props) {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   if (data.length === 0) {
@@ -110,6 +111,13 @@ export function PropostasTable({ data, onEditar, onHistorico, canEditar }: Props
                       <Button variant="outline" size="sm" onClick={() => onHistorico(item)} title="Histórico de revisões">
                         ↺
                       </Button>
+                      <button
+                        onClick={() => onHistoricoAlteracoes(item)}
+                        className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
+                        title="Histórico de Alterações"
+                      >
+                        📋
+                      </button>
                       {canEditar && (
                         <Button variant="outline" size="sm" onClick={() => onEditar(item)} title="Editar">
                           ✎

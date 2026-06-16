@@ -22,12 +22,25 @@ function fmt(v: number) {
 }
 
 interface YearSection {
-  valor_total: string
+  id?: number                        // id do sub-índice já existente naquele ano (PUT) — ausente = ano novo (POST)
+  jaFaturado: number                 // total já faturado daquele ano específico
+  original: Record<string, string>   // snapshot dos valores carregados, p/ detectar alteração em meses passados
   meses: Record<string, string>
 }
 
 function emptySection(): YearSection {
-  return { valor_total: '', meses: Object.fromEntries(MESES.map((m) => [m, ''])) }
+  return {
+    jaFaturado: 0,
+    original: Object.fromEntries(MESES.map((m) => [m, ''])),
+    meses: Object.fromEntries(MESES.map((m) => [m, ''])),
+  }
+}
+
+function sectionFromSubindice(s: SubIndiceItem): YearSection {
+  const meses = Object.fromEntries(
+    MESES.map((m) => [m, (s as unknown as Record<string, unknown>)[m] != null ? String((s as unknown as Record<string, unknown>)[m]) : ''])
+  )
+  return { id: s.id, jaFaturado: s.total_faturado, original: { ...meses }, meses: { ...meses } }
 }
 
 function getAnosFromDates(inicio: string, fim: string, fallback: number): number[] {
@@ -68,8 +81,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [comentarios, setComentarios] = useState('')
+  const [valorTotal, setValorTotal] = useState('')
   const [anos, setAnos] = useState<Record<number, YearSection>>({})
   const [loading, setLoading] = useState(false)
+  const [loadingSiblings, setLoadingSiblings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -92,35 +107,59 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         if (!isMesPast(ano, mi)) continue
         const m = MESES[mi]
         const current = section.meses[m] ? Number(section.meses[m]) : 0
-        if (ano === subAno) {
-          const original = Number((subindice as unknown as Record<string, unknown>)[m] ?? 0)
-          if (Math.abs(original - current) > 0.01) return true
-        } else {
-          if (current > 0.01) return true
-        }
+        const original = section.original[m] ? Number(section.original[m]) : 0
+        if (Math.abs(original - current) > 0.01) return true
       }
     }
     return false
-  }, [anos, subAno, subindice])
+  }, [anos])
 
+  // Carrega os dados do sub-índice clicado e, se houver previsão em outros anos (RN-23),
+  // busca os sub-índices irmãos (mesma descrição, mesmo contrato) para edição conjunta.
   useEffect(() => {
-    if (open && subindice) {
-      const ini = subindice.data_inicio ? subindice.data_inicio.substring(0, 10) : ''
-      const fim = subindice.data_fim ? subindice.data_fim.substring(0, 10) : ''
-      setDescricao(subindice.descricao)
-      setNumOs(subindice.num_os ?? '')
-      setDataInicio(ini)
-      setDataFim(fim)
-      setComentarios(subindice.comentarios ?? '')
-      setAnos({
-        [subAno]: {
-          valor_total: String(subindice.valor_total),
-          meses: Object.fromEntries(MESES.map((m) => [m, subindice[m] != null ? String(subindice[m]) : ''])),
-        },
+    if (!open || !subindice) return
+    let cancelado = false
+
+    setDescricao(subindice.descricao)
+    setNumOs(subindice.num_os ?? '')
+    setDataInicio(subindice.data_inicio ? subindice.data_inicio.substring(0, 10) : '')
+    setDataFim(subindice.data_fim ? subindice.data_fim.substring(0, 10) : '')
+    setComentarios(subindice.comentarios ?? '')
+    setValorTotal(String(subindice.valor_total))
+    setAnos({ [subAno]: sectionFromSubindice(subindice) })
+    setConfirmDelete(false)
+    setError(null)
+
+    setLoadingSiblings(true)
+    fetch(`/api/faturamento/contratos/${subindice.contrato_id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelado) return
+        const todos: SubIndiceItem[] = json?.data?.subindices ?? []
+        const irmaos = todos.filter((s) => s.descricao === subindice.descricao)
+        if (irmaos.length <= 1) return
+
+        irmaos.sort((a, b) => (a.data_inicio ?? '').localeCompare(b.data_inicio ?? ''))
+        const primeiro = irmaos[0]
+        const ultimo = irmaos[irmaos.length - 1]
+
+        const anosMap: Record<number, YearSection> = {}
+        let vtSoma = 0
+        for (const s of irmaos) {
+          const ano = s.data_inicio ? parseInt(s.data_inicio.substring(0, 4), 10) : subAno
+          anosMap[ano] = sectionFromSubindice(s)
+          vtSoma += s.valor_total
+        }
+
+        setDataInicio(primeiro.data_inicio ? primeiro.data_inicio.substring(0, 10) : '')
+        setDataFim(ultimo.data_fim ? ultimo.data_fim.substring(0, 10) : '')
+        setValorTotal(String(vtSoma))
+        setAnos(anosMap)
       })
-      setConfirmDelete(false)
-      setError(null)
-    }
+      .catch(() => { /* mantém apenas o sub-índice atual em caso de erro */ })
+      .finally(() => { if (!cancelado) setLoadingSiblings(false) })
+
+    return () => { cancelado = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, subindice])
 
@@ -137,9 +176,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       return next
     })
   }
-
-  const updateAnoField = (ano: number, val: string) =>
-    setAnos((prev) => ({ ...prev, [ano]: { ...prev[ano], valor_total: val } }))
 
   const updateMes = (ano: number, mes: string, val: string) =>
     setAnos((prev) => ({
@@ -159,7 +195,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
     const hasChanges = MESES.some((m) => {
       const current = section.meses[m] ? Number(section.meses[m]) : 0
-      const original = Number((subindice as unknown as Record<string, unknown>)[m] ?? 0)
+      const original = section.original[m] ? Number(section.original[m]) : 0
       return Math.abs(current - original) > 0.01
     })
 
@@ -182,10 +218,17 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao enviar proposta'); return }
       onSuccess(); onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
   }
+
+  const jaFaturadoTotal = useMemo(
+    () => Object.values(anos).reduce((acc, s) => acc + (s?.jaFaturado ?? 0), 0),
+    [anos],
+  )
 
   const handleSave = async () => {
     if (useApprovalFlow) {
@@ -200,87 +243,74 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     }
 
     const anosOrdenados = getAnosFromDates(dataInicio, dataFim, subAno)
-    for (let idx = 0; idx < anosOrdenados.length; idx++) {
-      const a = anosOrdenados[idx]
-      const vt = anos[a]?.valor_total
-      if (!vt || isNaN(Number(vt))) {
-        setError(`Valor total inválido para ${a}`)
-        return
-      }
-      const vtNum = Number(vt)
-      const jaFaturado = idx === 0 ? subindice.total_faturado : 0
-      if (idx === 0 && vtNum < jaFaturado - 0.01) {
-        setError(`O valor total (R$ ${fmt(vtNum)}) não pode ser menor que o já faturado (R$ ${fmt(jaFaturado)})`); return
-      }
-      const disponivel = vtNum - jaFaturado
+
+    if (!valorTotal || isNaN(Number(valorTotal))) {
+      setError('Valor total inválido')
+      return
+    }
+    const vtNum = Number(valorTotal)
+    if (vtNum < jaFaturadoTotal - 0.01) {
+      setError(`O valor total (R$ ${fmt(vtNum)}) não pode ser menor que o já faturado (R$ ${fmt(jaFaturadoTotal)})`); return
+    }
+    const disponivel = vtNum - jaFaturadoTotal
+
+    const somaTodosMeses = anosOrdenados.reduce((acc, a) => {
       const section = anos[a]
-      if (section) {
-        const filled = MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0)
-        if (filled.length > 0) {
-          const soma = filled.reduce((acc, m) => acc + Number(section.meses[m]), 0)
-          if (Math.abs(soma - disponivel) > 0.01) {
-            const label = anosOrdenados.length > 1 ? ` (${a})` : ''
-            if (idx === 0 && jaFaturado > 0) {
-              setError(`A soma dos meses${label} (R$ ${fmt(soma)}) deve ser igual ao disponível para previsão (R$ ${fmt(disponivel)})`); return
-            } else {
-              setError(`A soma dos meses${label} (R$ ${fmt(soma)}) deve ser igual ao valor total (R$ ${fmt(vtNum)})`); return
-            }
-          }
-        } else if (disponivel > 0.01) {
-          const label = anosOrdenados.length > 1 ? ` para ${a}` : ''
-          setError(`Previsão mensal obrigatória${label} — preencha ao menos um mês (disponível: R$ ${fmt(disponivel)})`)
-          return
-        }
+      if (!section) return acc
+      return acc + MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+    }, 0)
+
+    if (somaTodosMeses > 0.01) {
+      if (Math.abs(somaTodosMeses - disponivel) > 0.01) {
+        setError(`A soma de todos os meses (R$ ${fmt(somaTodosMeses)}) deve ser igual ao disponível para previsão (R$ ${fmt(disponivel)})`); return
       }
+    } else if (disponivel > 0.01) {
+      setError(`Previsão mensal obrigatória — preencha ao menos um mês (disponível: R$ ${fmt(disponivel)})`)
+      return
     }
 
     setLoading(true); setError(null)
     try {
-      const primeiroAno = anosOrdenados[0]
-      const primeiraSecao = anos[primeiroAno] ?? emptySection()
-      const isFirst = true
-      const isLastFirst = anosOrdenados.length === 1
+      for (let idx = 0; idx < anosOrdenados.length; idx++) {
+        const ano = anosOrdenados[idx]
+        const section = anos[ano] ?? emptySection()
+        const isFirstIdx = idx === 0
+        const isLastIdx = idx === anosOrdenados.length - 1
+        const somaMesesAno = MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+        const vtAno = section.jaFaturado + somaMesesAno
 
-      const putRes = await fetch(`/api/faturamento/subindices/${subindice.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        const payload = {
           descricao,
           num_os: numOs.trim() || null,
-          valor_total: Number(primeiraSecao.valor_total) || 0,
-          data_inicio: isFirst && dataInicio ? dataInicio : `${primeiroAno}-01-01`,
-          data_fim: isLastFirst && dataFim ? dataFim : `${primeiroAno}-12-31`,
+          valor_total: vtAno,
+          data_inicio: isFirstIdx && dataInicio ? dataInicio : `${ano}-01-01`,
+          data_fim: isLastIdx && dataFim ? dataFim : `${ano}-12-31`,
           comentarios: comentarios || null,
-          ...Object.fromEntries(MESES.map((m) => [m, primeiraSecao.meses[m] ? Number(primeiraSecao.meses[m]) : null])),
-        }),
-      })
-      const putJson = await putRes.json()
-      if (!putRes.ok || putJson.error) { setError(putJson.error ?? 'Erro ao salvar'); return }
+          ...Object.fromEntries(MESES.map((m) => [m, section.meses[m] ? Number(section.meses[m]) : null])),
+        }
 
-      for (let i = 1; i < anosOrdenados.length; i++) {
-        const a = anosOrdenados[i]
-        const secao = anos[a] ?? emptySection()
-        const isLast = i === anosOrdenados.length - 1
-
-        const postRes = await fetch('/api/faturamento/subindices', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contrato_id: subindice.contrato_id,
-            descricao,
-            num_os: numOs.trim() || null,
-            valor_total: Number(secao.valor_total) || 0,
-            data_inicio: `${a}-01-01`,
-            data_fim: isLast && dataFim ? dataFim : `${a}-12-31`,
-            comentarios: comentarios || null,
-            ...Object.fromEntries(MESES.map((m) => [m, secao.meses[m] ? Number(secao.meses[m]) : null])),
-          }),
-        })
-        const postJson = await postRes.json()
-        if (!postRes.ok || postJson.error) { setError(postJson.error ?? `Erro ao criar sub-índice para ${a}`); return }
+        if (section.id) {
+          const putRes = await fetch(`/api/faturamento/subindices/${section.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const putJson = await putRes.json()
+          if (!putRes.ok || putJson.error) { setError(putJson.error ?? 'Erro ao salvar'); return }
+        } else {
+          const postRes = await fetch('/api/faturamento/subindices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contrato_id: subindice.contrato_id, ...payload }),
+          })
+          const postJson = await postRes.json()
+          if (!postRes.ok || postJson.error) { setError(postJson.error ?? `Erro ao criar sub-índice para ${ano}`); return }
+        }
       }
 
       onSuccess(); onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -320,7 +350,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
             {canSave ? 'Cancelar' : 'Fechar'}
           </Button>
           {canSave && (
-            <Button onClick={handleSave} disabled={loading}>
+            <Button onClick={handleSave} disabled={loading || loadingSiblings}>
               {loading
                 ? (useApprovalFlow ? 'Enviando...' : 'Salvando...')
                 : (useApprovalFlow ? 'Enviar proposta' : 'Salvar')}
@@ -340,6 +370,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           <span>
             <strong>Proposta pendente de aprovação.</strong> Enviar uma nova proposta irá substituir a anterior.
           </span>
+        </div>
+      )}
+
+      {loadingSiblings && (
+        <div className="bg-gray-50 border border-gray-200 text-gray-500 text-[11px] px-3 py-2 rounded mb-3">
+          Carregando previsão dos demais anos...
         </div>
       )}
 
@@ -371,12 +407,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
       {multiAno && (
         <div className="bg-[#F3E5F5] border border-[#CE93D8] text-[#6A1B9A] text-[11px] px-3 py-2 rounded mb-3">
-          ⚡ Período abrange {anosOrdenados.length} anos. Preencha a previsão e o valor para cada ano separadamente.
-          {anosOrdenados.slice(1).length > 0 && (
-            <span className="block mt-0.5 text-[10px] opacity-80">
-              Serão criados {anosOrdenados.length - 1} novo(s) sub-índice(s) para os anos adicionais.
-            </span>
-          )}
+          ⚡ Período abrange {anosOrdenados.length} anos. Distribua a previsão mensal entre os anos — o valor total do subitem é único.
         </div>
       )}
 
@@ -392,14 +423,27 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
       <ModalSection>Previsão mensal</ModalSection>
 
+      <div className="mb-2.5">
+        <Field label="Valor Total (R$) *">
+          <CurrencyInput value={valorTotal} onChange={setValorTotal} disabled={readOnly} />
+        </Field>
+      </div>
+
+      {(() => {
+        const vtNum = Number(valorTotal || 0)
+        const disponivel = vtNum - jaFaturadoTotal
+        return jaFaturadoTotal > 0 && vtNum > 0 && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 text-[11px] px-3 py-2 rounded mb-2.5 flex gap-4">
+            <span>Já faturado: <strong>R$ {fmt(jaFaturadoTotal)}</strong></span>
+            <span>Disponível para previsão: <strong>R$ {fmt(Math.max(0, disponivel))}</strong></span>
+          </div>
+        )
+      })()}
+
       {anosOrdenados.map((ano, idx) => {
-        const jaFaturado = idx === 0 ? subindice.total_faturado : 0
-        const vtNum = Number(anos[ano]?.valor_total || 0)
-        const disponivel = vtNum - jaFaturado
         const section = anos[ano]
         const filledMeses = section ? MESES.filter((m) => section.meses[m] && Number(section.meses[m]) > 0) : []
         const somaMeses = filledMeses.reduce((acc, m) => acc + Number(section!.meses[m]), 0)
-        const mesesOk = filledMeses.length === 0 || Math.abs(somaMeses - disponivel) <= 0.01
         return (
           <div
             key={ano}
@@ -409,25 +453,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               <p className="text-[11px] font-bold text-green-dark mb-2.5 border-b border-green-primary/20 pb-1.5">
                 Previsão {ano}
                 {idx === 0 && <span className="ml-2 text-[10px] font-normal text-gray-400">(este sub-índice)</span>}
-                {idx > 0 && <span className="ml-2 text-[10px] font-normal text-[#6A1B9A]">(novo sub-índice)</span>}
+                {idx > 0 && (
+                  <span className="ml-2 text-[10px] font-normal text-[#6A1B9A]">
+                    {section?.id ? '(existente)' : '(novo sub-índice)'}
+                  </span>
+                )}
               </p>
-            )}
-
-            <div className="mb-2.5">
-              <Field label="Valor Total (R$) *">
-                <CurrencyInput
-                  value={anos[ano]?.valor_total ?? ''}
-                  onChange={(v) => updateAnoField(ano, v)}
-                  disabled={readOnly}
-                />
-              </Field>
-            </div>
-
-            {idx === 0 && subindice.total_faturado > 0 && vtNum > 0 && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 text-[11px] px-3 py-2 rounded mb-2.5 flex gap-4">
-                <span>Já faturado: <strong>R$ {fmt(subindice.total_faturado)}</strong></span>
-                <span>Disponível para previsão: <strong>R$ {fmt(Math.max(0, disponivel))}</strong></span>
-              </div>
             )}
 
             <div className="grid grid-cols-6 gap-1.5">
@@ -436,11 +467,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                 const past = isMesPast(ano, mi)
                 const blockedByRole = blockPastMonths && past   // RN-CF-09
                 const current = Number(anos[ano]?.meses[m] || 0)
-                const original = ano === subAno ? Number((subindice as unknown as Record<string, unknown>)[m] ?? 0) : 0
+                const original = Number(section?.original[m] || 0)
                 const pastChanged = ativo && past && !blockedByRole && Math.abs(original - current) > 0.01
                 const cellDisabled = !ativo || blockedByRole
                 // RN-CF-36: valor pendente de aprovação para mostrar abaixo da célula
-                const pendingRaw = alteracaoPendente
+                const pendingRaw = alteracaoPendente && ano === subAno
                   ? (alteracaoPendente as unknown as Record<string, unknown>)[`${m}_para`]
                   : undefined
                 const pendingVal = pendingRaw != null ? Number(pendingRaw) : null
@@ -477,14 +508,31 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               })}
             </div>
 
-            {filledMeses.length > 0 && (
-              <p className={`mt-1.5 text-[10px] text-right ${mesesOk ? 'text-green-600' : 'text-orange-600'}`}>
-                Soma meses: R$ {fmt(somaMeses)}{mesesOk ? ' ✓' : ` · ${idx === 0 && jaFaturado > 0 ? 'Disponível' : 'Meta'}: R$ ${fmt(disponivel)}`}
+            {multiAno && filledMeses.length > 0 && (
+              <p className="mt-1.5 text-[10px] text-right text-gray-400">
+                Subtotal {ano}: R$ {fmt(somaMeses)}
               </p>
             )}
           </div>
         )
       })}
+
+      {(() => {
+        const vtNum = Number(valorTotal || 0)
+        const disponivel = vtNum - jaFaturadoTotal
+        const somaTodosMeses = anosOrdenados.reduce((acc, a) => {
+          const section = anos[a]
+          if (!section) return acc
+          return acc + MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+        }, 0)
+        const ok = somaTodosMeses === 0 || Math.abs(somaTodosMeses - disponivel) <= 0.01
+        if (somaTodosMeses === 0) return null
+        return (
+          <p className={`mt-1 text-[10px] text-right ${ok ? 'text-green-600' : 'text-orange-600'}`}>
+            Soma de todos os meses: R$ {fmt(somaTodosMeses)}{ok ? ' ✓' : ` · Disponível: R$ ${fmt(disponivel)}`}
+          </p>
+        )
+      })()}
 
       {/* Zona de exclusão — oculta no modo readOnly ou useApprovalFlow */}
       {!readOnly && !useApprovalFlow && <div className="border-t border-red-100 pt-3 mt-2">

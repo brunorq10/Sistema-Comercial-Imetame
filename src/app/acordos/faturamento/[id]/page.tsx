@@ -7,8 +7,12 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 
-const ContratoFaturamentoChart = dynamic(
-  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoChart),
+const ContratoFaturamentoBarChart = dynamic(
+  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoBarChart),
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
+)
+const ContratoFaturamentoLineChart = dynamic(
+  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoLineChart),
   { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
 )
 
@@ -217,7 +221,7 @@ export default function ContratoVisaoGeralPage() {
         </div>
       </section>
 
-      {/* Gráfico */}
+      {/* Gráficos */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">⬛ Faturamento Mensal</h2>
@@ -232,11 +236,24 @@ export default function ContratoVisaoGeralPage() {
             >Todos</button>
           </div>
         </div>
-        {anoSel !== null && chartData ? (
-          <ContratoFaturamentoChart modo="mensal" previsto={chartData.previsto} faturado={chartData.faturado} />
-        ) : (
-          <ContratoFaturamentoChart modo="anual" previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
-        )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Previsto x Faturado</h3>
+            {anoSel !== null && chartData ? (
+              <ContratoFaturamentoBarChart previsto={chartData.previsto} faturado={chartData.faturado} />
+            ) : (
+              <ContratoFaturamentoBarChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+            )}
+          </div>
+          <div>
+            <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Acumulado</h3>
+            {anoSel !== null && chartData ? (
+              <ContratoFaturamentoLineChart previsto={chartData.previsto} faturado={chartData.faturado} />
+            ) : (
+              <ContratoFaturamentoLineChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Informações */}
@@ -245,6 +262,7 @@ export default function ContratoVisaoGeralPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2">
           <InfoRow label="Nº Acordo" value={contrato.num_acordo} />
           <InfoRow label="Nº Proposta" value={contrato.num_proposta} />
+          <InfoRow label="Data base" value={formatDate(contrato.solicitacao?.data_base ?? null)} />
           <InfoRow label="Responsável" value={contrato.responsavel?.nome} />
           <InfoRow label="Mercado" value={contrato.cliente.ramo_atuacao ? RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] : null} />
           <InfoRow label="Classificação" value={contrato.classificacao ? CLASSIFICACAO_LABELS[contrato.classificacao] : null} />

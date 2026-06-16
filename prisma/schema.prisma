@@ -134,6 +134,7 @@ model User {
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
   historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
+  historico_solicitacoes      HistoricoSolicitacao[] @relation("HistSolicitacaoCriador")
   subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
   alteracoes_responsavel      PrevisaoAlteracao[]    @relation("AlteracaoResponsavel")
   alteracoes_revisor          PrevisaoAlteracao[]    @relation("AlteracaoRevisor")
@@ -234,6 +235,7 @@ model Solicitacao {
   propostas_fabricacao PropostaFabricacao[]
   contratos            Contrato[]
   solicitacoes_info    SolicitacaoInfo[]
+  historico            HistoricoSolicitacao[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -243,6 +245,22 @@ model Solicitacao {
   @@index([cancelled_at])
   @@index([status_analise])
   @@map("solicitacoes")
+}
+
+model HistoricoSolicitacao {
+  id             Int      @id @default(autoincrement())
+  solicitacao_id Int
+  campo          String
+  valor_de       String?
+  valor_para     String?
+  created_at     DateTime @default(now())
+  created_by     Int
+
+  solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
+  usuario     User        @relation("HistSolicitacaoCriador", fields: [created_by], references: [id])
+
+  @@index([solicitacao_id])
+  @@map("historico_solicitacoes")
 }
 
 model Notificacao {
@@ -315,6 +333,7 @@ model PropostaComercial {
   peso_fabricacao         Decimal?     @db.Decimal(10, 3)
   valor_terceiros         Decimal?     @db.Decimal(15, 2)
   valor_total             Decimal?     @db.Decimal(15, 2)
+  data_base               DateTime?
   data_envio              DateTime?
   resultado               String?
   motivo_perda            MotivoPerda?
@@ -342,6 +361,7 @@ model PropostaFabricacao {
   valor_montagem   Decimal?               @db.Decimal(15, 2)
   peso_total       Decimal                @db.Decimal(10, 3)
   valor_total      Decimal                @db.Decimal(15, 2)
+  data_base        DateTime?
   data_envio       DateTime?
   resultado        String?
   motivo_perda     MotivoPerda?

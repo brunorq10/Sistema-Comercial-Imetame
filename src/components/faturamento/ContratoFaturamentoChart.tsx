@@ -53,22 +53,60 @@ interface AnualData {
 }
 
 interface Props {
-  modo: 'mensal' | 'anual'
   previsto: number[]
   faturado: number[]
   labels?: string[]
 }
 
-export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) {
+const legendPlugin = {
+  position: 'bottom' as const,
+  align: 'center' as const,
+  labels: {
+    boxWidth: 10,
+    boxHeight: 10,
+    borderRadius: 2,
+    useBorderRadius: true,
+    font: { size: 11 },
+    padding: 16,
+    color: '#374151',
+  },
+}
+
+const tooltipPlugin = {
+  backgroundColor: '#1F2937',
+  titleColor: '#F9FAFB',
+  bodyColor: '#D1D5DB',
+  borderColor: '#374151',
+  borderWidth: 1,
+  padding: 10,
+  callbacks: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    label: (ctx: any) => `  ${ctx.dataset.label}: ${fmtTooltip(ctx.parsed.y)}`,
+  },
+}
+
+const xScale = {
+  grid: { display: false },
+  border: { display: false },
+  ticks: { font: { size: 11 }, color: '#6B7280' },
+}
+
+const yScale = {
+  type: 'linear' as const,
+  position: 'left' as const,
+  grid: { color: '#F3F4F6', lineWidth: 1 },
+  border: { display: false, dash: [4, 4] as [number, number] },
+  ticks: {
+    font: { size: 10 },
+    color: '#9CA3AF',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    callback: (v: any) => fmtAxis(Number(v)),
+  },
+}
+
+/** Gráfico de colunas: previsto x faturado, mês a mês (ou ano a ano). */
+export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Props) {
   const xLabels = labels ?? MESES_LABELS
-
-  const acumPrevisto = useMemo(() =>
-    previsto.reduce((acc, v, i) => { acc.push((acc[i - 1] ?? 0) + v); return acc }, [] as number[]),
-    [previsto])
-
-  const acumFaturado = useMemo(() =>
-    faturado.reduce((acc, v, i) => { acc.push((acc[i - 1] ?? 0) + v); return acc }, [] as number[]),
-    [faturado])
 
   const data = {
     labels: xLabels,
@@ -82,8 +120,6 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
-        yAxisID: 'y',
-        order: 2,
         datalabels: {
           display: (ctx: Context) =>
             ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
@@ -104,8 +140,6 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
-        yAxisID: 'y',
-        order: 2,
         datalabels: {
           display: (ctx: Context) =>
             ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
@@ -117,6 +151,36 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
           formatter: (v: number) => fmtLabel(v),
         },
       },
+    ],
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index' as const, intersect: false },
+    layout: { padding: { top: 28, right: 16, bottom: 0, left: 0 } },
+    plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
+    scales: { x: xScale, y: yScale },
+  }
+
+  return <Chart type="bar" data={data} options={options} />
+}
+
+/** Gráfico de linhas: acumulado de previsto x faturado, mês a mês (ou ano a ano). */
+export function ContratoFaturamentoLineChart({ previsto, faturado, labels }: Props) {
+  const xLabels = labels ?? MESES_LABELS
+
+  const acumPrevisto = useMemo(() =>
+    previsto.reduce((acc, v, i) => { acc.push((acc[i - 1] ?? 0) + v); return acc }, [] as number[]),
+    [previsto])
+
+  const acumFaturado = useMemo(() =>
+    faturado.reduce((acc, v, i) => { acc.push((acc[i - 1] ?? 0) + v); return acc }, [] as number[]),
+    [faturado])
+
+  const data = {
+    labels: xLabels,
+    datasets: [
       {
         type: 'line' as const,
         label: 'Acum. previsto',
@@ -129,8 +193,6 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
         pointBorderColor: COLORS.acumPrevisto,
         pointBorderWidth: 2,
         fill: false,
-        yAxisID: 'y1',
-        order: 1,
         tension: 0.3,
         datalabels: {
           display: (ctx: Context) =>
@@ -154,8 +216,6 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
         pointBorderColor: COLORS.acumFaturado,
         pointBorderWidth: 2,
         fill: false,
-        yAxisID: 'y1',
-        order: 1,
         tension: 0.3,
         datalabels: {
           display: (ctx: Context) =>
@@ -176,67 +236,11 @@ export function ContratoFaturamentoChart({ previsto, faturado, labels }: Props) 
     maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
     layout: { padding: { top: 28, right: 16, bottom: 0, left: 0 } },
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        align: 'center' as const,
-        labels: {
-          boxWidth: 10,
-          boxHeight: 10,
-          borderRadius: 2,
-          useBorderRadius: true,
-          font: { size: 11 },
-          padding: 16,
-          color: '#374151',
-        },
-      },
-      tooltip: {
-        backgroundColor: '#1F2937',
-        titleColor: '#F9FAFB',
-        bodyColor: '#D1D5DB',
-        borderColor: '#374151',
-        borderWidth: 1,
-        padding: 10,
-        callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) => `  ${ctx.dataset.label}: ${fmtTooltip(ctx.parsed.y)}`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        border: { display: false },
-        ticks: { font: { size: 11 }, color: '#6B7280' },
-      },
-      y: {
-        type: 'linear' as const,
-        position: 'left' as const,
-        grid: { color: '#F3F4F6', lineWidth: 1 },
-        border: { display: false, dash: [4, 4] },
-        ticks: {
-          font: { size: 10 },
-          color: '#9CA3AF',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          callback: (v: any) => fmtAxis(Number(v)),
-        },
-      },
-      y1: {
-        type: 'linear' as const,
-        position: 'right' as const,
-        grid: { drawOnChartArea: false },
-        border: { display: false },
-        ticks: {
-          font: { size: 10 },
-          color: '#9CA3AF',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          callback: (v: any) => fmtAxis(Number(v)),
-        },
-      },
-    },
+    plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
+    scales: { x: xScale, y: yScale },
   }
 
-  return <Chart type="bar" data={data} options={options} />
+  return <Chart type="line" data={data} options={options} />
 }
 
 export function buildAnualData(

@@ -48,6 +48,7 @@ export function RegistrarFabricacaoModal({
   const [possuiMontagem, setPossuiMontagem] = useState(false)
   const [valorMontagem, setValorMontagem] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataBase, setDataBase] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -85,12 +86,14 @@ export function RegistrarFabricacaoModal({
     setPossuiMontagem(false)
     setValorMontagem('')
     setDataEnvio(new Date().toISOString().split('T')[0])
+    setDataBase('')
     setError(null)
   }
 
   const handleSubmit = async () => {
     const equipsValidos = equipamentos.filter((e) => e.descricao.trim() && Number(e.peso_ton) > 0)
     if (equipsValidos.length === 0) { setError('Adicione ao menos um equipamento com descrição e peso'); return }
+    if (!dataBase) { setError('Informe a Data base do contrato'); return }
     if (!dataEnvio) { setError('Data de envio é obrigatória'); return }
 
     setLoading(true)
@@ -105,6 +108,7 @@ export function RegistrarFabricacaoModal({
         })),
         possui_testes: possuiTestes,
         possui_montagem: possuiMontagem,
+        data_base: dataBase,
         data_envio: dataEnvio,
       }
       if (possuiTestes) {
@@ -124,6 +128,8 @@ export function RegistrarFabricacaoModal({
       resetForm()
       onSuccess()
       onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -347,6 +353,10 @@ export function RegistrarFabricacaoModal({
           </div>
         </>
       )}
+
+      <Field label="Data base do contrato *" className="mb-4 max-w-[200px]">
+        <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
+      </Field>
 
       {/* ── Seção 6: Data de envio ────────────────────────────────── */}
       <ModalSection>6. Data de envio</ModalSection>

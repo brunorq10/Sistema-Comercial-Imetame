@@ -54,6 +54,8 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       setDataEnvio(new Date().toISOString().split('T')[0])
       onSuccess()
       onClose()
+    } catch (err) {
+      setError(String(err))
     } finally {
       setLoading(false)
     }

@@ -15,11 +15,10 @@ const schema = z.object({
     required_error: 'Ramo de atuação obrigatório',
     invalid_type_error: 'Ramo de atuação obrigatório',
   }),
-  segmento: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'OLEO_GAS', 'OUTROS']).nullable().optional(),
-  filiais: z.array(z.object({
-    cidade: z.string().min(1),
-    estado: z.string().length(2),
-  })).optional(),
+  segmento: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'OLEO_GAS', 'OUTROS'], {
+    required_error: 'Segmento obrigatório',
+    invalid_type_error: 'Segmento obrigatório',
+  }),
 })
 
 export async function GET(req: NextRequest) {
@@ -31,7 +30,7 @@ export async function GET(req: NextRequest) {
   const busca = searchParams.get('busca') ?? undefined
   const includeInativo = searchParams.get('inativo') === '1'
 
-  // Modo simples: id + nome + cidade/estado + segmento + filiais (para selects e auto-fill)
+  // Modo simples: id + nome + cidade/estado + segmento (para selects e auto-fill)
   if (!full) {
     const clientes = await prisma.cliente.findMany({
       where: { ativo: true },
@@ -43,14 +42,11 @@ export async function GET(req: NextRequest) {
         estado: true,
         ramo_atuacao: true,
         segmento: true,
-        filiais: {
-          where: { ativo: true },
-          select: { id: true, nome: true, cidade: true, estado: true },
-          orderBy: { cidade: 'asc' },
-        },
       },
     })
-    return NextResponse.json({ data: clientes, error: null })
+    // Cada filial é cadastrada como cliente próprio — campo mantido vazio por compatibilidade
+    const data = clientes.map((c) => ({ ...c, filiais: [] as never[] }))
+    return NextResponse.json({ data, error: null })
   }
 
   // Modo completo: listagem do cadastro
@@ -105,21 +101,10 @@ export async function POST(req: NextRequest) {
       cidade: d.cidade,
       estado: d.estado,
       ramo_atuacao: d.ramo_atuacao,
-      segmento: d.segmento ?? null,
+      segmento: d.segmento,
       created_by: Number(session.user.id),
     },
   })
-
-  if (d.filiais && d.filiais.length > 0) {
-    await prisma.filial.createMany({
-      data: d.filiais.map((f) => ({
-        cliente_id: cliente.id,
-        cidade: f.cidade,
-        estado: f.estado,
-        created_by: Number(session.user.id),
-      })),
-    })
-  }
 
   const codigo = `CLI-${String(cliente.id).padStart(4, '0')}`
   await prisma.cliente.update({ where: { id: cliente.id }, data: { codigo } })
