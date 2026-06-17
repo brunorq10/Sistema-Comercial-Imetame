@@ -494,23 +494,9 @@ model ParadaHhConfig {
   folga_pessoas_prev     Int?
   folga_pessoas_real     Int?
 
-  // Análise financeira - previsto (orcado vem do faturamento)
-  fin_prev_mob           Decimal? @db.Decimal(15, 2)
-  fin_prev_integ         Decimal? @db.Decimal(15, 2)
-  fin_prev_prep          Decimal? @db.Decimal(15, 2)
-  fin_prev_parada        Decimal? @db.Decimal(15, 2)
-  fin_prev_acomp         Decimal? @db.Decimal(15, 2)
-  fin_prev_desmob        Decimal? @db.Decimal(15, 2)
-  fin_prev_folga         Decimal? @db.Decimal(15, 2)
-
-  // Análise financeira - real faturado (vem das NFs)
-  fin_real_mob           Decimal? @db.Decimal(15, 2)
-  fin_real_integ         Decimal? @db.Decimal(15, 2)
-  fin_real_prep          Decimal? @db.Decimal(15, 2)
-  fin_real_parada        Decimal? @db.Decimal(15, 2)
-  fin_real_acomp         Decimal? @db.Decimal(15, 2)
-  fin_real_desmob        Decimal? @db.Decimal(15, 2)
-  fin_real_folga         Decimal? @db.Decimal(15, 2)
+  // Análise financeira — coluna "Previsto" (Orçado e Real vêm do faturamento)
+  fin_prev_valor_servico Decimal? @db.Decimal(15, 2)
+  fin_prev_ase           Decimal? @db.Decimal(15, 2)
 
   // UCR limites (padrão BRD: f1=0.85, f2=0.93, f3=1.00, f4=1.07)
   ucr_f1                 Decimal  @default(0.85) @db.Decimal(5, 2)

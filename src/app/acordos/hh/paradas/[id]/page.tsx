@@ -46,11 +46,8 @@ interface ConfigState {
   folga_dias_prev: string; folga_dias_real: string
   folga_pessoas_prev: string; folga_pessoas_real: string
 
-  fin_prev_mob: string; fin_prev_integ: string; fin_prev_prep: string
-  fin_prev_parada: string; fin_prev_acomp: string; fin_prev_desmob: string; fin_prev_folga: string
-
-  fin_real_mob: string; fin_real_integ: string; fin_real_prep: string
-  fin_real_parada: string; fin_real_acomp: string; fin_real_desmob: string; fin_real_folga: string
+  fin_prev_valor_servico: string
+  fin_prev_ase: string
 
   ucr_f1: string; ucr_f2: string; ucr_f3: string; ucr_f4: string
 }
@@ -112,8 +109,7 @@ function defaultConfig(): ConfigState {
     desmob_ativo: false, desmob_dias_prev: '', desmob_dias_real: '',
     integ_ativo: false, integ_dias_prev: '', integ_dias_real: '',
     folga_ativo: false, folga_dias_prev: '', folga_dias_real: '', folga_pessoas_prev: '', folga_pessoas_real: '',
-    fin_prev_mob: '', fin_prev_integ: '', fin_prev_prep: '', fin_prev_parada: '', fin_prev_acomp: '', fin_prev_desmob: '', fin_prev_folga: '',
-    fin_real_mob: '', fin_real_integ: '', fin_real_prep: '', fin_real_parada: '', fin_real_acomp: '', fin_real_desmob: '', fin_real_folga: '',
+    fin_prev_valor_servico: '', fin_prev_ase: '',
     ucr_f1: '0.85', ucr_f2: '0.93', ucr_f3: '1.00', ucr_f4: '1.07',
   }
 }
@@ -131,12 +127,8 @@ function configFromApi(c: Record<string, unknown>): ConfigState {
     integ_ativo: b(c.integ_ativo), integ_dias_prev: s(c.integ_dias_prev), integ_dias_real: s(c.integ_dias_real),
     folga_ativo: b(c.folga_ativo), folga_dias_prev: s(c.folga_dias_prev), folga_dias_real: s(c.folga_dias_real),
     folga_pessoas_prev: s(c.folga_pessoas_prev), folga_pessoas_real: s(c.folga_pessoas_real),
-    fin_prev_mob: s(c.fin_prev_mob), fin_prev_integ: s(c.fin_prev_integ), fin_prev_prep: s(c.fin_prev_prep),
-    fin_prev_parada: s(c.fin_prev_parada), fin_prev_acomp: s(c.fin_prev_acomp),
-    fin_prev_desmob: s(c.fin_prev_desmob), fin_prev_folga: s(c.fin_prev_folga),
-    fin_real_mob: s(c.fin_real_mob), fin_real_integ: s(c.fin_real_integ), fin_real_prep: s(c.fin_real_prep),
-    fin_real_parada: s(c.fin_real_parada), fin_real_acomp: s(c.fin_real_acomp),
-    fin_real_desmob: s(c.fin_real_desmob), fin_real_folga: s(c.fin_real_folga),
+    fin_prev_valor_servico: s(c.fin_prev_valor_servico),
+    fin_prev_ase: s(c.fin_prev_ase),
     ucr_f1: s(c.ucr_f1) || '0.85', ucr_f2: s(c.ucr_f2) || '0.93',
     ucr_f3: s(c.ucr_f3) || '1.00', ucr_f4: s(c.ucr_f4) || '1.07',
   }
@@ -316,14 +308,12 @@ export default function ParadaHhPage() {
   }
 
   // ── Análise Financeira ─────────────────────────────────────────────────────
-  const fin = useMemo(() => {
-    const orcado = contrato?.valor_orcado ?? 0
-    const prevTotal = n(cfg.fin_prev_mob) + n(cfg.fin_prev_integ) + n(cfg.fin_prev_prep) +
-      n(cfg.fin_prev_parada) + n(cfg.fin_prev_acomp) + n(cfg.fin_prev_desmob) + n(cfg.fin_prev_folga)
-    const realTotal = n(cfg.fin_real_mob) + n(cfg.fin_real_integ) + n(cfg.fin_real_prep) +
-      n(cfg.fin_real_parada) + n(cfg.fin_real_acomp) + n(cfg.fin_real_desmob) + n(cfg.fin_real_folga)
-    return { orcado, prevTotal, realTotal }
-  }, [cfg, contrato])
+  const finOrcadoValor  = contrato?.valor_orcado ?? 0
+  const finRealValor    = contrato?.valor_faturado ?? 0
+  const finPrevTotal    = n(cfg.fin_prev_valor_servico) + n(cfg.fin_prev_ase)
+  const finOrcadoRsHH  = hhTotalPrev > 0 ? finOrcadoValor / hhTotalPrev : null
+  const finPrevRsHH    = hhTotalReal  > 0 ? finPrevTotal  / hhTotalReal  : null
+  const finRealRsHH    = hhTotalReal  > 0 ? finRealValor  / hhTotalReal  : null
 
   // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSave() {
@@ -347,20 +337,8 @@ export default function ParadaHhPage() {
         folga_dias_real: cfg.folga_dias_real ? n(cfg.folga_dias_real) : null,
         folga_pessoas_prev: cfg.folga_pessoas_prev ? parseInt(cfg.folga_pessoas_prev) : null,
         folga_pessoas_real: cfg.folga_pessoas_real ? parseInt(cfg.folga_pessoas_real) : null,
-        fin_prev_mob: cfg.fin_prev_mob ? n(cfg.fin_prev_mob) : null,
-        fin_prev_integ: cfg.fin_prev_integ ? n(cfg.fin_prev_integ) : null,
-        fin_prev_prep: cfg.fin_prev_prep ? n(cfg.fin_prev_prep) : null,
-        fin_prev_parada: cfg.fin_prev_parada ? n(cfg.fin_prev_parada) : null,
-        fin_prev_acomp: cfg.fin_prev_acomp ? n(cfg.fin_prev_acomp) : null,
-        fin_prev_desmob: cfg.fin_prev_desmob ? n(cfg.fin_prev_desmob) : null,
-        fin_prev_folga: cfg.fin_prev_folga ? n(cfg.fin_prev_folga) : null,
-        fin_real_mob: cfg.fin_real_mob ? n(cfg.fin_real_mob) : null,
-        fin_real_integ: cfg.fin_real_integ ? n(cfg.fin_real_integ) : null,
-        fin_real_prep: cfg.fin_real_prep ? n(cfg.fin_real_prep) : null,
-        fin_real_parada: cfg.fin_real_parada ? n(cfg.fin_real_parada) : null,
-        fin_real_acomp: cfg.fin_real_acomp ? n(cfg.fin_real_acomp) : null,
-        fin_real_desmob: cfg.fin_real_desmob ? n(cfg.fin_real_desmob) : null,
-        fin_real_folga: cfg.fin_real_folga ? n(cfg.fin_real_folga) : null,
+        fin_prev_valor_servico: cfg.fin_prev_valor_servico ? n(cfg.fin_prev_valor_servico) : null,
+        fin_prev_ase: cfg.fin_prev_ase ? n(cfg.fin_prev_ase) : null,
         ucr_f1: n(cfg.ucr_f1), ucr_f2: n(cfg.ucr_f2), ucr_f3: n(cfg.ucr_f3), ucr_f4: n(cfg.ucr_f4),
         dias: Array.from(dias.entries()).map(([key, val]) => {
           const [etapa, data] = key.split('__')
@@ -664,49 +642,85 @@ export default function ParadaHhPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-xs">
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600 w-40">Fase</th>
-                  <th className="px-4 py-2 text-right font-semibold text-blue-700">① Orçado</th>
-                  <th className="px-4 py-2 text-right font-semibold text-orange-600">② Previsto</th>
-                  <th className="px-4 py-2 text-right font-semibold text-green-700">③ Real Faturado</th>
+                <tr className="border-b bg-gray-50 text-xs">
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500 w-52">Campo</th>
+                  <th className="px-4 py-2 text-right font-bold text-blue-700 bg-blue-50 w-56">① Orçado</th>
+                  <th className="px-4 py-2 text-right font-bold text-orange-600 bg-orange-50 w-56">② Previsto</th>
+                  <th className="px-4 py-2 text-right font-bold text-green-700 bg-green-50 w-56">③ Real Faturado</th>
                 </tr>
               </thead>
               <tbody>
-                {([
-                  { label: 'Mobilização',     prevKey: 'fin_prev_mob' as const,    realKey: 'fin_real_mob' as const },
-                  { label: 'Integração',      prevKey: 'fin_prev_integ' as const,  realKey: 'fin_real_integ' as const },
-                  { label: 'Preparativo',     prevKey: 'fin_prev_prep' as const,   realKey: 'fin_real_prep' as const },
-                  { label: 'Parada',          prevKey: 'fin_prev_parada' as const, realKey: 'fin_real_parada' as const },
-                  { label: 'Acomp. e Desmob.', prevKey: 'fin_prev_acomp' as const, realKey: 'fin_real_acomp' as const },
-                  { label: 'Desmobilização',  prevKey: 'fin_prev_desmob' as const, realKey: 'fin_real_desmob' as const },
-                  { label: 'Folga',           prevKey: 'fin_prev_folga' as const,  realKey: 'fin_real_folga' as const },
-                ]).map((row) => (
-                  <tr key={row.label} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="px-4 py-2 text-gray-700">{row.label}</td>
-                    <td className="px-4 py-2 text-right text-blue-700 bg-blue-50 text-xs">
-                      {fmtR$(contrato?.valor_orcado ? contrato.valor_orcado / 7 : null)}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <input type="number" min={0} step={0.01}
-                        value={cfg[row.prevKey]}
-                        onChange={(e) => setCfg((p) => ({ ...p, [row.prevKey]: e.target.value }))}
-                        className="w-36 rounded border border-gray-300 px-2 py-0.5 text-right text-sm focus:border-orange-400 focus:outline-none" />
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <input type="number" min={0} step={0.01}
-                        value={cfg[row.realKey]}
-                        onChange={(e) => setCfg((p) => ({ ...p, [row.realKey]: e.target.value }))}
-                        className="w-36 rounded border border-gray-300 px-2 py-0.5 text-right text-sm focus:border-green-500 focus:outline-none" />
-                    </td>
-                  </tr>
-                ))}
+                {/* Valor Total Serviço */}
+                <tr className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-700">Valor Total Serviço</td>
+                  <td className="px-4 py-3 text-right font-semibold text-blue-700 bg-blue-50">
+                    {fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}
+                    <p className="text-[10px] font-normal text-blue-500 mt-0.5">Orçado no faturamento</p>
+                  </td>
+                  <td className="px-4 py-3 text-right bg-orange-50">
+                    <input type="number" min={0} step={0.01}
+                      value={cfg.fin_prev_valor_servico}
+                      onChange={(e) => setCfg((p) => ({ ...p, fin_prev_valor_servico: e.target.value }))}
+                      placeholder="0,00"
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-orange-400 focus:outline-none" />
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-green-700 bg-green-50">
+                    {fmtR$(finRealValor > 0 ? finRealValor : null)}
+                    <p className="text-[10px] font-normal text-green-600 mt-0.5">Faturado (NFs ativas)</p>
+                  </td>
+                </tr>
+
+                {/* Serviços Extras (ASE) — só na coluna Previsto */}
+                <tr className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-700">Serviços Extras (ASE)</td>
+                  <td className="px-4 py-3 bg-blue-50 text-center text-gray-300 text-xs">—</td>
+                  <td className="px-4 py-3 text-right bg-orange-50">
+                    <input type="number" min={0} step={0.01}
+                      value={cfg.fin_prev_ase}
+                      onChange={(e) => setCfg((p) => ({ ...p, fin_prev_ase: e.target.value }))}
+                      placeholder="0,00"
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-orange-400 focus:outline-none" />
+                  </td>
+                  <td className="px-4 py-3 bg-green-50 text-center text-gray-300 text-xs">—</td>
+                </tr>
+
+                {/* Total Valor (Previsto = serviço + ASE) */}
+                <tr className="border-b bg-gray-50 font-semibold">
+                  <td className="px-4 py-2 text-gray-600 text-xs uppercase tracking-wide">Total Valor</td>
+                  <td className="px-4 py-2 text-right text-blue-700 bg-blue-50">{fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}</td>
+                  <td className="px-4 py-2 text-right text-orange-600 bg-orange-50">{fmtR$(finPrevTotal > 0 ? finPrevTotal : null)}</td>
+                  <td className="px-4 py-2 text-right text-green-700 bg-green-50">{fmtR$(finRealValor > 0 ? finRealValor : null)}</td>
+                </tr>
+
+                {/* HH Total */}
+                <tr className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-700">HH Total</td>
+                  <td className="px-4 py-3 text-right text-blue-700 bg-blue-50">
+                    {hhTotalPrev > 0 ? fmtHH(hhTotalPrev) : <span className="text-gray-300">–</span>}
+                    <p className="text-[10px] font-normal text-blue-500 mt-0.5">HH Previsto (grade)</p>
+                  </td>
+                  <td className="px-4 py-3 text-right text-orange-600 bg-orange-50">
+                    {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
+                    <p className="text-[10px] font-normal text-orange-500 mt-0.5">HH Real (grade)</p>
+                  </td>
+                  <td className="px-4 py-3 text-right text-green-700 bg-green-50">
+                    {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
+                    <p className="text-[10px] font-normal text-green-600 mt-0.5">HH Real (grade)</p>
+                  </td>
+                </tr>
               </tbody>
               <tfoot>
-                <tr className="bg-green-700 text-white">
-                  <td className="px-4 py-2 font-bold">Total</td>
-                  <td className="px-4 py-2 text-right font-bold">{fmtR$(fin.orcado)}</td>
-                  <td className="px-4 py-2 text-right font-bold">{fmtR$(fin.prevTotal)}</td>
-                  <td className="px-4 py-2 text-right font-bold">{fmtR$(fin.realTotal)}</td>
+                <tr className="text-white text-sm font-bold">
+                  <td className="px-4 py-3 bg-gray-700">R$/HH</td>
+                  <td className="px-4 py-3 text-right bg-blue-700">
+                    {finOrcadoRsHH != null ? fmtR$(finOrcadoRsHH) : '–'}
+                  </td>
+                  <td className="px-4 py-3 text-right bg-orange-600">
+                    {finPrevRsHH != null ? fmtR$(finPrevRsHH) : '–'}
+                  </td>
+                  <td className="px-4 py-3 text-right bg-green-700">
+                    {finRealRsHH != null ? fmtR$(finRealRsHH) : '–'}
+                  </td>
                 </tr>
               </tfoot>
             </table>
