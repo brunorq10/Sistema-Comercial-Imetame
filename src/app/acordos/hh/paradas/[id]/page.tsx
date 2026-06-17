@@ -388,7 +388,7 @@ export default function ParadaHhPage() {
     <div className="flex h-full flex-col overflow-hidden bg-gray-50">
       {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 border-b bg-white px-6 py-3 shadow-sm">
-        <button onClick={() => router.back()} className="flex items-center gap-1 text-gray-500 hover:text-gray-700">
+        <button onClick={() => router.push('/acordos/hh?tab=paradas')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700">
           <ArrowLeft size={18} />
         </button>
         <div className="flex items-center gap-2">

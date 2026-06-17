@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
   PointElement, LineElement, Tooltip, Filler,
@@ -26,6 +26,10 @@ interface ContratoHh {
   data_inicio: string | null; data_fim: string | null
   tem_lancamento: boolean
   hh_previsto: number | null; hh_planejado: number | null; hh_realizado: number | null
+  parada_hh_previsto: number | null; parada_hh_realizado: number | null
+  parada_pct_real_prev: number | null
+  parada_fin_orcado_rs_hh: number | null; parada_fin_prev_rs_hh: number | null; parada_fin_real_rs_hh: number | null
+  parada_classificacao_ucr: string | null
   lancamento_atual: {
     id: number; versao: number; data_inicio: string; data_fim: string
     motivo: string | null; created_at: string; criador: string
@@ -76,6 +80,17 @@ function MiniBar({ pct }: { pct: number }) {
     </div>
   )
 }
+
+// ─── UCR style helper ─────────────────────────────────────────────────────────
+
+const UCR_STYLE: Record<string, { cor: string; bg: string }> = {
+  'Não Suficiente': { cor: '#C62828', bg: '#FFCDD2' },
+  'A Evoluir':      { cor: '#F9A825', bg: '#FFF9C4' },
+  'Bom':            { cor: '#2E7D32', bg: '#C8E6C9' },
+  'Ótimo':          { cor: '#1565C0', bg: '#BBDEFB' },
+  'Esplêndido':     { cor: '#AD1457', bg: '#F8BBD9' },
+}
+function ucrStyle(label: string | null) { return label ? UCR_STYLE[label] ?? null : null }
 
 // ─── Botão de ação (padrão das outras tabelas) ────────────────────────────────
 
@@ -535,6 +550,92 @@ function NovoLancamentoModal({ onClose, onSelect, classificacao }: { onClose: ()
   )
 }
 
+// ─── UCR Config Modal ────────────────────────────────────────────────────────
+
+const UCR_ROWS_CFG = [
+  { label: 'Não Suficiente', cor: '#C62828', bg: '#FFCDD2', key: 'ucr_nao_suficiente' as const },
+  { label: 'A Evoluir',      cor: '#F9A825', bg: '#FFF9C4', key: 'ucr_a_evoluir'      as const },
+  { label: 'Bom',            cor: '#2E7D32', bg: '#C8E6C9', key: 'ucr_bom'            as const },
+  { label: 'Ótimo',          cor: '#1565C0', bg: '#BBDEFB', key: 'ucr_otimo'          as const },
+  { label: 'Esplêndido',     cor: '#AD1457', bg: '#F8BBD9', key: 'ucr_esplendido'     as const },
+]
+
+type UcrKeys = 'ucr_nao_suficiente' | 'ucr_a_evoluir' | 'ucr_bom' | 'ucr_otimo' | 'ucr_esplendido'
+
+function UcrConfigModal({ contrato, onClose }: { contrato: ContratoHh; onClose: () => void }) {
+  const router = useRouter()
+  const [saving, setSaving] = useState(false)
+  const [ucr, setUcr] = useState<Record<UcrKeys, string>>({
+    ucr_nao_suficiente: '161.98',
+    ucr_a_evoluir:      '162.00',
+    ucr_bom:            '180.00',
+    ucr_otimo:          '234.00',
+    ucr_esplendido:     '270.00',
+  })
+
+  const handleConfirm = async () => {
+    setSaving(true)
+    try {
+      await fetch(`/api/acordos/hh/paradas/${contrato.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ucr_nao_suficiente: parseFloat(ucr.ucr_nao_suficiente) || 161.98,
+          ucr_a_evoluir:      parseFloat(ucr.ucr_a_evoluir)      || 162.00,
+          ucr_bom:            parseFloat(ucr.ucr_bom)            || 180.00,
+          ucr_otimo:          parseFloat(ucr.ucr_otimo)          || 234.00,
+          ucr_esplendido:     parseFloat(ucr.ucr_esplendido)     || 270.00,
+        }),
+      })
+      router.push(`/acordos/hh/paradas/${contrato.id}`)
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+        <div className="bg-[#1B5E20] text-white px-5 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-[14px] font-bold">Uso Consciente do Recurso (UCR)</h2>
+            <p className="text-white/70 text-[11px] mt-0.5">{contrato.indice} · {contrato.descricao ?? contrato.cliente.nome}</p>
+          </div>
+          <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
+        </div>
+        <div className="p-5 flex flex-col gap-4">
+          <p className="text-[11px] text-gray-500">Defina os limites de R$/HH para cada faixa de classificação.</p>
+          <div className="flex flex-col gap-2.5">
+            {UCR_ROWS_CFG.map(({ label, cor, bg, key }) => (
+              <div key={key} className="flex items-center gap-3">
+                <div className="w-[140px] rounded-md px-3 py-1.5 text-[11px] font-semibold flex-shrink-0"
+                  style={{ background: bg, color: cor }}>
+                  {label}
+                </div>
+                <span className="text-[10px] text-gray-400 flex-shrink-0">até R$</span>
+                <input
+                  type="number" step="0.01"
+                  value={ucr[key]}
+                  onChange={e => setUcr(p => ({ ...p, [key]: e.target.value }))}
+                  className="flex-1 border border-gray-300 rounded px-2 py-1 text-[11px] text-right focus:outline-none focus:ring-2 focus:ring-green-primary/30"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-gray-100 px-5 py-3 flex justify-end gap-2 bg-gray-50">
+          <button onClick={onClose}
+            className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">
+            Cancelar
+          </button>
+          <button onClick={handleConfirm} disabled={saving}
+            className="bg-green-primary text-white rounded-md px-4 py-1.5 text-[11px] font-semibold hover:bg-green-dark transition-colors disabled:opacity-60">
+            {saving ? 'Configurando...' : 'Confirmar e Abrir'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Filtros + opções ─────────────────────────────────────────────────────────
 
 function useFilterOptions(contratos: ContratoHh[]) {
@@ -603,6 +704,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
 }) {
   const router = useRouter()
   const [modalLancamento,  setModalLancamento]  = useState<ContratoHh | null>(null)
+  const [modalUcr,         setModalUcr]         = useState<ContratoHh | null>(null)
   const [modalEditar,      setModalEditar]      = useState<ContratoHh | null>(null)
   const [modalVisualizar,  setModalVisualizar]  = useState<ContratoHh | null>(null)
   const [novoModal,        setNovoModal]        = useState(false)
@@ -645,7 +747,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           <thead className="sticky top-0 z-10">
             <tr className="bg-green-primary text-white">
               <th colSpan={5} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
-              <th colSpan={5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
+              <th colSpan={classificacao === 'PARADAS' ? 7 : 5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
               <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[100px]">Ações</th>
             </tr>
             <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
@@ -654,17 +756,31 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[130px]">Cliente</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[120px]">Cliente Final</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 min-w-[210px]">Escopo</th>
-              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
-              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Plan.</th>
-              <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Real.</th>
-              <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Prev</th>
-              <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Plan</th>
+              {classificacao === 'PARADAS' ? (
+                <>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Real.</th>
+                  <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[80px]">% R/Prev</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">R$/HH Orç.</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">R$/HH Prev.</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">R$/HH Real</th>
+                  <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[110px]">Classificação UCR</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Plan.</th>
+                  <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Real.</th>
+                  <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Prev</th>
+                  <th className="px-2 py-1.5 text-center font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[90px]">% R/Plan</th>
+                </>
+              )}
               <th className="px-2 py-1.5 text-center font-semibold w-[100px]" />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={11} className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</td></tr>
+              <tr><td colSpan={classificacao === 'PARADAS' ? 13 : 11} className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</td></tr>
             )}
             {filtered.map((c, idx) => {
               const bg = idx % 2 === 0 ? '#fff' : '#f9fafb'
@@ -685,21 +801,56 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                   <td className="px-3 py-2 min-w-[210px]">
                     <span className="line-clamp-2 whitespace-normal text-gray-600 leading-snug" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
                   </td>
-                  {[
-                    { v: prev, color: '#185FA5' },
-                    { v: plan, color: '#BA7517' },
-                    { v: real, color: '#3B6D11' },
-                  ].map(({ v, color }, i) => (
-                    <td key={i} className="px-2 py-2 text-right font-medium w-[72px]" style={{ color }}>
-                      {v != null ? v.toLocaleString('pt-BR') : <span className="text-gray-300">—</span>}
-                    </td>
-                  ))}
-                  <td className="px-2 py-2 w-[90px]">
-                    {pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
-                  </td>
-                  <td className="px-2 py-2 w-[90px]">
-                    {pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
-                  </td>
+                  {classificacao === 'PARADAS' ? (
+                    <>
+                      <td className="px-2 py-2 text-right font-medium w-[72px]" style={{ color: '#185FA5' }}>
+                        {c.parada_hh_previsto != null ? c.parada_hh_previsto.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-2 py-2 text-right font-medium w-[72px]" style={{ color: '#3B6D11' }}>
+                        {c.parada_hh_realizado != null ? c.parada_hh_realizado.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-2 py-2 w-[80px]">
+                        {c.parada_pct_real_prev != null ? <MiniBar pct={c.parada_pct_real_prev} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
+                      </td>
+                      <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#185FA5' }}>
+                        {c.parada_fin_orcado_rs_hh != null ? c.parada_fin_orcado_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#BA7517' }}>
+                        {c.parada_fin_prev_rs_hh != null ? c.parada_fin_prev_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#3B6D11' }}>
+                        {c.parada_fin_real_rs_hh != null ? c.parada_fin_real_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-2 py-2 text-center w-[110px]">
+                        {(() => {
+                          const s = ucrStyle(c.parada_classificacao_ucr)
+                          return s ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ color: s.cor, background: s.bg }}>
+                              {c.parada_classificacao_ucr}
+                            </span>
+                          ) : <span className="text-gray-300 text-[10px]">—</span>
+                        })()}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      {[
+                        { v: prev, color: '#185FA5' },
+                        { v: plan, color: '#BA7517' },
+                        { v: real, color: '#3B6D11' },
+                      ].map(({ v, color }, i) => (
+                        <td key={i} className="px-2 py-2 text-right font-medium w-[72px]" style={{ color }}>
+                          {v != null ? v.toLocaleString('pt-BR') : <span className="text-gray-300">—</span>}
+                        </td>
+                      ))}
+                      <td className="px-2 py-2 w-[90px]">
+                        {pctPrev != null ? <MiniBar pct={pctPrev} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
+                      </td>
+                      <td className="px-2 py-2 w-[90px]">
+                        {pctPlan != null ? <MiniBar pct={pctPlan} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
+                      </td>
+                    </>
+                  )}
                   {/* Ações */}
                   <td className="px-2 py-2 text-center w-[100px]">
                     {isDeleting ? (
@@ -737,8 +888,18 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
       {novoModal && (
         <NovoLancamentoModal
           onClose={() => setNovoModal(false)}
-          onSelect={c => { setNovoModal(false); setModalLancamento(c) }}
+          onSelect={c => {
+            setNovoModal(false)
+            if (classificacao === 'PARADAS') setModalUcr(c)
+            else setModalLancamento(c)
+          }}
           classificacao={classificacao}
+        />
+      )}
+      {modalUcr && (
+        <UcrConfigModal
+          contrato={modalUcr}
+          onClose={() => setModalUcr(null)}
         />
       )}
       {modalLancamento && (
@@ -1104,7 +1265,10 @@ type Categoria = 'obras' | 'paradas'
 type Visao    = 'contratos' | 'resumo'
 
 export default function ControleHhPage() {
-  const [categoria, setCategoria] = useState<Categoria>('obras')
+  const searchParams = useSearchParams()
+  const [categoria, setCategoria] = useState<Categoria>(
+    () => searchParams.get('tab') === 'paradas' ? 'paradas' : 'obras'
+  )
   const [visao,     setVisao]     = useState<Visao>('contratos')
   const [contratos, setContratos] = useState<ContratoHh[]>([])
   const [loading,   setLoading]   = useState(true)
