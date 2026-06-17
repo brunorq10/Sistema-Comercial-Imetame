@@ -1143,25 +1143,36 @@ export default function ControleHhPage() {
       </div>
 
       <>
-        <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
-          {([['contratos','Contratos'],['resumo','Resumo']] as [Visao,string][]).map(([k,l]) => (
-            <button key={k} onClick={() => setVisao(k)}
-              className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',
-                visao === k ? 'bg-green-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-              {l}
-            </button>
-          ))}
-        </div>
+        {categoria === 'obras' && (
+          <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
+            {([['contratos','Contratos'],['resumo','Resumo']] as [Visao,string][]).map(([k,l]) => (
+              <button key={k} onClick={() => setVisao(k)}
+                className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',
+                  visao === k ? 'bg-green-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : categoria === 'paradas' ? (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <VisaoContratos
+              contratos={contratos}
+              opts={opts}
+              onRefresh={fetchData}
+              classificacao="PARADAS"
+            />
+          </div>
         ) : visao === 'contratos' ? (
           <div className="flex-1 min-h-0 flex flex-col">
             <VisaoContratos
               contratos={contratos}
               opts={opts}
               onRefresh={fetchData}
-              classificacao={categoria === 'obras' ? 'OBRAS' : 'PARADAS'}
+              classificacao="OBRAS"
             />
           </div>
         ) : (
