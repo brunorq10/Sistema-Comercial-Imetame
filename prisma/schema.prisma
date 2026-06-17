@@ -498,11 +498,12 @@ model ParadaHhConfig {
   fin_prev_valor_servico Decimal? @db.Decimal(15, 2)
   fin_prev_ase           Decimal? @db.Decimal(15, 2)
 
-  // UCR limites (padrão BRD: f1=0.85, f2=0.93, f3=1.00, f4=1.07)
-  ucr_f1                 Decimal  @default(0.85) @db.Decimal(5, 2)
-  ucr_f2                 Decimal  @default(0.93) @db.Decimal(5, 2)
-  ucr_f3                 Decimal  @default(1.00) @db.Decimal(5, 2)
-  ucr_f4                 Decimal  @default(1.07) @db.Decimal(5, 2)
+  // UCR — limites em R$/HH por faixa (preenchidos no cadastro)
+  ucr_nao_suficiente     Decimal  @default(161.98) @db.Decimal(10, 2)
+  ucr_a_evoluir          Decimal  @default(162.00) @db.Decimal(10, 2)
+  ucr_bom                Decimal  @default(180.00) @db.Decimal(10, 2)
+  ucr_otimo              Decimal  @default(234.00) @db.Decimal(10, 2)
+  ucr_esplendido         Decimal  @default(270.00) @db.Decimal(10, 2)
 
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt

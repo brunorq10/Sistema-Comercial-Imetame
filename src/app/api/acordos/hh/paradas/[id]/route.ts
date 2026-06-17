@@ -40,10 +40,11 @@ const BodySchema = z.object({
   fin_prev_valor_servico: z.number().nullable().optional(),
   fin_prev_ase: z.number().nullable().optional(),
 
-  ucr_f1: z.number().optional(),
-  ucr_f2: z.number().optional(),
-  ucr_f3: z.number().optional(),
-  ucr_f4: z.number().optional(),
+  ucr_nao_suficiente: z.number().optional(),
+  ucr_a_evoluir: z.number().optional(),
+  ucr_bom: z.number().optional(),
+  ucr_otimo: z.number().optional(),
+  ucr_esplendido: z.number().optional(),
 
   dias: z.array(DiaSchema).optional(),
 })
@@ -143,10 +144,11 @@ export async function PUT(
       folga_pessoas_real: configData.folga_pessoas_real ?? null,
       fin_prev_valor_servico: toDecimal(configData.fin_prev_valor_servico),
       fin_prev_ase: toDecimal(configData.fin_prev_ase),
-      ucr_f1: configData.ucr_f1 ?? 0.85,
-      ucr_f2: configData.ucr_f2 ?? 0.93,
-      ucr_f3: configData.ucr_f3 ?? 1.00,
-      ucr_f4: configData.ucr_f4 ?? 1.07,
+      ucr_nao_suficiente: configData.ucr_nao_suficiente ?? 161.98,
+      ucr_a_evoluir: configData.ucr_a_evoluir ?? 162.00,
+      ucr_bom: configData.ucr_bom ?? 180.00,
+      ucr_otimo: configData.ucr_otimo ?? 234.00,
+      ucr_esplendido: configData.ucr_esplendido ?? 270.00,
     },
     update: {
       prep_inicio: configData.prep_inicio !== undefined ? (configData.prep_inicio ? new Date(configData.prep_inicio) : null) : undefined,
@@ -171,10 +173,11 @@ export async function PUT(
       folga_pessoas_real: configData.folga_pessoas_real,
       fin_prev_valor_servico: toDecimal(configData.fin_prev_valor_servico),
       fin_prev_ase: toDecimal(configData.fin_prev_ase),
-      ucr_f1: configData.ucr_f1,
-      ucr_f2: configData.ucr_f2,
-      ucr_f3: configData.ucr_f3,
-      ucr_f4: configData.ucr_f4,
+      ucr_nao_suficiente: configData.ucr_nao_suficiente,
+      ucr_a_evoluir: configData.ucr_a_evoluir,
+      ucr_bom: configData.ucr_bom,
+      ucr_otimo: configData.ucr_otimo,
+      ucr_esplendido: configData.ucr_esplendido,
     },
   })
 

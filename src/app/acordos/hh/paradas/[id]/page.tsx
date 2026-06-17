@@ -49,7 +49,7 @@ interface ConfigState {
   fin_prev_valor_servico: string
   fin_prev_ase: string
 
-  ucr_f1: string; ucr_f2: string; ucr_f3: string; ucr_f4: string
+  ucr_nao_suficiente: string; ucr_a_evoluir: string; ucr_bom: string; ucr_otimo: string; ucr_esplendido: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ function defaultConfig(): ConfigState {
     integ_ativo: false, integ_dias_prev: '', integ_dias_real: '',
     folga_ativo: false, folga_dias_prev: '', folga_dias_real: '', folga_pessoas_prev: '', folga_pessoas_real: '',
     fin_prev_valor_servico: '', fin_prev_ase: '',
-    ucr_f1: '0.85', ucr_f2: '0.93', ucr_f3: '1.00', ucr_f4: '1.07',
+    ucr_nao_suficiente: '161.98', ucr_a_evoluir: '162.00', ucr_bom: '180.00', ucr_otimo: '234.00', ucr_esplendido: '270.00',
   }
 }
 
@@ -129,8 +129,11 @@ function configFromApi(c: Record<string, unknown>): ConfigState {
     folga_pessoas_prev: s(c.folga_pessoas_prev), folga_pessoas_real: s(c.folga_pessoas_real),
     fin_prev_valor_servico: s(c.fin_prev_valor_servico),
     fin_prev_ase: s(c.fin_prev_ase),
-    ucr_f1: s(c.ucr_f1) || '0.85', ucr_f2: s(c.ucr_f2) || '0.93',
-    ucr_f3: s(c.ucr_f3) || '1.00', ucr_f4: s(c.ucr_f4) || '1.07',
+    ucr_nao_suficiente: s(c.ucr_nao_suficiente) || '161.98',
+    ucr_a_evoluir: s(c.ucr_a_evoluir) || '162.00',
+    ucr_bom: s(c.ucr_bom) || '180.00',
+    ucr_otimo: s(c.ucr_otimo) || '234.00',
+    ucr_esplendido: s(c.ucr_esplendido) || '270.00',
   }
 }
 
@@ -295,15 +298,13 @@ export default function ParadaHhPage() {
   const hhTotalReal = totPrep.sumHhReal + totParada.sumHhReal + totAcomp.sumHhReal + adicTotalReal
   const desvioAcum  = hhTotalReal - hhTotalPrev
 
-  // ── UCR ───────────────────────────────────────────────────────────────────
-  const ucrVal = hhTotalPrev > 0 ? hhTotalReal / hhTotalPrev : null
-  function getUcrClass() {
-    if (ucrVal == null) return null
-    const f1 = n(cfg.ucr_f1), f2 = n(cfg.ucr_f2), f3 = n(cfg.ucr_f3), f4 = n(cfg.ucr_f4)
-    if (ucrVal <= f1) return 'Não Suficiente'
-    if (ucrVal <= f2) return 'A Evoluir'
-    if (ucrVal <= f3) return 'Bom'
-    if (ucrVal <= f4) return 'Ótimo'
+  // ── UCR — classificação por R$/HH ─────────────────────────────────────────
+  function classifyRsHH(rsHH: number | null): string | null {
+    if (rsHH == null || isNaN(rsHH)) return null
+    if (rsHH <= n(cfg.ucr_nao_suficiente)) return 'Não Suficiente'
+    if (rsHH <= n(cfg.ucr_a_evoluir))      return 'A Evoluir'
+    if (rsHH <= n(cfg.ucr_bom))            return 'Bom'
+    if (rsHH <= n(cfg.ucr_otimo))          return 'Ótimo'
     return 'Esplêndido'
   }
 
@@ -339,7 +340,11 @@ export default function ParadaHhPage() {
         folga_pessoas_real: cfg.folga_pessoas_real ? parseInt(cfg.folga_pessoas_real) : null,
         fin_prev_valor_servico: cfg.fin_prev_valor_servico ? n(cfg.fin_prev_valor_servico) : null,
         fin_prev_ase: cfg.fin_prev_ase ? n(cfg.fin_prev_ase) : null,
-        ucr_f1: n(cfg.ucr_f1), ucr_f2: n(cfg.ucr_f2), ucr_f3: n(cfg.ucr_f3), ucr_f4: n(cfg.ucr_f4),
+        ucr_nao_suficiente: n(cfg.ucr_nao_suficiente),
+        ucr_a_evoluir: n(cfg.ucr_a_evoluir),
+        ucr_bom: n(cfg.ucr_bom),
+        ucr_otimo: n(cfg.ucr_otimo),
+        ucr_esplendido: n(cfg.ucr_esplendido),
         dias: Array.from(dias.entries()).map(([key, val]) => {
           const [etapa, data] = key.split('__')
           return {
@@ -366,16 +371,18 @@ export default function ParadaHhPage() {
     )
   }
 
-  const ucrClass = getUcrClass()
-  const f1 = n(cfg.ucr_f1), f2 = n(cfg.ucr_f2), f3 = n(cfg.ucr_f3), f4 = n(cfg.ucr_f4)
-
   const UCR_ROWS = [
-    { label: 'Não Suficiente', cor: '#D32F2F', bg: '#FFEBEE' },
-    { label: 'A Evoluir',      cor: '#F57C00', bg: '#FFF3E0' },
-    { label: 'Bom',            cor: '#388E3C', bg: '#E8F5E9' },
-    { label: 'Ótimo',          cor: '#1565C0', bg: '#E3F2FD' },
-    { label: 'Esplêndido',     cor: '#6A1B9A', bg: '#F3E5F5' },
+    { label: 'Não Suficiente', cor: '#C62828', bg: '#FFCDD2', cfgKey: 'ucr_nao_suficiente' as const },
+    { label: 'A Evoluir',      cor: '#F9A825', bg: '#FFF9C4', cfgKey: 'ucr_a_evoluir'      as const },
+    { label: 'Bom',            cor: '#2E7D32', bg: '#C8E6C9', cfgKey: 'ucr_bom'            as const },
+    { label: 'Ótimo',          cor: '#1565C0', bg: '#BBDEFB', cfgKey: 'ucr_otimo'          as const },
+    { label: 'Esplêndido',     cor: '#AD1457', bg: '#F8BBD9', cfgKey: 'ucr_esplendido'     as const },
   ]
+
+  function getUcrStyle(label: string | null) {
+    const row = UCR_ROWS.find((r) => r.label === label)
+    return row ?? null
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-gray-50">
@@ -444,7 +451,6 @@ export default function ParadaHhPage() {
           {[
             { cor: '#c8e6c9', label: 'Acima do planejado' },
             { cor: '#ffcdd2', label: 'Abaixo do planejado' },
-            { cor: '#EEE9F0', label: 'Final de semana (editável)' },
           ].map((l) => (
             <div key={l.label} className="flex items-center gap-1.5">
               <span className="h-3.5 w-3.5 rounded-sm border border-gray-300" style={{ background: l.cor }} />
@@ -644,137 +650,151 @@ export default function ParadaHhPage() {
               <thead>
                 <tr className="border-b bg-gray-50 text-xs">
                   <th className="px-4 py-2 text-left font-semibold text-gray-500 w-52">Campo</th>
-                  <th className="px-4 py-2 text-right font-bold text-blue-700 bg-blue-50 w-56">① Orçado</th>
-                  <th className="px-4 py-2 text-right font-bold text-orange-600 bg-orange-50 w-56">② Previsto</th>
-                  <th className="px-4 py-2 text-right font-bold text-green-700 bg-green-50 w-56">③ Real Faturado</th>
+                  <th className="px-4 py-2 text-right font-bold text-blue-700 w-56">① Orçado</th>
+                  <th className="px-4 py-2 text-right font-bold text-orange-600 w-56">② Previsto</th>
+                  <th className="px-4 py-2 text-right font-bold text-green-700 w-56">③ Real Faturado</th>
                 </tr>
               </thead>
               <tbody>
-                {/* Valor Total Serviço */}
                 <tr className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-700">Valor Total Serviço</td>
-                  <td className="px-4 py-3 text-right font-semibold text-blue-700 bg-blue-50">
+                  <td className="px-4 py-3 text-right font-semibold text-gray-800">
                     {fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}
-                    <p className="text-[10px] font-normal text-blue-500 mt-0.5">Orçado no faturamento</p>
+                    <p className="text-[10px] font-normal text-gray-400 mt-0.5">Orçado no faturamento</p>
                   </td>
-                  <td className="px-4 py-3 text-right bg-orange-50">
+                  <td className="px-4 py-3 text-right">
                     <input type="number" min={0} step={0.01}
                       value={cfg.fin_prev_valor_servico}
                       onChange={(e) => setCfg((p) => ({ ...p, fin_prev_valor_servico: e.target.value }))}
                       placeholder="0,00"
-                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-orange-400 focus:outline-none" />
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-green-500 focus:outline-none" />
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-green-700 bg-green-50">
+                  <td className="px-4 py-3 text-right font-semibold text-gray-800">
                     {fmtR$(finRealValor > 0 ? finRealValor : null)}
-                    <p className="text-[10px] font-normal text-green-600 mt-0.5">Faturado (NFs ativas)</p>
+                    <p className="text-[10px] font-normal text-gray-400 mt-0.5">Faturado (NFs ativas)</p>
                   </td>
                 </tr>
 
-                {/* Serviços Extras (ASE) — só na coluna Previsto */}
                 <tr className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-700">Serviços Extras (ASE)</td>
-                  <td className="px-4 py-3 bg-blue-50 text-center text-gray-300 text-xs">—</td>
-                  <td className="px-4 py-3 text-right bg-orange-50">
+                  <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
+                  <td className="px-4 py-3 text-right">
                     <input type="number" min={0} step={0.01}
                       value={cfg.fin_prev_ase}
                       onChange={(e) => setCfg((p) => ({ ...p, fin_prev_ase: e.target.value }))}
                       placeholder="0,00"
-                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-orange-400 focus:outline-none" />
+                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-green-500 focus:outline-none" />
                   </td>
-                  <td className="px-4 py-3 bg-green-50 text-center text-gray-300 text-xs">—</td>
+                  <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
                 </tr>
 
-                {/* Total Valor (Previsto = serviço + ASE) */}
-                <tr className="border-b bg-gray-50 font-semibold">
+                <tr className="border-b bg-gray-50 font-semibold text-sm">
                   <td className="px-4 py-2 text-gray-600 text-xs uppercase tracking-wide">Total Valor</td>
-                  <td className="px-4 py-2 text-right text-blue-700 bg-blue-50">{fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}</td>
-                  <td className="px-4 py-2 text-right text-orange-600 bg-orange-50">{fmtR$(finPrevTotal > 0 ? finPrevTotal : null)}</td>
-                  <td className="px-4 py-2 text-right text-green-700 bg-green-50">{fmtR$(finRealValor > 0 ? finRealValor : null)}</td>
+                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}</td>
+                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finPrevTotal > 0 ? finPrevTotal : null)}</td>
+                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finRealValor > 0 ? finRealValor : null)}</td>
                 </tr>
 
-                {/* HH Total */}
                 <tr className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-700">HH Total</td>
-                  <td className="px-4 py-3 text-right text-blue-700 bg-blue-50">
+                  <td className="px-4 py-3 text-right text-gray-700">
                     {hhTotalPrev > 0 ? fmtHH(hhTotalPrev) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] font-normal text-blue-500 mt-0.5">HH Previsto (grade)</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">HH Previsto</p>
                   </td>
-                  <td className="px-4 py-3 text-right text-orange-600 bg-orange-50">
+                  <td className="px-4 py-3 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] font-normal text-orange-500 mt-0.5">HH Real (grade)</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">HH Real</p>
                   </td>
-                  <td className="px-4 py-3 text-right text-green-700 bg-green-50">
+                  <td className="px-4 py-3 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] font-normal text-green-600 mt-0.5">HH Real (grade)</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">HH Real</p>
                   </td>
                 </tr>
               </tbody>
               <tfoot>
-                <tr className="text-white text-sm font-bold">
-                  <td className="px-4 py-3 bg-gray-700">R$/HH</td>
-                  <td className="px-4 py-3 text-right bg-blue-700">
-                    {finOrcadoRsHH != null ? fmtR$(finOrcadoRsHH) : '–'}
-                  </td>
-                  <td className="px-4 py-3 text-right bg-orange-600">
-                    {finPrevRsHH != null ? fmtR$(finPrevRsHH) : '–'}
-                  </td>
-                  <td className="px-4 py-3 text-right bg-green-700">
-                    {finRealRsHH != null ? fmtR$(finRealRsHH) : '–'}
-                  </td>
-                </tr>
+                {/* R$/HH com cor da faixa UCR */}
+                {(() => {
+                  const cols = [
+                    { rsHH: finOrcadoRsHH, label: '① Orçado' },
+                    { rsHH: finPrevRsHH,   label: '② Previsto' },
+                    { rsHH: finRealRsHH,   label: '③ Real' },
+                  ]
+                  return (
+                    <tr className="text-sm font-bold border-t-2 border-green-700">
+                      <td className="px-4 py-3 bg-green-700 text-white">R$/HH</td>
+                      {cols.map(({ rsHH, label }) => {
+                        const cls = classifyRsHH(rsHH)
+                        const style = getUcrStyle(cls)
+                        return (
+                          <td key={label} className="px-4 py-2 text-center"
+                            style={{ background: style?.bg ?? '#F9FAFB', color: style?.cor ?? '#374151' }}>
+                            <div className="text-base">{rsHH != null ? fmtR$(rsHH) : '–'}</div>
+                            {cls && <div className="text-[10px] font-semibold mt-0.5 opacity-80">{cls}</div>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })()}
               </tfoot>
             </table>
           </div>
         </div>
 
-        {/* ── UCR ──────────────────────────────────────────────────────────── */}
+        {/* ── UCR — Uso Consciente do Recurso ─────────────────────────────── */}
         <div className="rounded-lg border bg-white shadow-sm">
           <div className="border-b bg-green-700 px-4 py-2 rounded-t-lg">
             <h3 className="text-sm font-semibold text-white">UCR — Uso Consciente do Recurso</h3>
           </div>
-          <div className="p-4">
-            <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-gray-600">
-              <span className="font-semibold">Limites:</span>
-              {(['ucr_f1', 'ucr_f2', 'ucr_f3', 'ucr_f4'] as const).map((k, i) => (
-                <label key={k} className="flex items-center gap-1">
-                  <span>F{i + 1}:</span>
-                  <input type="number" step={0.01} min={0} max={2} value={cfg[k]}
-                    onChange={(e) => setCfg((p) => ({ ...p, [k]: e.target.value }))}
-                    className="w-16 rounded border border-gray-300 px-1 py-0.5 text-center focus:border-green-500 focus:outline-none" />
-                </label>
-              ))}
-              {ucrVal != null && (
-                <span className="ml-auto font-semibold">
-                  UCR atual: <span className="text-green-700">{(ucrVal * 100).toFixed(1)}%</span>
-                </span>
-              )}
-            </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50 text-xs">
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600">Classificação</th>
-                  <th className="px-4 py-2 text-center font-semibold text-gray-600">Faixa</th>
-                  <th className="px-4 py-2 text-center font-semibold text-gray-600">Status</th>
+                  <th className="px-4 py-2 text-left font-semibold text-gray-600 w-36">Classificação</th>
+                  <th className="px-4 py-2 text-center font-semibold text-gray-600 w-52">Faixa R$/HH</th>
+                  <th className="px-4 py-2 text-center font-semibold text-gray-500">Limite máx. (R$/HH)</th>
+                  <th className="px-4 py-2 text-center font-semibold text-blue-700">① Orçado</th>
+                  <th className="px-4 py-2 text-center font-semibold text-orange-600">② Previsto</th>
+                  <th className="px-4 py-2 text-center font-semibold text-green-700">③ Real</th>
                 </tr>
               </thead>
               <tbody>
                 {UCR_ROWS.map((row, i) => {
-                  const faixaLabel = (() => {
-                    if (i === 0) return `≤ ${(f1 * 100).toFixed(0)}%`
-                    if (i === 1) return `${(f1 * 100).toFixed(0)}% – ${(f2 * 100).toFixed(0)}%`
-                    if (i === 2) return `${(f2 * 100).toFixed(0)}% – ${(f3 * 100).toFixed(0)}%`
-                    if (i === 3) return `${(f3 * 100).toFixed(0)}% – ${(f4 * 100).toFixed(0)}%`
-                    return `> ${(f4 * 100).toFixed(0)}%`
-                  })()
-                  const isCurrent = ucrClass === row.label
+                  const prev = i > 0 ? n(cfg[UCR_ROWS[i - 1].cfgKey]) : null
+                  const curr = n(cfg[row.cfgKey])
+                  const faixaLabel = i === 0
+                    ? `≤ ${fmtR$(curr)}`
+                    : i === UCR_ROWS.length - 1
+                      ? `> ${fmtR$(n(cfg[UCR_ROWS[i - 1].cfgKey]))}`
+                      : `${fmtR$(prev!)} – ${fmtR$(curr)}`
+
+                  const isOrcado  = classifyRsHH(finOrcadoRsHH) === row.label
+                  const isPrevisto = classifyRsHH(finPrevRsHH)  === row.label
+                  const isReal    = classifyRsHH(finRealRsHH)   === row.label
+
                   return (
-                    <tr key={row.label} className="border-b last:border-0" style={{ background: isCurrent ? row.bg : undefined }}>
-                      <td className="px-4 py-2 font-medium" style={{ color: row.cor }}>{row.label}</td>
-                      <td className="px-4 py-2 text-center text-gray-600">{faixaLabel}</td>
-                      <td className="px-4 py-2 text-center">
-                        {isCurrent && (
-                          <span className="rounded-full px-3 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>← Atual</span>
-                        )}
+                    <tr key={row.label} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-4 py-2.5 font-bold rounded-l-sm" style={{ color: row.cor }}>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded-full flex-shrink-0" style={{ background: row.cor }} />
+                          {row.label}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-xs text-gray-600">{faixaLabel}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <input type="number" min={0} step={0.01}
+                          value={cfg[row.cfgKey]}
+                          onChange={(e) => setCfg((p) => ({ ...p, [row.cfgKey]: e.target.value }))}
+                          className="w-32 rounded border border-gray-300 px-2 py-0.5 text-right text-sm focus:border-green-500 focus:outline-none" />
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {isOrcado && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Orçado</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {isPrevisto && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Previsto</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {isReal && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Real</span>}
                       </td>
                     </tr>
                   )
@@ -865,8 +885,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                   <th key={`${etapa}_${d}`}
                     className="border border-gray-300 py-0.5 text-center text-xs font-medium"
                     style={{
-                      background: isWeekend(d) ? '#E2D9EA' : '#F9FAFB',
-                      color: isWeekend(d) ? '#7C5E8C' : '#374151',
+                      background: '#F9FAFB',
+                      color: isWeekend(d) ? '#9CA3AF' : '#374151',
                       borderLeft: d === etapaSections.find(s => s.etapa === etapa)?.dias[0] && etapa !== 'PREPARATIVO'
                         ? '2px solid #1B5E20' : undefined,
                     }}>
@@ -899,7 +919,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                     if (key === 'efetivo_plan' || key === 'efetivo_real' || key === 'hh_plan' || key === 'hh_real') {
                       const prop = key as keyof DiaState
                       const val = dia[prop]
-                      const cellBg = weekend ? '#EEE9F0' : (bg ?? '#fff')
+                      const cellBg = bg ?? '#fff'
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: cellBg, minWidth: COL_W, width: COL_W }}>
@@ -908,7 +928,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                             value={val}
                             onChange={(e) => setDiaProp(etapa, d, prop, e.target.value)}
                             className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
-                            style={{ color: weekend ? '#7C5E8C' : undefined }} />
+                            style={{ color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
                       )
                     }
@@ -917,7 +937,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       acum += n(dia.hh_plan)
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: weekend ? '#E2D9EA' : '#DCEDC8', fontWeight: 700 }}>
+                          style={{ background: '#DCEDC8', fontWeight: 700 }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
@@ -927,7 +947,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       acum += n(dia.hh_real)
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: weekend ? '#E2D9EA' : '#E3F2FD', fontWeight: 700 }}>
+                          style={{ background: '#E3F2FD', fontWeight: 700 }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
@@ -938,9 +958,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const hasData = dia.hh_real !== '' && dia.hh_plan !== ''
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{
-                            background: weekend ? '#EEE9F0' : hasData ? (dev > 0 ? '#c8e6c9' : dev < 0 ? '#ffcdd2' : '#fff') : '#fff',
-                          }}>
+                          style={{ background: hasData ? (dev > 0 ? '#c8e6c9' : dev < 0 ? '#ffcdd2' : '#fff') : '#fff' }}>
                           {hasData ? fmtCellHH(dev) : ''}
                         </td>
                       )
@@ -952,9 +970,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const pct = plan > 0 ? (real - plan) / plan : null
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{
-                            background: weekend ? '#EEE9F0' : hasData && pct != null ? (pct > 0 ? '#c8e6c9' : pct < 0 ? '#ffcdd2' : '#fff') : '#fff',
-                          }}>
+                          style={{ background: hasData && pct != null ? (pct > 0 ? '#c8e6c9' : pct < 0 ? '#ffcdd2' : '#fff') : '#fff' }}>
                           {hasData && pct != null ? `${(pct * 100).toFixed(1)}%` : ''}
                         </td>
                       )
