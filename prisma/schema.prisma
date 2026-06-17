@@ -475,25 +475,24 @@ model ParadaHhConfig {
   acomp_inicio           DateTime?
   acomp_fim              DateTime?
 
-  // Horas adicionais - Mobilização
+  // Horas adicionais - pico calculado automaticamente da grade da Parada
   mob_ativo              Boolean  @default(false)
-  mob_dias               Int?
-  mob_pico_efetivo       Int?
+  mob_dias_prev          Decimal? @db.Decimal(5, 1)
+  mob_dias_real          Decimal? @db.Decimal(5, 1)
 
-  // Horas adicionais - Desmobilização
   desmob_ativo           Boolean  @default(false)
-  desmob_dias            Int?
-  desmob_pico_efetivo    Int?
+  desmob_dias_prev       Decimal? @db.Decimal(5, 1)
+  desmob_dias_real       Decimal? @db.Decimal(5, 1)
 
-  // Horas adicionais - Integração
   integ_ativo            Boolean  @default(false)
-  integ_dias             Int?
-  integ_pico_efetivo     Int?
+  integ_dias_prev        Decimal? @db.Decimal(5, 1)
+  integ_dias_real        Decimal? @db.Decimal(5, 1)
 
-  // Horas adicionais - Folga
   folga_ativo            Boolean  @default(false)
-  folga_dias             Int?
-  folga_pessoas          Int?
+  folga_dias_prev        Decimal? @db.Decimal(5, 1)
+  folga_dias_real        Decimal? @db.Decimal(5, 1)
+  folga_pessoas_prev     Int?
+  folga_pessoas_real     Int?
 
   // Análise financeira - previsto (orcado vem do faturamento)
   fin_prev_mob           Decimal? @db.Decimal(15, 2)
