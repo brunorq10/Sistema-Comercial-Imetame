@@ -463,6 +463,92 @@ model HhRealizado {
   @@map("hh_realizado")
 }
 
+model ParadaHhConfig {
+  id                     Int      @id @default(autoincrement())
+  contrato_id            Int      @unique
+
+  // Datas das etapas
+  prep_inicio            DateTime?
+  prep_fim               DateTime?
+  parada_inicio          DateTime?
+  parada_fim             DateTime?
+  acomp_inicio           DateTime?
+  acomp_fim              DateTime?
+
+  // Horas adicionais - Mobilização
+  mob_ativo              Boolean  @default(false)
+  mob_dias               Int?
+  mob_pico_efetivo       Int?
+
+  // Horas adicionais - Desmobilização
+  desmob_ativo           Boolean  @default(false)
+  desmob_dias            Int?
+  desmob_pico_efetivo    Int?
+
+  // Horas adicionais - Integração
+  integ_ativo            Boolean  @default(false)
+  integ_dias             Int?
+  integ_pico_efetivo     Int?
+
+  // Horas adicionais - Folga
+  folga_ativo            Boolean  @default(false)
+  folga_dias             Int?
+  folga_pessoas          Int?
+
+  // Análise financeira - previsto (orcado vem do faturamento)
+  fin_prev_mob           Decimal? @db.Decimal(15, 2)
+  fin_prev_integ         Decimal? @db.Decimal(15, 2)
+  fin_prev_prep          Decimal? @db.Decimal(15, 2)
+  fin_prev_parada        Decimal? @db.Decimal(15, 2)
+  fin_prev_acomp         Decimal? @db.Decimal(15, 2)
+  fin_prev_desmob        Decimal? @db.Decimal(15, 2)
+  fin_prev_folga         Decimal? @db.Decimal(15, 2)
+
+  // Análise financeira - real faturado (vem das NFs)
+  fin_real_mob           Decimal? @db.Decimal(15, 2)
+  fin_real_integ         Decimal? @db.Decimal(15, 2)
+  fin_real_prep          Decimal? @db.Decimal(15, 2)
+  fin_real_parada        Decimal? @db.Decimal(15, 2)
+  fin_real_acomp         Decimal? @db.Decimal(15, 2)
+  fin_real_desmob        Decimal? @db.Decimal(15, 2)
+  fin_real_folga         Decimal? @db.Decimal(15, 2)
+
+  // UCR limites (padrão BRD: f1=0.85, f2=0.93, f3=1.00, f4=1.07)
+  ucr_f1                 Decimal  @default(0.85) @db.Decimal(5, 2)
+  ucr_f2                 Decimal  @default(0.93) @db.Decimal(5, 2)
+  ucr_f3                 Decimal  @default(1.00) @db.Decimal(5, 2)
+  ucr_f4                 Decimal  @default(1.07) @db.Decimal(5, 2)
+
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  contrato               Contrato         @relation(fields: [contrato_id], references: [id])
+  dias                   ParadaHhDia[]
+
+  @@map("parada_hh_config")
+}
+
+model ParadaHhDia {
+  id               Int      @id @default(autoincrement())
+  config_id        Int
+  etapa            String   // PREPARATIVO | PARADA | ACOMP_DESMOB
+  data             DateTime @db.Date
+
+  efetivo_plan     Int?
+  hh_plan          Decimal? @db.Decimal(10, 2)
+  efetivo_real     Int?
+  hh_real          Decimal? @db.Decimal(10, 2)
+
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  config           ParadaHhConfig @relation(fields: [config_id], references: [id])
+
+  @@unique([config_id, etapa, data])
+  @@index([config_id])
+  @@map("parada_hh_dia")
+}
+
 model Acordo {
   id                      Int          @id @default(autoincrement())
   numero                  String       @unique
@@ -546,8 +632,9 @@ model Contrato {
   solicitacao    Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
   subindices     SubIndiceFaturamento[]
   historico      HistoricoContrato[]
-  hh_lancamentos HhLancamento[]
-  hh_realizados  HhRealizado[]
+  hh_lancamentos   HhLancamento[]
+  hh_realizados    HhRealizado[]
+  parada_hh_config ParadaHhConfig?
 
   @@index([cliente_id])
   @@index([cliente_final_id])

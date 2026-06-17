@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
   PointElement, LineElement, Tooltip, Filler,
@@ -441,17 +442,17 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
 
 // ─── Novo Lançamento Modal ────────────────────────────────────────────────────
 
-function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c: ContratoHh) => void }) {
+function NovoLancamentoModal({ onClose, onSelect, classificacao }: { onClose: () => void; onSelect: (c: ContratoHh) => void; classificacao: 'OBRAS' | 'PARADAS' }) {
   const [disponivel, setDisponivel] = useState<ContratoHh[]>([])
   const [loading,    setLoading]    = useState(true)
   const [query,      setQuery]      = useState('')
 
   useEffect(() => {
-    fetch('/api/acordos/hh?disponivel=1')
+    fetch(`/api/acordos/hh?disponivel=1&classificacao=${classificacao}`)
       .then(r => r.json())
       .then(j => setDisponivel(j.data ?? []))
       .finally(() => setLoading(false))
-  }, [])
+  }, [classificacao])
 
   const filtered = query.trim()
     ? disponivel.filter(c =>
@@ -486,7 +487,7 @@ function NovoLancamentoModal({ onClose, onSelect }: { onClose: () => void; onSel
             <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>
           ) : filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              {disponivel.length === 0 ? 'Todos os contratos já possuem lançamento de HH.' : 'Nenhum resultado encontrado.'}
+              {disponivel.length === 0 ? `Todos os contratos de ${classificacao === 'OBRAS' ? 'Obras' : 'Paradas'} já possuem lançamento de HH.` : 'Nenhum resultado encontrado.'}
             </p>
           ) : (
             <table className="w-full text-[11px]">
@@ -594,11 +595,13 @@ function applyFilters(contratos: ContratoHh[], filters: FilterState) {
 
 // ─── Visão Contratos ──────────────────────────────────────────────────────────
 
-function VisaoContratos({ contratos, opts, onRefresh }: {
+function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
   contratos: ContratoHh[]
   opts: ReturnType<typeof useFilterOptions>
   onRefresh: () => void
+  classificacao: 'OBRAS' | 'PARADAS'
 }) {
+  const router = useRouter()
   const [modalLancamento,  setModalLancamento]  = useState<ContratoHh | null>(null)
   const [modalEditar,      setModalEditar]      = useState<ContratoHh | null>(null)
   const [modalVisualizar,  setModalVisualizar]  = useState<ContratoHh | null>(null)
@@ -707,6 +710,11 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
                         </button>
                         <button onClick={() => setDeleteId(null)} className="text-gray-400 hover:text-gray-600 text-[11px]">✕</button>
                       </div>
+                    ) : classificacao === 'PARADAS' ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Controle de HH de Paradas" color="green">✎ HH</ABtn>
+                        <ABtn onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento" color="red">🗑</ABtn>
+                      </div>
                     ) : (
                       <div className="flex items-center justify-center gap-1">
                         <ABtn onClick={() => setModalVisualizar(c)} title="Visualizar lançamentos" color="blue">👁</ABtn>
@@ -730,6 +738,7 @@ function VisaoContratos({ contratos, opts, onRefresh }: {
         <NovoLancamentoModal
           onClose={() => setNovoModal(false)}
           onSelect={c => { setNovoModal(false); setModalLancamento(c) }}
+          classificacao={classificacao}
         />
       )}
       {modalLancamento && (
@@ -1103,11 +1112,12 @@ export default function ControleHhPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/acordos/hh?classificacao=OBRAS')
+      const cls = categoria === 'obras' ? 'OBRAS' : 'PARADAS'
+      const res = await fetch(`/api/acordos/hh?classificacao=${cls}`)
       const json = await res.json()
       setContratos(json.data ?? [])
     } finally { setLoading(false) }
-  }, [])
+  }, [categoria])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -1132,34 +1142,32 @@ export default function ControleHhPage() {
         ))}
       </div>
 
-      {categoria === 'paradas' ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-400">
-          <p className="text-[13px] font-semibold mb-1">Em desenvolvimento</p>
-          <p className="text-[11px]">O controle de HH para Paradas estará disponível em breve.</p>
+      <>
+        <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
+          {([['contratos','Contratos'],['resumo','Resumo']] as [Visao,string][]).map(([k,l]) => (
+            <button key={k} onClick={() => setVisao(k)}
+              className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',
+                visao === k ? 'bg-green-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+              {l}
+            </button>
+          ))}
         </div>
-      ) : (
-        <>
-          <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
-            {([['contratos','Contratos'],['resumo','Resumo']] as [Visao,string][]).map(([k,l]) => (
-              <button key={k} onClick={() => setVisao(k)}
-                className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',
-                  visao === k ? 'bg-green-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                {l}
-              </button>
-            ))}
-          </div>
 
-          {loading ? (
-            <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-          ) : visao === 'contratos' ? (
-            <div className="flex-1 min-h-0 flex flex-col">
-              <VisaoContratos contratos={contratos} opts={opts} onRefresh={fetchData} />
-            </div>
-          ) : (
-            <VisaoResumo contratos={contratos} opts={opts} />
-          )}
-        </>
-      )}
+        {loading ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : visao === 'contratos' ? (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <VisaoContratos
+              contratos={contratos}
+              opts={opts}
+              onRefresh={fetchData}
+              classificacao={categoria === 'obras' ? 'OBRAS' : 'PARADAS'}
+            />
+          </div>
+        ) : (
+          <VisaoResumo contratos={contratos} opts={opts} />
+        )}
+      </>
     </div>
   )
 }
