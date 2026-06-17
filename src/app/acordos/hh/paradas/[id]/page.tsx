@@ -895,8 +895,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W }}>
                           <input type="number" min={0} step="1" value={val}
                             onChange={(e) => setDiaProp(etapa, d, prop, e.target.value)}
-                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
-                            style={{ color: (weekend && val !== '') ? '#C62828' : undefined }} />
+                            className="w-full bg-transparent px-0.5 py-0.5 focus:bg-yellow-50 focus:outline-none"
+                            style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
                       )
                     }
@@ -914,8 +914,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                               setDiaProp(etapa, d, prop,
                                 num > 0 ? num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '')
                             }}
-                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
-                            style={{ color: (weekend && val !== '') ? '#C62828' : undefined }} />
+                            className="w-full bg-transparent px-0.5 py-0.5 focus:bg-yellow-50 focus:outline-none"
+                            style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
                       )
                     }
