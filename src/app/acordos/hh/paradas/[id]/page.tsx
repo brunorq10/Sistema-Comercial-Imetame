@@ -646,161 +646,128 @@ export default function ParadaHhPage() {
             <h3 className="text-sm font-semibold text-white">Análise Financeira</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full" style={{ fontSize: '12px' }}>
               <thead>
-                <tr className="border-b bg-gray-50 text-xs">
-                  <th className="px-4 py-2 text-left font-semibold text-gray-500 w-52">Campo</th>
-                  <th className="px-4 py-2 text-right font-bold text-blue-700 w-56">① Orçado</th>
-                  <th className="px-4 py-2 text-right font-bold text-orange-600 w-56">② Previsto</th>
-                  <th className="px-4 py-2 text-right font-bold text-green-700 w-56">③ Real Faturado</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-2 text-left font-semibold text-gray-500 w-48">Campo</th>
+                  <th className="px-4 py-2 text-right font-bold text-blue-700 w-52">① Orçado</th>
+                  <th className="px-4 py-2 text-right font-bold text-orange-600 w-52">② Previsto</th>
+                  <th className="px-4 py-2 text-right font-bold text-green-700 w-52">③ Real Faturado</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-700">Valor Total Serviço</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                  <td className="px-4 py-2 font-medium text-gray-600">Valor Total Serviço</td>
+                  <td className="px-4 py-2 text-right text-gray-800 font-semibold">
                     {fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}
-                    <p className="text-[10px] font-normal text-gray-400 mt-0.5">Orçado no faturamento</p>
+                    <div className="text-[10px] font-normal text-gray-400 mt-0.5">Orçado no faturamento</div>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2 text-right">
                     <input type="number" min={0} step={0.01}
                       value={cfg.fin_prev_valor_servico}
                       onChange={(e) => setCfg((p) => ({ ...p, fin_prev_valor_servico: e.target.value }))}
                       placeholder="0,00"
-                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-green-500 focus:outline-none" />
+                      className="w-36 rounded border border-gray-300 px-2 py-1 text-right focus:border-green-500 focus:outline-none" />
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                  <td className="px-4 py-2 text-right text-gray-800 font-semibold">
                     {fmtR$(finRealValor > 0 ? finRealValor : null)}
-                    <p className="text-[10px] font-normal text-gray-400 mt-0.5">Faturado (NFs ativas)</p>
+                    <div className="text-[10px] font-normal text-gray-400 mt-0.5">Faturado (NFs ativas)</div>
                   </td>
                 </tr>
 
                 <tr className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-700">Serviços Extras (ASE)</td>
-                  <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2 font-medium text-gray-600">Serviços Extras (ASE)</td>
+                  <td className="px-4 py-2 text-center text-gray-300">—</td>
+                  <td className="px-4 py-2 text-right">
                     <input type="number" min={0} step={0.01}
                       value={cfg.fin_prev_ase}
                       onChange={(e) => setCfg((p) => ({ ...p, fin_prev_ase: e.target.value }))}
                       placeholder="0,00"
-                      className="w-40 rounded border border-gray-300 px-2 py-1 text-right text-sm focus:border-green-500 focus:outline-none" />
+                      className="w-36 rounded border border-gray-300 px-2 py-1 text-right focus:border-green-500 focus:outline-none" />
                   </td>
-                  <td className="px-4 py-3 text-center text-gray-300 text-xs">—</td>
+                  <td className="px-4 py-2 text-center text-gray-300">—</td>
                 </tr>
 
-                <tr className="border-b bg-gray-50 font-semibold text-sm">
-                  <td className="px-4 py-2 text-gray-600 text-xs uppercase tracking-wide">Total Valor</td>
-                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}</td>
-                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finPrevTotal > 0 ? finPrevTotal : null)}</td>
-                  <td className="px-4 py-2 text-right text-gray-800">{fmtR$(finRealValor > 0 ? finRealValor : null)}</td>
+                <tr className="border-b bg-gray-50">
+                  <td className="px-4 py-2 font-semibold text-gray-600">Total Valor</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-800">{fmtR$(finOrcadoValor > 0 ? finOrcadoValor : null)}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-800">{fmtR$(finPrevTotal > 0 ? finPrevTotal : null)}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-gray-800">{fmtR$(finRealValor > 0 ? finRealValor : null)}</td>
                 </tr>
 
                 <tr className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-700">HH Total</td>
-                  <td className="px-4 py-3 text-right text-gray-700">
+                  <td className="px-4 py-2 font-medium text-gray-600">HH Total</td>
+                  <td className="px-4 py-2 text-right text-gray-700">
                     {hhTotalPrev > 0 ? fmtHH(hhTotalPrev) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] text-gray-400 mt-0.5">HH Previsto</p>
+                    <div className="text-[10px] text-gray-400 mt-0.5">HH Previsto</div>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-700">
+                  <td className="px-4 py-2 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] text-gray-400 mt-0.5">HH Real</p>
+                    <div className="text-[10px] text-gray-400 mt-0.5">HH Real</div>
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-700">
+                  <td className="px-4 py-2 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <p className="text-[10px] text-gray-400 mt-0.5">HH Real</p>
+                    <div className="text-[10px] text-gray-400 mt-0.5">HH Real</div>
                   </td>
                 </tr>
               </tbody>
               <tfoot>
-                {/* R$/HH com cor da faixa UCR */}
-                {(() => {
-                  const cols = [
-                    { rsHH: finOrcadoRsHH, label: '① Orçado' },
-                    { rsHH: finPrevRsHH,   label: '② Previsto' },
-                    { rsHH: finRealRsHH,   label: '③ Real' },
-                  ]
-                  return (
-                    <tr className="text-sm font-bold border-t-2 border-green-700">
-                      <td className="px-4 py-3 bg-green-700 text-white">R$/HH</td>
-                      {cols.map(({ rsHH, label }) => {
-                        const cls = classifyRsHH(rsHH)
-                        const style = getUcrStyle(cls)
-                        return (
-                          <td key={label} className="px-4 py-2 text-center"
-                            style={{ background: style?.bg ?? '#F9FAFB', color: style?.cor ?? '#374151' }}>
-                            <div className="text-base">{rsHH != null ? fmtR$(rsHH) : '–'}</div>
-                            {cls && <div className="text-[10px] font-semibold mt-0.5 opacity-80">{cls}</div>}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )
-                })()}
+                <tr className="border-t-2 border-green-700 font-bold">
+                  <td className="px-4 py-2 bg-green-700 text-white">R$/HH</td>
+                  {([
+                    { rsHH: finOrcadoRsHH, key: 'orc' },
+                    { rsHH: finPrevRsHH,   key: 'prev' },
+                    { rsHH: finRealRsHH,   key: 'real' },
+                  ] as const).map(({ rsHH, key }) => {
+                    const cls = classifyRsHH(rsHH)
+                    const s = getUcrStyle(cls)
+                    return (
+                      <td key={key} className="px-4 py-2 text-center"
+                        style={{ background: s?.bg ?? '#F9FAFB', color: s?.cor ?? '#374151' }}>
+                        <div>{rsHH != null ? fmtR$(rsHH) : '–'}</div>
+                        {cls && <div className="text-[10px] font-semibold mt-0.5 opacity-80">{cls}</div>}
+                      </td>
+                    )
+                  })}
+                </tr>
               </tfoot>
             </table>
           </div>
         </div>
 
-        {/* ── UCR — Uso Consciente do Recurso ─────────────────────────────── */}
+        {/* ── UCR — leitura apenas (configurado no cadastro do contrato) ───── */}
         <div className="rounded-lg border bg-white shadow-sm">
-          <div className="border-b bg-green-700 px-4 py-2 rounded-t-lg">
+          <div className="border-b bg-green-700 px-4 py-2 rounded-t-lg flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">UCR — Uso Consciente do Recurso</h3>
+            <span className="text-[11px] text-green-200 font-normal">Faixas configuradas no cadastro do contrato</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-xs">
-                  <th className="px-4 py-2 text-left font-semibold text-gray-600 w-36">Classificação</th>
-                  <th className="px-4 py-2 text-center font-semibold text-gray-600 w-52">Faixa R$/HH</th>
-                  <th className="px-4 py-2 text-center font-semibold text-gray-500">Limite máx. (R$/HH)</th>
-                  <th className="px-4 py-2 text-center font-semibold text-blue-700">① Orçado</th>
-                  <th className="px-4 py-2 text-center font-semibold text-orange-600">② Previsto</th>
-                  <th className="px-4 py-2 text-center font-semibold text-green-700">③ Real</th>
-                </tr>
-              </thead>
-              <tbody>
-                {UCR_ROWS.map((row, i) => {
-                  const prev = i > 0 ? n(cfg[UCR_ROWS[i - 1].cfgKey]) : null
-                  const curr = n(cfg[row.cfgKey])
-                  const faixaLabel = i === 0
-                    ? `≤ ${fmtR$(curr)}`
-                    : i === UCR_ROWS.length - 1
-                      ? `> ${fmtR$(n(cfg[UCR_ROWS[i - 1].cfgKey]))}`
-                      : `${fmtR$(prev!)} – ${fmtR$(curr)}`
-
-                  const isOrcado  = classifyRsHH(finOrcadoRsHH) === row.label
-                  const isPrevisto = classifyRsHH(finPrevRsHH)  === row.label
-                  const isReal    = classifyRsHH(finRealRsHH)   === row.label
-
-                  return (
-                    <tr key={row.label} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="px-4 py-2.5 font-bold rounded-l-sm" style={{ color: row.cor }}>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block h-3 w-3 rounded-full flex-shrink-0" style={{ background: row.cor }} />
-                          {row.label}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-center text-xs text-gray-600">{faixaLabel}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        <input type="number" min={0} step={0.01}
-                          value={cfg[row.cfgKey]}
-                          onChange={(e) => setCfg((p) => ({ ...p, [row.cfgKey]: e.target.value }))}
-                          className="w-32 rounded border border-gray-300 px-2 py-0.5 text-right text-sm focus:border-green-500 focus:outline-none" />
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {isOrcado && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Orçado</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {isPrevisto && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Previsto</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {isReal && <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: row.cor }}>✓ Real</span>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="flex flex-wrap gap-3 p-4">
+            {UCR_ROWS.map((row, i) => {
+              const curr = n(cfg[row.cfgKey])
+              const prevVal = i > 0 ? n(cfg[UCR_ROWS[i - 1].cfgKey]) : null
+              const faixaLabel = i === 0
+                ? `≤ ${fmtR$(curr)}`
+                : i === UCR_ROWS.length - 1
+                  ? `> ${fmtR$(prevVal!)}`
+                  : `${fmtR$(prevVal!)} – ${fmtR$(curr)}`
+              const isAtiva =
+                classifyRsHH(finOrcadoRsHH) === row.label ||
+                classifyRsHH(finPrevRsHH)   === row.label ||
+                classifyRsHH(finRealRsHH)   === row.label
+              return (
+                <div key={row.label}
+                  className="flex-1 min-w-[120px] rounded-lg border-2 px-3 py-2 text-center"
+                  style={{
+                    borderColor: isAtiva ? row.cor : '#E5E7EB',
+                    background: isAtiva ? row.bg : '#FAFAFA',
+                  }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: row.cor }}>
+                    {row.label}
+                  </div>
+                  <div className="mt-0.5 text-xs font-semibold text-gray-700">{faixaLabel}</div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
