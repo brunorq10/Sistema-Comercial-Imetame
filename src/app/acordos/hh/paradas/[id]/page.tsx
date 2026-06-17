@@ -102,7 +102,7 @@ function n(v: string): number {
 
 function fmtCellHH(v: number): string {
   if (v === 0) return ''
-  return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 function defaultConfig(): ConfigState {
@@ -466,7 +466,7 @@ export default function ParadaHhPage() {
           {[
             { cor: '#c8e6c9', label: 'Acima do planejado' },
             { cor: '#ffcdd2', label: 'Abaixo do planejado' },
-            { cor: '#f5f5f5', label: 'Final de semana' },
+            { cor: '#EEE9F0', label: 'Final de semana (editável)' },
           ].map((l) => (
             <div key={l.label} className="flex items-center gap-1.5">
               <span className="h-3.5 w-3.5 rounded-sm border border-gray-300" style={{ background: l.cor }} />
@@ -810,8 +810,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
     { key: 'desvio_pct',   label: 'Desvio % (dia)',  bg: '#FAFAFA' },
   ]
 
-  const STICKY_W = 140
-  const COL_W    = 52
+  const STICKY_W = 148
+  const COL_W    = 66
 
   return (
     <div className="rounded-lg border bg-white shadow-sm">
@@ -819,7 +819,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
         <h3 className="text-sm font-semibold text-white">Grade de HH Diário</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+        <table className="border-collapse" style={{ tableLayout: 'fixed', fontSize: '11px' }}>
           <colgroup>
             <col style={{ width: STICKY_W, minWidth: STICKY_W }} />
             {etapaSections.flatMap(({ dias }) =>
@@ -851,8 +851,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                   <th key={`${etapa}_${d}`}
                     className="border border-gray-300 py-0.5 text-center text-xs font-medium"
                     style={{
-                      background: isWeekend(d) ? '#f5f5f5' : '#F9FAFB',
-                      color: isWeekend(d) ? '#9CA3AF' : '#374151',
+                      background: isWeekend(d) ? '#E2D9EA' : '#F9FAFB',
+                      color: isWeekend(d) ? '#7C5E8C' : '#374151',
                       borderLeft: d === etapaSections.find(s => s.etapa === etapa)?.dias[0] && etapa !== 'PREPARATIVO'
                         ? '2px solid #1B5E20' : undefined,
                     }}>
@@ -885,13 +885,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                     if (key === 'efetivo_plan' || key === 'efetivo_real' || key === 'hh_plan' || key === 'hh_real') {
                       const prop = key as keyof DiaState
                       const val = dia[prop]
-                      const cellBg = weekend ? '#f5f5f5' : (bg ?? '#fff')
-                      if (weekend) {
-                        return (
-                          <td key={`${etapa}_${d}`} className="border border-gray-200 text-center text-xs text-gray-400"
-                            style={{ background: cellBg, minWidth: COL_W, width: COL_W }}>–</td>
-                        )
-                      }
+                      const cellBg = weekend ? '#EEE9F0' : (bg ?? '#fff')
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: cellBg, minWidth: COL_W, width: COL_W }}>
@@ -899,26 +893,27 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                             step={prop.includes('hh') ? '0.1' : '1'}
                             value={val}
                             onChange={(e) => setDiaProp(etapa, d, prop, e.target.value)}
-                            className="w-full bg-transparent px-0.5 py-0.5 text-center text-xs focus:bg-yellow-50 focus:outline-none" />
+                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
+                            style={{ color: weekend ? '#7C5E8C' : undefined }} />
                         </td>
                       )
                     }
 
                     if (key === 'acum_plan') {
-                      if (!weekend) acum += n(dia.hh_plan)
+                      acum += n(dia.hh_plan)
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: weekend ? '#f5f5f5' : '#DCEDC8', fontWeight: 700 }}>
+                          style={{ background: weekend ? '#E2D9EA' : '#DCEDC8', fontWeight: 700 }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
                     }
 
                     if (key === 'acum_real') {
-                      if (!weekend) acum += n(dia.hh_real)
+                      acum += n(dia.hh_real)
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: weekend ? '#f5f5f5' : '#E3F2FD', fontWeight: 700 }}>
+                          style={{ background: weekend ? '#E2D9EA' : '#E3F2FD', fontWeight: 700 }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
@@ -928,11 +923,11 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const dev = n(dia.hh_real) - n(dia.hh_plan)
                       const hasData = dia.hh_real !== '' && dia.hh_plan !== ''
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center text-xs"
+                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
                           style={{
-                            background: weekend ? '#f5f5f5' : hasData ? (dev > 0 ? '#c8e6c9' : dev < 0 ? '#ffcdd2' : '#fff') : '#fff',
+                            background: weekend ? '#EEE9F0' : hasData ? (dev > 0 ? '#c8e6c9' : dev < 0 ? '#ffcdd2' : '#fff') : '#fff',
                           }}>
-                          {weekend ? '–' : hasData ? fmtCellHH(dev) : ''}
+                          {hasData ? fmtCellHH(dev) : ''}
                         </td>
                       )
                     }
@@ -942,11 +937,11 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const hasData = dia.hh_real !== '' && dia.hh_plan !== ''
                       const pct = plan > 0 ? (real - plan) / plan : null
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center text-xs"
+                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
                           style={{
-                            background: weekend ? '#f5f5f5' : hasData && pct != null ? (pct > 0 ? '#c8e6c9' : pct < 0 ? '#ffcdd2' : '#fff') : '#fff',
+                            background: weekend ? '#EEE9F0' : hasData && pct != null ? (pct > 0 ? '#c8e6c9' : pct < 0 ? '#ffcdd2' : '#fff') : '#fff',
                           }}>
-                          {weekend ? '–' : hasData && pct != null ? `${(pct * 100).toFixed(1)}%` : ''}
+                          {hasData && pct != null ? `${(pct * 100).toFixed(1)}%` : ''}
                         </td>
                       )
                     }
