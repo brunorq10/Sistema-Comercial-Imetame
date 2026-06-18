@@ -221,39 +221,39 @@ export default function ContratoVisaoGeralPage() {
         </div>
       </section>
 
-      {/* Gráficos */}
+      {/* Seletor de ano compartilhado pelos gráficos */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Período</h2>
+        <div className="flex gap-1">
+          {anosDisponiveis.map((ano) => (
+            <button key={ano} onClick={() => setAnoSel(ano)}
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+            >{ano}</button>
+          ))}
+          <button onClick={() => setAnoSel(null)}
+            className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+          >Todos</button>
+        </div>
+      </div>
+
+      {/* Gráfico — Faturamento Mensal */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">⬛ Faturamento Mensal</h2>
-          <div className="flex gap-1">
-            {anosDisponiveis.map((ano) => (
-              <button key={ano} onClick={() => setAnoSel(ano)}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-              >{ano}</button>
-            ))}
-            <button onClick={() => setAnoSel(null)}
-              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-            >Todos</button>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Previsto x Faturado</h3>
-            {anoSel !== null && chartData ? (
-              <ContratoFaturamentoBarChart previsto={chartData.previsto} faturado={chartData.faturado} />
-            ) : (
-              <ContratoFaturamentoBarChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
-            )}
-          </div>
-          <div>
-            <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Acumulado</h3>
-            {anoSel !== null && chartData ? (
-              <ContratoFaturamentoLineChart previsto={chartData.previsto} faturado={chartData.faturado} />
-            ) : (
-              <ContratoFaturamentoLineChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
-            )}
-          </div>
-        </div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">⬛ Faturamento Mensal</h2>
+        {anoSel !== null && chartData ? (
+          <ContratoFaturamentoBarChart previsto={chartData.previsto} faturado={chartData.faturado} />
+        ) : (
+          <ContratoFaturamentoBarChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+        )}
+      </section>
+
+      {/* Gráfico — Acumulado */}
+      <section className="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Acumulado</h2>
+        {anoSel !== null && chartData ? (
+          <ContratoFaturamentoLineChart previsto={chartData.previsto} faturado={chartData.faturado} />
+        ) : (
+          <ContratoFaturamentoLineChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+        )}
       </section>
 
       {/* Informações */}
