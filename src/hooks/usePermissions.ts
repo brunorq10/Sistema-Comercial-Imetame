@@ -18,9 +18,9 @@ export function usePermissions() {
   const is = (...perfis: Perfil[]) => !!perfil && perfis.includes(perfil)
   const inGroup = (grupo: keyof typeof GRUPOS) => !!perfil && GRUPOS[grupo].includes(perfil)
 
-  // Both admin profiles are sovereign — full access to everything
-  const isAdminPerfil = is('ADM_GERAL', 'ADM_COMERCIAL')
-  const can = (check: boolean) => isAdminPerfil || check
+  // ADM_GERAL is sovereign — unrestricted access to everything
+  const isAdmGeral = is('ADM_GERAL')
+  const can = (check: boolean) => isAdmGeral || check
 
   return {
     perfil,
