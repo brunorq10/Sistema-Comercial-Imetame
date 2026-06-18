@@ -78,12 +78,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
-  // Se definido como analista crítico, remover flag dos demais
+  // Busca estado atual antes de alterar (para log de histórico M11)
+  const usuarioAtual = await prisma.user.findUnique({
+    where: { id },
+    select: { is_analista_critico: true },
+  })
+
+  // Se definido como analista crítico, remover flag dos demais e registrar remoção no histórico
   if (is_analista_critico === true) {
+    const anteriores = await prisma.user.findMany({
+      where: { id: { not: id }, is_analista_critico: true },
+      select: { id: true },
+    })
     await prisma.user.updateMany({
       where: { id: { not: id } },
       data: { is_analista_critico: false },
     })
+    // M11: registrar remoção dos anteriores
+    if (anteriores.length > 0) {
+      await prisma.analistaCriticoHistorico.createMany({
+        data: anteriores.map(u => ({ user_id: u.id, acao: 'REMOVIDO', realizado_por: Number(session.user.id) })),
+      })
+    }
   }
 
   const updateData: Record<string, unknown> = {}
@@ -100,6 +116,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     data: updateData,
     select: { id: true, nome: true, email: true, funcao: true, perfil: true, ativo: true, is_analista_critico: true, created_at: true },
   })
+
+  // M11: registrar atribuição ou remoção direta do usuário editado
+  if (is_analista_critico !== undefined && is_analista_critico !== usuarioAtual?.is_analista_critico) {
+    await prisma.analistaCriticoHistorico.create({
+      data: {
+        user_id: id,
+        acao: is_analista_critico ? 'ATRIBUIDO' : 'REMOVIDO',
+        realizado_por: Number(session.user.id),
+      },
+    })
+  }
 
   return NextResponse.json({ data: usuario, error: null })
 }

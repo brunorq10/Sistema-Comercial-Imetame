@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
 
   const where = buildWhere(searchParams)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
-  const limit = 50
+  const limit = 10
   const skip = (page - 1) * limit
 
   const [nfs, totalCount] = await Promise.all([

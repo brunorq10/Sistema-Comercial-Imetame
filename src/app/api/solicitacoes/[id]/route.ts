@@ -89,9 +89,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  // CRÍTICO-3: apenas perfis do grupo comercial ou analista crítico podem editar
-  const EDIT_PERFIS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'ADM_GERAL']
-  if (!EDIT_PERFIS.includes(session.user.perfil as string) && !session.user.is_analista_critico) {
+  const EDIT_PERFIS_AMPLOS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL']
+  const perfil = session.user.perfil as string
+  const userId = Number(session.user.id)
+  const temPerfilAmplo = EDIT_PERFIS_AMPLOS.includes(perfil) || session.user.is_analista_critico
+
+  if (perfil !== 'ORCAMENTISTA' && !temPerfilAmplo) {
     return NextResponse.json({ data: null, error: 'Sem permissão para editar solicitações' }, { status: 403 })
   }
 
@@ -114,7 +117,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     include: { orcamentista: { select: { id: true, nome: true, email: true } } },
   })
   if (!existing || existing.cancelled_at) {
-    return NextResponse.json({ data: null, error: 'Não encontrada' }, { status: 404 })
+    return NextResponse.json({ data: null, error: 'Solicitação não encontrada ou já cancelada' }, { status: 404 })
+  }
+
+  // A1: Orçamentista só pode editar a própria solicitação
+  if (perfil === 'ORCAMENTISTA' && !temPerfilAmplo && existing.orcamentista_id !== userId) {
+    return NextResponse.json(
+      { data: null, error: 'Você não tem permissão para editar esta solicitação. Somente o orçamentista responsável, Gestão Comercial ou Administrador podem editá-la.' },
+      { status: 403 },
+    )
   }
 
   // RN-10: Bloquear edição quando Em Análise (exceto pelo analista crítico via /api/analise)
@@ -186,7 +197,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
     }
   }
+  // A3: quando ADM_GERAL edita, registrar uma entrada de auditoria extra
   if (historico.length > 0) {
+    if (perfil === 'ADM_GERAL') {
+      historico.push({
+        solicitacao_id: id,
+        campo: '_auditoria',
+        valor_de: null,
+        valor_para: `Edição realizada pelo perfil ADM_GERAL (usuário ID ${userId})`,
+        created_by: userId,
+      })
+    }
     await prisma.historicoSolicitacao.createMany({ data: historico })
   }
 
@@ -275,20 +296,21 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     )
   }
 
-  // RN-13: Encerra propostas comerciais pendentes (AGUARDANDO) antes de cancelar
-  await prisma.propostaComercial.updateMany({
-    where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
-    data: { resultado: 'PERDEU', motivo_perda: 'OUTRO' },
-  })
-
-  const updated = await prisma.solicitacao.update({
-    where: { id },
-    data: {
-      cancelled_at: new Date(),
-      cancel_reason: parsed.data.cancel_reason,
-      status: 'CANCELADA',
-      status_analise: 'REPROVADA',
-    },
+  // RN-13: Encerra propostas pendentes e cancela solicitação atomicamente
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.propostaComercial.updateMany({
+      where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
+      data: { resultado: 'PERDEU', motivo_perda: 'OUTRO' },
+    })
+    return tx.solicitacao.update({
+      where: { id },
+      data: {
+        cancelled_at: new Date(),
+        cancel_reason: parsed.data.cancel_reason,
+        status: 'CANCELADA',
+        status_analise: 'REPROVADA',
+      },
+    })
   })
 
   // RN-13: Notificar orçamentista se houver ciclo em aberto

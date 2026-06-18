@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(req: NextRequest) {
   void req
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ data: subindice, error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/faturamento/subindices]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/faturamento/subindices]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }

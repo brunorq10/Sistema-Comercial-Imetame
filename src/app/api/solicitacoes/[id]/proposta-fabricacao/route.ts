@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 const schemaEquipamento = z.object({
   descricao: z.string().min(1),
@@ -136,8 +137,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ data: proposta, error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/solicitacoes/[id]/proposta-fabricacao]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/solicitacoes/[id]/proposta-fabricacao]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 

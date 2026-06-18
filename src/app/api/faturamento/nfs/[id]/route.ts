@@ -45,6 +45,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const novoPercentual  = d.percentual      ?? Number(nfAtual.percentual)
   const valorAtribuido  = (novoValorTotal * novoPercentual) / 100
 
+  // A4: validar que o novo percentual não ultrapassa 100% para esta NF (excluindo o registro atual)
+  const numeroNf = d.numero_nf ?? nfAtual.numero_nf
+  if (d.percentual !== undefined || d.numero_nf !== undefined) {
+    const totalOutros = await prisma.notaFiscalContrato.aggregate({
+      where: { numero_nf: numeroNf, ativa: true, id: { not: id } },
+      _sum: { percentual: true },
+    })
+    const totalAlocadoOutros = Number(totalOutros._sum.percentual ?? 0)
+    if (totalAlocadoOutros + novoPercentual > 100 + 0.001) {
+      const restante = 100 - totalAlocadoOutros
+      return NextResponse.json(
+        { data: null, error: `A NF ${numeroNf} já possui ${totalAlocadoOutros.toFixed(2)}% alocados em outros lançamentos. Restam ${restante.toFixed(2)}% disponíveis para este lançamento.` },
+        { status: 422 },
+      )
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {}
 

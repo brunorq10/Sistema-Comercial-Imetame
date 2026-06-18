@@ -179,7 +179,7 @@ export default function RegistroNFsPage() {
                 canInativar={canLancarNF}
               />
             </div>
-            <Pagination page={page} pages={pages} total={total} limit={50} onPage={setPage} />
+            <Pagination page={page} pages={pages} total={total} limit={10} onPage={setPage} />
           </>
         )}
       </div>

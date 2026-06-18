@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 const subindiceSchema = z.object({
   descricao: z.string().min(1),
@@ -118,8 +119,8 @@ export async function GET(req: NextRequest) {
     const data = contratos.map((c) => serializeContrato(c, anoNum, nfTotalMap))
     return NextResponse.json({ data, error: null })
   } catch (err) {
-    console.error('[GET /api/faturamento/contratos]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[GET /api/faturamento/contratos]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 
@@ -197,8 +198,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ data: serializeContrato(contrato, undefined, {}), warning: sumWarning, error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/faturamento/contratos]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/faturamento/contratos]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 

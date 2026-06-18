@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { loginRateLimit } from '@/lib/rate-limit'
 import type { Perfil } from '@prisma/client'
 
 declare module 'next-auth' {
@@ -34,15 +35,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        })
+        const email = parsed.data.email
 
-        if (!user || !user.ativo) return null
+        // A6: verificar bloqueio por tentativas excessivas
+        const rlBefore = loginRateLimit.check(email)
+        if (rlBefore.locked) return null
+
+        const user = await prisma.user.findUnique({ where: { email } })
+
+        if (!user || !user.ativo) {
+          loginRateLimit.increment(email)
+          return null
+        }
 
         const passwordOk = await compare(parsed.data.password, user.password_hash)
-        if (!passwordOk) return null
+        if (!passwordOk) {
+          loginRateLimit.increment(email)
+          return null
+        }
 
+        loginRateLimit.reset(email)
         return {
           id: String(user.id),
           name: user.nome,

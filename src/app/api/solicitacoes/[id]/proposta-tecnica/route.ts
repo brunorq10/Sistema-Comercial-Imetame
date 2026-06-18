@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { logger } from '@/lib/logger'
 
 const schema = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // If a técnica already exists for the current revision, update it (don't create a new revision).
   // Only "Nova Revisão" (via /nova-revisao) is allowed to bump the revision number.
   const existingForRevision = sol.propostas_tecnicas.find(pt => pt.versao === revisaoEsperada) ?? null
-  const versaoFinal = maxVersaoTecnica < revisaoEsperada ? revisaoEsperada : revisaoEsperada
+  const versaoFinal = revisaoEsperada
 
   const tecData = {
     nao_aplicavel: naoAplicavel,
@@ -140,8 +141,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ data: proposta, error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/solicitacoes/[id]/proposta-tecnica]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/solicitacoes/[id]/proposta-tecnica]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 

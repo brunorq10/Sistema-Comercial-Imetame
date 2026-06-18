@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -143,8 +144,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data, error: null })
   } catch (err) {
-    console.error('[GET /api/faturamento/painel-acordos]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[GET /api/faturamento/painel-acordos]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 

@@ -123,9 +123,12 @@ function rawToDisplay(raw: string): string {
   return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// B6: limite de 9 dígitos inteiros + 2 decimais → 11 dígitos brutos máximo (999.999.999,99)
+const MAX_CURRENCY_DIGITS = 11
+
 export function CurrencyInput({ value, onChange, placeholder = '0,00', className, disabled }: CurrencyInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const digits = e.target.value.replace(/\D/g, '')
+    const digits = e.target.value.replace(/\D/g, '').slice(0, MAX_CURRENCY_DIGITS)
     if (!digits) { onChange(''); return }
     const numeric = parseInt(digits, 10) / 100
     onChange(String(numeric))

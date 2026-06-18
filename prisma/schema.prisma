@@ -111,8 +111,11 @@ model User {
   password_hash       String
   perfil              Perfil
   funcao              String?
-  ativo               Boolean  @default(true)
-  is_analista_critico Boolean  @default(false)
+  ativo               Boolean   @default(true)
+  is_analista_critico Boolean   @default(false)
+  deactivated_at      DateTime?
+  deactivated_by      Int?
+  updated_by          Int?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
@@ -136,9 +139,11 @@ model User {
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
   historico_solicitacoes      HistoricoSolicitacao[] @relation("HistSolicitacaoCriador")
   subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
-  alteracoes_responsavel      PrevisaoAlteracao[]    @relation("AlteracaoResponsavel")
-  alteracoes_revisor          PrevisaoAlteracao[]    @relation("AlteracaoRevisor")
-  alteracoes_criadas          PrevisaoAlteracao[]    @relation("AlteracaoCriador")
+  alteracoes_responsavel      PrevisaoAlteracao[]            @relation("AlteracaoResponsavel")
+  alteracoes_revisor          PrevisaoAlteracao[]            @relation("AlteracaoRevisor")
+  alteracoes_criadas          PrevisaoAlteracao[]            @relation("AlteracaoCriador")
+  analista_critico_historicos AnalistaCriticoHistorico[]     @relation("AnalistaCriticoUser")
+  analista_critico_execucoes  AnalistaCriticoHistorico[]     @relation("AnalistaCriticoExecutor")
 
   @@map("users")
 }
@@ -156,6 +161,9 @@ model Cliente {
   ramo_atuacao     RamoAtuacao?
   segmento         Segmento?
   ativo            Boolean      @default(true)
+  deactivated_at   DateTime?
+  deactivated_by   Int?
+  updated_by       Int?
   created_at       DateTime     @default(now())
   updated_at       DateTime     @updatedAt
   created_by       Int
@@ -263,6 +271,21 @@ model HistoricoSolicitacao {
   @@map("historico_solicitacoes")
 }
 
+// M11: rastreabilidade de atribuição/remoção de Analista Crítico
+model AnalistaCriticoHistorico {
+  id            Int      @id @default(autoincrement())
+  user_id       Int      // usuário que recebeu/perdeu o papel
+  acao          String   // ATRIBUIDO | REMOVIDO
+  realizado_por Int      // admin que executou a mudança
+  created_at    DateTime @default(now())
+
+  usuario   User @relation("AnalistaCriticoUser",     fields: [user_id],       references: [id])
+  executor  User @relation("AnalistaCriticoExecutor", fields: [realizado_por], references: [id])
+
+  @@index([user_id])
+  @@map("analista_critico_historico")
+}
+
 model Notificacao {
   id         Int      @id @default(autoincrement())
   user_id    Int
@@ -337,7 +360,6 @@ model PropostaComercial {
   data_envio              DateTime?
   resultado               String?
   motivo_perda            MotivoPerda?
-  motivo_perda_outro      String?
   created_at              DateTime     @default(now())
   updated_at              DateTime     @updatedAt
   created_by              Int
@@ -532,6 +554,7 @@ model ParadaHhDia {
 
   @@unique([config_id, etapa, data])
   @@index([config_id])
+  @@index([config_id, etapa])
   @@map("parada_hh_dia")
 }
 
@@ -723,6 +746,7 @@ model NotaFiscalContrato {
   criador   User                 @relation("NFContratoCriador", fields: [created_by], references: [id])
 
   @@index([subindice_id])
+  @@index([numero_nf, ativa])
   @@map("notas_fiscais_contratos")
 }
 

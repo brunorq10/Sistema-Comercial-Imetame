@@ -58,30 +58,33 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const contrato = await prisma.contrato.findUnique({ where: { id } })
   if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
 
-  const ultimaVersao = await prisma.hhLancamento.findFirst({
-    where: { contrato_id: id }, orderBy: { versao: 'desc' }, select: { versao: true },
-  })
-
-  const novaVersao = (ultimaVersao?.versao ?? 0) + 1
   const d = parsed.data
 
-  const lancamento = await prisma.hhLancamento.create({
-    data: {
-      contrato_id: id,
-      versao: novaVersao,
-      data_inicio: new Date(d.data_inicio),
-      data_fim: new Date(d.data_fim),
-      motivo: novaVersao > 1 ? (d.motivo ?? null) : null,
-      created_by: Number(session.user.id),
-      meses: {
-        create: d.meses.map(m => ({
-          mes: m.mes, ano: m.ano,
-          hh_previsto:  m.hh_previsto  ?? null,
-          hh_planejado: m.hh_planejado ?? null,
-        })),
+  // Cálculo de versão e criação dentro da mesma transação para evitar duplicidade
+  const lancamento = await prisma.$transaction(async (tx) => {
+    const ultimaVersao = await tx.hhLancamento.findFirst({
+      where: { contrato_id: id }, orderBy: { versao: 'desc' }, select: { versao: true },
+    })
+    const novaVersao = (ultimaVersao?.versao ?? 0) + 1
+
+    return tx.hhLancamento.create({
+      data: {
+        contrato_id: id,
+        versao: novaVersao,
+        data_inicio: new Date(d.data_inicio),
+        data_fim: new Date(d.data_fim),
+        motivo: novaVersao > 1 ? (d.motivo ?? null) : null,
+        created_by: Number(session.user.id),
+        meses: {
+          create: d.meses.map(m => ({
+            mes: m.mes, ano: m.ano,
+            hh_previsto:  m.hh_previsto  ?? null,
+            hh_planejado: m.hh_planejado ?? null,
+          })),
+        },
       },
-    },
-    include: { meses: true },
+      include: { meses: true },
+    })
   })
 
   return NextResponse.json({ data: lancamento, error: null }, { status: 201 })

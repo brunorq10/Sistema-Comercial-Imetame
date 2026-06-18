@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -24,19 +25,29 @@ export function sendEmailAsync(options: EmailOptions): void {
       from: process.env.SMTP_FROM,
       ...options,
     })
-    .catch((err) => console.error('[email] falha ao enviar:', err))
+    .catch((err) => logger.error('email', 'Falha ao enviar e-mail', err))
 }
 
-// Cria notificação in-app no banco
+const DEDUP_WINDOW_MS = 3 * 60 * 1000 // M10: janela de 3 minutos para evitar duplicatas
+
+// Cria notificação in-app no banco — suprime duplicatas com mesmo título para o mesmo usuário nos últimos 3 minutos
 export async function createNotificacao(
   userId: number,
   titulo: string,
   mensagem: string,
   link?: string,
 ): Promise<void> {
+  const since = new Date(Date.now() - DEDUP_WINDOW_MS)
+  const existente = await prisma.notificacao.findFirst({
+    where: { user_id: userId, titulo, created_at: { gte: since } },
+    select: { id: true },
+  }).catch(() => null)
+
+  if (existente) return
+
   await prisma.notificacao.create({
     data: { user_id: userId, titulo, mensagem, link: link ?? null },
-  }).catch((err) => console.error('[notificacao] falha ao criar:', err))
+  }).catch((err) => logger.error('notificacao', 'Falha ao criar notificação', err))
 }
 
 export function emailNovaSolicitacao(para: string, numero: string, cliente: string): void {

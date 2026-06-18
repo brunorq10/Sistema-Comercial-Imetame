@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { logger } from '@/lib/logger'
 
 const schemaPost = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -178,7 +179,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const revisaoEsperada = Math.max(sol.revisao_esperada, maxVersaoTecnica)
   // If a comercial already exists for the current revision, update it (don't create a new revision).
   const existingComForRevision = sol.propostas_comerciais.find(pc => pc.versao === revisaoEsperada) ?? null
-  const versaoFinal = maxVersaoCom < revisaoEsperada ? revisaoEsperada : revisaoEsperada
+  const versaoFinal = revisaoEsperada
 
   let valorTotalGeral: number | null = null
   if (!naoAplicavel) {
@@ -249,8 +250,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     return NextResponse.json({ data: proposta, error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/solicitacoes/[id]/proposta-comercial]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/solicitacoes/[id]/proposta-comercial]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 

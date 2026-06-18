@@ -6,15 +6,18 @@ import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
-  const [showPwd, setShowPwd]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
-  const [loading, setLoading]   = useState(false)
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [remember, setRemember]       = useState(false)
+  const [showPwd, setShowPwd]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
+  const [loading, setLoading]         = useState(false)
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null)
+  const [locked, setLocked]           = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (locked) return
     setLoading(true)
     setError(null)
 
@@ -25,7 +28,20 @@ export default function LoginPage() {
     })
 
     if (result?.error) {
-      setError('E-mail ou senha inválidos.')
+      // Busca estado atual do rate limit para exibir contador
+      try {
+        const rl = await fetch(`/api/auth/rate-limit?email=${encodeURIComponent(email)}`).then(r => r.json()) as { locked: boolean; attemptsLeft: number; waitMinutes: number }
+        if (rl.locked) {
+          setLocked(true)
+          setAttemptsLeft(0)
+          setError(`Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em ${rl.waitMinutes} minuto${rl.waitMinutes !== 1 ? 's' : ''}.`)
+        } else {
+          setAttemptsLeft(rl.attemptsLeft)
+          setError('E-mail ou senha inválidos.')
+        }
+      } catch {
+        setError('E-mail ou senha inválidos.')
+      }
       setLoading(false)
       return
     }
@@ -54,8 +70,13 @@ export default function LoginPage() {
           <h2 className="text-[17px] font-bold text-gray-800 text-center mb-6">Entrar na sua conta</h2>
 
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] text-red-700 text-center">
-              {error}
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[12px] text-red-700 text-center space-y-1">
+              <p>{error}</p>
+              {!locked && attemptsLeft !== null && attemptsLeft > 0 && (
+                <p className="font-semibold">
+                  {attemptsLeft} tentativa{attemptsLeft !== 1 ? 's' : ''} restante{attemptsLeft !== 1 ? 's' : ''} antes do bloqueio.
+                </p>
+              )}
             </div>
           )}
 
@@ -135,10 +156,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || locked}
               className="mt-1 w-full rounded-lg bg-[#2E7D32] py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#1B5E20] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Entrando...' : locked ? 'Conta bloqueada' : 'Entrar'}
             </button>
           </form>
         </div>

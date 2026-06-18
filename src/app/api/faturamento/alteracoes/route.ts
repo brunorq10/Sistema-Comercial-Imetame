@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { logger } from '@/lib/logger'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -72,8 +73,8 @@ export async function GET(req: NextRequest) {
     const data = alteracoes.map(serializeAlteracao)
     return NextResponse.json({ data, error: null })
   } catch (err) {
-    console.error('[GET /api/faturamento/alteracoes]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[GET /api/faturamento/alteracoes]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 
@@ -179,8 +180,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ data: serializeAlteracao(alteracao), error: null }, { status: 201 })
   } catch (err) {
-    console.error('[POST /api/faturamento/alteracoes]', err)
-    return NextResponse.json({ data: null, error: String(err) }, { status: 500 })
+    logger.error('[POST /api/faturamento/alteracoes]', err)
+    return NextResponse.json({ data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' }, { status: 500 })
   }
 }
 
