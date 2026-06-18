@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -56,14 +56,14 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           setPercentual(restante > 0 ? String(restante) : '0')
         }
       }
-    } catch { /* silencia — não bloqueia o lançamento */ }
+    } catch { /* silencia â€” nÃ£o bloqueia o lanÃ§amento */ }
   }
 
   const handleSubmit = async () => {
-    if (!numeroNF.trim()) { setError('Número da NF obrigatório'); return }
-    if (!dataEmissao) { setError('Data de emissão obrigatória'); return }
-    if (!dataVencimento) { setError('Data de vencimento obrigatória'); return }
-    if (!valorTotal || Number(valorTotal) <= 0) { setError('Valor total inválido'); return }
+    if (!numeroNF.trim()) { setError('NÃºmero da NF obrigatÃ³rio'); return }
+    if (!dataEmissao) { setError('Data de emissÃ£o obrigatÃ³ria'); return }
+    if (!dataVencimento) { setError('Data de vencimento obrigatÃ³ria'); return }
+    if (!valorTotal || Number(valorTotal) <= 0) { setError('Valor total invÃ¡lido'); return }
     if (!percentual || Number(percentual) <= 0 || Number(percentual) > 100) { setError('Percentual deve estar entre 0,01 e 100'); return }
 
     setLoading(true); setError(null); setWarning(null)
@@ -81,8 +81,8 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         }),
       })
       const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar NF'); return }
-      // RN-CF-16: alerta informativo (não bloqueia)
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lanÃ§ar NF'); return }
+      // RN-CF-16: alerta informativo (nÃ£o bloqueia)
       if (json.warning) { setWarning(json.warning); onSuccess(); return }
       onSuccess(); onClose()
     } finally {
@@ -97,23 +97,24 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`NF — ${indiceSubindice} · ${subindice.descricao}`}
+      title={`NF â€” ${indiceSubindice} Â· ${subindice.descricao}`}
       wide
       footer={
         aba === 'lancar' ? (
           <>
-            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <ModalCancelButton disabled={loading} />
             <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Lançando...' : 'Lançar NF'}
+              {loading ? 'LanÃ§ando...' : 'LanÃ§ar NF'}
             </Button>
           </>
         ) : (
-          <Button variant="outline" onClick={onClose}>Fechar</Button>
+          <ModalCancelButton label="Fechar" />
         )
       }
     >
-      {/* ── Abas ── */}
+      {/* â”€â”€ Abas â”€â”€ */}
       <div className="flex border-b border-gray-200 mb-4 -mt-1">
         <button
           onClick={() => setAba('lancar')}
@@ -123,7 +124,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               : 'border-transparent text-gray-400 hover:text-gray-600'
           }`}
         >
-          Lançar NF
+          LanÃ§ar NF
         </button>
         <button
           onClick={() => setAba('historico')}
@@ -133,7 +134,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               : 'border-transparent text-gray-400 hover:text-gray-600'
           }`}
         >
-          NFs lançadas
+          NFs lanÃ§adas
           {subindice.notas_fiscais.length > 0 && (
             <span className="bg-gray-200 text-gray-600 rounded-full text-[10px] px-1.5 py-0.5 leading-none">
               {subindice.notas_fiscais.length}
@@ -142,7 +143,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         </button>
       </div>
 
-      {/* ── Aba: Lançar NF ── */}
+      {/* â”€â”€ Aba: LanÃ§ar NF â”€â”€ */}
       {aba === 'lancar' && (
         <>
           {error && (
@@ -150,14 +151,14 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           )}
           {warning && (
             <div className="bg-amber-50 border border-amber-300 text-amber-800 text-xs px-3 py-2 rounded mb-4 flex gap-2 items-start">
-              <span className="text-sm">⚠</span>
-              <span>{warning} O lançamento foi registrado normalmente.</span>
+              <span className="text-sm">âš </span>
+              <span>{warning} O lanÃ§amento foi registrado normalmente.</span>
             </div>
           )}
 
           <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 grid grid-cols-2 gap-x-4 gap-y-1">
             <div>
-              <p className="text-[9px] text-gray-400 uppercase">Índice</p>
+              <p className="text-[9px] text-gray-400 uppercase">Ãndice</p>
               <p className="text-[12px] font-bold text-green-dark">{indiceSubindice}</p>
             </div>
             <div>
@@ -165,11 +166,11 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               <p className="text-[12px] font-medium">{contrato.cliente.nome}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase">Nº OS</p>
-              <p className="text-[12px]">{subindice.num_os ?? '—'}</p>
+              <p className="text-[9px] text-gray-400 uppercase">NÂº OS</p>
+              <p className="text-[12px]">{subindice.num_os ?? 'â€”'}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase">Evento de medição</p>
+              <p className="text-[9px] text-gray-400 uppercase">Evento de mediÃ§Ã£o</p>
               <p className="text-[12px]">{subindice.descricao}</p>
             </div>
             <div>
@@ -177,7 +178,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               <p className="text-[12px] font-semibold">{formatCurrency(subindice.valor_total)}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase">Já faturado</p>
+              <p className="text-[9px] text-gray-400 uppercase">JÃ¡ faturado</p>
               <p className="text-[12px] font-semibold text-auto-value">{formatCurrency(subindice.total_faturado)}</p>
             </div>
           </div>
@@ -204,7 +205,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-            <Field label="Número da NF *" className="col-span-2">
+            <Field label="NÃºmero da NF *" className="col-span-2">
               <Input
                 placeholder="Ex: 000123"
                 value={numeroNF}
@@ -214,12 +215,12 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               {nfAlocado !== null && nfAlocado > 0 && (
                 <p className={`text-[10px] mt-1 ${nfAlocado >= 100 ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
                   {nfAlocado >= 100
-                    ? `NF ${numeroNF} já tem 100% alocados — não é possível adicionar novos lançamentos.`
-                    : `NF ${numeroNF} já possui ${nfAlocado.toFixed(2)}% alocados. Disponível: ${(100 - nfAlocado).toFixed(2)}%`}
+                    ? `NF ${numeroNF} jÃ¡ tem 100% alocados â€” nÃ£o Ã© possÃ­vel adicionar novos lanÃ§amentos.`
+                    : `NF ${numeroNF} jÃ¡ possui ${nfAlocado.toFixed(2)}% alocados. DisponÃ­vel: ${(100 - nfAlocado).toFixed(2)}%`}
                 </p>
               )}
             </Field>
-            <Field label="Data de emissão *">
+            <Field label="Data de emissÃ£o *">
               <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
             </Field>
             <Field label="Data de vencimento *">
@@ -242,20 +243,20 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
           <div className="bg-auto-bg border border-auto-value/30 rounded-md p-3 mb-2">
             <p className="text-[10px] text-auto-value font-semibold uppercase tracking-wide mb-0.5">
-              Valor atribuído a este item
+              Valor atribuÃ­do a este item
             </p>
             <p className="text-[18px] font-bold text-auto-value">{formatCurrency(valorAtribuido)}</p>
           </div>
 
           {Number(percentual) < 100 && Number(percentual) > 0 && (
             <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded">
-              ⚠ O percentual restante ({(100 - Number(percentual)).toFixed(2)}%) deve ser lançado em outro item.
+              âš  O percentual restante ({(100 - Number(percentual)).toFixed(2)}%) deve ser lanÃ§ado em outro item.
             </div>
           )}
         </>
       )}
 
-      {/* ── Aba: Histórico de NFs ── */}
+      {/* â”€â”€ Aba: HistÃ³rico de NFs â”€â”€ */}
       {aba === 'historico' && (
         <NFHistoricoTab nfs={subindice.notas_fiscais} valorEvento={subindice.valor_total} />
       )}
@@ -267,7 +268,7 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
   if (nfs.length === 0) {
     return (
       <div className="text-center text-gray-400 py-10 text-[12px]">
-        Nenhuma NF lançada para este item ainda.
+        Nenhuma NF lanÃ§ada para este item ainda.
       </div>
     )
   }
@@ -307,7 +308,7 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
       {/* Tabela NFs inativas */}
       {inativas.length > 0 && (
         <div className="mt-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Notas inativas (não entram no faturamento)</p>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Notas inativas (nÃ£o entram no faturamento)</p>
           <NFTable nfs={inativas} inativa />
         </div>
       )}
@@ -325,13 +326,13 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
         <thead>
           <tr>
             <th className={thCls}>Tipo</th>
-            <th className={thCls}>Nº Doc.</th>
-            <th className={thCls}>Dt. Emissão</th>
+            <th className={thCls}>NÂº Doc.</th>
+            <th className={thCls}>Dt. EmissÃ£o</th>
             <th className={thCls}>Dt. Vencimento</th>
             <th className={thCls}>Vlr. Total</th>
             <th className={thCls}>% Item</th>
-            <th className={thCls}>% Lançado</th>
-            <th className={thCls}>Vlr. Atribuído</th>
+            <th className={thCls}>% LanÃ§ado</th>
+            <th className={thCls}>Vlr. AtribuÃ­do</th>
             {inativa && <th className={thCls}>Motivo</th>}
           </tr>
         </thead>
@@ -366,7 +367,7 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
               </td>
               {inativa && (
                 <td className={tdCls}>
-                  <span className="text-gray-400 italic text-[10px]">{nf.motivo_inativacao ?? '—'}</span>
+                  <span className="text-gray-400 italic text-[10px]">{nf.motivo_inativacao ?? 'â€”'}</span>
                 </td>
               )}
             </tr>
@@ -376,3 +377,4 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
     </div>
   )
 }
+

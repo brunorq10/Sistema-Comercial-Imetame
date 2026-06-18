@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
 import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
@@ -336,13 +336,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     <Modal
       open={open}
       onClose={onClose}
+      confirmClose={canSave}
       title={modalTitle}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            {canSave ? 'Cancelar' : 'Fechar'}
-          </Button>
+          <ModalCancelButton disabled={loading} label={canSave ? 'Cancelar' : 'Fechar'} />
           {canSave && (
             <Button onClick={handleSave} disabled={loading || loadingSiblings}>
               {loading

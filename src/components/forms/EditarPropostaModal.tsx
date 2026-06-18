@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
@@ -28,12 +28,12 @@ const TURNOS = [
 ]
 
 const TERCEIROS_ESPECIALIDADES = [
-  { key: 'valor_eletrica',         state: 'eletrica',   label: 'Elétrica' },
+  { key: 'valor_eletrica',         state: 'eletrica',   label: 'ElÃ©trica' },
   { key: 'valor_isolamento',       state: 'isolamento', label: 'Isolamento' },
   { key: 'valor_civil',            state: 'civil',      label: 'Civil' },
-  { key: 'valor_hidraulica',       state: 'hidraulica', label: 'Hidráulica' },
+  { key: 'valor_hidraulica',       state: 'hidraulica', label: 'HidrÃ¡ulica' },
   { key: 'valor_fibra',            state: 'fibra',      label: 'Fibra' },
-  { key: 'valor_tijolo_antiacido', state: 'tijolo',     label: 'Tijolo antiácido' },
+  { key: 'valor_tijolo_antiacido', state: 'tijolo',     label: 'Tijolo antiÃ¡cido' },
   { key: 'valor_outros_terceiros', state: 'outros',     label: 'Outros' },
 ] as const
 
@@ -48,7 +48,7 @@ function SimNaoToggle({ value, onChange }: { value: boolean; onChange: (v: boole
   return (
     <div className="inline-flex rounded-md overflow-hidden border border-gray-300 text-[11px] font-semibold">
       <button type="button" onClick={() => onChange(false)}
-        className={`px-3 py-1 transition-colors ${!value ? 'bg-gray-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>Não</button>
+        className={`px-3 py-1 transition-colors ${!value ? 'bg-gray-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>NÃ£o</button>
       <button type="button" onClick={() => onChange(true)}
         className={`px-3 py-1 transition-colors border-l border-gray-300 ${value ? 'bg-green-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>Sim</button>
     </div>
@@ -67,16 +67,16 @@ function CancelSection({ confirmCancel, setConfirmCancel, cancelReason, setCance
       {!confirmCancel ? (
         <button onClick={() => setConfirmCancel(true)}
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors bg-white">
-          <div className="flex items-center gap-2"><span className="text-[10px]">⚠</span><span>Cancelar / Excluir Proposta</span></div>
-          <span className="text-[11px] text-red-400 font-normal">Ação irreversível — RN-18</span>
+          <div className="flex items-center gap-2"><span className="text-[10px]">âš </span><span>Cancelar / Excluir Proposta</span></div>
+          <span className="text-[11px] text-red-400 font-normal">AÃ§Ã£o irreversÃ­vel â€” RN-18</span>
         </button>
       ) : (
         <div className="px-4 py-3 bg-red-50">
-          <p className="text-xs font-semibold text-red-700 mb-1">Tem certeza? Esta ação cancela a proposta e não pode ser desfeita.</p>
-          <p className="text-[11px] text-red-500 mb-3">O registro é mantido no histórico com status <strong>Cancelada</strong>.</p>
+          <p className="text-xs font-semibold text-red-700 mb-1">Tem certeza? Esta aÃ§Ã£o cancela a proposta e nÃ£o pode ser desfeita.</p>
+          <p className="text-[11px] text-red-500 mb-3">O registro Ã© mantido no histÃ³rico com status <strong>Cancelada</strong>.</p>
           {errorCancel && <div className="bg-red-100 border border-red-300 text-red-700 text-xs px-3 py-2 rounded mb-3">{errorCancel}</div>}
           <Field label="Justificativa *" className="mb-3">
-            <textarea rows={2} placeholder="Descreva o motivo do cancelamento (mín. 5 caracteres)..."
+            <textarea rows={2} placeholder="Descreva o motivo do cancelamento (mÃ­n. 5 caracteres)..."
               value={cancelReason} onChange={e => setCancelReason(e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-400/40 resize-none" />
           </Field>
@@ -102,7 +102,7 @@ export function EditarPropostaModal({
 
   const [tab, setTab] = useState<Tab>('tecnica')
 
-  // ── Estado técnica Paradas ────────────────────────────────────────────────────
+  // â”€â”€ Estado tÃ©cnica Paradas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [hhDireto,     setHhDireto]     = useState('')
   const [hhIndireto,   setHhIndireto]   = useState('')
   const [pesoMontagem, setPesoMontagem] = useState('')
@@ -114,11 +114,11 @@ export function EditarPropostaModal({
   const [loadingTec,   setLoadingTec]   = useState(false)
   const [errorTec,     setErrorTec]     = useState<string | null>(null)
 
-  // ── Estado técnica Obras ──────────────────────────────────────────────────────
+  // â”€â”€ Estado tÃ©cnica Obras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [pesosObra, setPesosObra] = useState({ equipamentos: '', tubulacoes: '', suportes: '', estruturas: '' })
   const [hhTotalObra, setHhTotalObra] = useState('')
 
-  // ── Estado comercial ──────────────────────────────────────────────────────────
+  // â”€â”€ Estado comercial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [tecnicaId,       setTecnicaId]       = useState('')
   const [valorMontagem,   setValorMontagem]   = useState('')
   const [possuiTerceiros, setPossuiTerceiros] = useState(false)
@@ -136,13 +136,13 @@ export function EditarPropostaModal({
   const [valorTotalParada,     setValorTotalParada]     = useState('')
   const [valorTerceirosParada, setValorTerceirosParada] = useState('')
 
-  // ── Estado resultado ──────────────────────────────────────────────────────────
+  // â”€â”€ Estado resultado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [resultado,   setResultado]   = useState('AGUARDANDO')
   const [motivoPerda, setMotivoPerda] = useState<MotivoPerda | ''>('')
   const [loadingRes,  setLoadingRes]  = useState(false)
   const [errorRes,    setErrorRes]    = useState<string | null>(null)
 
-  // ── Estado fabricação ─────────────────────────────────────────────────────────
+  // â”€â”€ Estado fabricaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [equipamentos,   setEquipamentos]   = useState<EquipItem[]>([mkEquip(1)])
   const [nextEquipId,    setNextEquipId]    = useState(2)
   const [possuiTestes,   setPossuiTestes]   = useState(false)
@@ -158,13 +158,13 @@ export function EditarPropostaModal({
   const [loadingResFab,  setLoadingResFab]  = useState(false)
   const [errorResFab,    setErrorResFab]    = useState<string | null>(null)
 
-  // ── Cancelamento ──────────────────────────────────────────────────────────────
+  // â”€â”€ Cancelamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelReason,  setCancelReason]  = useState('')
   const [loadingCancel, setLoadingCancel] = useState(false)
   const [errorCancel,   setErrorCancel]   = useState<string | null>(null)
 
-  // ── Pré-preenchimento ao abrir ────────────────────────────────────────────────
+  // â”€â”€ PrÃ©-preenchimento ao abrir â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (!open) return
     setTab('tecnica')
@@ -174,7 +174,7 @@ export function EditarPropostaModal({
 
     const tec = item.propostas_tecnicas[0] ?? null
 
-    // Técnica Paradas
+    // TÃ©cnica Paradas
     setHhDireto(tec?.hh_direto != null ? String(tec.hh_direto) : '')
     setHhIndireto(tec?.hh_indireto != null ? String(tec.hh_indireto) : '')
     setPesoMontagem(asStr(tec?.peso_montagem))
@@ -184,7 +184,7 @@ export function EditarPropostaModal({
     setTurno(tec?.turno ?? '')
     setFinaisSemana(tec?.finais_de_semana ?? false)
 
-    // Técnica Obras
+    // TÃ©cnica Obras
     setPesosObra({
       equipamentos: asStr(tec?.peso_equipamentos),
       tubulacoes:   asStr(tec?.peso_tubulacoes),
@@ -216,7 +216,7 @@ export function EditarPropostaModal({
     setResultado(com?.resultado ?? 'AGUARDANDO')
     setMotivoPerda((com?.motivo_perda ?? '') as MotivoPerda | '')
 
-    // Fabricação
+    // FabricaÃ§Ã£o
     const fab = item.propostas_fabricacao[0] ?? null
     if (fab) {
       const equips = fab.equipamentos.map((e, i) => ({
@@ -241,7 +241,7 @@ export function EditarPropostaModal({
     }
   }, [open, item])
 
-  // ── Cálculos ──────────────────────────────────────────────────────────────────
+  // â”€â”€ CÃ¡lculos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const hd = Number(hhDireto) || 0
   const hi = Number(hhIndireto) || 0
   const hhTotalCalc = hd + hi
@@ -250,10 +250,10 @@ export function EditarPropostaModal({
   const pesoTotalObra = pesoCats.reduce((s, k) => s + (Number(pesosObra[k]) || 0), 0)
   const pesoPercents  = pesoCats.map(k => {
     const v = Number(pesosObra[k]) || 0
-    return pesoTotalObra > 0 && v > 0 ? ((v / pesoTotalObra) * 100).toFixed(1) + '%' : '—'
+    return pesoTotalObra > 0 && v > 0 ? ((v / pesoTotalObra) * 100).toFixed(1) + '%' : 'â€”'
   })
   const pesoCatLabels: Record<string, string> = {
-    equipamentos: 'Equipamentos', tubulacoes: 'Tubulações',
+    equipamentos: 'Equipamentos', tubulacoes: 'TubulaÃ§Ãµes',
     suportes: 'Suportes', estruturas: 'Estruturas e Plataformas',
   }
   const numHhObra    = Number(hhTotalObra) || 0
@@ -291,11 +291,11 @@ export function EditarPropostaModal({
   const hasComercial  = item.propostas_comerciais.length > 0
   const hasFabricacao = item.propostas_fabricacao.length > 0
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const saveTecnicaParada = async () => {
-    if (hd <= 0)                               { setErrorTec('HH Direto é obrigatório'); return }
-    if (!efetivoPico || parseInt(efetivoPico) <= 0) { setErrorTec('Efetivo Pico é obrigatório'); return }
-    if (!diasParada  || parseInt(diasParada)  <= 0) { setErrorTec('Dias de Parada é obrigatório'); return }
+    if (hd <= 0)                               { setErrorTec('HH Direto Ã© obrigatÃ³rio'); return }
+    if (!efetivoPico || parseInt(efetivoPico) <= 0) { setErrorTec('Efetivo Pico Ã© obrigatÃ³rio'); return }
+    if (!diasParada  || parseInt(diasParada)  <= 0) { setErrorTec('Dias de Parada Ã© obrigatÃ³rio'); return }
     setLoadingTec(true); setErrorTec(null)
     try {
       const body: Record<string, unknown> = {
@@ -316,7 +316,7 @@ export function EditarPropostaModal({
 
   const saveTecnicaObra = async () => {
     if (pesoTotalObra <= 0)         { setErrorTec('Informe o peso de ao menos uma categoria'); return }
-    if (!hhTotalObra || numHhObra <= 0) { setErrorTec('HH Total é obrigatório'); return }
+    if (!hhTotalObra || numHhObra <= 0) { setErrorTec('HH Total Ã© obrigatÃ³rio'); return }
     setLoadingTec(true); setErrorTec(null)
     try {
       const body: Record<string, unknown> = { hh_total: numHhObra, peso_montagem: pesoTotalObra, data_envio: dataEnvioTec }
@@ -331,8 +331,8 @@ export function EditarPropostaModal({
   }
 
   const saveComercialObra = async () => {
-    if (!tecnicaId)      { setErrorCom('Selecione a revisão técnica'); return }
-    if (numMontagem <= 0) { setErrorCom('Valor da Montagem é obrigatório'); return }
+    if (!tecnicaId)      { setErrorCom('Selecione a revisÃ£o tÃ©cnica'); return }
+    if (numMontagem <= 0) { setErrorCom('Valor da Montagem Ã© obrigatÃ³rio'); return }
     setLoadingCom(true); setErrorCom(null)
     try {
       const body: Record<string, unknown> = {
@@ -359,8 +359,8 @@ export function EditarPropostaModal({
   }
 
   const saveComercialParada = async () => {
-    if (!tecnicaId)       { setErrorCom('Selecione a revisão técnica'); return }
-    if (numValParada <= 0) { setErrorCom('Valor Total é obrigatório'); return }
+    if (!tecnicaId)       { setErrorCom('Selecione a revisÃ£o tÃ©cnica'); return }
+    if (numValParada <= 0) { setErrorCom('Valor Total Ã© obrigatÃ³rio'); return }
     setLoadingCom(true); setErrorCom(null)
     try {
       const body: Record<string, unknown> = {
@@ -377,7 +377,7 @@ export function EditarPropostaModal({
   }
 
   const saveResultado = async () => {
-    if (resultado === 'PERDEU' && !motivoPerda) { setErrorRes('Motivo de perda é obrigatório'); return }
+    if (resultado === 'PERDEU' && !motivoPerda) { setErrorRes('Motivo de perda Ã© obrigatÃ³rio'); return }
     setLoadingRes(true); setErrorRes(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-comercial`, {
@@ -392,7 +392,7 @@ export function EditarPropostaModal({
 
   const saveFabricacao = async () => {
     const validos = equipamentos.filter(e => e.descricao.trim() && Number(e.pesoTon) > 0)
-    if (validos.length === 0) { setErrorFab('Adicione ao menos um equipamento com descrição e peso'); return }
+    if (validos.length === 0) { setErrorFab('Adicione ao menos um equipamento com descriÃ§Ã£o e peso'); return }
     setLoadingFab(true); setErrorFab(null)
     try {
       const body: Record<string, unknown> = {
@@ -417,7 +417,7 @@ export function EditarPropostaModal({
   }
 
   const saveResultadoFab = async () => {
-    if (resultadoFab === 'PERDEU' && !motivoPerdaFab) { setErrorResFab('Motivo de perda é obrigatório'); return }
+    if (resultadoFab === 'PERDEU' && !motivoPerdaFab) { setErrorResFab('Motivo de perda Ã© obrigatÃ³rio'); return }
     setLoadingResFab(true); setErrorResFab(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-fabricacao`, {
@@ -431,7 +431,7 @@ export function EditarPropostaModal({
   }
 
   const handleCancelar = async () => {
-    if (cancelReason.trim().length < 5) { setErrorCancel('Justificativa obrigatória (mín. 5 caracteres)'); return }
+    if (cancelReason.trim().length < 5) { setErrorCancel('Justificativa obrigatÃ³ria (mÃ­n. 5 caracteres)'); return }
     setLoadingCancel(true); setErrorCancel(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}`, {
@@ -444,11 +444,12 @@ export function EditarPropostaModal({
     } finally { setLoadingCancel(false) }
   }
 
-  // ── Render Fabricações (scroll único, sem tabs) ───────────────────────────────
+  // â”€â”€ Render FabricaÃ§Ãµes (scroll Ãºnico, sem tabs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isFab) {
     return (
-      <Modal open={open} onClose={onClose} title={`Editar Proposta · ${item.numero}`} extraWide
-        footer={<Button variant="outline" onClick={onClose}>Fechar</Button>}
+      <Modal open={open}
+      confirmClose onClose={onClose} title={`Editar Proposta Â· ${item.numero}`} extraWide
+        footer={<ModalCancelButton label="Fechar" />}
       >
         {canRegistrarTecnica && (
           <>
@@ -464,11 +465,11 @@ export function EditarPropostaModal({
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Equipamento {idx + 1}</span>
                       {equipamentos.length > 1 && (
                         <button onClick={() => setEquipamentos(pr => pr.filter(x => x.id !== eq.id))}
-                          className="text-[10px] text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5">✕ Remover</button>
+                          className="text-[10px] text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5">âœ• Remover</button>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-2.5 mb-2">
-                      <Field label="Descrição" className="col-span-1">
+                      <Field label="DescriÃ§Ã£o" className="col-span-1">
                         <Input value={eq.descricao} onChange={e => setEquipamentos(pr => pr.map(x => x.id === eq.id ? { ...x, descricao: e.target.value } : x))} />
                       </Field>
                       <Field label="Peso (ton)">
@@ -479,7 +480,7 @@ export function EditarPropostaModal({
                       </Field>
                     </div>
                     {rskg && <p className="text-[10px] text-auto-value font-bold mb-2">{rskg}</p>}
-                    <Field label="Observações">
+                    <Field label="ObservaÃ§Ãµes">
                       <Input value={eq.obs} onChange={e => setEquipamentos(pr => pr.map(x => x.id === eq.id ? { ...x, obs: e.target.value } : x))} />
                     </Field>
                   </div>
@@ -496,13 +497,13 @@ export function EditarPropostaModal({
               {([false, true] as const).map(v => (
                 <button key={String(v)} onClick={() => setPossuiTestes(v)}
                   className={`text-[11px] font-semibold px-4 py-1.5 rounded-full border transition-colors ${possuiTestes === v ? 'bg-green-primary text-white border-green-primary' : 'bg-white text-gray-500 border-gray-300'}`}>
-                  {v ? 'Sim — será necessário realizar testes' : 'Não'}
+                  {v ? 'Sim â€” serÃ¡ necessÃ¡rio realizar testes' : 'NÃ£o'}
                 </button>
               ))}
             </div>
             {possuiTestes && (
               <div className="pl-4 border-l-2 border-green-primary/30 mb-4 grid grid-cols-2 gap-2.5">
-                <Field label="Descrição dos testes"><Input value={descTestes} onChange={e => setDescTestes(e.target.value)} /></Field>
+                <Field label="DescriÃ§Ã£o dos testes"><Input value={descTestes} onChange={e => setDescTestes(e.target.value)} /></Field>
                 <Field label="Valor dos testes (R$)"><CurrencyInput value={valorTestes} onChange={setValorTestes} /></Field>
               </div>
             )}
@@ -512,7 +513,7 @@ export function EditarPropostaModal({
               {([false, true] as const).map(v => (
                 <button key={String(v)} onClick={() => setPossuiMontagem(v)}
                   className={`text-[11px] font-semibold px-4 py-1.5 rounded-full border transition-colors ${possuiMontagem === v ? 'bg-green-primary text-white border-green-primary' : 'bg-white text-gray-500 border-gray-300'}`}>
-                  {v ? 'Sim — haverá montagem' : 'Não'}
+                  {v ? 'Sim â€” haverÃ¡ montagem' : 'NÃ£o'}
                 </button>
               ))}
             </div>
@@ -529,7 +530,7 @@ export function EditarPropostaModal({
                   <div className="grid grid-cols-3 gap-3 mb-2">
                     <div><p className="text-[9px] text-gray-500 uppercase font-bold">Peso Total (ton)</p><p className="text-[15px] font-bold text-gray-700">{pesoTotalFab.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ton</p></div>
                     <div><p className="text-[9px] text-gray-500 uppercase font-bold">Valor Total</p><p className="text-[15px] font-bold text-auto-value">{formatCurrency(totalFab)}</p></div>
-                    <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/kg final</p><p className="text-[15px] font-bold text-auto-value">{rsPorKgFabFab ? formatCurrency(rsPorKgFabFab) + '/kg' : '—'}</p></div>
+                    <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/kg final</p><p className="text-[15px] font-bold text-auto-value">{rsPorKgFabFab ? formatCurrency(rsPorKgFabFab) + '/kg' : 'â€”'}</p></div>
                   </div>
                   {(numTestesFab > 0 || numMontFab > 0) && (
                     <div className="text-[10px] text-gray-500 flex gap-4 pt-2 border-t border-[#C8E6C9]">
@@ -579,17 +580,18 @@ export function EditarPropostaModal({
     )
   }
 
-  // ── Render Obras / Paradas (tabs) ─────────────────────────────────────────────
+  // â”€â”€ Render Obras / Paradas (tabs) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TABS: { key: Tab; label: string }[] = ([
-    { key: 'tecnica'   as Tab, label: 'Proposta Técnica',  show: canRegistrarTecnica },
+    { key: 'tecnica'   as Tab, label: 'Proposta TÃ©cnica',  show: canRegistrarTecnica },
     { key: 'comercial' as Tab, label: 'Proposta Comercial', show: canRegistrarComercial },
     { key: 'resultado' as Tab, label: 'Resultado',          show: true },
     { key: 'cancelar'  as Tab, label: 'Cancelar',           show: canCancelar },
   ] as { key: Tab; label: string; show: boolean }[]).filter(t => t.show)
 
   return (
-    <Modal open={open} onClose={onClose} title={`Editar Proposta · ${item.numero}`} wide
-      footer={<Button variant="outline" onClick={onClose}>Fechar</Button>}
+    <Modal open={open}
+      confirmClose onClose={onClose} title={`Editar Proposta Â· ${item.numero}`} wide
+      footer={<ModalCancelButton label="Fechar" />}
     >
       <div className="flex border-b border-gray-200 mb-4 -mt-1">
         {TABS.map(t => (
@@ -600,7 +602,7 @@ export function EditarPropostaModal({
         ))}
       </div>
 
-      {/* ── Técnica Paradas ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ TÃ©cnica Paradas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'tecnica' && isParada && (
         <div>
           {errorTec && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{errorTec}</div>}
@@ -608,8 +610,8 @@ export function EditarPropostaModal({
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="HH Direto *"><IntegerInput value={hhDireto} onChange={setHhDireto} /></Field>
             <Field label="HH Indireto *"><IntegerInput value={hhIndireto} onChange={setHhIndireto} /></Field>
-            <Field label="HH Total"><AutoInput value={hhTotalCalc > 0 ? hhTotalCalc.toLocaleString('pt-BR') : '—'} /></Field>
-            <Field label="% Indireto"><AutoInput value={hhTotalCalc > 0 && hi > 0 ? ((hi / hhTotalCalc) * 100).toFixed(1) + '%' : '—'} /></Field>
+            <Field label="HH Total"><AutoInput value={hhTotalCalc > 0 ? hhTotalCalc.toLocaleString('pt-BR') : 'â€”'} /></Field>
+            <Field label="% Indireto"><AutoInput value={hhTotalCalc > 0 && hi > 0 ? ((hi / hhTotalCalc) * 100).toFixed(1) + '%' : 'â€”'} /></Field>
           </div>
           <ModalSection>2. Dados da Parada</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
@@ -628,16 +630,16 @@ export function EditarPropostaModal({
             <label htmlFor="fds-ed" className="text-[12px] font-medium cursor-pointer">Trabalho em finais de semana?</label>
           </div>
           <ModalSection>3. Data de Envio</ModalSection>
-          <Field label="Data de envio — técnica" className="mb-5">
+          <Field label="Data de envio â€” tÃ©cnica" className="mb-5">
             <Input type="date" value={dataEnvioTec} onChange={e => setDataEnvioTec(e.target.value)} />
           </Field>
           <div className="flex justify-end">
-            <Button onClick={saveTecnicaParada} disabled={loadingTec}>{loadingTec ? 'Salvando...' : 'Confirmar envio técnica'}</Button>
+            <Button onClick={saveTecnicaParada} disabled={loadingTec}>{loadingTec ? 'Salvando...' : 'Confirmar envio tÃ©cnica'}</Button>
           </div>
         </div>
       )}
 
-      {/* ── Técnica Obras ────────────────────────────────────────────────────── */}
+      {/* â”€â”€ TÃ©cnica Obras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'tecnica' && isObra && (
         <div>
           {errorTec && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{errorTec}</div>}
@@ -659,8 +661,8 @@ export function EditarPropostaModal({
                 ))}
                 <tr className="bg-[#EEF7EE] border-t-2 border-[#C8E6C9]">
                   <td className="px-3 py-2 text-[11px] font-bold text-green-dark">Total</td>
-                  <td className="px-3 py-2"><AutoInput value={pesoTotalObra > 0 ? pesoTotalObra.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '—'} /></td>
-                  <td className="px-3 py-2"><AutoInput value={pesoTotalObra > 0 ? '100%' : '—'} /></td>
+                  <td className="px-3 py-2"><AutoInput value={pesoTotalObra > 0 ? pesoTotalObra.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : 'â€”'} /></td>
+                  <td className="px-3 py-2"><AutoInput value={pesoTotalObra > 0 ? '100%' : 'â€”'} /></td>
                 </tr>
               </tbody>
             </table>
@@ -668,45 +670,45 @@ export function EditarPropostaModal({
           <ModalSection>Horas-Homem</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-4">
             <Field label="HH Total *"><IntegerInput value={hhTotalObra} onChange={setHhTotalObra} /></Field>
-            <Field label="HH/ton (automático)"><AutoInput value={hhPorTonObra ? `${hhPorTonObra} HH/t` : '—'} /></Field>
+            <Field label="HH/ton (automÃ¡tico)"><AutoInput value={hhPorTonObra ? `${hhPorTonObra} HH/t` : 'â€”'} /></Field>
           </div>
           <ModalSection>Data de Envio</ModalSection>
-          <Field label="Data de envio — técnica" className="mb-5">
+          <Field label="Data de envio â€” tÃ©cnica" className="mb-5">
             <Input type="date" value={dataEnvioTec} onChange={e => setDataEnvioTec(e.target.value)} />
           </Field>
           <div className="flex justify-end">
-            <Button onClick={saveTecnicaObra} disabled={loadingTec}>{loadingTec ? 'Salvando...' : 'Confirmar envio técnica'}</Button>
+            <Button onClick={saveTecnicaObra} disabled={loadingTec}>{loadingTec ? 'Salvando...' : 'Confirmar envio tÃ©cnica'}</Button>
           </div>
         </div>
       )}
 
-      {/* ── Comercial Paradas ────────────────────────────────────────────────── */}
+      {/* â”€â”€ Comercial Paradas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'comercial' && isParada && (
         <div>
           {errorCom && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{errorCom}</div>}
-          <ModalSection>1. Revisão técnica de referência</ModalSection>
+          <ModalSection>1. RevisÃ£o tÃ©cnica de referÃªncia</ModalSection>
           {item.propostas_tecnicas.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">Nenhuma proposta técnica registrada. Registre a técnica primeiro.</div>
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">Nenhuma proposta tÃ©cnica registrada. Registre a tÃ©cnica primeiro.</div>
           ) : (
             <>
-              <Field label="Revisão técnica" className="mb-3">
+              <Field label="RevisÃ£o tÃ©cnica" className="mb-3">
                 <Select value={tecnicaId} onChange={e => setTecnicaId(e.target.value)}>
                   <option value="">Selecione...</option>
                   {item.propostas_tecnicas.map(t => (
-                    <option key={t.id} value={t.id}>{formatRev(t.versao)}{t === item.propostas_tecnicas[0] ? ' (mais recente)' : ''} — HH: {t.hh_total ?? ((t.hh_direto ?? 0) + (t.hh_indireto ?? 0))}</option>
+                    <option key={t.id} value={t.id}>{formatRev(t.versao)}{t === item.propostas_tecnicas[0] ? ' (mais recente)' : ''} â€” HH: {t.hh_total ?? ((t.hh_direto ?? 0) + (t.hh_indireto ?? 0))}</option>
                   ))}
                 </Select>
               </Field>
               {tecSel && (
                 <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mb-3 grid grid-cols-4 gap-3 text-[11px]">
-                  <div><p className="text-[9px] text-gray-400 uppercase">HH Direto</p><p className="font-semibold">{tecSel.hh_direto ?? '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">HH Indireto</p><p className="font-semibold">{tecSel.hh_indireto ?? '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">HH Total</p><p className="font-semibold text-auto-value">{hhTotalTec || '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Efetivo Pico</p><p className="font-semibold">{tecSel.efetivo_pico ?? '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Dias Parada</p><p className="font-semibold">{tecSel.dias_parada ?? '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Turno</p><p className="font-semibold">{tecSel.turno ?? '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Finais Semana</p><p className="font-semibold">{tecSel.finais_de_semana ? 'Sim' : 'Não'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p><p className="font-semibold text-auto-value">{formatDate(tecSel.data_envio)}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">HH Direto</p><p className="font-semibold">{tecSel.hh_direto ?? 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">HH Indireto</p><p className="font-semibold">{tecSel.hh_indireto ?? 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">HH Total</p><p className="font-semibold text-auto-value">{hhTotalTec || 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Efetivo Pico</p><p className="font-semibold">{tecSel.efetivo_pico ?? 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Dias Parada</p><p className="font-semibold">{tecSel.dias_parada ?? 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Turno</p><p className="font-semibold">{tecSel.turno ?? 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Finais Semana</p><p className="font-semibold">{tecSel.finais_de_semana ? 'Sim' : 'NÃ£o'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Env. TÃ©cnica</p><p className="font-semibold text-auto-value">{formatDate(tecSel.data_envio)}</p></div>
                 </div>
               )}
             </>
@@ -720,12 +722,12 @@ export function EditarPropostaModal({
             <div className="bg-[#EEF7EE] border border-[#C8E6C9] rounded p-3 mb-3 grid grid-cols-2 gap-3 text-[11px]">
               <div><p className="text-[9px] text-gray-500 uppercase font-bold">Valor sem Terceiros</p><p className="font-bold text-auto-value">{formatCurrency(valorSemTerc ?? numValParada)}</p></div>
               <div><p className="text-[9px] text-gray-500 uppercase font-bold">Total Geral</p><p className="font-bold text-auto-value">{formatCurrency(numValParada)}</p></div>
-              <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH sem Terceiros</p><p className="font-bold text-auto-value">{rshhSemTerc ? formatCurrency(rshhSemTerc) : hhTotalTec > 0 ? formatCurrency(numValParada / hhTotalTec) : '—'}</p></div>
-              <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH com Terceiros</p><p className="font-bold text-auto-value">{rshhComTerc ? formatCurrency(rshhComTerc) : '—'}</p></div>
+              <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH sem Terceiros</p><p className="font-bold text-auto-value">{rshhSemTerc ? formatCurrency(rshhSemTerc) : hhTotalTec > 0 ? formatCurrency(numValParada / hhTotalTec) : 'â€”'}</p></div>
+              <div><p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH com Terceiros</p><p className="font-bold text-auto-value">{rshhComTerc ? formatCurrency(rshhComTerc) : 'â€”'}</p></div>
             </div>
           )}
           <ModalSection>3. Data de Envio</ModalSection>
-          <Field label="Data de envio — comercial" className="mb-5">
+          <Field label="Data de envio â€” comercial" className="mb-5">
             <Input type="date" value={dataEnvioCom} onChange={e => setDataEnvioCom(e.target.value)} />
           </Field>
           <div className="flex justify-end">
@@ -734,16 +736,16 @@ export function EditarPropostaModal({
         </div>
       )}
 
-      {/* ── Comercial Obras ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ Comercial Obras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'comercial' && isObra && (
         <div>
           {errorCom && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{errorCom}</div>}
           {item.propostas_tecnicas.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">Nenhuma proposta técnica registrada. Registre a técnica primeiro.</div>
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">Nenhuma proposta tÃ©cnica registrada. Registre a tÃ©cnica primeiro.</div>
           ) : (
             <>
-              <ModalSection>Revisão técnica de referência</ModalSection>
-              <Field label="Revisão técnica *" className="mb-3">
+              <ModalSection>RevisÃ£o tÃ©cnica de referÃªncia</ModalSection>
+              <Field label="RevisÃ£o tÃ©cnica *" className="mb-3">
                 <Select value={tecnicaId} onChange={e => setTecnicaId(e.target.value)}>
                   <option value="">Selecione...</option>
                   {item.propostas_tecnicas.map(t => (
@@ -753,10 +755,10 @@ export function EditarPropostaModal({
               </Field>
               {tecSel && (
                 <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mb-4 grid grid-cols-4 gap-3 text-[11px]">
-                  <div><p className="text-[9px] text-gray-400 uppercase">Peso Total</p><p className="font-bold text-auto-value">{pesoTotalTec ? pesoTotalTec.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' t' : '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">HH Total</p><p className="font-bold text-auto-value">{hhTotalTec || '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">HH/ton</p><p className="font-bold text-auto-value">{pesoTotalTec && pesoTotalTec > 0 && hhTotalTec > 0 ? (hhTotalTec / pesoTotalTec).toFixed(0) + ' HH/t' : '—'}</p></div>
-                  <div><p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p><p className="font-bold text-auto-value">{formatDate(tecSel.data_envio)}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Peso Total</p><p className="font-bold text-auto-value">{pesoTotalTec ? pesoTotalTec.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' t' : 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">HH Total</p><p className="font-bold text-auto-value">{hhTotalTec || 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">HH/ton</p><p className="font-bold text-auto-value">{pesoTotalTec && pesoTotalTec > 0 && hhTotalTec > 0 ? (hhTotalTec / pesoTotalTec).toFixed(0) + ' HH/t' : 'â€”'}</p></div>
+                  <div><p className="text-[9px] text-gray-400 uppercase">Env. TÃ©cnica</p><p className="font-bold text-auto-value">{formatDate(tecSel.data_envio)}</p></div>
                 </div>
               )}
             </>
@@ -768,8 +770,8 @@ export function EditarPropostaModal({
           </Field>
           {numMontagem > 0 && (
             <div className="bg-auto-bg border border-auto-value/20 rounded p-3 mb-4 grid grid-cols-2 gap-3 text-[11px]">
-              <div><p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/kg Montagem</p><p className="font-bold text-auto-value">{rsPorKgMont ? formatCurrency(rsPorKgMont) : '—'}</p></div>
-              <div><p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/HH Montagem</p><p className="font-bold text-auto-value">{rsPorHhMont ? formatCurrency(rsPorHhMont) : '—'}</p></div>
+              <div><p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/kg Montagem</p><p className="font-bold text-auto-value">{rsPorKgMont ? formatCurrency(rsPorKgMont) : 'â€”'}</p></div>
+              <div><p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/HH Montagem</p><p className="font-bold text-auto-value">{rsPorHhMont ? formatCurrency(rsPorHhMont) : 'â€”'}</p></div>
             </div>
           )}
 
@@ -793,7 +795,7 @@ export function EditarPropostaModal({
                   ))}
                   <tr className="bg-[#EEF7EE] border-t-2 border-[#C8E6C9]">
                     <td className="px-3 py-2 text-[11px] font-bold text-green-dark">Total Terceiros</td>
-                    <td className="px-3 py-2 text-[11px] font-bold text-auto-value">{sumTerceiros > 0 ? formatCurrency(sumTerceiros) : '—'}</td>
+                    <td className="px-3 py-2 text-[11px] font-bold text-auto-value">{sumTerceiros > 0 ? formatCurrency(sumTerceiros) : 'â€”'}</td>
                   </tr>
                 </tbody>
               </table>
@@ -801,18 +803,18 @@ export function EditarPropostaModal({
           )}
 
           <div className="flex items-center justify-between mb-3">
-            <ModalSection className="mb-0">Fabricações</ModalSection>
+            <ModalSection className="mb-0">FabricaÃ§Ãµes</ModalSection>
             <SimNaoToggle value={possuiFab} onChange={setPossuiFab} />
           </div>
           {possuiFab && (
             <div className="mb-4">
               <div className="grid grid-cols-2 gap-2.5 mb-2">
-                <Field label="Valor das Fabricações (R$)"><CurrencyInput value={valorFab} onChange={setValorFab} /></Field>
-                <Field label="Peso das Fabricações (t)"><CurrencyInput value={pesoFab} onChange={setPesoFab} /></Field>
+                <Field label="Valor das FabricaÃ§Ãµes (R$)"><CurrencyInput value={valorFab} onChange={setValorFab} /></Field>
+                <Field label="Peso das FabricaÃ§Ãµes (t)"><CurrencyInput value={pesoFab} onChange={setPesoFab} /></Field>
               </div>
               {rsPorKgFab && (
                 <div className="bg-auto-bg border border-auto-value/20 rounded px-3 py-2 text-[11px]">
-                  <span className="text-[9px] text-gray-400 uppercase mr-2">R$/kg Fabricações</span>
+                  <span className="text-[9px] text-gray-400 uppercase mr-2">R$/kg FabricaÃ§Ãµes</span>
                   <span className="font-bold text-auto-value">{formatCurrency(rsPorKgFab)}</span>
                 </div>
               )}
@@ -821,21 +823,21 @@ export function EditarPropostaModal({
 
           <div className="bg-[#1B5E20] text-white rounded-md px-4 py-3 mb-4">
             <div className="grid grid-cols-3 gap-4 mb-2">
-              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Valor Global</p><p className="text-[15px] font-bold">{totalGeral > 0 ? formatCurrency(totalGeral) : '—'}</p></div>
-              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/kg Global</p><p className="text-[15px] font-bold">{rsPorKgGlob ? formatCurrency(rsPorKgGlob) : '—'}</p></div>
-              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/HH Global</p><p className="text-[15px] font-bold">{rsPorHhGlob ? formatCurrency(rsPorHhGlob) : '—'}</p></div>
+              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Valor Global</p><p className="text-[15px] font-bold">{totalGeral > 0 ? formatCurrency(totalGeral) : 'â€”'}</p></div>
+              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/kg Global</p><p className="text-[15px] font-bold">{rsPorKgGlob ? formatCurrency(rsPorKgGlob) : 'â€”'}</p></div>
+              <div><p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/HH Global</p><p className="text-[15px] font-bold">{rsPorHhGlob ? formatCurrency(rsPorHhGlob) : 'â€”'}</p></div>
             </div>
             {totalGeral > 0 && (
               <div className="text-[10px] opacity-70 flex gap-4 pt-2 border-t border-white/20">
                 <span>Montagem: {formatCurrency(numMontagem)}</span>
                 {possuiTerceiros && sumTerceiros > 0 && <span>Terceiros: {formatCurrency(sumTerceiros)}</span>}
-                {possuiFab && numFab > 0 && <span>Fabricações: {formatCurrency(numFab)}</span>}
+                {possuiFab && numFab > 0 && <span>FabricaÃ§Ãµes: {formatCurrency(numFab)}</span>}
               </div>
             )}
           </div>
 
           <ModalSection>Data de Envio</ModalSection>
-          <Field label="Data de envio — comercial" className="mb-5">
+          <Field label="Data de envio â€” comercial" className="mb-5">
             <Input type="date" value={dataEnvioCom} onChange={e => setDataEnvioCom(e.target.value)} />
           </Field>
           <div className="flex justify-end">
@@ -844,7 +846,7 @@ export function EditarPropostaModal({
         </div>
       )}
 
-      {/* ── Resultado ────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Resultado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'resultado' && (
         <div>
           {errorRes && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{errorRes}</div>}
@@ -871,10 +873,11 @@ export function EditarPropostaModal({
         </div>
       )}
 
-      {/* ── Cancelar ─────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Cancelar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'cancelar' && (
         <CancelSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onCancelar: handleCancelar, canCancelar }} />
       )}
     </Modal>
   )
 }
+

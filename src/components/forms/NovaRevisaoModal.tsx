@@ -1,16 +1,16 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { formatDateInput } from '@/lib/utils'
 import type { SolicitacaoListItem } from '@/types'
 
-// ── Tipos auxiliares ──────────────────────────────────────────────────────────
+// â”€â”€ Tipos auxiliares â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface Filial { id: number; nome: string | null; cidade: string; estado: string }
 interface ClienteOpt {
   id: number; nome: string
@@ -23,24 +23,24 @@ interface Orcamentista { id: number; nome: string }
 const SEGMENTO_LABELS: Record<string, string> = {
   PAPEL_CELULOSE: 'Papel e Celulose',
   SIDERURGIA:     'Siderurgia',
-  OLEO_GAS:       'Óleo e Gás',
+  OLEO_GAS:       'Ã“leo e GÃ¡s',
   OUTROS:         'Outros',
 }
 
-// ── Zod schema ────────────────────────────────────────────────────────────────
+// â”€â”€ Zod schema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const formSchema = z.object({
   cliente_id:         z.string().min(1, 'Selecione o cliente'),
   cliente_final_id:   z.string().min(1, 'Selecione o cliente final'),
   cidade:             z.string().min(1, 'Selecione a cidade'),
-  estado:             z.string().min(1, 'Estado obrigatório'),
+  estado:             z.string().min(1, 'Estado obrigatÃ³rio'),
   data_recebimento:   z.string().min(1, 'Informe a data de recebimento'),
-  segmento:           z.string().min(1, 'Segmento obrigatório'),
+  segmento:           z.string().min(1, 'Segmento obrigatÃ³rio'),
   origem:             z.string().min(1, 'Selecione a origem'),
   escopo:             z.string().min(1, 'Informe o escopo resumido'),
-  referencia_cliente: z.string().min(1, 'Informe a referência do cliente'),
-  prazo_tecnica:      z.string().min(1, 'Informe a data da proposta técnica'),
+  referencia_cliente: z.string().min(1, 'Informe a referÃªncia do cliente'),
+  prazo_tecnica:      z.string().min(1, 'Informe a data da proposta tÃ©cnica'),
   prazo_comercial:    z.string().min(1, 'Informe a data da proposta comercial'),
-  visita_tecnica:     z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
+  visita_tecnica:     z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opÃ§Ã£o' }),
   data_visita:        z.string().optional(),
   classificacao:      z.string().optional(),
   interesse:          z.string().optional(),
@@ -56,7 +56,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 type Step = 'pergunta' | 'formulario'
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Props â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface Props {
   open: boolean
   onClose: () => void
@@ -65,7 +65,7 @@ interface Props {
   canAtribuir: boolean
 }
 
-// ── Componente ────────────────────────────────────────────────────────────────
+// â”€â”€ Componente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtribuir }: Props) {
   const [step, setStep] = useState<Step>('pergunta')
   const [asSold, setAsSold] = useState(false)
@@ -174,7 +174,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         body: JSON.stringify(payload),
       })
       const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao criar revisão'); return }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao criar revisÃ£o'); return }
       onSuccess()
       onClose()
     } finally {
@@ -188,15 +188,16 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
     ? 'As Sold.'
     : `Rev${String(solicitacao.versao_atual).padStart(2, '0')}`
 
-  // ── Passo 1: pergunta ────────────────────────────────────────────────────────
+  // â”€â”€ Passo 1: pergunta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (step === 'pergunta') {
     return (
-      <Modal open={open} onClose={onClose} title={`Nova Revisão — ${solicitacao.numero}`}>
+      <Modal open={open}
+      confirmClose onClose={onClose} title={`Nova RevisÃ£o â€” ${solicitacao.numero}`}>
         <div className="space-y-2 text-[12px] text-gray-700 mb-5">
-          <p className="font-semibold">Esta revisão será uma proposta <span className="text-green-dark">As Sold.</span>?</p>
+          <p className="font-semibold">Esta revisÃ£o serÃ¡ uma proposta <span className="text-green-dark">As Sold.</span>?</p>
           <p className="text-[11px] text-gray-500">
-            &quot;As Sold.&quot; indica a proposta final fechada. Após ela, não haverá mais revisões.
-            Exemplo: Rev00 → Rev01 → <strong>As Sold.</strong>
+            &quot;As Sold.&quot; indica a proposta final fechada. ApÃ³s ela, nÃ£o haverÃ¡ mais revisÃµes.
+            Exemplo: Rev00 â†’ Rev01 â†’ <strong>As Sold.</strong>
           </p>
         </div>
 
@@ -205,46 +206,47 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
             onClick={() => handleEscolhaTipo(true)}
             className="flex-1 border-2 border-gray-200 rounded-md px-4 py-3 text-left hover:bg-gray-50 transition-colors"
           >
-            <p className="text-[12px] font-bold text-gray-700">Sim — proposta As Sold.</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Versão final consolidada.</p>
+            <p className="text-[12px] font-bold text-gray-700">Sim â€” proposta As Sold.</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">VersÃ£o final consolidada.</p>
           </button>
           <button
             onClick={() => handleEscolhaTipo(false)}
             className="flex-1 border-2 border-gray-200 rounded-md px-4 py-3 text-left hover:bg-gray-50 transition-colors"
           >
-            <p className="text-[12px] font-bold text-gray-700">Não — revisão normal</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Continua o processo de elaboração.</p>
+            <p className="text-[12px] font-bold text-gray-700">NÃ£o â€” revisÃ£o normal</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Continua o processo de elaboraÃ§Ã£o.</p>
           </button>
         </div>
 
         <div className="flex justify-end mt-5">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <ModalCancelButton />
         </div>
       </Modal>
     )
   }
 
-  // ── Passo 2: formulário completo ─────────────────────────────────────────────
+  // â”€â”€ Passo 2: formulÃ¡rio completo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Nova Revisão ${nextLabel} — ${solicitacao.numero}`}
+      title={`Nova RevisÃ£o ${nextLabel} â€” ${solicitacao.numero}`}
       wide
       footer={
         <>
           <Button variant="outline" onClick={() => setStep('pergunta')} disabled={loading}>
-            ← Voltar
+            â† Voltar
           </Button>
           <Button onClick={handleSubmit(onSubmit)} disabled={loading}>
-            {loading ? 'Criando...' : `Criar revisão ${nextLabel}`}
+            {loading ? 'Criando...' : `Criar revisÃ£o ${nextLabel}`}
           </Button>
         </>
       }
     >
       {asSold && (
         <div className="bg-green-light border border-green-primary rounded-md px-3 py-2 mb-4 text-[11px] text-green-dark font-semibold">
-          Esta revisão será marcada como <strong>As Sold.</strong> — versão final consolidada. Não serão permitidas novas revisões após esta.
+          Esta revisÃ£o serÃ¡ marcada como <strong>As Sold.</strong> â€” versÃ£o final consolidada. NÃ£o serÃ£o permitidas novas revisÃµes apÃ³s esta.
         </div>
       )}
 
@@ -252,8 +254,8 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* ── Identificação ──────────────────────────────────────────────────── */}
-      <ModalSection>Identificação</ModalSection>
+      {/* â”€â”€ IdentificaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <ModalSection>IdentificaÃ§Ã£o</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Cliente *" error={errors.cliente_id?.message}>
           <Select {...register('cliente_id')}>
@@ -269,15 +271,15 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         </Field>
       </div>
 
-      {/* ── Localização ────────────────────────────────────────────────────── */}
-      <ModalSection>Localização</ModalSection>
+      {/* â”€â”€ LocalizaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <ModalSection>LocalizaÃ§Ã£o</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Cidade *" error={errors.cidade?.message}>
           <Select {...register('cidade')} disabled={!clienteFinalId}>
             <option value="">{clienteFinalId ? 'Selecione a cidade...' : 'Selecione o cliente final primeiro'}</option>
             {filiaisDisponiveis.map((f) => (
               <option key={f.id} value={f.cidade}>
-                {f.cidade}{f.nome ? ` — ${f.nome}` : ''}
+                {f.cidade}{f.nome ? ` â€” ${f.nome}` : ''}
               </option>
             ))}
           </Select>
@@ -293,8 +295,8 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         </Field>
       </div>
 
-      {/* ── Dados da Solicitação ───────────────────────────────────────────── */}
-      <ModalSection>Dados da Solicitação</ModalSection>
+      {/* â”€â”€ Dados da SolicitaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <ModalSection>Dados da SolicitaÃ§Ã£o</ModalSection>
       <div className="grid grid-cols-3 gap-2.5 mb-2.5">
         <Field label="Data de Recebimento *" error={errors.data_recebimento?.message}>
           <Input type="date" {...register('data_recebimento')} />
@@ -313,7 +315,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
             <option value="EMAIL">E-mail</option>
             <option value="TELEFONE">Telefone</option>
             <option value="VISITA">Visita</option>
-            <option value="INDICACAO">Indicação</option>
+            <option value="INDICACAO">IndicaÃ§Ã£o</option>
             <option value="OUTRO">Outro</option>
           </Select>
         </Field>
@@ -321,20 +323,20 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
 
       <div className="grid grid-cols-1 gap-2.5 mb-2.5">
         <Field label="Escopo Resumido *" error={errors.escopo?.message}>
-          <Textarea {...register('escopo')} placeholder="Descreva o escopo da solicitação..." />
+          <Textarea {...register('escopo')} placeholder="Descreva o escopo da solicitaÃ§Ã£o..." />
         </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-        <Field label="Referência do Cliente *" error={errors.referencia_cliente?.message}>
-          <Input {...register('referencia_cliente')} placeholder="Número do processo, RFQ, etc." />
+        <Field label="ReferÃªncia do Cliente *" error={errors.referencia_cliente?.message}>
+          <Input {...register('referencia_cliente')} placeholder="NÃºmero do processo, RFQ, etc." />
         </Field>
       </div>
 
-      {/* ── Prazos ──────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Prazos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <ModalSection>Prazos</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Data Proposta Técnica *" error={errors.prazo_tecnica?.message}>
+        <Field label="Data Proposta TÃ©cnica *" error={errors.prazo_tecnica?.message}>
           <Input type="date" {...register('prazo_tecnica')} />
         </Field>
         <Field label="Data Proposta Comercial *" error={errors.prazo_comercial?.message}>
@@ -342,14 +344,14 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         </Field>
       </div>
 
-      {/* ── Visita Técnica ──────────────────────────────────────────────────── */}
-      <ModalSection>Visita Técnica</ModalSection>
+      {/* â”€â”€ Visita TÃ©cnica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <ModalSection>Visita TÃ©cnica</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Haverá visita técnica? *" error={errors.visita_tecnica?.message}>
+        <Field label="HaverÃ¡ visita tÃ©cnica? *" error={errors.visita_tecnica?.message}>
           <Select {...register('visita_tecnica')}>
             <option value="">Selecione...</option>
             <option value="SIM">Sim</option>
-            <option value="NAO">Não</option>
+            <option value="NAO">NÃ£o</option>
           </Select>
         </Field>
         {visitaTecnica === 'SIM' && (
@@ -359,7 +361,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         )}
       </div>
 
-      {/* ── Contato do comprador ────────────────────────────────────────────── */}
+      {/* â”€â”€ Contato do comprador â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <ModalSection>Contato do Comprador (opcional)</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Comprador">
@@ -373,25 +375,25 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         </Field>
       </div>
 
-      {/* ── Classificação ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ ClassificaÃ§Ã£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {canAtribuir && (
         <>
-          <ModalSection>Classificação — Analista Crítico</ModalSection>
+          <ModalSection>ClassificaÃ§Ã£o â€” Analista CrÃ­tico</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-            <Field label="Classificação">
+            <Field label="ClassificaÃ§Ã£o">
               <Select {...register('classificacao')}>
                 <option value="">Selecione...</option>
                 <option value="OBRAS">Obras</option>
                 <option value="PARADAS">Paradas</option>
-                <option value="OLEO_GAS">Óleo e Gás</option>
-                <option value="FABRICACOES">Fabricações</option>
+                <option value="OLEO_GAS">Ã“leo e GÃ¡s</option>
+                <option value="FABRICACOES">FabricaÃ§Ãµes</option>
               </Select>
             </Field>
-            <Field label="Nível de Interesse">
+            <Field label="NÃ­vel de Interesse">
               <Select {...register('interesse')}>
                 <option value="">Selecione...</option>
                 <option value="ALTO">Alto</option>
-                <option value="MEDIO">Médio</option>
+                <option value="MEDIO">MÃ©dio</option>
                 <option value="BAIXO">Baixo</option>
               </Select>
             </Field>
@@ -399,14 +401,14 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         </>
       )}
 
-      {/* ── Orçamentista ────────────────────────────────────────────────────── */}
+      {/* â”€â”€ OrÃ§amentista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {canAtribuir && (
         <>
-          <ModalSection>Atribuição — Analista Crítico</ModalSection>
+          <ModalSection>AtribuiÃ§Ã£o â€” Analista CrÃ­tico</ModalSection>
           <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-            <Field label="Orçamentista">
+            <Field label="OrÃ§amentista">
               <Select {...register('orcamentista_id')}>
-                <option value="">Sem atribuição</option>
+                <option value="">Sem atribuiÃ§Ã£o</option>
                 {orcamentistas.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </Select>
             </Field>
@@ -416,3 +418,4 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
     </Modal>
   )
 }
+

@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Textarea } from '@/components/ui/Input'
 import type { SolicitacaoListItem } from '@/types'
@@ -51,8 +51,9 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Cancelar Solicitação — ${solicitacao?.numero ?? ''}`}
+      title={`Cancelar SolicitaÃ§Ã£o â€” ${solicitacao?.numero ?? ''}`}
       footer={
         <>
           <Button variant="outline" onClick={onClose} disabled={loading}>
@@ -65,7 +66,7 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
       }
     >
       <p className="text-xs text-gray-600 mb-4">
-        O cancelamento é irreversível. A solicitação será mantida no histórico (RN-18).
+        O cancelamento Ã© irreversÃ­vel. A solicitaÃ§Ã£o serÃ¡ mantida no histÃ³rico (RN-18).
       </p>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">
@@ -83,3 +84,4 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
     </Modal>
   )
 }
+

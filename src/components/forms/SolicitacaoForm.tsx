@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { formatDateInput } from '@/lib/utils'
@@ -196,11 +196,12 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     <Modal
       open={open}
       onClose={onClose}
+      confirmClose
       title={title}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit(onSubmit)} disabled={loading}>
             {loading ? 'Salvando...' : editando ? 'Salvar alterações' : 'Criar solicitação'}
           </Button>

@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, CurrencyInput } from '@/components/ui/Input'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -27,7 +27,7 @@ interface Props {
 export function RegistrarComercialModal({
   open, onClose, onSuccess, solicitacaoId, numero, propostasTecnicas,
 }: Props) {
-  // RN-36: pré-seleciona N/A quando não há técnica disponível
+  // RN-36: prÃ©-seleciona N/A quando nÃ£o hÃ¡ tÃ©cnica disponÃ­vel
   const [naoAplicavel, setNaoAplicavel] = useState(() => propostasTecnicas.length === 0)
   const [tecnicaId, setTecnicaId] = useState('')
   const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
@@ -58,7 +58,7 @@ export function RegistrarComercialModal({
       ? ((tecnicaSelecionada.hh_indireto / hhTotalTec) * 100).toFixed(1) + '%'
       : null
 
-  // Cálculos automáticos
+  // CÃ¡lculos automÃ¡ticos
   const numMontagem = Number(valorMontagem) || 0
   const totalTerceiros = possuiTerceiros
     ? (Number(valEletrica) || 0) + (Number(valIsolamento) || 0) + (Number(valCivil) || 0) + (Number(valFibra) || 0) + (Number(valOutros) || 0)
@@ -102,8 +102,8 @@ export function RegistrarComercialModal({
       return
     }
 
-    if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
-    if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor Total da Montagem Mecânica'); return }
+    if (!tecnicaId) { setError('Selecione a revisÃ£o tÃ©cnica de referÃªncia'); return }
+    if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor Total da Montagem MecÃ¢nica'); return }
     if (!dataBase) { setError('Informe a Data base do contrato'); return }
 
     setLoading(true)
@@ -147,12 +147,13 @@ export function RegistrarComercialModal({
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Registrar Envio — Proposta Comercial · ${numero}`}
+      title={`Registrar Envio â€” Proposta Comercial Â· ${numero}`}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Salvando...' : 'Confirmar'}
           </Button>
@@ -163,7 +164,7 @@ export function RegistrarComercialModal({
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* RN-36: toggle N/A — pré-selecionado quando sem técnica */}
+      {/* RN-36: toggle N/A â€” prÃ©-selecionado quando sem tÃ©cnica */}
       <div className={`flex items-center gap-2 mb-3 p-2.5 rounded border ${naoAplicavel ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
         <input
           id="nao-aplicavel-com"
@@ -175,21 +176,21 @@ export function RegistrarComercialModal({
         <label htmlFor="nao-aplicavel-com" className="text-[12px] font-medium cursor-pointer">
           Proposta Comercial N/A
           {propostasTecnicas.length === 0 && (
-            <span className="ml-1.5 text-[10px] text-amber-600 font-normal">(nenhuma técnica disponível)</span>
+            <span className="ml-1.5 text-[10px] text-amber-600 font-normal">(nenhuma tÃ©cnica disponÃ­vel)</span>
           )}
         </label>
       </div>
 
       {!naoAplicavel && (
       <>
-      <ModalSection>1. Revisão técnica de referência</ModalSection>
+      <ModalSection>1. RevisÃ£o tÃ©cnica de referÃªncia</ModalSection>
 
-      <Field label="Revisão técnica referente a esta comercial">
+      <Field label="RevisÃ£o tÃ©cnica referente a esta comercial">
         <Select value={tecnicaId} onChange={(e) => setTecnicaId(e.target.value)}>
           <option value="">Selecione...</option>
           {propostasTecnicas.map((pt) => (
             <option key={pt.id} value={pt.id}>
-              Rev{String(pt.versao - 1).padStart(2, '0')} — {pt.data_envio ? formatDate(pt.data_envio) : 'sem data'}
+              Rev{String(pt.versao - 1).padStart(2, '0')} â€” {pt.data_envio ? formatDate(pt.data_envio) : 'sem data'}
               {pt === propostasTecnicas[0] ? ' (mais recente)' : ''}
             </option>
           ))}
@@ -198,30 +199,30 @@ export function RegistrarComercialModal({
 
       {tecnicaSelecionada && (
         <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mt-2 mb-3">
-          <p className="text-[11px] font-bold text-green-dark mb-2">Dados da revisão técnica</p>
+          <p className="text-[11px] font-bold text-green-dark mb-2">Dados da revisÃ£o tÃ©cnica</p>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <p className="text-[9px] text-gray-400 uppercase">HH Direto</p>
-              <p className="text-[11px] font-semibold">{tecnicaSelecionada.hh_direto ?? '—'}</p>
+              <p className="text-[11px] font-semibold">{tecnicaSelecionada.hh_direto ?? 'â€”'}</p>
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">HH Indireto</p>
-              <p className="text-[11px] font-semibold">{tecnicaSelecionada.hh_indireto ?? '—'}</p>
+              <p className="text-[11px] font-semibold">{tecnicaSelecionada.hh_indireto ?? 'â€”'}</p>
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">HH Total</p>
-              <p className="text-[11px] font-semibold text-auto-value">{hhTotalTec ?? '—'}</p>
+              <p className="text-[11px] font-semibold text-auto-value">{hhTotalTec ?? 'â€”'}</p>
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">% Indireto</p>
-              <p className="text-[11px] font-semibold text-auto-value">{percIndireto ?? '—'}</p>
+              <p className="text-[11px] font-semibold text-auto-value">{percIndireto ?? 'â€”'}</p>
             </div>
             <div>
               <p className="text-[9px] text-gray-400 uppercase">Peso Mont. (t)</p>
-              <p className="text-[11px] font-semibold">{tecnicaSelecionada.peso_montagem ?? '—'}</p>
+              <p className="text-[11px] font-semibold">{tecnicaSelecionada.peso_montagem ?? 'â€”'}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p>
+              <p className="text-[9px] text-gray-400 uppercase">Env. TÃ©cnica</p>
               <p className="text-[11px] font-semibold">{formatDate(tecnicaSelecionada.data_envio)}</p>
             </div>
           </div>
@@ -231,10 +232,10 @@ export function RegistrarComercialModal({
       <ModalSection>2. Dados da proposta comercial</ModalSection>
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="Valor Total Montagem Mecânica (R$)">
+        <Field label="Valor Total Montagem MecÃ¢nica (R$)">
           <CurrencyInput value={valorMontagem} onChange={setValorMontagem} />
         </Field>
-        <Field label="Data de envio — comercial">
+        <Field label="Data de envio â€” comercial">
           <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
         </Field>
       </div>
@@ -256,7 +257,7 @@ export function RegistrarComercialModal({
       {possuiTerceiros && (
         <div className="grid grid-cols-3 gap-2.5 mb-2.5 pl-4 border-l-2 border-green-primary/30">
           {[
-            { label: 'Elétrica (R$)', val: valEletrica, set: setValEletrica },
+            { label: 'ElÃ©trica (R$)', val: valEletrica, set: setValEletrica },
             { label: 'Isolamento (R$)', val: valIsolamento, set: setValIsolamento },
             { label: 'Civil (R$)', val: valCivil, set: setValCivil },
             { label: 'Fibra (R$)', val: valFibra, set: setValFibra },
@@ -267,12 +268,12 @@ export function RegistrarComercialModal({
             </Field>
           ))}
           <Field label="Total Terceiros (R$)">
-            <AutoInput value={totalTerceiros > 0 ? formatCurrency(totalTerceiros) : '—'} />
+            <AutoInput value={totalTerceiros > 0 ? formatCurrency(totalTerceiros) : 'â€”'} />
           </Field>
         </div>
       )}
 
-      {/* Possui Fabricação */}
+      {/* Possui FabricaÃ§Ã£o */}
       <div className="flex items-center gap-2 mb-2">
         <input
           id="possui-fabricacao"
@@ -282,19 +283,19 @@ export function RegistrarComercialModal({
           className="accent-green-primary"
         />
         <label htmlFor="possui-fabricacao" className="text-[12px] font-medium cursor-pointer">
-          Possui Fabricação?
+          Possui FabricaÃ§Ã£o?
         </label>
       </div>
 
       {possuiFabricacao && (
         <div className="mb-2.5 pl-4 border-l-2 border-green-primary/30">
-          <Field label="Valor Fabricação (R$)">
+          <Field label="Valor FabricaÃ§Ã£o (R$)">
             <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
           </Field>
         </div>
       )}
 
-      {/* Indicadores automáticos */}
+      {/* Indicadores automÃ¡ticos */}
       {totalGeral > 0 && (
         <div className="mt-3 bg-[#EEF7EE] border border-[#C8E6C9] rounded p-3 grid grid-cols-3 gap-3">
           <div>
@@ -302,15 +303,15 @@ export function RegistrarComercialModal({
             <p className="text-[13px] font-bold text-auto-value">{formatCurrency(totalGeral)}</p>
           </div>
           <div>
-            <p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH Mecânica</p>
+            <p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH MecÃ¢nica</p>
             <p className="text-[13px] font-bold text-auto-value">
-              {rshhMecanica ? formatCurrency(rshhMecanica) : '—'}
+              {rshhMecanica ? formatCurrency(rshhMecanica) : 'â€”'}
             </p>
           </div>
           <div>
             <p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH Total</p>
             <p className="text-[13px] font-bold text-auto-value">
-              {rshhTotal ? formatCurrency(rshhTotal) : '—'}
+              {rshhTotal ? formatCurrency(rshhTotal) : 'â€”'}
             </p>
           </div>
         </div>
@@ -323,10 +324,11 @@ export function RegistrarComercialModal({
       )}
 
       {naoAplicavel && (
-        <Field label="Data de envio — comercial">
+        <Field label="Data de envio â€” comercial">
           <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
         </Field>
       )}
     </Modal>
   )
 }
+

@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 
@@ -30,7 +30,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
 
   const handleSubmit = async () => {
     if (!hhDireto || !hhIndireto) {
-      setError('HH Direto e HH Indireto são obrigatórios')
+      setError('HH Direto e HH Indireto sÃ£o obrigatÃ³rios')
       return
     }
     setLoading(true)
@@ -64,11 +64,12 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Registrar Envio — Proposta Técnica · ${numero}`}
+      title={`Registrar Envio â€” Proposta TÃ©cnica Â· ${numero}`}
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Salvando...' : 'Confirmar'}
           </Button>
@@ -89,13 +90,13 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="HH Total (automático)">
-          <AutoInput value={hhTotal !== null ? hhTotal.toLocaleString('pt-BR') : ''} placeholder="—" />
+        <Field label="HH Total (automÃ¡tico)">
+          <AutoInput value={hhTotal !== null ? hhTotal.toLocaleString('pt-BR') : ''} placeholder="â€”" />
           <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Direto + HH Indireto</p>
         </Field>
-        <Field label="% Indireto (automático)">
-          <AutoInput value={percIndireto ?? ''} placeholder="—" />
-          <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Indireto ÷ HH Total</p>
+        <Field label="% Indireto (automÃ¡tico)">
+          <AutoInput value={percIndireto ?? ''} placeholder="â€”" />
+          <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Indireto Ã· HH Total</p>
         </Field>
       </div>
 
@@ -115,7 +116,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
 
       <div className="grid grid-cols-2 gap-2.5">
         <div />
-        <Field label="Data de envio — técnica">
+        <Field label="Data de envio â€” tÃ©cnica">
           <input
             type="date"
             value={dataEnvio}
@@ -127,3 +128,4 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
     </Modal>
   )
 }
+

@@ -1,12 +1,12 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tipos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface PropostaTecnicaParada {
   id: number
@@ -33,7 +33,7 @@ interface Props {
   propostasTecnicas: PropostaTecnicaParada[]
 }
 
-// ─── Tab Técnica ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tab TÃ©cnica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TabTecnicaProps {
   solicitacaoId: number
@@ -59,7 +59,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const numHhDireto = Number(hhDireto) || 0
   const numHhIndireto = Number(hhIndireto) || 0
   const hhTotal = numHhDireto + numHhIndireto
-  const percIndireto = hhTotal > 0 ? ((numHhIndireto / hhTotal) * 100).toFixed(1) + '%' : '—'
+  const percIndireto = hhTotal > 0 ? ((numHhIndireto / hhTotal) * 100).toFixed(1) + '%' : 'â€”'
 
   const handleSubmit = async () => {
     if (!naoAplicavel) {
@@ -106,7 +106,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* Opção de não aplicável */}
+      {/* OpÃ§Ã£o de nÃ£o aplicÃ¡vel */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <input
           id="tec-nao-aplicavel"
@@ -116,13 +116,13 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
           className="accent-green-primary"
         />
         <label htmlFor="tec-nao-aplicavel" className="text-[12px] font-medium cursor-pointer text-gray-700">
-          Proposta técnica não aplicável para esta revisão
+          Proposta tÃ©cnica nÃ£o aplicÃ¡vel para esta revisÃ£o
         </label>
       </div>
 
       {naoAplicavel ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-3 rounded mb-4">
-          A proposta técnica será marcada como não aplicável. O registro será salvo e aguardará o envio da proposta comercial para finalizar a revisão.
+          A proposta tÃ©cnica serÃ¡ marcada como nÃ£o aplicÃ¡vel. O registro serÃ¡ salvo e aguardarÃ¡ o envio da proposta comercial para finalizar a revisÃ£o.
         </div>
       ) : (
         <>
@@ -136,7 +136,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
               <IntegerInput placeholder="Ex: 4.000" value={hhIndireto} onChange={setHhIndireto} />
             </Field>
             <Field label="HH Total">
-              <AutoInput value={hhTotal > 0 ? hhTotal.toLocaleString('pt-BR') : '—'} />
+              <AutoInput value={hhTotal > 0 ? hhTotal.toLocaleString('pt-BR') : 'â€”'} />
             </Field>
             <Field label="% Indireto">
               <AutoInput value={percIndireto} />
@@ -184,7 +184,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             <Field label="Data base">
               <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
             </Field>
-            <Field label="Data de envio — técnica">
+            <Field label="Data de envio â€” tÃ©cnica">
               <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
             </Field>
           </div>
@@ -192,16 +192,16 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       )}
 
       <div className="flex justify-end gap-2 mt-5">
-        <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+        <ModalCancelButton disabled={loading} />
         <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar — Técnica não aplicável' : 'Confirmar envio técnica'}
+          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar â€” TÃ©cnica nÃ£o aplicÃ¡vel' : 'Confirmar envio tÃ©cnica'}
         </Button>
       </div>
     </div>
   )
 }
 
-// ─── Tab Comercial ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tab Comercial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TabComercialProps {
   solicitacaoId: number
@@ -235,7 +235,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
   const handleSubmit = async () => {
     if (!naoAplicavel) {
-      if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
+      if (!tecnicaId) { setError('Selecione a revisÃ£o tÃ©cnica de referÃªncia'); return }
       if (!valorTotal || numValorTotal <= 0) { setError('Informe o Valor Total'); return }
       if (!dataBase) { setError('Informe a Data base do contrato'); return }
     }
@@ -274,7 +274,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* Opção de não aplicável */}
+      {/* OpÃ§Ã£o de nÃ£o aplicÃ¡vel */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <input
           id="com-nao-aplicavel"
@@ -284,30 +284,30 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
           className="accent-green-primary"
         />
         <label htmlFor="com-nao-aplicavel" className="text-[12px] font-medium cursor-pointer text-gray-700">
-          Proposta comercial não aplicável para esta revisão
+          Proposta comercial nÃ£o aplicÃ¡vel para esta revisÃ£o
         </label>
       </div>
 
       {naoAplicavel ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-3 rounded mb-4">
-          A proposta comercial será marcada como não aplicável. A revisão será finalizada automaticamente.
+          A proposta comercial serÃ¡ marcada como nÃ£o aplicÃ¡vel. A revisÃ£o serÃ¡ finalizada automaticamente.
         </div>
       ) : (
         <>
-      <ModalSection>1. Revisão técnica de referência</ModalSection>
+      <ModalSection>1. RevisÃ£o tÃ©cnica de referÃªncia</ModalSection>
 
       {propostasTecnicas.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">
-          Nenhuma proposta técnica registrada. Registre a técnica primeiro.
+          Nenhuma proposta tÃ©cnica registrada. Registre a tÃ©cnica primeiro.
         </div>
       ) : (
         <>
-          <Field label="Revisão técnica referente a esta comercial">
+          <Field label="RevisÃ£o tÃ©cnica referente a esta comercial">
             <Select value={tecnicaId} onChange={(e) => setTecnicaId(e.target.value)}>
               <option value="">Selecione...</option>
               {propostasTecnicas.map((pt) => (
                 <option key={pt.id} value={pt.id}>
-                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' — N/A' : ''}{!pt.nao_aplicavel ? (' — HH Total: ' + (pt.hh_total ?? (pt.hh_direto !== null && pt.hh_indireto !== null ? pt.hh_direto + pt.hh_indireto : '—'))) : ''}
+                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' â€” N/A' : ''}{!pt.nao_aplicavel ? (' â€” HH Total: ' + (pt.hh_total ?? (pt.hh_direto !== null && pt.hh_indireto !== null ? pt.hh_direto + pt.hh_indireto : 'â€”'))) : ''}
                 </option>
               ))}
             </Select>
@@ -317,42 +317,42 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
             <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mt-2 mb-3">
               {tecnicaSel.nao_aplicavel && (
                 <p className="text-amber-700 text-[10px] font-medium mb-2 pb-2 border-b border-amber-200">
-                  ⚠ Proposta técnica marcada como N/A — informe os valores comerciais normalmente.
+                  âš  Proposta tÃ©cnica marcada como N/A â€” informe os valores comerciais normalmente.
                 </p>
               )}
-              <p className="text-[11px] font-bold text-green-dark mb-2">Dados da revisão técnica</p>
+              <p className="text-[11px] font-bold text-green-dark mb-2">Dados da revisÃ£o tÃ©cnica</p>
               <div className="grid grid-cols-4 gap-3">
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">HH Direto</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.hh_direto ?? '—'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.hh_direto ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">HH Indireto</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.hh_indireto ?? '—'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.hh_indireto ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">HH Total</p>
-                  <p className="text-[11px] font-semibold text-auto-value">{hhTotal ?? '—'}</p>
+                  <p className="text-[11px] font-semibold text-auto-value">{hhTotal ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">Efetivo Pico</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.efetivo_pico ?? '—'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.efetivo_pico ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">Dias Parada</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.dias_parada ?? '—'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.dias_parada ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">Turno</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.turno ?? '—'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.turno ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">Finais Semana</p>
-                  <p className="text-[11px] font-semibold">{tecnicaSel.finais_de_semana ? 'Sim' : 'Não'}</p>
+                  <p className="text-[11px] font-semibold">{tecnicaSel.finais_de_semana ? 'Sim' : 'NÃ£o'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p>
-                  <p className="text-[11px] font-semibold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : '—'}</p>
+                  <p className="text-[9px] text-gray-400 uppercase">Env. TÃ©cnica</p>
+                  <p className="text-[11px] font-semibold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : 'â€”'}</p>
                 </div>
               </div>
             </div>
@@ -371,7 +371,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         </Field>
       </div>
 
-      {/* Indicadores automáticos */}
+      {/* Indicadores automÃ¡ticos */}
       {numValorTotal > 0 && (
         <div className="bg-[#EEF7EE] border border-[#C8E6C9] rounded p-3 grid grid-cols-2 gap-3 mb-3">
           <div>
@@ -387,13 +387,13 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
           <div>
             <p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH sem Terceiros</p>
             <p className="text-[13px] font-bold text-auto-value">
-              {rshhSemTerceiros ? formatCurrency(rshhSemTerceiros) : hhTotal ? formatCurrency(numValorTotal / hhTotal) : '—'}
+              {rshhSemTerceiros ? formatCurrency(rshhSemTerceiros) : hhTotal ? formatCurrency(numValorTotal / hhTotal) : 'â€”'}
             </p>
           </div>
           <div>
             <p className="text-[9px] text-gray-500 uppercase font-bold">R$/HH com Terceiros</p>
             <p className="text-[13px] font-bold text-auto-value">
-              {rshhComTerceiros ? formatCurrency(rshhComTerceiros) : '—'}
+              {rshhComTerceiros ? formatCurrency(rshhComTerceiros) : 'â€”'}
             </p>
           </div>
         </div>
@@ -405,26 +405,26 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
       <ModalSection>3. Data de Envio</ModalSection>
 
-      <Field label="Data de envio — comercial">
+      <Field label="Data de envio â€” comercial">
         <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
       </Field>
         </>
       )}
 
       <div className="flex justify-end gap-2 mt-5">
-        <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+        <ModalCancelButton disabled={loading} />
         <Button
           onClick={handleSubmit}
           disabled={loading || (!naoAplicavel && propostasTecnicas.length === 0)}
         >
-          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar — Comercial não aplicável' : 'Confirmar envio comercial'}
+          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar â€” Comercial nÃ£o aplicÃ¡vel' : 'Confirmar envio comercial'}
         </Button>
       </div>
     </div>
   )
 }
 
-// ─── Modal principal ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Modal principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function RegistrarParadaModal({
   open, onClose, onSuccess, solicitacaoId, numero, defaultTab, propostasTecnicas,
@@ -436,15 +436,16 @@ export function RegistrarParadaModal({
   }, [open, defaultTab])
 
   const tabs: { key: 'tecnica' | 'comercial'; label: string }[] = [
-    { key: 'tecnica', label: 'Proposta Técnica' },
+    { key: 'tecnica', label: 'Proposta TÃ©cnica' },
     { key: 'comercial', label: 'Proposta Comercial' },
   ]
 
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Registrar Envio — Parada · ${numero}`}
+      title={`Registrar Envio â€” Parada Â· ${numero}`}
       wide
     >
       {/* Tabs */}
@@ -483,3 +484,4 @@ export function RegistrarParadaModal({
     </Modal>
   )
 }
+

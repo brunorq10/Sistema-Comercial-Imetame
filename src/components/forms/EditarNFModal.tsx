@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput } from '@/components/ui/Input'
 import { CurrencyInput } from '@/components/ui/Input'
@@ -73,16 +73,16 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
   // Agrupa subitems por contrato para o <select>
   const grupos = subitems.reduce<Record<string, { label: string; items: SubitemOpcao[] }>>((acc, s) => {
     const key = String(s.contrato.id)
-    if (!acc[key]) acc[key] = { label: `${s.contrato.indice} — ${s.contrato.cliente.nome}`, items: [] }
+    if (!acc[key]) acc[key] = { label: `${s.contrato.indice} â€” ${s.contrato.cliente.nome}`, items: [] }
     acc[key].items.push(s)
     return acc
   }, {})
 
   const handleSubmit = async () => {
-    if (!numeroNF.trim()) { setError('Informe o número da NF'); return }
-    if (!dataEmissao)     { setError('Data de emissão obrigatória'); return }
-    if (!dataVenc)        { setError('Data de vencimento obrigatória'); return }
-    if (numValorTotal <= 0) { setError('Valor Total NF inválido'); return }
+    if (!numeroNF.trim()) { setError('Informe o nÃºmero da NF'); return }
+    if (!dataEmissao)     { setError('Data de emissÃ£o obrigatÃ³ria'); return }
+    if (!dataVenc)        { setError('Data de vencimento obrigatÃ³ria'); return }
+    if (numValorTotal <= 0) { setError('Valor Total NF invÃ¡lido'); return }
     if (numPercentual <= 0 || numPercentual > 100) { setError('Percentual deve ser entre 0,01 e 100'); return }
     if (!subindiceId)     { setError('Selecione o sub-item'); return }
 
@@ -112,14 +112,15 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Editar NF · ${nf.numero_nf}`}
+      title={`Editar NF Â· ${nf.numero_nf}`}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Salvando...' : 'Salvar alterações'}
+            {loading ? 'Salvando...' : 'Salvar alteraÃ§Ãµes'}
           </Button>
         </>
       }
@@ -128,12 +129,12 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      <ModalSection>1. Identificação</ModalSection>
+      <ModalSection>1. IdentificaÃ§Ã£o</ModalSection>
       <div className="grid grid-cols-3 gap-2.5 mb-4">
-        <Field label="Nº NF" className="col-span-1">
+        <Field label="NÂº NF" className="col-span-1">
           <Input value={numeroNF} onChange={(e) => setNumeroNF(e.target.value)} placeholder="Ex: 000123" />
         </Field>
-        <Field label="Data de emissão">
+        <Field label="Data de emissÃ£o">
           <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
         </Field>
         <Field label="Data de vencimento">
@@ -146,7 +147,7 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
         <Field label="Valor Total NF (R$)">
           <CurrencyInput value={valorTotal} onChange={setValorTotal} />
         </Field>
-        <Field label="% Atribuído a este sub-item">
+        <Field label="% AtribuÃ­do a este sub-item">
           <Input
             type="number"
             min="0.01"
@@ -158,11 +159,11 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
           />
         </Field>
         <Field label="Valor Faturado (calculado)">
-          <AutoInput value={valorAtribuido > 0 ? formatCurrency(valorAtribuido) : '—'} />
+          <AutoInput value={valorAtribuido > 0 ? formatCurrency(valorAtribuido) : 'â€”'} />
         </Field>
       </div>
 
-      <ModalSection>3. Sub-item de referência</ModalSection>
+      <ModalSection>3. Sub-item de referÃªncia</ModalSection>
       <Field label="Sub-item do contrato">
         {loadingSubs ? (
           <p className="text-[11px] text-gray-400 py-1">Carregando subitems...</p>
@@ -173,7 +174,7 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
               <optgroup key={grupo.label} label={grupo.label}>
                 {grupo.items.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.contrato.indice}.{s.ordem} — {s.descricao}
+                    {s.contrato.indice}.{s.ordem} â€” {s.descricao}
                   </option>
                 ))}
               </optgroup>
@@ -184,9 +185,10 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
 
       {subindiceId !== String(nf.subindice.id) && (
         <div className="mt-2 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded">
-          ⚠ O sub-item foi alterado. O valor faturado será movido do sub-item anterior para o novo.
+          âš  O sub-item foi alterado. O valor faturado serÃ¡ movido do sub-item anterior para o novo.
         </div>
       )}
     </Modal>
   )
 }
+

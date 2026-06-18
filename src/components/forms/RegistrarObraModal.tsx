@@ -1,39 +1,39 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function today(): string { return new Date().toISOString().split('T')[0] }
 
-// ─── Categorias de peso ────────────────────────────────────────────────────────
+// â”€â”€â”€ Categorias de peso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CATEGORIAS = [
   { key: 'equipamentos' as const, label: 'Equipamentos' },
-  { key: 'tubulacoes' as const, label: 'Tubulações' },
+  { key: 'tubulacoes' as const, label: 'TubulaÃ§Ãµes' },
   { key: 'suportes' as const, label: 'Suportes' },
   { key: 'estruturas' as const, label: 'Estruturas e Plataformas' },
 ]
 type CatKey = typeof CATEGORIAS[number]['key']
 
-// ─── Especialidades de terceiros ───────────────────────────────────────────────
+// â”€â”€â”€ Especialidades de terceiros â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TERCEIROS = [
-  { key: 'eletrica' as const, apiKey: 'valor_eletrica', label: 'Elétrica' },
+  { key: 'eletrica' as const, apiKey: 'valor_eletrica', label: 'ElÃ©trica' },
   { key: 'isolamento' as const, apiKey: 'valor_isolamento', label: 'Isolamento' },
   { key: 'civil' as const, apiKey: 'valor_civil', label: 'Civil' },
-  { key: 'hidraulica' as const, apiKey: 'valor_hidraulica', label: 'Hidráulica' },
+  { key: 'hidraulica' as const, apiKey: 'valor_hidraulica', label: 'HidrÃ¡ulica' },
   { key: 'fibra' as const, apiKey: 'valor_fibra', label: 'Fibra' },
-  { key: 'tijolo' as const, apiKey: 'valor_tijolo_antiacido', label: 'Tijolo antiácido' },
+  { key: 'tijolo' as const, apiKey: 'valor_tijolo_antiacido', label: 'Tijolo antiÃ¡cido' },
   { key: 'outros' as const, apiKey: 'valor_outros_terceiros', label: 'Outros' },
 ]
 type TerceiroKey = typeof TERCEIROS[number]['key']
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tipos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface PropostaTecnicaObra {
   id: number
@@ -54,7 +54,7 @@ interface Props {
   propostasTecnicas: PropostaTecnicaObra[]
 }
 
-// ─── Toggle Sim / Não ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Toggle Sim / NÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SimNaoToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -64,7 +64,7 @@ function SimNaoToggle({ value, onChange }: { value: boolean; onChange: (v: boole
         onClick={() => onChange(false)}
         className={`px-3 py-1 transition-colors ${!value ? 'bg-gray-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
       >
-        Não
+        NÃ£o
       </button>
       <button
         type="button"
@@ -77,7 +77,7 @@ function SimNaoToggle({ value, onChange }: { value: boolean; onChange: (v: boole
   )
 }
 
-// ─── Tab Técnica ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tab TÃ©cnica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TabTecnicaProps {
   solicitacaoId: number
@@ -101,7 +101,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const numHh = Number(hhTotal) || 0
   const hhPorTon = pesoTotal > 0 && numHh > 0 ? (numHh / pesoTotal).toFixed(1) : null
   const percents = numPesos.map((p) =>
-    pesoTotal > 0 && p > 0 ? ((p / pesoTotal) * 100).toFixed(1) + '%' : '—',
+    pesoTotal > 0 && p > 0 ? ((p / pesoTotal) * 100).toFixed(1) + '%' : 'â€”',
   )
 
   const handleSubmit = async () => {
@@ -142,7 +142,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
     <div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>}
 
-      {/* Opção de não aplicável */}
+      {/* OpÃ§Ã£o de nÃ£o aplicÃ¡vel */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <input
           id="obra-tec-nao-aplicavel"
@@ -152,13 +152,13 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
           className="accent-green-primary"
         />
         <label htmlFor="obra-tec-nao-aplicavel" className="text-[12px] font-medium cursor-pointer text-gray-700">
-          Proposta técnica não aplicável para esta revisão
+          Proposta tÃ©cnica nÃ£o aplicÃ¡vel para esta revisÃ£o
         </label>
       </div>
 
       {naoAplicavel ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-3 rounded mb-4">
-          A proposta técnica será marcada como não aplicável. O registro será salvo e aguardará o envio da proposta comercial para finalizar a revisão.
+          A proposta tÃ©cnica serÃ¡ marcada como nÃ£o aplicÃ¡vel. O registro serÃ¡ salvo e aguardarÃ¡ o envio da proposta comercial para finalizar a revisÃ£o.
         </div>
       ) : (
         <>
@@ -191,10 +191,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
                 <tr className="bg-[#EEF7EE] border-t-2 border-[#C8E6C9]">
                   <td className="px-3 py-2 text-[11px] font-bold text-green-dark">Total</td>
                   <td className="px-3 py-2">
-                    <AutoInput value={pesoTotal > 0 ? pesoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '—'} />
+                    <AutoInput value={pesoTotal > 0 ? pesoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : 'â€”'} />
                   </td>
                   <td className="px-3 py-2">
-                    <AutoInput value={pesoTotal > 0 ? '100%' : '—'} />
+                    <AutoInput value={pesoTotal > 0 ? '100%' : 'â€”'} />
                   </td>
                 </tr>
               </tbody>
@@ -206,8 +206,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             <Field label="HH Total *">
               <IntegerInput placeholder="Ex: 15.000" value={hhTotal} onChange={setHhTotal} />
             </Field>
-            <Field label="HH/ton (automático)">
-              <AutoInput value={hhPorTon ? `${hhPorTon} HH/t` : '—'} />
+            <Field label="HH/ton (automÃ¡tico)">
+              <AutoInput value={hhPorTon ? `${hhPorTon} HH/t` : 'â€”'} />
             </Field>
           </div>
 
@@ -216,7 +216,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             <Field label="Data base">
               <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
             </Field>
-            <Field label="Data de envio — técnica">
+            <Field label="Data de envio â€” tÃ©cnica">
               <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
             </Field>
           </div>
@@ -224,16 +224,16 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+        <ModalCancelButton disabled={loading} />
         <Button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar — Técnica não aplicável' : 'Confirmar envio técnica'}
+          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar â€” TÃ©cnica nÃ£o aplicÃ¡vel' : 'Confirmar envio tÃ©cnica'}
         </Button>
       </div>
     </div>
   )
 }
 
-// ─── Tab Comercial ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tab Comercial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TabComercialProps {
   solicitacaoId: number
@@ -286,7 +286,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
   const handleSubmit = async () => {
     if (!naoAplicavel) {
-      if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
+      if (!tecnicaId) { setError('Selecione a revisÃ£o tÃ©cnica de referÃªncia'); return }
       if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor da Montagem'); return }
       if (!dataBase) { setError('Informe a Data base do contrato'); return }
       if (!dataEnvio) { setError('Informe a data de envio'); return }
@@ -328,7 +328,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
     <div>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>}
 
-      {/* Opção de não aplicável */}
+      {/* OpÃ§Ã£o de nÃ£o aplicÃ¡vel */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <input
           id="obra-com-nao-aplicavel"
@@ -338,25 +338,25 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
           className="accent-green-primary"
         />
         <label htmlFor="obra-com-nao-aplicavel" className="text-[12px] font-medium cursor-pointer text-gray-700">
-          Proposta comercial não aplicável para esta revisão
+          Proposta comercial nÃ£o aplicÃ¡vel para esta revisÃ£o
         </label>
       </div>
 
       {naoAplicavel ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-3 rounded mb-4">
-          A proposta comercial será marcada como não aplicável. A revisão será finalizada automaticamente.
+          A proposta comercial serÃ¡ marcada como nÃ£o aplicÃ¡vel. A revisÃ£o serÃ¡ finalizada automaticamente.
         </div>
       ) : (
         <>
-      {/* Bloco de referência técnica */}
+      {/* Bloco de referÃªncia tÃ©cnica */}
       {propostasTecnicas.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">
-          Nenhuma proposta técnica registrada. Registre a técnica primeiro.
+          Nenhuma proposta tÃ©cnica registrada. Registre a tÃ©cnica primeiro.
         </div>
       ) : (
         <>
-          <ModalSection>Revisão técnica de referência</ModalSection>
-          <Field label="Revisão técnica *" className="mb-3">
+          <ModalSection>RevisÃ£o tÃ©cnica de referÃªncia</ModalSection>
+          <Field label="RevisÃ£o tÃ©cnica *" className="mb-3">
             <select
               value={tecnicaId}
               onChange={(e) => setTecnicaId(e.target.value)}
@@ -365,7 +365,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
               <option value="">Selecione...</option>
               {propostasTecnicas.map((pt) => (
                 <option key={pt.id} value={pt.id}>
-                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' — N/A' : ''}
+                  {formatRev(pt.versao)}{pt === propostasTecnicas[0] ? ' (mais recente)' : ''}{pt.nao_aplicavel ? ' â€” N/A' : ''}
                 </option>
               ))}
             </select>
@@ -374,27 +374,27 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
             <div className="bg-[#F9FBF9] border border-[#C8E6C9] rounded p-3 mb-4 text-[11px]">
               {tecnicaSel.nao_aplicavel && (
                 <p className="text-amber-700 text-[10px] font-medium mb-2 pb-2 border-b border-amber-200">
-                  ⚠ Proposta técnica marcada como N/A — informe os valores comerciais normalmente.
+                  âš  Proposta tÃ©cnica marcada como N/A â€” informe os valores comerciais normalmente.
                 </p>
               )}
               <div className="grid grid-cols-4 gap-3">
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">Peso Total</p>
                   <p className="font-bold text-auto-value">
-                    {pesoTotalRef ? pesoTotalRef.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t' : '—'}
+                    {pesoTotalRef ? pesoTotalRef.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' t' : 'â€”'}
                   </p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">HH Total</p>
-                  <p className="font-bold text-auto-value">{hhTotalRef?.toLocaleString('pt-BR') ?? '—'}</p>
+                  <p className="font-bold text-auto-value">{hhTotalRef?.toLocaleString('pt-BR') ?? 'â€”'}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 uppercase">HH/ton</p>
-                  <p className="font-bold text-auto-value">{hhPorTonRef ? hhPorTonRef + ' HH/t' : '—'}</p>
+                  <p className="font-bold text-auto-value">{hhPorTonRef ? hhPorTonRef + ' HH/t' : 'â€”'}</p>
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 uppercase">Env. Técnica</p>
-                  <p className="font-bold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : '—'}</p>
+                  <p className="text-[9px] text-gray-400 uppercase">Env. TÃ©cnica</p>
+                  <p className="font-bold text-auto-value">{tecnicaSel.data_envio ? formatDate(tecnicaSel.data_envio) : 'â€”'}</p>
                 </div>
               </div>
             </div>
@@ -411,11 +411,11 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         <div className="bg-auto-bg border border-auto-value/20 rounded p-3 mb-4 grid grid-cols-2 gap-3 text-[11px]">
           <div>
             <p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/kg Montagem</p>
-            <p className="font-bold text-auto-value">{rsPorKgMontagem ? formatCurrency(rsPorKgMontagem) : '—'}</p>
+            <p className="font-bold text-auto-value">{rsPorKgMontagem ? formatCurrency(rsPorKgMontagem) : 'â€”'}</p>
           </div>
           <div>
             <p className="text-[9px] text-gray-400 uppercase mb-0.5">R$/HH Montagem</p>
-            <p className="font-bold text-auto-value">{rsPorHhMontagem ? formatCurrency(rsPorHhMontagem) : '—'}</p>
+            <p className="font-bold text-auto-value">{rsPorHhMontagem ? formatCurrency(rsPorHhMontagem) : 'â€”'}</p>
           </div>
         </div>
       )}
@@ -449,7 +449,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
               <tr className="bg-[#EEF7EE] border-t-2 border-[#C8E6C9]">
                 <td className="px-3 py-2 text-[11px] font-bold text-green-dark">Total Terceiros</td>
                 <td className="px-3 py-2 text-[11px] font-bold text-auto-value">
-                  {numTerceiros > 0 ? formatCurrency(numTerceiros) : '—'}
+                  {numTerceiros > 0 ? formatCurrency(numTerceiros) : 'â€”'}
                 </td>
               </tr>
             </tbody>
@@ -457,24 +457,24 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         </div>
       )}
 
-      {/* Fabricações */}
+      {/* FabricaÃ§Ãµes */}
       <div className="flex items-center justify-between mb-3">
-        <ModalSection className="mb-0">Fabricações</ModalSection>
+        <ModalSection className="mb-0">FabricaÃ§Ãµes</ModalSection>
         <SimNaoToggle value={possuiFabricacao} onChange={setPossuiFabricacao} />
       </div>
       {possuiFabricacao && (
         <div className="mb-4">
           <div className="grid grid-cols-2 gap-2.5 mb-2">
-            <Field label="Valor das Fabricações (R$)">
+            <Field label="Valor das FabricaÃ§Ãµes (R$)">
               <CurrencyInput value={valorFabricacao} onChange={setValorFabricacao} />
             </Field>
-            <Field label="Peso das Fabricações (t)">
+            <Field label="Peso das FabricaÃ§Ãµes (t)">
               <CurrencyInput value={pesoFabricacao} onChange={setPesoFabricacao} />
             </Field>
           </div>
           {rsPorKgFab && (
             <div className="bg-auto-bg border border-auto-value/20 rounded px-3 py-2 text-[11px]">
-              <span className="text-[9px] text-gray-400 uppercase mr-2">R$/kg Fabricações</span>
+              <span className="text-[9px] text-gray-400 uppercase mr-2">R$/kg FabricaÃ§Ãµes</span>
               <span className="font-bold text-auto-value">{formatCurrency(rsPorKgFab)}</span>
             </div>
           )}
@@ -486,22 +486,22 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         <div className="grid grid-cols-3 gap-4 mb-2">
           <div>
             <p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">Valor Global</p>
-            <p className="text-[15px] font-bold">{valorGlobal > 0 ? formatCurrency(valorGlobal) : '—'}</p>
+            <p className="text-[15px] font-bold">{valorGlobal > 0 ? formatCurrency(valorGlobal) : 'â€”'}</p>
           </div>
           <div>
             <p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/kg Global</p>
-            <p className="text-[15px] font-bold">{rsPorKgGlobal ? formatCurrency(rsPorKgGlobal) : '—'}</p>
+            <p className="text-[15px] font-bold">{rsPorKgGlobal ? formatCurrency(rsPorKgGlobal) : 'â€”'}</p>
           </div>
           <div>
             <p className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">R$/HH Global</p>
-            <p className="text-[15px] font-bold">{rsPorHhGlobal ? formatCurrency(rsPorHhGlobal) : '—'}</p>
+            <p className="text-[15px] font-bold">{rsPorHhGlobal ? formatCurrency(rsPorHhGlobal) : 'â€”'}</p>
           </div>
         </div>
         {valorGlobal > 0 && (
           <div className="text-[10px] opacity-70 flex gap-4 pt-2 border-t border-white/20">
             <span>Montagem: {formatCurrency(numMontagem)}</span>
             {possuiTerceiros && numTerceiros > 0 && <span>Terceiros: {formatCurrency(numTerceiros)}</span>}
-            {possuiFabricacao && numFabricacao > 0 && <span>Fabricações: {formatCurrency(numFabricacao)}</span>}
+            {possuiFabricacao && numFabricacao > 0 && <span>FabricaÃ§Ãµes: {formatCurrency(numFabricacao)}</span>}
           </div>
         )}
       </div>
@@ -512,23 +512,23 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
 
       {/* Data de envio */}
       <ModalSection>Data de Envio</ModalSection>
-      <Field label="Data de envio — comercial" className="mb-5">
+      <Field label="Data de envio â€” comercial" className="mb-5">
         <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
       </Field>
         </>
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+        <ModalCancelButton disabled={loading} />
         <Button onClick={handleSubmit} disabled={loading || (!naoAplicavel && propostasTecnicas.length === 0)}>
-          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar — Comercial não aplicável' : 'Confirmar envio comercial'}
+          {loading ? 'Salvando...' : naoAplicavel ? 'Confirmar â€” Comercial nÃ£o aplicÃ¡vel' : 'Confirmar envio comercial'}
         </Button>
       </div>
     </div>
   )
 }
 
-// ─── Modal principal ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Modal principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function RegistrarObraModal({
   open, onClose, onSuccess, solicitacaoId, numero, defaultTab, propostasTecnicas,
@@ -542,8 +542,9 @@ export function RegistrarObraModal({
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={`Registrar Envio — Obra · ${numero}`}
+      title={`Registrar Envio â€” Obra Â· ${numero}`}
       wide
     >
       <div className="flex border-b border-gray-200 mb-4 -mt-1">
@@ -558,7 +559,7 @@ export function RegistrarObraModal({
                 : 'border-transparent text-gray-400 hover:text-gray-600')
             }
           >
-            {t === 'tecnica' ? 'Proposta Técnica' : 'Proposta Comercial'}
+            {t === 'tecnica' ? 'Proposta TÃ©cnica' : 'Proposta Comercial'}
           </button>
         ))}
       </div>
@@ -577,3 +578,4 @@ export function RegistrarObraModal({
     </Modal>
   )
 }
+

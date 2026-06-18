@@ -1,7 +1,7 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { formatCurrency } from '@/lib/utils'
@@ -90,12 +90,13 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
   return (
     <Modal
       open={open}
+      confirmClose
       onClose={onClose}
-      title={isEdit ? `Editar Acordo · ${editando!.numero}` : 'Novo Acordo'}
+      title={isEdit ? `Editar Acordo Â· ${editando!.numero}` : 'Novo Acordo'}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Salvando...' : isEdit ? 'Salvar' : 'Criar Acordo'}
           </Button>
@@ -116,9 +117,9 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           </Select>
         </Field>
 
-        <Field label="Descrição / Escopo" className="col-span-2">
+        <Field label="DescriÃ§Ã£o / Escopo" className="col-span-2">
           <Input
-            placeholder="Ex: Manutenção mecânica 2026"
+            placeholder="Ex: ManutenÃ§Ã£o mecÃ¢nica 2026"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
@@ -136,7 +137,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           )}
         </Field>
 
-        <Field label="Ano de vigência">
+        <Field label="Ano de vigÃªncia">
           <Input
             type="number"
             placeholder="Ex: 2026"
@@ -145,7 +146,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           />
         </Field>
 
-        <Field label="Prev. Anos Seguintes (R$) — opcional">
+        <Field label="Prev. Anos Seguintes (R$) â€” opcional">
           <Input
             type="number"
             placeholder="Ex: 3000000"
@@ -159,7 +160,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
 
         <div />
 
-        <Field label="Data de início">
+        <Field label="Data de inÃ­cio">
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
         </Field>
         <Field label="Data de fim">
@@ -169,3 +170,4 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
     </Modal>
   )
 }
+

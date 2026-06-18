@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Modal, ModalSection } from '@/components/ui/Modal'
+import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, CurrencyInput } from '@/components/ui/Input'
 import type { ContratoItem } from '@/types'
@@ -371,11 +371,12 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     <Modal
       open={open}
       onClose={handleClose}
+      confirmClose
       title={isEdit ? `Editar Contrato · ${editando!.indice}` : 'Novo Lançamento — Contrato'}
       wide
       footer={
         <>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>Cancelar</Button>
+          <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Salvando...' : 'Salvar contrato'}
           </Button>
