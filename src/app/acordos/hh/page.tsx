@@ -979,6 +979,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
     responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
+      datalabels: { display: false },
       tooltip: {
         mode: 'index' as const,
         intersect: false,
@@ -1006,9 +1007,9 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const makeSeries = (monthly: boolean) => ({
     labels,
     datasets: [
-      { label: 'Previsto',  data: monthly ? mesData.map(m => m.previsto)  : cumPrev, borderColor: '#185FA5', backgroundColor: 'transparent', borderDash: [6,3], tension: 0.4, pointRadius: 4, pointBackgroundColor: '#185FA5', spanGaps: true  },
-      { label: 'Planejado', data: monthly ? mesData.map(m => m.planejado) : cumPlan, borderColor: '#BA7517', backgroundColor: 'transparent', borderDash: [4,2], tension: 0.4, pointRadius: 4, pointBackgroundColor: '#BA7517', spanGaps: true  },
-      { label: 'Realizado', data: monthly ? mesData.map(m => m.realizado) : cumReal, borderColor: '#16A34A', backgroundColor: 'transparent', tension: 0.4, pointRadius: 4, pointBackgroundColor: '#16A34A', spanGaps: false },
+      { label: 'Previsto',  data: monthly ? mesData.map(m => m.previsto)  : cumPrev, borderColor: '#185FA5', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [6,3], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#185FA5', spanGaps: true  },
+      { label: 'Planejado', data: monthly ? mesData.map(m => m.planejado) : cumPlan, borderColor: '#BA7517', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,2], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#BA7517', spanGaps: true  },
+      { label: 'Realizado', data: monthly ? mesData.map(m => m.realizado) : cumReal, borderColor: '#16A34A', backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#16A34A', spanGaps: false },
     ],
   })
 
@@ -1164,9 +1165,9 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
 
               {/* ── Tabela ── */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" style={{ maxHeight: '556px', overflowY: 'auto' }}>
                   <table className="w-full text-[12px]">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                       <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
                         <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Mês</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto</th>
@@ -1212,7 +1213,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                         )
                       })}
                     </tbody>
-                    <tfoot>
+                    <tfoot className="sticky bottom-0 z-10">
                       <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
                         <td className="px-4 py-3 text-[11px] uppercase tracking-wide text-gray-700">Total</td>
                         <td className="px-4 py-3 text-right text-[#185FA5]">{loc(totPrev)}</td>

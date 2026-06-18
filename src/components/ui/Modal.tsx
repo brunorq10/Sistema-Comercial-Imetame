@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ModalProps {
@@ -11,31 +11,30 @@ interface ModalProps {
   footer?: React.ReactNode
   wide?: boolean
   extraWide?: boolean
+  hasChanges?: boolean
 }
 
-export function Modal({ open, onClose, title, children, footer, wide, extraWide }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const mousedownTargetRef = useRef<EventTarget | null>(null)
+export function Modal({ open, onClose, title, children, footer, wide, extraWide, hasChanges }: ModalProps) {
+  const [confirmingClose, setConfirmingClose] = useState(false)
+  const prevOpen = useRef(open)
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    if (open) document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
+  if (open !== prevOpen.current) {
+    prevOpen.current = open
+    if (!open) setConfirmingClose(false)
+  }
 
   if (!open) return null
 
+  const handleClose = () => {
+    if (hasChanges) {
+      setConfirmingClose(true)
+    } else {
+      onClose()
+    }
+  }
+
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
-      onMouseDown={(e) => { mousedownTargetRef.current = e.target }}
-      onClick={(e) => {
-        if (e.target === overlayRef.current && mousedownTargetRef.current === overlayRef.current) onClose()
-      }}
-    >
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <div
         className={cn(
           'bg-white rounded-lg flex flex-col shadow-2xl max-h-[92vh] overflow-hidden',
@@ -45,13 +44,33 @@ export function Modal({ open, onClose, title, children, footer, wide, extraWide 
         <div className="bg-green-primary text-white px-[18px] py-[13px] font-bold text-[13px] flex items-center justify-between flex-shrink-0">
           <span>{title}</span>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-white/80 hover:text-white text-lg leading-none"
             aria-label="Fechar"
           >
             ✕
           </button>
         </div>
+
+        {confirmingClose && (
+          <div className="bg-amber-50 border-b border-amber-200 px-[18px] py-3 flex items-center justify-between gap-3 flex-shrink-0">
+            <p className="text-[12px] text-amber-800 font-medium">Tem certeza que deseja sair? As alterações não salvas serão perdidas.</p>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={() => setConfirmingClose(false)}
+                className="px-3 py-1.5 text-[11px] border border-amber-300 rounded text-amber-800 hover:bg-amber-100 transition-colors"
+              >
+                Continuar editando
+              </button>
+              <button
+                onClick={onClose}
+                className="px-3 py-1.5 text-[11px] bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Sair sem salvar
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="p-[18px] overflow-y-auto flex-1">{children}</div>
 

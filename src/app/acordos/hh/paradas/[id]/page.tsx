@@ -95,8 +95,13 @@ function dayLabel(dateStr: string): string {
 function n(v: string): number {
   if (!v || v.trim() === '') return 0
   let s = v.trim()
-  // BR format: comma as decimal separator (e.g. "1.234,5" or "123,4")
-  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.')
+  if (s.includes(',')) {
+    // BR decimal: "1.234,5" or "150.456,99"
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+    // BR thousands without decimals: "150.456" or "1.234.567"
+    s = s.replace(/\./g, '')
+  }
   const r = parseFloat(s)
   return isNaN(r) ? 0 : r
 }

@@ -467,7 +467,7 @@ export default function DashboardAcordosPage() {
           </div>
 
           {/* ── Linha 3: Gauge + Barras horizontais ───────────────────────── */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
               <h3 className="text-[12px] font-semibold text-gray-700 mb-4 text-center uppercase tracking-wide">
                 % Faturado Geral — {data.anoAtual}

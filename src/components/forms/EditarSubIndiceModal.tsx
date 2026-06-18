@@ -252,7 +252,6 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     if (vtNum < jaFaturadoTotal - 0.01) {
       setError(`O valor total (R$ ${fmt(vtNum)}) não pode ser menor que o já faturado (R$ ${fmt(jaFaturadoTotal)})`); return
     }
-    const disponivel = vtNum - jaFaturadoTotal
 
     const somaTodosMeses = anosOrdenados.reduce((acc, a) => {
       const section = anos[a]
@@ -260,13 +259,8 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       return acc + MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
     }, 0)
 
-    if (somaTodosMeses > 0.01) {
-      if (Math.abs(somaTodosMeses - disponivel) > 0.01) {
-        setError(`A soma de todos os meses (R$ ${fmt(somaTodosMeses)}) deve ser igual ao disponível para previsão (R$ ${fmt(disponivel)})`); return
-      }
-    } else if (disponivel > 0.01) {
-      setError(`Previsão mensal obrigatória — preencha ao menos um mês (disponível: R$ ${fmt(disponivel)})`)
-      return
+    if (somaTodosMeses + jaFaturadoTotal > vtNum + 0.01) {
+      setError(`A soma da previsão (R$ ${fmt(somaTodosMeses)}) + já faturado (R$ ${fmt(jaFaturadoTotal)}) ultrapassa o valor total (R$ ${fmt(vtNum)})`); return
     }
 
     setLoading(true); setError(null)

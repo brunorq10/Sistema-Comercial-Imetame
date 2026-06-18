@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal, ModalSection } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, CurrencyInput } from '@/components/ui/Input'
@@ -70,7 +70,7 @@ export function RegistrarComercialModal({
 
   const resetForm = () => {
     setNaoAplicavel(propostasTecnicas.length === 0)
-    setTecnicaId('')
+    setTecnicaId(propostasTecnicas[0] ? String(propostasTecnicas[0].id) : '')
     setDataEnvio(new Date().toISOString().split('T')[0])
     setValorMontagem('')
     setPossuiTerceiros(false)
@@ -80,6 +80,8 @@ export function RegistrarComercialModal({
     setDataBase('')
     setError(null)
   }
+
+  useEffect(() => { if (open) resetForm() }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async () => {
     if (naoAplicavel) {

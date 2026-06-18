@@ -67,6 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     )
   }
 
+  const resultado_anterior = latestComercial.resultado
   const result = await prisma.$transaction(async (tx) => {
     const comercial = await tx.propostaComercial.update({
       where: { id: latestComercial.id },
@@ -83,6 +84,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     return comercial
   })
+
+  // Log resultado change
+  if (resultado_anterior !== parsed.data.resultado) {
+    const RESULTADO_LABELS: Record<string, string> = { AGUARDANDO: 'Aguardando', GANHOU: 'Ganhou', PERDEU: 'Perdeu' }
+    const msg = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
+      ? `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]} (${parsed.data.motivo_perda})`
+      : `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]}`
+    await prisma.solicitacaoInfo.create({
+      data: {
+        solicitacao_id: id,
+        data: new Date(),
+        comentario: `[Resultado Rev${String(latestComercial.versao).padStart(2,'0')}] ${msg}`,
+        versao: latestComercial.versao,
+        created_by: Number(session.user.id),
+      },
+    })
+  }
 
   // RN-50: Notificar GESTAO_ACORDOS quando resultado = GANHOU (não-bloqueante)
   if (parsed.data.resultado === 'GANHOU') {
@@ -158,7 +176,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const maxVersaoCom = sol.propostas_comerciais[0]?.versao ?? 0
   const maxVersaoTecnica = sol.propostas_tecnicas[0]?.versao ?? 0
   const revisaoEsperada = Math.max(sol.revisao_esperada, maxVersaoTecnica)
-  const versaoFinal = maxVersaoCom < revisaoEsperada ? revisaoEsperada : maxVersaoCom + 1
+  // If a comercial already exists for the current revision, update it (don't create a new revision).
+  const existingComForRevision = sol.propostas_comerciais.find(pc => pc.versao === revisaoEsperada) ?? null
+  const versaoFinal = maxVersaoCom < revisaoEsperada ? revisaoEsperada : revisaoEsperada
 
   let valorTotalGeral: number | null = null
   if (!naoAplicavel) {
@@ -174,33 +194,37 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
+  const comData = {
+    proposta_tecnica_id: tecnicaId,
+    nao_aplicavel: naoAplicavel,
+    valor_montagem_mecanica: naoAplicavel ? null : (d.valor_montagem_mecanica ?? null),
+    possui_terceiros: naoAplicavel ? false : d.possui_terceiros,
+    valor_eletrica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_eletrica ?? null) : null,
+    valor_isolamento: (!naoAplicavel && d.possui_terceiros) ? (d.valor_isolamento ?? null) : null,
+    valor_civil: (!naoAplicavel && d.possui_terceiros) ? (d.valor_civil ?? null) : null,
+    valor_hidraulica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_hidraulica ?? null) : null,
+    valor_fibra: (!naoAplicavel && d.possui_terceiros) ? (d.valor_fibra ?? null) : null,
+    valor_tijolo_antiacido: (!naoAplicavel && d.possui_terceiros) ? (d.valor_tijolo_antiacido ?? null) : null,
+    valor_outros_terceiros: (!naoAplicavel && d.possui_terceiros) ? (d.valor_outros_terceiros ?? null) : null,
+    possui_fabricacao: naoAplicavel ? false : d.possui_fabricacao,
+    valor_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.valor_fabricacao ?? null) : null,
+    peso_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.peso_fabricacao ?? null) : null,
+    valor_terceiros: naoAplicavel ? null : (d.valor_terceiros ?? null),
+    valor_total: valorTotalGeral,
+    data_base: d.data_base ? new Date(d.data_base) : null,
+    data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
+  }
+
   try {
     const [proposta] = await prisma.$transaction([
-      prisma.propostaComercial.create({
-        data: {
-          solicitacao_id: id,
-          proposta_tecnica_id: tecnicaId,
-          versao: versaoFinal,
-          nao_aplicavel: naoAplicavel,
-          valor_montagem_mecanica: naoAplicavel ? null : (d.valor_montagem_mecanica ?? null),
-          possui_terceiros: naoAplicavel ? false : d.possui_terceiros,
-          valor_eletrica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_eletrica ?? null) : null,
-          valor_isolamento: (!naoAplicavel && d.possui_terceiros) ? (d.valor_isolamento ?? null) : null,
-          valor_civil: (!naoAplicavel && d.possui_terceiros) ? (d.valor_civil ?? null) : null,
-          valor_hidraulica: (!naoAplicavel && d.possui_terceiros) ? (d.valor_hidraulica ?? null) : null,
-          valor_fibra: (!naoAplicavel && d.possui_terceiros) ? (d.valor_fibra ?? null) : null,
-          valor_tijolo_antiacido: (!naoAplicavel && d.possui_terceiros) ? (d.valor_tijolo_antiacido ?? null) : null,
-          valor_outros_terceiros: (!naoAplicavel && d.possui_terceiros) ? (d.valor_outros_terceiros ?? null) : null,
-          possui_fabricacao: naoAplicavel ? false : d.possui_fabricacao,
-          valor_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.valor_fabricacao ?? null) : null,
-          peso_fabricacao: (!naoAplicavel && d.possui_fabricacao) ? (d.peso_fabricacao ?? null) : null,
-          valor_terceiros: naoAplicavel ? null : (d.valor_terceiros ?? null),
-          valor_total: valorTotalGeral,
-          data_base: d.data_base ? new Date(d.data_base) : null,
-          data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
-          created_by: Number(session.user.id),
-        },
-      }),
+      existingComForRevision
+        ? prisma.propostaComercial.update({
+            where: { id: existingComForRevision.id },
+            data: comData,
+          })
+        : prisma.propostaComercial.create({
+            data: { solicitacao_id: id, versao: versaoFinal, ...comData, created_by: Number(session.user.id) },
+          }),
       // Submitting comercial (normal or N/A) always finalizes the revision
       prisma.solicitacao.update({
         where: { id },
@@ -283,6 +307,35 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data_envio: d.data_envio ? new Date(d.data_envio) : latest.data_envio,
     },
   })
+
+  // Log changes
+  const fmtVal = (v: number | null | undefined) => v != null ? `R$${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'
+  const comDiffs: string[] = []
+  const numPairs: [string, number | null, number | null][] = [
+    ['Valor Mont.', latest.valor_montagem_mecanica ? Number(latest.valor_montagem_mecanica) : null, d.valor_montagem_mecanica ?? null],
+    ['Total Geral', latest.valor_total ? Number(latest.valor_total) : null, valorTotalGeral],
+    ['Val. Terceiros', latest.valor_terceiros ? Number(latest.valor_terceiros) : null, d.valor_terceiros ?? null],
+    ['Val. Fabricação', latest.valor_fabricacao ? Number(latest.valor_fabricacao) : null, d.possui_fabricacao ? (d.valor_fabricacao ?? null) : null],
+  ]
+  for (const [label, before, after] of numPairs) {
+    const a = before != null ? Math.round(Number(before) * 100) : null
+    const b = after  != null ? Math.round(Number(after)  * 100) : null
+    if (a !== b) comDiffs.push(`${label}: ${fmtVal(before)} → ${fmtVal(after)}`)
+  }
+  if ((latest.data_envio?.toISOString().split('T')[0] ?? '') !== (d.data_envio ?? ''))
+    comDiffs.push(`Data Envio: ${latest.data_envio?.toISOString().split('T')[0] ?? '—'} → ${d.data_envio ?? '—'}`)
+
+  if (comDiffs.length > 0) {
+    await prisma.solicitacaoInfo.create({
+      data: {
+        solicitacao_id: id,
+        data: new Date(),
+        comentario: `[Edição Comercial Rev${String(latest.versao).padStart(2,'0')}] ${comDiffs.join(' | ')}`,
+        versao: latest.versao,
+        created_by: Number(session.user.id),
+      },
+    })
+  }
 
   return NextResponse.json({ data: proposta, error: null })
 }

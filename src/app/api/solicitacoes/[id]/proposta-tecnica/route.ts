@@ -80,31 +80,43 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const maxVersaoTecnica = sol.propostas_tecnicas[0]?.versao ?? 0
   const revisaoEsperada = Math.max(sol.revisao_esperada, maxVersaoTecnica)
-  const versaoFinal = maxVersaoTecnica < revisaoEsperada ? revisaoEsperada : maxVersaoTecnica + 1
+  // If a técnica already exists for the current revision, update it (don't create a new revision).
+  // Only "Nova Revisão" (via /nova-revisao) is allowed to bump the revision number.
+  const existingForRevision = sol.propostas_tecnicas.find(pt => pt.versao === revisaoEsperada) ?? null
+  const versaoFinal = maxVersaoTecnica < revisaoEsperada ? revisaoEsperada : revisaoEsperada
+
+  const tecData = {
+    nao_aplicavel: naoAplicavel,
+    hh_direto: naoAplicavel ? null : (d.hh_direto ?? null),
+    hh_indireto: naoAplicavel ? null : (d.hh_indireto ?? null),
+    hh_total: naoAplicavel ? null : resolveHhTotal(d),
+    peso_montagem: naoAplicavel ? null : resolvePesoMontagem(d),
+    peso_equipamentos: naoAplicavel ? null : (d.peso_equipamentos ?? null),
+    peso_tubulacoes: naoAplicavel ? null : (d.peso_tubulacoes ?? null),
+    peso_suportes: naoAplicavel ? null : (d.peso_suportes ?? null),
+    peso_estruturas: naoAplicavel ? null : (d.peso_estruturas ?? null),
+    efetivo_pico: naoAplicavel ? null : (d.efetivo_pico ?? null),
+    dias_parada: naoAplicavel ? null : (d.dias_parada ?? null),
+    turno: naoAplicavel ? null : (d.turno ?? null),
+    finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
+    data_base: d.data_base ? new Date(d.data_base) : null,
+    data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
+  }
 
   try {
-    const proposta = await prisma.propostaTecnica.create({
-      data: {
-        solicitacao_id: id,
-        versao: versaoFinal,
-        nao_aplicavel: naoAplicavel,
-        hh_direto: naoAplicavel ? null : (d.hh_direto ?? null),
-        hh_indireto: naoAplicavel ? null : (d.hh_indireto ?? null),
-        hh_total: naoAplicavel ? null : resolveHhTotal(d),
-        peso_montagem: naoAplicavel ? null : resolvePesoMontagem(d),
-        peso_equipamentos: naoAplicavel ? null : (d.peso_equipamentos ?? null),
-        peso_tubulacoes: naoAplicavel ? null : (d.peso_tubulacoes ?? null),
-        peso_suportes: naoAplicavel ? null : (d.peso_suportes ?? null),
-        peso_estruturas: naoAplicavel ? null : (d.peso_estruturas ?? null),
-        efetivo_pico: naoAplicavel ? null : (d.efetivo_pico ?? null),
-        dias_parada: naoAplicavel ? null : (d.dias_parada ?? null),
-        turno: naoAplicavel ? null : (d.turno ?? null),
-        finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
-        data_base: d.data_base ? new Date(d.data_base) : null,
-        data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
-        created_by: Number(session.user.id),
-      },
-    })
+    const proposta = existingForRevision
+      ? await prisma.propostaTecnica.update({
+          where: { id: existingForRevision.id },
+          data: tecData,
+        })
+      : await prisma.propostaTecnica.create({
+          data: {
+            solicitacao_id: id,
+            versao: versaoFinal,
+            ...tecData,
+            created_by: Number(session.user.id),
+          },
+        })
 
     const novoStatus = sol.status === 'AGUARDANDO_ANALISE' ? 'EM_ELABORACAO' : undefined
     if (novoStatus) {
@@ -175,6 +187,55 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data_envio: d.data_envio ? new Date(d.data_envio) : latest.data_envio,
     },
   })
+
+  // Log changes in SolicitacaoInfo
+  type NumField = { label: string; before: number | null; after: number | null }
+  type StrField = { label: string; before: string | null; after: string | null }
+  type BoolField = { label: string; before: boolean | null; after: boolean | null }
+  const numFields: NumField[] = [
+    { label: 'HH Direto',   before: latest.hh_direto,   after: d.hh_direto ?? null },
+    { label: 'HH Indireto', before: latest.hh_indireto, after: d.hh_indireto ?? null },
+    { label: 'HH Total',    before: latest.hh_total,    after: resolveHhTotal(d) },
+    { label: 'Efetivo Pico', before: latest.efetivo_pico, after: d.efetivo_pico ?? null },
+    { label: 'Dias Parada',  before: latest.dias_parada,  after: d.dias_parada ?? null },
+    { label: 'Peso Mont. (t)', before: latest.peso_montagem ? Number(latest.peso_montagem) : null, after: resolvePesoMontagem(d) },
+    { label: 'Peso Equip. (t)', before: latest.peso_equipamentos ? Number(latest.peso_equipamentos) : null, after: d.peso_equipamentos ?? null },
+    { label: 'Peso Tub. (t)',   before: latest.peso_tubulacoes  ? Number(latest.peso_tubulacoes)  : null, after: d.peso_tubulacoes  ?? null },
+    { label: 'Peso Sup. (t)',   before: latest.peso_suportes    ? Number(latest.peso_suportes)    : null, after: d.peso_suportes    ?? null },
+    { label: 'Peso Estr. (t)',  before: latest.peso_estruturas  ? Number(latest.peso_estruturas)  : null, after: d.peso_estruturas  ?? null },
+  ]
+  const strFields: StrField[] = [
+    { label: 'Turno', before: latest.turno, after: d.turno ?? null },
+    { label: 'Data Envio Tec.', before: latest.data_envio?.toISOString().split('T')[0] ?? null, after: d.data_envio ?? null },
+  ]
+  const boolFields: BoolField[] = [
+    { label: 'Finais de Semana', before: latest.finais_de_semana, after: d.finais_de_semana ?? null },
+  ]
+
+  const diffs: string[] = []
+  for (const f of numFields) {
+    const a = f.before != null ? Number(f.before) : null
+    const b = f.after != null ? Number(f.after) : null
+    if (a !== b) diffs.push(`${f.label}: ${a ?? '—'} → ${b ?? '—'}`)
+  }
+  for (const f of strFields) {
+    if ((f.before ?? '') !== (f.after ?? '')) diffs.push(`${f.label}: ${f.before ?? '—'} → ${f.after ?? '—'}`)
+  }
+  for (const f of boolFields) {
+    if (f.before !== f.after) diffs.push(`${f.label}: ${f.before ? 'Sim' : 'Não'} → ${f.after ? 'Sim' : 'Não'}`)
+  }
+
+  if (diffs.length > 0) {
+    await prisma.solicitacaoInfo.create({
+      data: {
+        solicitacao_id: id,
+        data: new Date(),
+        comentario: `[Edição Técnica Rev${String(latest.versao).padStart(2,'0')}] ${diffs.join(' | ')}`,
+        versao: latest.versao,
+        created_by: Number(session.user.id),
+      },
+    })
+  }
 
   return NextResponse.json({ data: proposta, error: null })
 }
