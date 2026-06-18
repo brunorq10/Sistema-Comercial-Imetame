@@ -134,24 +134,36 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       setDescricao(editando.descricao ?? '')
       setClassificacao(editando.classificacao ?? '')
       setValorContrato(editando.valor_contrato ? String(editando.valor_contrato) : '')
-      setSubindices(editando.subindices.map((s) => {
-        const ano = s.data_inicio
+      // DB stores one row per year for multi-year events; group them back into one SubIndiceForm per logical event.
+      const grouped: SubIndiceForm[] = []
+      for (const s of editando.subindices) {
+        const sAno = s.data_inicio
           ? parseInt(s.data_inicio.substring(0, 4), 10)
           : editando.ano_referencia
-        return {
-          descricao: s.descricao,
-          num_os: s.num_os ?? '',
-          valor_total: String(s.valor_total),
-          data_inicio: s.data_inicio ? s.data_inicio.substring(0, 10) : '',
-          data_fim: s.data_fim ? s.data_fim.substring(0, 10) : '',
-          comentarios: s.comentarios ?? '',
-          anos: {
-            [ano]: {
-              meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])),
-            },
-          },
+        // Merge into an existing group with same descricao + num_os that doesn't yet have this year
+        const existing = grouped.find(
+          (g) => g.descricao === s.descricao && g.num_os === (s.num_os ?? '') && !g.anos[sAno],
+        )
+        if (existing) {
+          existing.anos[sAno] = { meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) }
+          if (s.data_inicio && (!existing.data_inicio || s.data_inicio < existing.data_inicio))
+            existing.data_inicio = s.data_inicio.substring(0, 10)
+          if (s.data_fim && (!existing.data_fim || s.data_fim > existing.data_fim))
+            existing.data_fim = s.data_fim.substring(0, 10)
+          existing.valor_total = String(Number(existing.valor_total) + Number(s.valor_total))
+        } else {
+          grouped.push({
+            descricao: s.descricao,
+            num_os: s.num_os ?? '',
+            valor_total: String(s.valor_total),
+            data_inicio: s.data_inicio ? s.data_inicio.substring(0, 10) : '',
+            data_fim: s.data_fim ? s.data_fim.substring(0, 10) : '',
+            comentarios: s.comentarios ?? '',
+            anos: { [sAno]: { meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) } },
+          })
         }
-      }))
+      }
+      setSubindices(grouped)
     } else {
       prevClienteFinalRef.current = ''
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
