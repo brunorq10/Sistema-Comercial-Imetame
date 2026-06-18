@@ -25,6 +25,30 @@ interface ContratoHhItem {
 
 const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
+/**
+ * Parses a pt-BR formatted number (e.g. "150.456,99" or "150.456") into a
+ * plain JS numeric string ("150456.99" / "150456"). Returns '' for invalid input.
+ */
+function parsePtBrHh(input: string): string {
+  const s = input.trim().replace(/\s/g, '')
+  if (!s) return ''
+  if (s.includes(',')) {
+    // pt-BR decimal: "150.456,99" → remove thousand-dots, swap comma→dot
+    const n = parseFloat(s.replace(/\./g, '').replace(',', '.'))
+    return isNaN(n) ? '' : String(n)
+  }
+  // No comma — check if period(s) are thousand separators or a real decimal
+  const parts = s.split('.')
+  if (parts.length > 2 || (parts.length === 2 && /^\d+$/.test(parts[0]) && parts[1].length === 3 && /^\d+$/.test(parts[1]))) {
+    // Multiple dots OR single dot with exactly 3 digits after → thousands separator
+    const n = parseFloat(s.replace(/\./g, ''))
+    return isNaN(n) ? '' : String(n)
+  }
+  // Plain number (integer or international decimal)
+  const n = parseFloat(s)
+  return isNaN(n) ? '' : String(n)
+}
+
 function gerarMeses(inicio: string, fim: string): { mes: number; ano: number }[] {
   const result: { mes: number; ano: number }[] = []
   const d = new Date(inicio + 'T00:00:00')
@@ -254,9 +278,15 @@ export function LancamentoHhModal({ contrato, onClose, onSuccess }: Props) {
                           const k = `${ano}-${mes}`
                           return (
                             <td key={k} className="px-1 py-1 text-center">
-                              <input type="number" min="0" value={hhPrevisto[k] ?? ''}
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={hhPrevisto[k] ?? ''}
                                 onChange={e => setHhPrevisto(p => ({ ...p, [k]: e.target.value }))}
-                                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-center text-[11px] focus:outline-none focus:border-blue-400" />
+                                onBlur={e => { const v = parsePtBrHh(e.target.value); setHhPrevisto(p => ({ ...p, [k]: v })) }}
+                                onPaste={e => { e.preventDefault(); setHhPrevisto(p => ({ ...p, [k]: parsePtBrHh(e.clipboardData.getData('text')) })) }}
+                                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-center text-[11px] focus:outline-none focus:border-blue-400"
+                              />
                             </td>
                           )
                         })}
@@ -271,9 +301,15 @@ export function LancamentoHhModal({ contrato, onClose, onSuccess }: Props) {
                           const k = `${ano}-${mes}`
                           return (
                             <td key={k} className="px-1 py-1 text-center">
-                              <input type="number" min="0" value={hhPlanejado[k] ?? ''}
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={hhPlanejado[k] ?? ''}
                                 onChange={e => setHhPlanejado(p => ({ ...p, [k]: e.target.value }))}
-                                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-center text-[11px] focus:outline-none focus:border-amber-400" />
+                                onBlur={e => { const v = parsePtBrHh(e.target.value); setHhPlanejado(p => ({ ...p, [k]: v })) }}
+                                onPaste={e => { e.preventDefault(); setHhPlanejado(p => ({ ...p, [k]: parsePtBrHh(e.clipboardData.getData('text')) })) }}
+                                className="w-16 border border-gray-200 rounded px-1.5 py-1 text-center text-[11px] focus:outline-none focus:border-amber-400"
+                              />
                             </td>
                           )
                         })}
@@ -316,8 +352,16 @@ export function LancamentoHhModal({ contrato, onClose, onSuccess }: Props) {
                     </div>
                     <div>
                       <label className="block text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1">HH Realizado *</label>
-                      <input type="number" min="0" value={hhReal} onChange={e => setHhReal(e.target.value)} placeholder="Ex: 1.200"
-                        className="w-full border border-gray-300 rounded-md px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={hhReal}
+                        onChange={e => setHhReal(e.target.value)}
+                        onBlur={e => setHhReal(parsePtBrHh(e.target.value))}
+                        onPaste={e => { e.preventDefault(); setHhReal(parsePtBrHh(e.clipboardData.getData('text'))) }}
+                        placeholder="Ex: 1.200"
+                        className="w-full border border-gray-300 rounded-md px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30"
+                      />
                     </div>
                     <div>
                       <label className="block text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Observações</label>

@@ -84,10 +84,27 @@ function intToDisplay(raw: string): string {
   return num.toLocaleString('pt-BR')
 }
 
+/** Parse pt-BR or plain integer from a pasted/typed string. Returns raw integer string. */
+function parsePtBrInt(raw: string): string {
+  const s = raw.trim()
+  if (!s) return ''
+  if (s.includes(',')) {
+    // pt-BR decimal "150.456,99" → round to integer 150457
+    const n = Math.round(parseFloat(s.replace(/\./g, '').replace(',', '.')))
+    return isNaN(n) ? '' : String(n)
+  }
+  // Strip non-digits (removes thousands dots and any stray chars)
+  const digits = s.replace(/\D/g, '')
+  return digits ? String(parseInt(digits, 10)) : ''
+}
+
 export function IntegerInput({ value, onChange, placeholder = '0', className, disabled }: IntegerInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const digits = e.target.value.replace(/\D/g, '')
-    onChange(digits ? String(parseInt(digits, 10)) : '')
+    onChange(parsePtBrInt(e.target.value))
+  }
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    onChange(parsePtBrInt(e.clipboardData.getData('text')))
   }
   return (
     <input
@@ -95,6 +112,7 @@ export function IntegerInput({ value, onChange, placeholder = '0', className, di
       inputMode="numeric"
       value={intToDisplay(value)}
       onChange={handleChange}
+      onPaste={handlePaste}
       placeholder={placeholder}
       disabled={disabled}
       className={cn(inputBase, className)}
