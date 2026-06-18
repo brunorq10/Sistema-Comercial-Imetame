@@ -51,6 +51,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ data: null, error: 'Nenhuma proposta de fabricação encontrada' }, { status: 404 })
   }
 
+  const resultado_anterior = latest.resultado
+
   const result = await prisma.$transaction(async (tx) => {
     const fab = await tx.propostaFabricacao.update({
       where: { id: latest.id },
@@ -64,6 +66,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     return fab
   })
+
+  // Log resultado change in HistoricoSolicitacao
+  if (resultado_anterior !== parsed.data.resultado) {
+    const RESULTADO_LABELS: Record<string, string> = { AGUARDANDO: 'Aguardando', GANHOU: 'Ganhou', PERDEU: 'Perdeu' }
+    const rev = `Rev${String(latest.versao).padStart(2, '0')}`
+    const valorPara = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
+      ? `${RESULTADO_LABELS[parsed.data.resultado]} — Motivo: ${parsed.data.motivo_perda}`
+      : RESULTADO_LABELS[parsed.data.resultado]
+    await prisma.historicoSolicitacao.create({
+      data: { solicitacao_id: id, campo: `Resultado da Proposta de Fabricação ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, created_by: Number(session.user.id) },
+    })
+  }
 
   return NextResponse.json({ data: result, error: null })
 }
@@ -197,6 +211,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       include: { equipamentos: true },
     })
   })
+
+  // Log changes in HistoricoSolicitacao
+  const rev = `Rev${String(latest.versao).padStart(2, '0')}`
+  const userId = Number(session.user.id)
+  const fmtV = (v: number | null | undefined) =>
+    v != null ? `R$${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'
+
+  type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+  const fabHistEntries: HistEntry[] = []
+
+  if (Math.round(Number(latest.valor_total) * 100) !== Math.round(valorTotal * 100))
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Total`, valor_de: fmtV(Number(latest.valor_total)), valor_para: fmtV(valorTotal), created_by: userId })
+  if (Math.round(Number(latest.peso_total) * 1000) !== Math.round(pesoTotal * 1000))
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Peso Total (t)`, valor_de: latest.peso_total != null ? String(Number(latest.peso_total)) : null, valor_para: String(pesoTotal), created_by: userId })
+  if (Math.round((latest.valor_testes ? Number(latest.valor_testes) : 0) * 100) !== Math.round(valorTestes * 100))
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Testes`, valor_de: fmtV(latest.valor_testes ? Number(latest.valor_testes) : null), valor_para: fmtV(valorTestes), created_by: userId })
+  if (Math.round((latest.valor_montagem ? Number(latest.valor_montagem) : 0) * 100) !== Math.round(valorMontPut * 100))
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Montagem`, valor_de: fmtV(latest.valor_montagem ? Number(latest.valor_montagem) : null), valor_para: fmtV(valorMontPut), created_by: userId })
+  if ((latest.data_envio?.toISOString().split('T')[0] ?? null) !== d.data_envio)
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Data Envio`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio, created_by: userId })
+
+  if (fabHistEntries.length > 0) {
+    await prisma.historicoSolicitacao.createMany({ data: fabHistEntries })
+  }
 
   return NextResponse.json({ data: proposta, error: null })
 }

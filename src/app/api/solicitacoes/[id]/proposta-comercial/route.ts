@@ -89,18 +89,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Log resultado change
   if (resultado_anterior !== parsed.data.resultado) {
     const RESULTADO_LABELS: Record<string, string> = { AGUARDANDO: 'Aguardando', GANHOU: 'Ganhou', PERDEU: 'Perdeu' }
+    const rev = `Rev${String(latestComercial.versao).padStart(2, '0')}`
+    const userId = Number(session.user.id)
     const msg = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
       ? `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]} (${parsed.data.motivo_perda})`
       : `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]}`
-    await prisma.solicitacaoInfo.create({
-      data: {
-        solicitacao_id: id,
-        data: new Date(),
-        comentario: `[Resultado Rev${String(latestComercial.versao).padStart(2,'0')}] ${msg}`,
-        versao: latestComercial.versao,
-        created_by: Number(session.user.id),
-      },
-    })
+    const valorPara = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
+      ? `${RESULTADO_LABELS[parsed.data.resultado]} — Motivo: ${parsed.data.motivo_perda}`
+      : RESULTADO_LABELS[parsed.data.resultado]
+
+    await Promise.all([
+      prisma.solicitacaoInfo.create({
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Resultado ${rev}] ${msg}`, versao: latestComercial.versao, created_by: userId },
+      }),
+      prisma.historicoSolicitacao.create({
+        data: { solicitacao_id: id, campo: `Resultado da Proposta Comercial ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, created_by: userId },
+      }),
+    ])
   }
 
   // RN-50: Notificar GESTAO_ACORDOS quando resultado = GANHOU (não-bloqueante)
@@ -327,15 +332,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     comDiffs.push(`Data Envio: ${latest.data_envio?.toISOString().split('T')[0] ?? '—'} → ${d.data_envio ?? '—'}`)
 
   if (comDiffs.length > 0) {
-    await prisma.solicitacaoInfo.create({
-      data: {
-        solicitacao_id: id,
-        data: new Date(),
-        comentario: `[Edição Comercial Rev${String(latest.versao).padStart(2,'0')}] ${comDiffs.join(' | ')}`,
-        versao: latest.versao,
-        created_by: Number(session.user.id),
-      },
-    })
+    const rev = `Rev${String(latest.versao).padStart(2, '0')}`
+    const userId = Number(session.user.id)
+
+    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+    const histEntries: HistEntry[] = []
+
+    for (const [label, before, after] of numPairs) {
+      const a = before != null ? Math.round(Number(before) * 100) : null
+      const b = after  != null ? Math.round(Number(after)  * 100) : null
+      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — ${label}`, valor_de: before != null ? fmtVal(before) : null, valor_para: after != null ? fmtVal(after) : null, created_by: userId })
+    }
+    if ((latest.data_envio?.toISOString().split('T')[0] ?? '') !== (d.data_envio ?? ''))
+      histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — Data Envio Comercial`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio ?? null, created_by: userId })
+
+    await Promise.all([
+      prisma.solicitacaoInfo.create({
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Comercial ${rev}] ${comDiffs.join(' | ')}`, versao: latest.versao, created_by: userId },
+      }),
+      histEntries.length > 0 ? prisma.historicoSolicitacao.createMany({ data: histEntries }) : Promise.resolve(),
+    ])
   }
 
   return NextResponse.json({ data: proposta, error: null })

@@ -227,15 +227,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (diffs.length > 0) {
-    await prisma.solicitacaoInfo.create({
-      data: {
-        solicitacao_id: id,
-        data: new Date(),
-        comentario: `[Edição Técnica Rev${String(latest.versao).padStart(2,'0')}] ${diffs.join(' | ')}`,
-        versao: latest.versao,
-        created_by: Number(session.user.id),
-      },
-    })
+    const rev = `Rev${String(latest.versao).padStart(2, '0')}`
+    const userId = Number(session.user.id)
+
+    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+    const histEntries: HistEntry[] = []
+
+    for (const f of numFields) {
+      const a = f.before != null ? Number(f.before) : null
+      const b = f.after  != null ? Number(f.after)  : null
+      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: a != null ? String(a) : null, valor_para: b != null ? String(b) : null, created_by: userId })
+    }
+    for (const f of strFields) {
+      if ((f.before ?? '') !== (f.after ?? '')) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before, valor_para: f.after, created_by: userId })
+    }
+    for (const f of boolFields) {
+      if (f.before !== f.after) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before != null ? (f.before ? 'Sim' : 'Não') : null, valor_para: f.after != null ? (f.after ? 'Sim' : 'Não') : null, created_by: userId })
+    }
+
+    await Promise.all([
+      prisma.solicitacaoInfo.create({
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Técnica ${rev}] ${diffs.join(' | ')}`, versao: latest.versao, created_by: userId },
+      }),
+      histEntries.length > 0 ? prisma.historicoSolicitacao.createMany({ data: histEntries }) : Promise.resolve(),
+    ])
   }
 
   return NextResponse.json({ data: proposta, error: null })
