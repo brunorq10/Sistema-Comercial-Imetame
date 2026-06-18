@@ -25,6 +25,7 @@ interface ContratoHh {
   responsavel: { id: number; nome: string } | null
   data_inicio: string | null; data_fim: string | null
   tem_lancamento: boolean
+  valor_orcado: number | null; valor_faturado: number | null
   hh_previsto: number | null; hh_planejado: number | null; hh_realizado: number | null
   parada_hh_previsto: number | null; parada_hh_realizado: number | null
   parada_pct_real_prev: number | null
@@ -88,7 +89,7 @@ const UCR_STYLE: Record<string, { cor: string; bg: string }> = {
   'A Evoluir':      { cor: '#F9A825', bg: '#FFF9C4' },
   'Bom':            { cor: '#2E7D32', bg: '#C8E6C9' },
   'Ótimo':          { cor: '#1565C0', bg: '#BBDEFB' },
-  'Esplêndido':     { cor: '#AD1457', bg: '#F8BBD9' },
+  'Esplêndido':     { cor: '#4040A0', bg: '#D3D3FF' },
 }
 function ucrStyle(label: string | null) { return label ? UCR_STYLE[label] ?? null : null }
 
@@ -557,7 +558,7 @@ const UCR_ROWS_CFG = [
   { label: 'A Evoluir',      cor: '#F9A825', bg: '#FFF9C4', key: 'ucr_a_evoluir'      as const },
   { label: 'Bom',            cor: '#2E7D32', bg: '#C8E6C9', key: 'ucr_bom'            as const },
   { label: 'Ótimo',          cor: '#1565C0', bg: '#BBDEFB', key: 'ucr_otimo'          as const },
-  { label: 'Esplêndido',     cor: '#AD1457', bg: '#F8BBD9', key: 'ucr_esplendido'     as const },
+  { label: 'Esplêndido',     cor: '#4040A0', bg: '#D3D3FF', key: 'ucr_esplendido'     as const },
 ]
 
 type UcrKeys = 'ucr_nao_suficiente' | 'ucr_a_evoluir' | 'ucr_bom' | 'ucr_otimo' | 'ucr_esplendido'
@@ -746,7 +747,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
         <table className="text-[11px] border-collapse min-w-full">
           <thead className="sticky top-0 z-10">
             <tr className="bg-green-primary text-white">
-              <th colSpan={5} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
+              <th colSpan={9} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
               <th colSpan={classificacao === 'PARADAS' ? 7 : 5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
               <th className="px-2 py-1.5 text-center text-[10px] font-semibold w-[100px]">Ações</th>
             </tr>
@@ -756,6 +757,10 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[130px]">Cliente</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[120px]">Cliente Final</th>
               <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 min-w-[210px]">Escopo</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[90px]">Cidade/UF</th>
+              <th className="px-3 py-1.5 text-left font-semibold border-r border-green-800 whitespace-nowrap w-[120px]">Responsável</th>
+              <th className="px-3 py-1.5 text-right font-semibold border-r border-green-800 whitespace-nowrap w-[110px]">Val. Orçado</th>
+              <th className="px-3 py-1.5 text-right font-semibold border-r border-green-800 whitespace-nowrap w-[110px]">Val. Faturado</th>
               {classificacao === 'PARADAS' ? (
                 <>
                   <th className="px-2 py-1.5 text-right font-semibold bg-[#1B5E20] border-r border-green-900 whitespace-nowrap w-[72px]">HH Prev.</th>
@@ -780,7 +785,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={classificacao === 'PARADAS' ? 13 : 11} className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</td></tr>
+              <tr><td colSpan={classificacao === 'PARADAS' ? 17 : 15} className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</td></tr>
             )}
             {filtered.map((c, idx) => {
               const bg = idx % 2 === 0 ? '#fff' : '#f9fafb'
@@ -800,6 +805,18 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                   </td>
                   <td className="px-3 py-2 min-w-[210px]">
                     <span className="line-clamp-2 whitespace-normal text-gray-600 leading-snug" title={c.descricao ?? ''}>{c.descricao ?? '—'}</span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-[10px]">
+                    {[c.cidade, c.estado].filter(Boolean).join(' / ') || '—'}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-600 text-[10px]">
+                    {c.responsavel?.nome ?? '—'}
+                  </td>
+                  <td className="px-3 py-2 text-right text-[10px] font-medium" style={{ color: '#185FA5' }}>
+                    {c.valor_orcado != null ? c.valor_orcado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right text-[10px] font-medium" style={{ color: '#3B6D11' }}>
+                    {c.valor_faturado != null ? c.valor_faturado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
                   </td>
                   {classificacao === 'PARADAS' ? (
                     <>

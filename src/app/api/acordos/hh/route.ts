@@ -20,6 +20,12 @@ async function getParadas(disponivel: boolean) {
 
   const data = contratos.map(c => {
     const temConfig = c.parada_hh_config !== null
+
+    const valorOrcado = c.subindices.reduce((acc, s) =>
+      acc + MESES.reduce((b, m) => b + Number((s as Record<string, unknown>)[m] ?? 0), 0), 0)
+    const valorFaturado = c.subindices.reduce((acc, s) =>
+      acc + s.notas_fiscais.reduce((b, nf) => b + Number(nf.valor_atribuido), 0), 0)
+
     let paradaStats: {
       hh_previsto: number | null; hh_realizado: number | null; pct_real_prev: number | null
       fin_orcado_rs_hh: number | null; fin_prev_rs_hh: number | null; fin_real_rs_hh: number | null
@@ -58,11 +64,6 @@ async function getParadas(disponivel: boolean) {
       const hhTotalPrev = baseHhPlan + adicPrev
       const hhTotalReal = baseHhReal + adicReal
 
-      const valorOrcado = c.subindices.reduce((acc, s) =>
-        acc + MESES.reduce((b, m) => b + Number((s as Record<string, unknown>)[m] ?? 0), 0), 0)
-      const valorFaturado = c.subindices.reduce((acc, s) =>
-        acc + s.notas_fiscais.reduce((b, nf) => b + Number(nf.valor_atribuido), 0), 0)
-
       const finPrevTotal = Number(cfg.fin_prev_valor_servico ?? 0) + Number(cfg.fin_prev_ase ?? 0)
       const finOrcRsHH   = hhTotalPrev > 0 ? valorOrcado   / hhTotalPrev : null
       const finPrevRsHH  = hhTotalReal  > 0 ? finPrevTotal  / hhTotalReal  : null
@@ -99,6 +100,8 @@ async function getParadas(disponivel: boolean) {
       data_inicio: c.data_inicio?.toISOString() ?? null,
       data_fim:    c.data_fim?.toISOString()    ?? null,
       tem_lancamento: temConfig,
+      valor_orcado:   valorOrcado   > 0 ? valorOrcado   : null,
+      valor_faturado: valorFaturado > 0 ? valorFaturado : null,
       hh_previsto: null as number | null, hh_planejado: null as number | null,
       hh_realizado: null as number | null, lancamento_atual: null, realizados: [],
       parada_hh_previsto:       paradaStats?.hh_previsto       ?? null,
@@ -143,6 +146,7 @@ export async function GET(req: NextRequest) {
       hh_realizados: {
         orderBy: [{ ano: 'asc' }, { mes: 'asc' }],
       },
+      subindices: { include: { notas_fiscais: { where: { ativa: true } } } },
     },
   })
 
@@ -154,6 +158,11 @@ export async function GET(req: NextRequest) {
     const hhRealizado   = c.hh_realizados.length > 0
       ? c.hh_realizados.reduce((s, r) => s + r.hh_realizado, 0) : null
 
+    const valorOrcado = c.subindices.reduce((acc, s) =>
+      acc + MESES.reduce((b, m) => b + Number((s as Record<string, unknown>)[m] ?? 0), 0), 0)
+    const valorFaturado = c.subindices.reduce((acc, s) =>
+      acc + s.notas_fiscais.reduce((b, nf) => b + Number(nf.valor_atribuido), 0), 0)
+
     return {
       id: c.id, indice: c.indice, num_os: c.num_os,
       num_acordo: c.num_acordo ?? null, num_proposta: c.num_proposta ?? null,
@@ -163,6 +172,8 @@ export async function GET(req: NextRequest) {
       data_inicio: c.data_inicio?.toISOString() ?? null,
       data_fim:    c.data_fim?.toISOString()    ?? null,
       tem_lancamento: temLancamento,
+      valor_orcado:   valorOrcado   > 0 ? valorOrcado   : null,
+      valor_faturado: valorFaturado > 0 ? valorFaturado : null,
       hh_previsto:  hhPrevisto,
       hh_planejado: hhPlanejado,
       hh_realizado: hhRealizado,

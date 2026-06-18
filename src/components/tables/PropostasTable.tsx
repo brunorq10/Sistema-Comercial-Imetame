@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatRev, cn } from '@/lib/utils'
+import { formatRev, formatDate, formatCurrency, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { ClassificacaoBadge } from '@/components/ui/Badge'
 import { RESULTADO_LABELS } from '@/types'
@@ -55,6 +55,8 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
               <Th>Classificação</Th>
               <Th>Escopo Resumido</Th>
               <Th>Orçamentista</Th>
+              <Th>Último Envio</Th>
+              <Th>Valor Total</Th>
               <Th>Resultado</Th>
               <Th>Ações</Th>
             </tr>
@@ -71,6 +73,17 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
               const resultado = isFabricacao
                 ? (item.propostas_fabricacao[0]?.resultado ?? null)
                 : item.resultado
+              const fabricacaoItem = isFabricacao ? (item.propostas_fabricacao[0] ?? null) : null
+              const enviosDates = [
+                item.data_envio_tecnica,
+                item.data_envio_comercial,
+                fabricacaoItem?.data_envio ?? null,
+              ].filter((d): d is string => Boolean(d))
+              const latestEnvio = enviosDates.sort().at(-1) ?? null
+              const valorTotalRaw = isFabricacao
+                ? (fabricacaoItem?.valor_total ?? null)
+                : item.valor_total
+              const valorTotalNum = valorTotalRaw != null ? Number(valorTotalRaw) : null
               return (
                 <tr
                   key={item.id}
@@ -105,6 +118,14 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
                       : '—'}
                   </td>
                   <td className="px-3 py-[6px] whitespace-nowrap">{item.orcamentista?.nome ?? '—'}</td>
+                  <td className="px-3 py-[6px] whitespace-nowrap text-gray-600">
+                    {latestEnvio ? formatDate(latestEnvio) : '—'}
+                  </td>
+                  <td className="px-3 py-[6px] whitespace-nowrap">
+                    {valorTotalNum != null
+                      ? <span className="font-semibold text-auto-value">{formatCurrency(valorTotalNum)}</span>
+                      : <span className="text-gray-400">—</span>}
+                  </td>
                   <td className="px-3 py-[6px]"><ResultadoCell resultado={resultado} /></td>
                   <td className="px-3 py-[6px]">
                     <div className="flex items-center gap-1">

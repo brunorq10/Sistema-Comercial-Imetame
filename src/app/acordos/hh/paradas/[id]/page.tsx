@@ -928,8 +928,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                     if (key === 'acum_plan') {
                       acum += n(dia.hh_plan)
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: '#DCEDC8', fontWeight: 700 }}>
+                        <td key={`${etapa}_${d}`} className="border border-gray-200"
+                          style={{ background: '#DCEDC8', fontWeight: 700, textAlign: 'center' }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
@@ -938,8 +938,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                     if (key === 'acum_real') {
                       acum += n(dia.hh_real)
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: '#E3F2FD', fontWeight: 700 }}>
+                        <td key={`${etapa}_${d}`} className="border border-gray-200"
+                          style={{ background: '#E3F2FD', fontWeight: 700, textAlign: 'center' }}>
                           {acum > 0 ? fmtCellHH(acum) : ''}
                         </td>
                       )
@@ -949,8 +949,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const dev = n(dia.hh_real) - n(dia.hh_plan)
                       const hasData = dia.hh_real !== '' && dia.hh_plan !== ''
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: hasData ? (dev < 0 ? '#c8e6c9' : dev > 0 ? '#ffcdd2' : '#fff') : '#fff' }}>
+                        <td key={`${etapa}_${d}`} className="border border-gray-200"
+                          style={{ background: hasData ? (dev < 0 ? '#c8e6c9' : dev > 0 ? '#ffcdd2' : '#fff') : '#fff', textAlign: 'center' }}>
                           {hasData ? fmtCellHH(dev) : ''}
                         </td>
                       )
@@ -961,8 +961,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       const hasData = dia.hh_real !== '' && dia.hh_plan !== ''
                       const pct = plan > 0 ? (real - plan) / plan : null
                       return (
-                        <td key={`${etapa}_${d}`} className="border border-gray-200 text-center"
-                          style={{ background: hasData && pct != null ? (pct < 0 ? '#c8e6c9' : pct > 0 ? '#ffcdd2' : '#fff') : '#fff' }}>
+                        <td key={`${etapa}_${d}`} className="border border-gray-200"
+                          style={{ background: hasData && pct != null ? (pct < 0 ? '#c8e6c9' : pct > 0 ? '#ffcdd2' : '#fff') : '#fff', textAlign: 'center' }}>
                           {hasData && pct != null ? `${(pct * 100).toFixed(1)}%` : ''}
                         </td>
                       )
