@@ -880,8 +880,9 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                       </div>
                     ) : classificacao === 'PARADAS' ? (
                       <div className="flex items-center justify-center gap-1">
-                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Controle de HH de Paradas" color="green">✎ HH</ABtn>
-                        <ABtn onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento" color="red">🗑</ABtn>
+                        <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">✎</ABtn>
+                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Lançar / Controle de HH" color="gray">+ HH</ABtn>
+                        <ABtn onClick={() => setDeleteId(c.id)} title="Excluir lançamento" color="red">🗑</ABtn>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-1">
