@@ -259,8 +259,10 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       return acc + MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
     }, 0)
 
-    if (somaTodosMeses + jaFaturadoTotal > vtNum + 0.01) {
-      setError(`A soma da previsão (R$ ${fmt(somaTodosMeses)}) + já faturado (R$ ${fmt(jaFaturadoTotal)}) ultrapassa o valor total (R$ ${fmt(vtNum)})`); return
+    // Os valores mensais representam o plano completo (incluindo o já faturado).
+    // O teto absoluto é o valor total do subitem — sem somar o faturado novamente.
+    if (somaTodosMeses > vtNum + 0.01) {
+      setError(`A soma da previsão mensal (R$ ${fmt(somaTodosMeses)}) ultrapassa o valor total do sub-índice (R$ ${fmt(vtNum)})`); return
     }
 
     setLoading(true); setError(null)
@@ -271,7 +273,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         const isFirstIdx = idx === 0
         const isLastIdx = idx === anosOrdenados.length - 1
         const somaMesesAno = MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
-        const vtAno = section.jaFaturado + somaMesesAno
+        const vtAno = somaMesesAno
 
         const payload = {
           descricao,
@@ -518,11 +520,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           if (!section) return acc
           return acc + MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
         }, 0)
-        const ok = somaTodosMeses === 0 || Math.abs(somaTodosMeses - disponivel) <= 0.01
+        const ok = somaTodosMeses === 0 || somaTodosMeses <= vtNum + 0.01
         if (somaTodosMeses === 0) return null
         return (
           <p className={`mt-1 text-[10px] text-right ${ok ? 'text-green-600' : 'text-orange-600'}`}>
-            Soma de todos os meses: R$ {fmt(somaTodosMeses)}{ok ? ' ✓' : ` · Disponível: R$ ${fmt(disponivel)}`}
+            Soma de todos os meses: R$ {fmt(somaTodosMeses)}{ok ? ' ✓' : ` · Excede valor total (R$ ${fmt(vtNum)})`}
           </p>
         )
       })()}
