@@ -274,8 +274,8 @@ export default function SolicitacoesPage() {
       {/* ── VIEW: Solicitações — filtros e status tabs (zona congelada) ─────── */}
       {view === 'solicitacoes' && (
         <>
-          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end">
-            <div className="flex-1 min-w-0">
+          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex flex-wrap gap-1.5 items-end">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Ano ref.</label>
               <SearchableSelect
                 value={filtros.ano ?? ''}
@@ -283,7 +283,7 @@ export default function SolicitacoesPage() {
                 options={Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => ({ value: String(y), label: String(y) }))}
               />
             </div>
-            <div className="flex-[2] min-w-0">
+            <div className="flex-[2] min-w-[160px]">
               <label className={fLbl}>Cliente</label>
               <SearchableSelect
                 value={filtros.cliente_id ?? ''}
@@ -291,7 +291,7 @@ export default function SolicitacoesPage() {
                 options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Classificação</label>
               <SearchableSelect
                 value={filtros.classificacao ?? ''}
@@ -305,7 +305,7 @@ export default function SolicitacoesPage() {
                 emptyLabel="Todas"
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Interesse</label>
               <SearchableSelect
                 value={filtros.interesse ?? ''}
@@ -317,15 +317,15 @@ export default function SolicitacoesPage() {
                 ]}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Criação de</label>
               <input type="date" className={fCtrl} value={filtros.data_de ?? ''} onChange={(e) => setFiltros((f) => ({ ...f, data_de: e.target.value }))} />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Até</label>
               <input type="date" className={fCtrl} value={filtros.data_ate ?? ''} onChange={(e) => setFiltros((f) => ({ ...f, data_ate: e.target.value }))} />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Responsável</label>
               <SearchableSelect
                 value={filtros.responsavel_id ?? ''}
@@ -333,7 +333,7 @@ export default function SolicitacoesPage() {
                 options={responsaveis.map((u) => ({ value: String(u.id), label: u.nome }))}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Status</label>
               <SearchableSelect
                 value={filtros.status ?? ''}
@@ -348,7 +348,7 @@ export default function SolicitacoesPage() {
                 ]}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Orçamentista</label>
               <SearchableSelect
                 value={filtros.orcamentista_id ?? ''}
