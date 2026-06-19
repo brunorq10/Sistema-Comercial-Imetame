@@ -30,7 +30,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
 
   const handleSubmit = async () => {
     if (!hhDireto || !hhIndireto) {
-      setError('HH Direto e HH Indireto sÃ£o obrigatÃ³rios')
+      setError('HH Direto e HH Indireto são obrigatórios')
       return
     }
     setLoading(true)
@@ -66,7 +66,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       open={open}
       confirmClose
       onClose={onClose}
-      title={`Registrar Envio â€” Proposta TÃ©cnica Â· ${numero}`}
+      title={`Registrar Envio — Proposta Técnica · ${numero}`}
       footer={
         <>
           <ModalCancelButton disabled={loading} />
@@ -90,13 +90,13 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="HH Total (automÃ¡tico)">
-          <AutoInput value={hhTotal !== null ? hhTotal.toLocaleString('pt-BR') : ''} placeholder="â€”" />
+        <Field label="HH Total (automático)">
+          <AutoInput value={hhTotal !== null ? hhTotal.toLocaleString('pt-BR') : ''} placeholder="—" />
           <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Direto + HH Indireto</p>
         </Field>
-        <Field label="% Indireto (automÃ¡tico)">
-          <AutoInput value={percIndireto ?? ''} placeholder="â€”" />
-          <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Indireto Ã· HH Total</p>
+        <Field label="% Indireto (automático)">
+          <AutoInput value={percIndireto ?? ''} placeholder="—" />
+          <p className="text-[10px] text-gray-400 text-center mt-0.5">HH Indireto ÷ HH Total</p>
         </Field>
       </div>
 
@@ -116,7 +116,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
 
       <div className="grid grid-cols-2 gap-2.5">
         <div />
-        <Field label="Data de envio â€” tÃ©cnica">
+        <Field label="Data de envio — técnica">
           <input
             type="date"
             value={dataEnvio}

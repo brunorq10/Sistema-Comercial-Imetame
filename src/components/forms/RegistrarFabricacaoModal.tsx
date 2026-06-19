@@ -21,7 +21,7 @@ const equipamentoVazio = (): Equipamento => ({
 })
 
 function rskg(valor: number, pesoTon: number): string {
-  if (pesoTon <= 0 || valor <= 0) return 'â€”'
+  if (pesoTon <= 0 || valor <= 0) return '—'
   return formatCurrency(valor / (pesoTon * 1000)) + '/kg'
 }
 
@@ -59,7 +59,7 @@ export function RegistrarFabricacaoModal({
   const addEquipamento = () => setEquipamentos((prev) => [...prev, equipamentoVazio()])
   const removeEquipamento = (idx: number) => setEquipamentos((prev) => prev.filter((_, i) => i !== idx))
 
-  // CÃ¡lculos por equipamento
+  // Cálculos por equipamento
   const rows = equipamentos.map((e) => ({
     peso: Number(e.peso_ton) || 0,
     valor: Number(e.valor_total) || 0,
@@ -92,9 +92,9 @@ export function RegistrarFabricacaoModal({
 
   const handleSubmit = async () => {
     const equipsValidos = equipamentos.filter((e) => e.descricao.trim() && Number(e.peso_ton) > 0)
-    if (equipsValidos.length === 0) { setError('Adicione ao menos um equipamento com descriÃ§Ã£o e peso'); return }
+    if (equipsValidos.length === 0) { setError('Adicione ao menos um equipamento com descrição e peso'); return }
     if (!dataBase) { setError('Informe a Data base do contrato'); return }
-    if (!dataEnvio) { setError('Data de envio Ã© obrigatÃ³ria'); return }
+    if (!dataEnvio) { setError('Data de envio é obrigatória'); return }
 
     setLoading(true)
     setError(null)
@@ -135,14 +135,14 @@ export function RegistrarFabricacaoModal({
     }
   }
 
-  const tipoLabel = classificacao === 'FABRICACOES' ? 'FabricaÃ§Ãµes' : 'Ã“leo e GÃ¡s'
+  const tipoLabel = classificacao === 'FABRICACOES' ? 'Fabricações' : 'Óleo e Gás'
 
   return (
     <Modal
       open={open}
       confirmClose
       onClose={onClose}
-      title={`Registrar Proposta Â· ${numero} Â· ${tipoLabel}`}
+      title={`Registrar Proposta · ${numero} · ${tipoLabel}`}
       extraWide
       footer={
         <>
@@ -157,7 +157,7 @@ export function RegistrarFabricacaoModal({
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* â”€â”€ SeÃ§Ã£o 1: Equipamentos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 1: Equipamentos ─────────────────────────────────── */}
       <ModalSection>1. Equipamentos a fabricar</ModalSection>
 
       <div className="flex flex-col gap-3 mb-3">
@@ -175,15 +175,15 @@ export function RegistrarFabricacaoModal({
                     onClick={() => removeEquipamento(idx)}
                     className="text-[10px] text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5"
                   >
-                    âœ• Remover
+                    ✕ Remover
                   </button>
                 )}
               </div>
 
               <div className="grid grid-cols-3 gap-2.5 mb-2">
-                <Field label="DescriÃ§Ã£o" className="col-span-1">
+                <Field label="Descrição" className="col-span-1">
                   <Input
-                    placeholder="Ex: Vaso de pressÃ£o V-101"
+                    placeholder="Ex: Vaso de pressão V-101"
                     value={eq.descricao}
                     onChange={(e) => updateEquipamento(idx, 'descricao', e.target.value)}
                   />
@@ -210,7 +210,7 @@ export function RegistrarFabricacaoModal({
                 </div>
               )}
 
-              <Field label="ObservaÃ§Ãµes">
+              <Field label="Observações">
                 <Input
                   placeholder="Opcional..."
                   value={eq.observacoes}
@@ -229,10 +229,10 @@ export function RegistrarFabricacaoModal({
         + Adicionar equipamento
       </button>
 
-      {/* â”€â”€ SeÃ§Ã£o 2: Subtotal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 2: Subtotal ─────────────────────────────────────── */}
       {equipamentos.length > 0 && (pesoTotalEquip > 0 || valorTotalEquip > 0) && (
         <>
-          <ModalSection>2. Subtotal â€” Equipamentos</ModalSection>
+          <ModalSection>2. Subtotal — Equipamentos</ModalSection>
           <div className="grid grid-cols-3 gap-2.5 mb-4">
             <div>
               <p className="text-[9px] text-gray-400 uppercase font-bold">Peso Total (ton)</p>
@@ -243,14 +243,14 @@ export function RegistrarFabricacaoModal({
               <p className="text-[13px] font-bold text-gray-700">{formatCurrency(valorTotalEquip)}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase font-bold">R$/kg mÃ©dio</p>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">R$/kg médio</p>
               <p className="text-[13px] font-bold text-auto-value">{rskg(valorTotalEquip, pesoTotalEquip)}</p>
             </div>
           </div>
         </>
       )}
 
-      {/* â”€â”€ SeÃ§Ã£o 3: Testes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 3: Testes ───────────────────────────────────────── */}
       <ModalSection>3. Testes</ModalSection>
 
       <div className="flex gap-3 mb-3">
@@ -262,7 +262,7 @@ export function RegistrarFabricacaoModal({
               : 'bg-white text-gray-500 border-gray-300'
           }`}
         >
-          NÃ£o
+          Não
         </button>
         <button
           onClick={() => setPossuiTestes(true)}
@@ -272,16 +272,16 @@ export function RegistrarFabricacaoModal({
               : 'bg-white text-gray-500 border-gray-300'
           }`}
         >
-          Sim â€” serÃ¡ necessÃ¡rio realizar testes
+          Sim — será necessário realizar testes
         </button>
       </div>
 
       {possuiTestes && (
         <div className="pl-4 border-l-2 border-green-primary/30 mb-4">
           <div className="grid grid-cols-2 gap-2.5">
-            <Field label="DescriÃ§Ã£o dos testes">
+            <Field label="Descrição dos testes">
               <Input
-                placeholder="Ex: Teste hidrostÃ¡tico, inspeÃ§Ã£o por ultrassom..."
+                placeholder="Ex: Teste hidrostático, inspeção por ultrassom..."
                 value={descricaoTestes}
                 onChange={(e) => setDescricaoTestes(e.target.value)}
               />
@@ -293,7 +293,7 @@ export function RegistrarFabricacaoModal({
         </div>
       )}
 
-      {/* â”€â”€ SeÃ§Ã£o 4: Montagem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 4: Montagem ─────────────────────────────────────── */}
       <ModalSection>4. Montagem</ModalSection>
       <div className="flex gap-3 mb-3">
         <button
@@ -304,7 +304,7 @@ export function RegistrarFabricacaoModal({
               : 'bg-white text-gray-500 border-gray-300'
           }`}
         >
-          NÃ£o
+          Não
         </button>
         <button
           onClick={() => setPossuiMontagem(true)}
@@ -314,7 +314,7 @@ export function RegistrarFabricacaoModal({
               : 'bg-white text-gray-500 border-gray-300'
           }`}
         >
-          Sim â€” haverÃ¡ montagem
+          Sim — haverá montagem
         </button>
       </div>
       {possuiMontagem && (
@@ -325,7 +325,7 @@ export function RegistrarFabricacaoModal({
         </div>
       )}
 
-      {/* â”€â”€ SeÃ§Ã£o 5: Total Geral â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 5: Total Geral ──────────────────────────────────── */}
       {valorTotalGeral > 0 && (
         <>
           <ModalSection>5. Total Geral</ModalSection>
@@ -359,7 +359,7 @@ export function RegistrarFabricacaoModal({
         <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
       </Field>
 
-      {/* â”€â”€ SeÃ§Ã£o 6: Data de envio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Seção 6: Data de envio ────────────────────────────────── */}
       <ModalSection>6. Data de envio</ModalSection>
       <Field label="Data de envio da proposta">
         <Input

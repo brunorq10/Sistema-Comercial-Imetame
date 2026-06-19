@@ -92,7 +92,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
       open={open}
       confirmClose
       onClose={onClose}
-      title={isEdit ? `Editar Acordo Â· ${editando!.numero}` : 'Novo Acordo'}
+      title={isEdit ? `Editar Acordo · ${editando!.numero}` : 'Novo Acordo'}
       wide
       footer={
         <>
@@ -117,9 +117,9 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           </Select>
         </Field>
 
-        <Field label="DescriÃ§Ã£o / Escopo" className="col-span-2">
+        <Field label="Descrição / Escopo" className="col-span-2">
           <Input
-            placeholder="Ex: ManutenÃ§Ã£o mecÃ¢nica 2026"
+            placeholder="Ex: Manutenção mecânica 2026"
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
@@ -137,7 +137,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           )}
         </Field>
 
-        <Field label="Ano de vigÃªncia">
+        <Field label="Ano de vigência">
           <Input
             type="number"
             placeholder="Ex: 2026"
@@ -146,7 +146,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           />
         </Field>
 
-        <Field label="Prev. Anos Seguintes (R$) â€” opcional">
+        <Field label="Prev. Anos Seguintes (R$) — opcional">
           <Input
             type="number"
             placeholder="Ex: 3000000"
@@ -160,7 +160,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
 
         <div />
 
-        <Field label="Data de inÃ­cio">
+        <Field label="Data de início">
           <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
         </Field>
         <Field label="Data de fim">

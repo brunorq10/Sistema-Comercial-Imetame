@@ -42,11 +42,11 @@ interface Props {
 }
 
 const MOTIVOS_REPROVACAO: { value: MotivoReprovacao; label: string }[] = [
-  { value: 'VOLUME_ADJUDICADO', label: 'Volume de ServiÃ§os Adjudicados Para o PerÃ­odo' },
-  { value: 'FORA_LINHA_FORNECIMENTO', label: 'NÃ£o Faz Parte da Linha de Fornecimento' },
+  { value: 'VOLUME_ADJUDICADO', label: 'Volume de Serviços Adjudicados Para o Período' },
+  { value: 'FORA_LINHA_FORNECIMENTO', label: 'Não Faz Parte da Linha de Fornecimento' },
   { value: 'INDISPONIBILIDADE_MO', label: 'Indisponibilidade de MO' },
-  { value: 'SEM_SERVICO_LOCAL', label: 'NÃ£o Temos ServiÃ§o no Local' },
-  { value: 'LIMITACAO_EQUIPAMENTOS', label: 'LimitaÃ§Ã£o de Equipamentos' },
+  { value: 'SEM_SERVICO_LOCAL', label: 'Não Temos Serviço no Local' },
+  { value: 'LIMITACAO_EQUIPAMENTOS', label: 'Limitação de Equipamentos' },
   { value: 'DIFICULDADE_PARCERIA', label: 'Dificuldade de Parceria' },
   { value: 'OUTROS', label: 'Outros' },
 ]
@@ -57,7 +57,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Campos editÃ¡veis
+  // Campos editáveis
   const [orcamentistaId, setOrcamentistaId] = useState('')
   const [classificacao, setClassificacao] = useState('')
   const [interesse, setInteresse] = useState('')
@@ -67,7 +67,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
   const [visitaTecnica, setVisitaTecnica] = useState(false)
   const [dataVisita, setDataVisita] = useState('')
 
-  // Estado reprovaÃ§Ã£o
+  // Estado reprovação
   const [modo, setModo] = useState<'visualizar' | 'reprovar'>('visualizar')
   const [motivoReprovacao, setMotivoReprovacao] = useState<MotivoReprovacao | ''>('')
   const [obsReprovacao, setObsReprovacao] = useState('')
@@ -107,9 +107,9 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
   }, [open, solicitacaoId])
 
   const handleAprovar = async () => {
-    if (!orcamentistaId) { setError('Selecione o orÃ§amentista responsÃ¡vel'); return }
-    if (!classificacao) { setError('Preencha a ClassificaÃ§Ã£o'); return }
-    if (!interesse) { setError('Preencha o NÃ­vel de Interesse'); return }
+    if (!orcamentistaId) { setError('Selecione o orçamentista responsável'); return }
+    if (!classificacao) { setError('Preencha a Classificação'); return }
+    if (!interesse) { setError('Preencha o Nível de Interesse'); return }
     setLoading(true); setError(null)
     try {
       const res = await fetch(`/api/analise/${solicitacaoId}`, {
@@ -137,7 +137,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
 
   const handleSalvarEdicao = async () => {
     if (!motivoReprovacao) {
-      setError('Selecione o motivo da reprovaÃ§Ã£o')
+      setError('Selecione o motivo da reprovação')
       return
     }
     setLoading(true); setError(null)
@@ -160,7 +160,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
 
   const handleReprovar = async () => {
     if (!motivoReprovacao) {
-      setError('Selecione o motivo da reprovaÃ§Ã£o')
+      setError('Selecione o motivo da reprovação')
       return
     }
     setLoading(true); setError(null)
@@ -189,13 +189,13 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
       open={open}
       confirmClose
       onClose={onClose}
-      title={sol ? `AnÃ¡lise â€” ${sol.numero}` : 'Carregando...'}
+      title={sol ? `Análise — ${sol.numero}` : 'Carregando...'}
       footer={
         sol?.status_analise === 'REPROVADA' ? (
           <>
             <ModalCancelButton disabled={loading} label="Fechar" />
             <Button variant="danger" onClick={handleSalvarEdicao} disabled={loading}>
-              {loading ? 'Salvando...' : 'Salvar alteraÃ§Ãµes'}
+              {loading ? 'Salvando...' : 'Salvar alterações'}
             </Button>
           </>
         ) : modo === 'reprovar' ? (
@@ -227,16 +227,16 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
         <p className="text-center text-gray-400 py-6 text-sm">Carregando...</p>
       ) : sol && (
         <>
-          {/* Dados da solicitaÃ§Ã£o (read-only) */}
-          <ModalSection>Dados da solicitaÃ§Ã£o</ModalSection>
+          {/* Dados da solicitação (read-only) */}
+          <ModalSection>Dados da solicitação</ModalSection>
           <div className="grid grid-cols-2 gap-2 mb-3 text-[11px]">
             <InfoField label="Cliente">{sol.cliente.nome}</InfoField>
-            <InfoField label="Cliente Final">{sol.cliente_final?.nome ?? 'â€”'}</InfoField>
+            <InfoField label="Cliente Final">{sol.cliente_final?.nome ?? '—'}</InfoField>
             <InfoField label="Criado por">{sol.criador.nome}</InfoField>
-            <InfoField label="Data criaÃ§Ã£o">{formatDate(sol.created_at)}</InfoField>
-            <InfoField label="Contato">{sol.contato ?? 'â€”'}</InfoField>
-            <InfoField label="Cidade / UF">{[sol.cidade, sol.estado].filter(Boolean).join(' / ') || 'â€”'}</InfoField>
-            <InfoField label="Origem">{sol.origem ? ORIGEM_LABELS[sol.origem] : 'â€”'}</InfoField>
+            <InfoField label="Data criação">{formatDate(sol.created_at)}</InfoField>
+            <InfoField label="Contato">{sol.contato ?? '—'}</InfoField>
+            <InfoField label="Cidade / UF">{[sol.cidade, sol.estado].filter(Boolean).join(' / ') || '—'}</InfoField>
+            <InfoField label="Origem">{sol.origem ? ORIGEM_LABELS[sol.origem] : '—'}</InfoField>
           </div>
 
           {modo === 'reprovar' ? (
@@ -253,10 +253,10 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
                   ))}
                 </Select>
               </Field>
-              <Field label="ObservaÃ§Ãµes (opcional)">
+              <Field label="Observações (opcional)">
                 <textarea
                   className="w-full border border-gray-300 rounded px-2.5 py-2 text-[11px] resize-none h-20 focus:outline-none focus:border-green-primary"
-                  placeholder="InformaÃ§Ãµes adicionais..."
+                  placeholder="Informações adicionais..."
                   value={obsReprovacao}
                   onChange={(e) => setObsReprovacao(e.target.value)}
                 />
@@ -264,40 +264,40 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
             </>
           ) : (
             <>
-              {/* Campos editÃ¡veis pelo analista */}
+              {/* Campos editáveis pelo analista */}
               <ModalSection>Dados a preencher / confirmar *</ModalSection>
               <div className="grid grid-cols-2 gap-2.5 mb-3">
                 <Field label="Escopo" className="col-span-2">
                   <Input
-                    placeholder="DescriÃ§Ã£o do escopo"
+                    placeholder="Descrição do escopo"
                     value={escopo}
                     onChange={(e) => setEscopo(e.target.value)}
                   />
                 </Field>
-                <Field label="ClassificaÃ§Ã£o *">
+                <Field label="Classificação *">
                   <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>
                     <option value="">Selecione...</option>
                     <option value="OBRAS">Obras</option>
                     <option value="PARADAS">Paradas</option>
-                    <option value="OLEO_GAS">Ã“leo e GÃ¡s</option>
-                    <option value="FABRICACOES">FabricaÃ§Ãµes</option>
+                    <option value="OLEO_GAS">Óleo e Gás</option>
+                    <option value="FABRICACOES">Fabricações</option>
                   </Select>
                 </Field>
                 <Field label="Interesse *">
                   <Select value={interesse} onChange={(e) => setInteresse(e.target.value)}>
                     <option value="">Selecione...</option>
                     <option value="ALTO">Alto</option>
-                    <option value="MEDIO">MÃ©dio</option>
+                    <option value="MEDIO">Médio</option>
                     <option value="BAIXO">Baixo</option>
                   </Select>
                 </Field>
-                <Field label="Prazo tÃ©cnica">
+                <Field label="Prazo técnica">
                   <Input type="date" value={prazoTecnica} onChange={(e) => setPrazoTecnica(e.target.value)} />
                 </Field>
                 <Field label="Prazo comercial">
                   <Input type="date" value={prazoComercial} onChange={(e) => setPrazoComercial(e.target.value)} />
                 </Field>
-                <Field label="Visita tÃ©cnica" className="col-span-2">
+                <Field label="Visita técnica" className="col-span-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -305,7 +305,7 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
                       onChange={(e) => setVisitaTecnica(e.target.checked)}
                       className="accent-green-primary"
                     />
-                    <span className="text-[11px]">Requer visita tÃ©cnica</span>
+                    <span className="text-[11px]">Requer visita técnica</span>
                   </label>
                 </Field>
                 {visitaTecnica && (
@@ -315,8 +315,8 @@ export function AnaliseSolicitacaoModal({ open, onClose, onSuccess, solicitacaoI
                 )}
               </div>
 
-              <ModalSection>OrÃ§amentista responsÃ¡vel *</ModalSection>
-              <Field label="Selecione o orÃ§amentista" className="mb-2">
+              <ModalSection>Orçamentista responsável *</ModalSection>
+              <Field label="Selecione o orçamentista" className="mb-2">
                 <Select value={orcamentistaId} onChange={(e) => setOrcamentistaId(e.target.value)}>
                   <option value="">Selecione...</option>
                   {orcamentistas.map((o) => (

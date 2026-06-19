@@ -33,7 +33,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
 
   useEffect(() => {
     if (open && subindice) {
-      // PrÃ©-popula com os valores atuais
+      // Pré-popula com os valores atuais
       const inicial = Object.fromEntries(
         MESES.map((m) => [m, subindice[m] != null ? String(subindice[m]) : ''])
       ) as Record<MesKey, string>
@@ -55,7 +55,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
 
   const handleSave = async () => {
     if (filled.length > 0 && !mesesOk) {
-      setError(`A soma dos meses (R$ ${fmt(somaMeses)}) deve ser igual ao disponÃ­vel para previsÃ£o (R$ ${fmt(disponivel)})`)
+      setError(`A soma dos meses (R$ ${fmt(somaMeses)}) deve ser igual ao disponível para previsão (R$ ${fmt(disponivel)})`)
       return
     }
 
@@ -71,7 +71,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
       })
       const json = await res.json()
       if (!res.ok || json.error) {
-        setError(json.error ?? 'Erro ao enviar alteraÃ§Ã£o')
+        setError(json.error ?? 'Erro ao enviar alteração')
         return
       }
       setSuccess(true)
@@ -90,14 +90,14 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
       open={open}
       confirmClose
       onClose={onClose}
-      title={`Propor alteraÃ§Ã£o â€” ${indiceLabel}`}
+      title={`Propor alteração — ${indiceLabel}`}
       wide
       footer={
         success ? undefined : (
           <>
             <ModalCancelButton disabled={loading} />
             <Button onClick={handleSave} disabled={loading || success}>
-              {loading ? 'Enviando...' : 'Enviar para aprovaÃ§Ã£o'}
+              {loading ? 'Enviando...' : 'Enviar para aprovação'}
             </Button>
           </>
         )
@@ -105,7 +105,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
     >
       {success && (
         <div className="bg-green-50 border border-green-300 text-green-800 text-[12px] px-4 py-3 rounded text-center font-semibold">
-          AlteraÃ§Ã£o enviada para aprovaÃ§Ã£o com sucesso!
+          Alteração enviada para aprovação com sucesso!
         </div>
       )}
 
@@ -122,16 +122,16 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
               <p className="text-[13px] font-bold text-gray-800">R$ {fmt(subindice.valor_total)}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">JÃ¡ Faturado</p>
+              <p className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Já Faturado</p>
               <p className="text-[13px] font-bold text-[#1565C0]">R$ {fmt(subindice.total_faturado)}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">DisponÃ­vel p/ PrevisÃ£o</p>
+              <p className="text-[9px] text-gray-400 uppercase tracking-widest mb-0.5">Disponível p/ Previsão</p>
               <p className="text-[13px] font-bold text-green-dark">R$ {fmt(Math.max(0, disponivel))}</p>
             </div>
           </div>
 
-          <ModalSection>Nova previsÃ£o mensal</ModalSection>
+          <ModalSection>Nova previsão mensal</ModalSection>
 
           <div className="grid grid-cols-6 gap-1.5 mb-2">
             {MESES.map((m, mi) => (
@@ -150,12 +150,12 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
 
           {filled.length > 0 && (
             <p className={`mt-1 text-[10px] text-right ${mesesOk ? 'text-green-600' : 'text-orange-600'}`}>
-              Soma meses: R$ {fmt(somaMeses)}{mesesOk ? ' âœ“' : ` Â· DisponÃ­vel: R$ ${fmt(disponivel)}`}
+              Soma meses: R$ {fmt(somaMeses)}{mesesOk ? ' ✓' : ` · Disponível: R$ ${fmt(disponivel)}`}
             </p>
           )}
 
-          {/* Valores atuais para referÃªncia */}
-          <ModalSection>PrevisÃ£o atual (referÃªncia)</ModalSection>
+          {/* Valores atuais para referência */}
+          <ModalSection>Previsão atual (referência)</ModalSection>
           <div className="grid grid-cols-6 gap-1.5">
             {MESES.map((m, mi) => {
               const valor = subindice[m]
@@ -163,7 +163,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
                 <div key={m} className="text-center">
                   <p className="text-[9px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
                   <p className="text-[11px] text-gray-400 py-[3px]">
-                    {valor != null ? fmt(valor) : 'â€”'}
+                    {valor != null ? fmt(valor) : '—'}
                   </p>
                 </div>
               )
@@ -171,7 +171,7 @@ export function ProporAlteracaoModal({ open, onClose, onSuccess, subindice, indi
           </div>
 
           <p className="text-[10px] text-gray-400 mt-4 bg-blue-50 border border-blue-200 rounded px-3 py-2">
-            Sua proposta ficarÃ¡ pendente de aprovaÃ§Ã£o pela GestÃ£o de Acordos. VocÃª acompanha o status no painel.
+            Sua proposta ficará pendente de aprovação pela Gestão de Acordos. Você acompanha o status no painel.
           </p>
         </>
       )}

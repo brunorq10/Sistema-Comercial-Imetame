@@ -53,7 +53,7 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
       open={open}
       confirmClose
       onClose={onClose}
-      title={`Cancelar SolicitaÃ§Ã£o â€” ${solicitacao?.numero ?? ''}`}
+      title={`Cancelar Solicitação — ${solicitacao?.numero ?? ''}`}
       footer={
         <>
           <Button variant="outline" onClick={onClose} disabled={loading}>
@@ -66,7 +66,7 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
       }
     >
       <p className="text-xs text-gray-600 mb-4">
-        O cancelamento Ã© irreversÃ­vel. A solicitaÃ§Ã£o serÃ¡ mantida no histÃ³rico (RN-18).
+        O cancelamento é irreversível. A solicitação será mantida no histórico (RN-18).
       </p>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">

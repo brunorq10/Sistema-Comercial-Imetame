@@ -17,8 +17,8 @@ interface Props {
 const RAMOS = [
   { value: 'PAPEL_CELULOSE', label: 'Papel e Celulose' },
   { value: 'SIDERURGIA', label: 'Siderurgia' },
-  { value: 'MINERACAO', label: 'MineraÃ§Ã£o' },
-  { value: 'OLEO_GAS', label: 'Ã“leo e GÃ¡s' },
+  { value: 'MINERACAO', label: 'Mineração' },
+  { value: 'OLEO_GAS', label: 'Óleo e Gás' },
   { value: 'OUTROS', label: 'Outros' },
 ]
 
@@ -59,11 +59,11 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
   }, [open, editando])
 
   const handleSubmit = async () => {
-    if (!nome.trim()) { setError('RazÃ£o Social Ã© obrigatÃ³ria'); return }
-    if (!ramo) { setError('Ramo de atuaÃ§Ã£o Ã© obrigatÃ³rio'); return }
-    if (!segmento) { setError('Segmento Ã© obrigatÃ³rio'); return }
-    if (!cidade.trim()) { setError('Cidade Ã© obrigatÃ³ria'); return }
-    if (!estado) { setError('UF Ã© obrigatÃ³ria'); return }
+    if (!nome.trim()) { setError('Razão Social é obrigatória'); return }
+    if (!ramo) { setError('Ramo de atuação é obrigatório'); return }
+    if (!segmento) { setError('Segmento é obrigatório'); return }
+    if (!cidade.trim()) { setError('Cidade é obrigatória'); return }
+    if (!estado) { setError('UF é obrigatória'); return }
     setLoading(true); setError(null)
     try {
       const url = isEdit ? `/api/clientes/${editando!.id}` : '/api/clientes'
@@ -95,7 +95,7 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
       open={open}
       confirmClose
       onClose={onClose}
-      title={isEdit ? `Editar Cliente Â· ${editando!.codigo ?? ''} ${editando!.nome}` : 'Novo Cliente'}
+      title={isEdit ? `Editar Cliente · ${editando!.codigo ?? ''} ${editando!.nome}` : 'Novo Cliente'}
       wide
       footer={
         <>
@@ -112,13 +112,13 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
 
       <ModalSection>Dados da empresa</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
-        <Field label="RazÃ£o Social *" className="col-span-2">
+        <Field label="Razão Social *" className="col-span-2">
           <Input placeholder="Ex: Petrobras S.A." value={nome} onChange={(e) => setNome(e.target.value)} />
         </Field>
         <Field label="CNPJ">
           <Input placeholder="00.000.000/0001-00" value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
         </Field>
-        <Field label="Ramo de atuaÃ§Ã£o *">
+        <Field label="Ramo de atuação *">
           <Select value={ramo} onChange={(e) => setRamo(e.target.value)}>
             <option value="">Selecione...</option>
             {RAMOS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -138,7 +138,7 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
         </Field>
         <Field label="UF *">
           <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value="">â€”</option>
+            <option value="">—</option>
             {ESTADOS_BR.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
           </Select>
         </Field>
@@ -147,7 +147,7 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
       <ModalSection>Contato principal</ModalSection>
       <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <Field label="Nome" className="col-span-2">
-          <Input placeholder="Ex: JoÃ£o Silva" value={contatoNome} onChange={(e) => setContatoNome(e.target.value)} />
+          <Input placeholder="Ex: João Silva" value={contatoNome} onChange={(e) => setContatoNome(e.target.value)} />
         </Field>
         <Field label="E-mail">
           <Input type="email" placeholder="joao@empresa.com" value={contatoEmail} onChange={(e) => setContatoEmail(e.target.value)} />

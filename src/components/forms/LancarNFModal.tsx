@@ -28,9 +28,9 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
   }
 
   const handleSubmit = async () => {
-    if (!numeroNf) { setError('Informe o nÃºmero da NF'); return }
+    if (!numeroNf) { setError('Informe o número da NF'); return }
     if (!valor || Number(valor) <= 0) { setError('Informe o valor da NF'); return }
-    if (!dataVencimento) { setError('Vencimento Ã© obrigatÃ³rio (RN-21)'); return }
+    if (!dataVencimento) { setError('Vencimento é obrigatório (RN-21)'); return }
 
     setLoading(true)
     setError(null)
@@ -46,7 +46,7 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
         }),
       })
       const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lanÃ§ar NF'); return }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar NF'); return }
       resetForm()
       onSuccess()
       onClose()
@@ -60,12 +60,12 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
       open={open}
       confirmClose
       onClose={onClose}
-      title={`LanÃ§ar NF â€” ${acordo.numero} Â· ${acordo.cliente.nome}`}
+      title={`Lançar NF — ${acordo.numero} · ${acordo.cliente.nome}`}
       footer={
         <>
           <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Salvando...' : 'LanÃ§ar NF'}
+            {loading ? 'Salvando...' : 'Lançar NF'}
           </Button>
         </>
       }
@@ -75,7 +75,7 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
       )}
 
       <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2 mb-3 text-[11px]">
-        <span className="text-gray-400">Saldo disponÃ­vel: </span>
+        <span className="text-gray-400">Saldo disponível: </span>
         <span className="font-bold text-green-primary">{formatCurrency(acordo.saldo)}</span>
         <span className="text-gray-300 mx-2">|</span>
         <span className="text-gray-400">Contrato: </span>
@@ -83,7 +83,7 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Field label="NÃºmero da NF" className="col-span-2">
+        <Field label="Número da NF" className="col-span-2">
           <Input
             placeholder="Ex: 000123456"
             value={numeroNf}
@@ -103,13 +103,13 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
           )}
         </Field>
 
-        <Field label="Data de emissÃ£o">
+        <Field label="Data de emissão">
           <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
         </Field>
 
         <Field label="Data de vencimento *" className="col-span-2">
           <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
-          <p className="text-[10px] text-gray-400 mt-0.5">ObrigatÃ³rio (RN-21)</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Obrigatório (RN-21)</p>
         </Field>
       </div>
     </Modal>
