@@ -710,6 +710,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
   const [modalVisualizar,  setModalVisualizar]  = useState<ContratoHh | null>(null)
   const [novoModal,        setNovoModal]        = useState(false)
   const [deleteId,         setDeleteId]         = useState<number | null>(null)
+  const [deleteMotivo,     setDeleteMotivo]     = useState('')
   const [deleting,         setDeleting]         = useState(false)
   const [filters,          setFilters]          = useState<FilterState>({})
   const [clientes,         setClientes]         = useState<{ id: number; nome: string }[]>([])
@@ -723,11 +724,15 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
   const filtered = applyFilters(contratos, filters)
   const setFilter = (k: string, v: string[]) => setFilters(p => ({ ...p, [k]: v }))
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, motivo: string) => {
     setDeleting(true)
     try {
-      await fetch(`/api/acordos/hh/${id}`, { method: 'DELETE' })
-      setDeleteId(null); onRefresh()
+      const res = await fetch(`/api/acordos/hh/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo }),
+      })
+      if (res.ok) { setDeleteId(null); setDeleteMotivo(''); onRefresh() }
     } finally { setDeleting(false) }
   }
 
@@ -792,7 +797,6 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
               const { hh_previsto: prev, hh_planejado: plan, hh_realizado: real } = c
               const pctPrev = prev && prev > 0 && real != null ? (real / prev) * 100 : null
               const pctPlan = plan && plan > 0 && real != null ? (real / plan) * 100 : null
-              const isDeleting = deleteId === c.id
               return (
                 <tr key={c.id} style={{ background: bg }} className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors">
                   <td className="px-3 py-2 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
@@ -870,26 +874,18 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                   )}
                   {/* Ações */}
                   <td className="px-2 py-2 text-center w-[100px]">
-                    {isDeleting ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => handleDelete(c.id)} disabled={deleting}
-                          className="text-[9px] font-bold text-red-600 border border-red-300 rounded px-1.5 py-0.5 hover:bg-red-50 disabled:opacity-50">
-                          {deleting ? '...' : 'Confirmar'}
-                        </button>
-                        <button onClick={() => setDeleteId(null)} className="text-gray-400 hover:text-gray-600 text-[11px]">✕</button>
-                      </div>
-                    ) : classificacao === 'PARADAS' ? (
+                    {classificacao === 'PARADAS' ? (
                       <div className="flex items-center justify-center gap-1">
                         <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">✎</ABtn>
-                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Lançar / Controle de HH" color="gray">+ HH</ABtn>
-                        <ABtn onClick={() => setDeleteId(c.id)} title="Excluir lançamento" color="red">🗑</ABtn>
+                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Controle de HH" color="gray">+HH</ABtn>
+                        <ABtn onClick={() => { setDeleteId(c.id); setDeleteMotivo('') }} title="Remover do acompanhamento" color="red">🗑</ABtn>
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-1">
                         <ABtn onClick={() => setModalVisualizar(c)} title="Visualizar lançamentos" color="blue">👁</ABtn>
                         <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">✎</ABtn>
                         <ABtn onClick={() => setModalLancamento(c)} title="Lançar HH" color="gray">+</ABtn>
-                        <ABtn onClick={() => setDeleteId(c.id)} title="Remover do acompanhamento" color="red">🗑</ABtn>
+                        <ABtn onClick={() => { setDeleteId(c.id); setDeleteMotivo('') }} title="Remover do acompanhamento" color="red">🗑</ABtn>
                       </div>
                     )}
                   </td>
@@ -902,6 +898,33 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           <p className="text-[9px] text-gray-400">ⓘ Verde &lt;90%, Âmbar 90–100%, Vermelho &gt;100% do previsto ou planejado.</p>
         </div>
       </div>
+
+      {deleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-5 w-[340px] max-w-full mx-4">
+            <h3 className="text-sm font-semibold text-gray-800 mb-1">Remover do acompanhamento</h3>
+            <p className="text-[11px] text-gray-500 mb-3">Informe o motivo para remover este contrato do controle de HH.</p>
+            <textarea
+              value={deleteMotivo}
+              onChange={e => setDeleteMotivo(e.target.value)}
+              placeholder="Motivo (obrigatório)"
+              rows={3}
+              className="w-full text-[11px] border border-gray-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-green-primary mb-3"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setDeleteId(null); setDeleteMotivo('') }}
+                className="text-[11px] px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+              >Cancelar</button>
+              <button
+                onClick={() => handleDelete(deleteId, deleteMotivo)}
+                disabled={!deleteMotivo.trim() || deleting}
+                className="text-[11px] px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+              >{deleting ? 'Removendo...' : 'Confirmar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {novoModal && (
         <NovoLancamentoModal
