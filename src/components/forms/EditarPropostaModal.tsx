@@ -193,8 +193,9 @@ export function EditarPropostaModal({
     })
     setHhTotalObra(tec?.hh_total != null ? String(tec.hh_total) : '')
 
-    // Comercial
-    const com = item.propostas_comerciais[0] ?? null
+    // Comercial — usa apenas o da revisão atual para não pré-preencher com dados de revisões antigas
+    const revAtual = Math.max(item.revisao_esperada, tec?.versao ?? 0)
+    const com = item.propostas_comerciais.find(c => c.versao === revAtual) ?? null
     setTecnicaId(com?.proposta_tecnica_id != null ? String(com.proposta_tecnica_id) : (tec ? String(tec.id) : ''))
     setValorMontagem(asStr(com?.valor_montagem_mecanica))
     setPossuiTerceiros(com?.possui_terceiros ?? false)
@@ -287,6 +288,12 @@ export function EditarPropostaModal({
   const totalFab      = valorEquipFab + numTestesFab + numMontFab
   const rsPorKgFabFab = pesoTotalFab > 0 && totalFab > 0 ? totalFab / (pesoTotalFab * 1000) : null
 
+  // Revisão atual = slot que técnica/comercial devem preencher
+  const revisaoAtual = Math.max(item.revisao_esperada, item.propostas_tecnicas[0]?.versao ?? 0)
+  // Decide PUT (editar existente da revisão atual) vs POST (criar para nova revisão)
+  const hasTecnicaCurrentRev  = item.propostas_tecnicas.some(t => t.versao === revisaoAtual)
+  const hasComercialCurrentRev = item.propostas_comerciais.some(c => c.versao === revisaoAtual)
+
   const hasTecnica    = item.propostas_tecnicas.length > 0
   const hasComercial  = item.propostas_comerciais.length > 0
   const hasFabricacao = item.propostas_fabricacao.length > 0
@@ -306,7 +313,7 @@ export function EditarPropostaModal({
       if (pesoMontagem) body.peso_montagem = Number(pesoMontagem)
       if (turno) body.turno = turno
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-tecnica`, {
-        method: hasTecnica ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: hasTecnicaCurrentRev ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorTec(json.error ?? 'Erro ao salvar'); return }
@@ -322,7 +329,7 @@ export function EditarPropostaModal({
       const body: Record<string, unknown> = { hh_total: numHhObra, peso_montagem: pesoTotalObra, data_envio: dataEnvioTec }
       pesoCats.forEach(k => { if (Number(pesosObra[k]) > 0) body[`peso_${k}`] = Number(pesosObra[k]) })
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-tecnica`, {
-        method: hasTecnica ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: hasTecnicaCurrentRev ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorTec(json.error ?? 'Erro ao salvar'); return }
@@ -350,7 +357,7 @@ export function EditarPropostaModal({
         if (numPesoFab > 0) body.peso_fabricacao = numPesoFab
       }
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-comercial`, {
-        method: hasComercial ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: hasComercialCurrentRev ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorCom(json.error ?? 'Erro ao salvar'); return }
@@ -368,7 +375,7 @@ export function EditarPropostaModal({
       }
       if (numTercParada > 0) body.valor_terceiros = numTercParada
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-comercial`, {
-        method: hasComercial ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: hasComercialCurrentRev ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorCom(json.error ?? 'Erro ao salvar'); return }

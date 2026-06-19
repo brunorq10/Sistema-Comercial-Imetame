@@ -164,6 +164,7 @@ export interface PropostasItem {
   id: number
   numero: string
   created_at: string
+  revisao_esperada: number
   cliente: { id: number; nome: string }
   cliente_final: { id: number; nome: string } | null
   cidade: string | null

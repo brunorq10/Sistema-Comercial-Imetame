@@ -50,7 +50,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const sol = await prisma.solicitacao.findUnique({
     where: { id },
     include: {
-      propostas_tecnicas: { orderBy: { versao: 'desc' }, take: 1 },
+      propostas_tecnicas:  { orderBy: { versao: 'desc' }, take: 1 },
+      propostas_comerciais: { orderBy: { versao: 'desc' }, take: 1 },
       orcamentista: { select: { email: true, nome: true } },
     },
   })
@@ -71,6 +72,39 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const novaRevisao = Math.max(sol.revisao_esperada, ultimaVersao) + 1
 
   const d = parsed.data
+
+  // Labels para uso nos logs
+  const revisaoAtual = novaRevisao - 1
+  const revLabelAtual = `Rev${String(revisaoAtual - 1).padStart(2, '0')}`
+  const revLabelNova  = d.as_sold ? 'As Sold.' : `Rev${String(novaRevisao - 1).padStart(2, '0')}`
+  const userId = Number(session.user.id)
+
+  // Cenário 2: técnica enviada na revisão atual mas comercial ainda não — registra no histórico
+  const ultimaComercialVersao = sol.propostas_comerciais[0]?.versao ?? 0
+  const tecnicaEnviadaNaRevisaoAtual  = ultimaVersao > 0 && ultimaVersao === revisaoAtual
+  const comercialEnviadaNaRevisaoAtual = ultimaComercialVersao === revisaoAtual
+  if (tecnicaEnviadaNaRevisaoAtual && !comercialEnviadaNaRevisaoAtual) {
+    await Promise.all([
+      prisma.solicitacaoInfo.create({
+        data: {
+          solicitacao_id: id,
+          data: new Date(),
+          comentario: `[${revLabelAtual}] Proposta comercial não enviada — revisão encerrada pela criação da ${revLabelNova}`,
+          versao: revisaoAtual,
+          created_by: userId,
+        },
+      }),
+      prisma.historicoSolicitacao.create({
+        data: {
+          solicitacao_id: id,
+          campo: `Proposta Comercial ${revLabelAtual}`,
+          valor_de: null,
+          valor_para: `Não enviada — revisão encerrada pela criação da ${revLabelNova}`,
+          created_by: userId,
+        },
+      }),
+    ])
+  }
 
   const pendenteCount = await prisma.propostaComercial.count({
     where: { solicitacao_id: id, resultado: 'AGUARDANDO' },

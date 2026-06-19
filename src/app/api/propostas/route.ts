@@ -144,6 +144,7 @@ export async function GET(req: NextRequest) {
       id: s.id,
       numero: s.numero,
       created_at: s.created_at.toISOString(),
+      revisao_esperada: s.revisao_esperada,
       cliente: {
         id: s.cliente.id,
         nome: s.cliente.nome,
