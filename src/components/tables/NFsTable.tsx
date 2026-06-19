@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import type { NFListItem } from '@/types'
 
 interface Props {
@@ -84,7 +85,11 @@ function InativarInline({
 
 export function NFsTable({ data, onToggleAtiva, canInativar }: Props) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'data_vencimento', desc: false }])
-  const [columnPinning] = useState<ColumnPinningState>({ left: ['numero_nf', 'acordo', 'cliente'] })
+  // Congelar colunas só no desktop; no mobile a tabela rola sem colunas fixas.
+  const isDesktop = useIsDesktop()
+  const columnPinning: ColumnPinningState = isDesktop
+    ? { left: ['numero_nf', 'acordo', 'cliente'] }
+    : {}
   const [inativandoId, setInativandoId] = useState<number | null>(null)
 
   const handleInativar = useCallback(

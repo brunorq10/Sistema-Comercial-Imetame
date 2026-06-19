@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 
@@ -43,14 +44,17 @@ const W = {
   responsavel: 130, comentarios: 140,
   mes: 130, prevAnos: 130, acoes: 130,
 }
-const L = {
-  indice: 0,
-  cliente: W.indice,
-  cliente_final: W.indice + W.cliente,
-  cidade: W.indice + W.cliente + W.cliente_final,
-  descricao: W.indice + W.cliente + W.cliente_final + W.cidade,
+// Offsets de congelamento horizontal (desktop). No mobile usamos EMPTY_L
+// (tudo undefined) para que as colunas não fiquem fixas e a tabela role inteira.
+const LD = {
+  indice: 0 as number | undefined,
+  cliente: W.indice as number | undefined,
+  cliente_final: (W.indice + W.cliente) as number | undefined,
+  cidade: (W.indice + W.cliente + W.cliente_final) as number | undefined,
+  descricao: (W.indice + W.cliente + W.cliente_final + W.cidade) as number | undefined,
 }
-const FROZEN_TOTAL = L.descricao + W.descricao
+const EMPTY_L = { indice: undefined, cliente: undefined, cliente_final: undefined, cidade: undefined, descricao: undefined }
+const FROZEN_TOTAL = (LD.descricao ?? 0) + W.descricao
 
 const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acordo + W.proposta +
               W.dtInicio + W.dtFim + W.statusFat + W.vlrTotal + W.vlrFat + W.saldo +
@@ -96,6 +100,11 @@ export function FaturamentoContratoTable({
   const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
+
+  // Congelar colunas só no desktop. No mobile os offsets ficam undefined,
+  // então as colunas não fixam e a tabela rola horizontalmente inteira.
+  const isDesktop = useIsDesktop()
+  const L = isDesktop ? LD : EMPTY_L
 
   const toggleExpand = (id: number) =>
     setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import type { AcordoListItem } from '@/types'
 
 interface Props {
@@ -65,7 +66,12 @@ export function FaturamentoTable({
   canCancelar,
 }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnPinning] = useState<ColumnPinningState>({ left: ['numero', 'cliente', 'status'] })
+  // Congelar colunas só no desktop. No mobile o sticky ocupava a tela inteira,
+  // então a tabela rola horizontalmente sem colunas fixas.
+  const isDesktop = useIsDesktop()
+  const columnPinning: ColumnPinningState = isDesktop
+    ? { left: ['numero', 'cliente', 'status'] }
+    : {}
 
   const columns = useMemo(
     () => [

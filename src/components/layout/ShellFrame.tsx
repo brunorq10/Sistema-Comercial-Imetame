@@ -30,7 +30,7 @@ export function ShellFrame({ children, title }: ShellFrameProps) {
           onToggleCollapse={() => setCollapsed((v) => !v)}
           collapsed={collapsed}
         />
-        <main className="flex-1 overflow-auto bg-[#F0F0F0]">
+        <main className="isolate flex-1 overflow-auto bg-[#F0F0F0]">
           {children}
         </main>
       </div>
