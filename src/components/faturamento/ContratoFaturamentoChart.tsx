@@ -29,17 +29,15 @@ const COLORS = {
   acumFaturado:   '#2D7DD2',  // azul escuro
 }
 
+// Valor completo, com separador de milhar e 2 casas decimais (sem abreviação "k"/"M")
 function fmtLabel(v: number): string {
   if (v === 0) return ''
-  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
-  return `R$${v.toFixed(0)}`
+  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+// Eixo Y: valor completo, sem abreviação (sem casas decimais para não poluir os ticks)
 function fmtAxis(v: number): string {
-  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
-  return `R$${v}`
+  return `R$ ${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
 }
 
 function fmtTooltip(v: number): string {
@@ -125,7 +123,8 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
             ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
           anchor: 'end' as const,
           align: 'end' as const,
-          offset: 2,
+          rotation: -90,
+          offset: 4,
           font: { size: 9, weight: 'bold' as const },
           color: COLORS.previstoBorder,
           formatter: (v: number) => fmtLabel(v),
@@ -145,7 +144,8 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
             ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
           anchor: 'end' as const,
           align: 'end' as const,
-          offset: 2,
+          rotation: -90,
+          offset: 4,
           font: { size: 9, weight: 'bold' as const },
           color: COLORS.faturadoBorder,
           formatter: (v: number) => fmtLabel(v),
@@ -158,7 +158,7 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
     responsive: true,
     maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
-    layout: { padding: { top: 28, right: 16, bottom: 0, left: 0 } },
+    layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
     plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
     scales: { x: xScale, y: yScale },
   }
@@ -235,7 +235,7 @@ export function ContratoFaturamentoLineChart({ previsto, faturado, labels }: Pro
     responsive: true,
     maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
-    layout: { padding: { top: 28, right: 16, bottom: 0, left: 0 } },
+    layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
     plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
     scales: { x: xScale, y: yScale },
   }
