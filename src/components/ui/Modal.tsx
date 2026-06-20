@@ -37,17 +37,23 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, footer, wide, extraWide, hasChanges, confirmClose }: ModalProps) {
   const [confirmingClose, setConfirmingClose] = useState(false)
+  // Marca se o usuário realmente editou algum campo enquanto o modal esteve aberto.
+  // Assim só perguntamos "sair sem salvar?" quando houve edição — não ao apenas abrir/fechar.
+  const [interacted, setInteracted] = useState(false)
   const prevOpen = useRef(open)
 
   if (open !== prevOpen.current) {
     prevOpen.current = open
-    if (!open) setConfirmingClose(false)
+    // Reinicia o estado a cada abertura/fechamento
+    setConfirmingClose(false)
+    setInteracted(false)
   }
 
   if (!open) return null
 
   const handleClose = () => {
-    if (hasChanges || confirmClose) {
+    // Só confirma se o modal pede guarda (hasChanges/confirmClose) E houve edição de fato.
+    if ((hasChanges || confirmClose) && interacted) {
       setConfirmingClose(true)
     } else {
       onClose()
@@ -95,7 +101,13 @@ export function Modal({ open, onClose, title, children, footer, wide, extraWide,
             </div>
           )}
 
-          <div className="p-[18px] overflow-y-auto flex-1">{children}</div>
+          <div
+            className="p-[18px] overflow-y-auto flex-1"
+            onChangeCapture={() => setInteracted(true)}
+            onInputCapture={() => setInteracted(true)}
+          >
+            {children}
+          </div>
 
           {footer && (
             <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 flex-shrink-0">

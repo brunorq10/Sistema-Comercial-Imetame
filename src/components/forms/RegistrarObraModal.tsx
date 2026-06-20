@@ -91,7 +91,6 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
     equipamentos: '', tubulacoes: '', suportes: '', estruturas: '',
   })
   const [hhTotal, setHhTotal] = useState('')
-  const [dataBase, setDataBase] = useState('')
   const [dataEnvio, setDataEnvio] = useState(today())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -113,7 +112,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
 
     setLoading(true); setError(null)
     try {
-      const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_base: dataBase || undefined, data_envio: dataEnvio }
+      const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_envio: dataEnvio }
       if (!naoAplicavel) {
         body.hh_total = numHh
         body.peso_montagem = pesoTotal
@@ -213,12 +212,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
 
           <ModalSection>Datas</ModalSection>
           <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <Field label="Data base">
-              <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
-            </Field>
             <Field label="Data de envio — técnica">
               <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
             </Field>
+            <div />
           </div>
         </>
       )}
