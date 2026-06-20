@@ -40,8 +40,11 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  const hoje = new Date()
-  hoje.setHours(0, 0, 0, 0)
+  // Compara datas-calendário: "hoje" como meia-noite UTC da data local atual,
+  // pois os prazos são gravados como meia-noite UTC. Evita marcar como atrasado
+  // um prazo que é exatamente hoje (off-by-one de fuso).
+  const agora = new Date()
+  const hoje = new Date(Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate()))
 
   const data = items.map((s) => {
     // Effective revision: max of revisao_esperada and last submitted técnica versao

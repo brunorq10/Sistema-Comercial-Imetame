@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, AutoInput, CurrencyInput } from '@/components/ui/Input'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInput } from '@/lib/utils'
 
 interface Equipamento {
   descricao: string
@@ -47,7 +47,7 @@ export function RegistrarFabricacaoModal({
   const [valorTestes, setValorTestes] = useState('')
   const [possuiMontagem, setPossuiMontagem] = useState(false)
   const [valorMontagem, setValorMontagem] = useState('')
-  const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataEnvio, setDataEnvio] = useState(todayInput())
   const [dataBase, setDataBase] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +85,7 @@ export function RegistrarFabricacaoModal({
     setValorTestes('')
     setPossuiMontagem(false)
     setValorMontagem('')
-    setDataEnvio(new Date().toISOString().split('T')[0])
+    setDataEnvio(todayInput())
     setDataBase('')
     setError(null)
   }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, CurrencyInput } from '@/components/ui/Input'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, todayInput } from '@/lib/utils'
 
 interface PropostaTecnica {
   id: number
@@ -30,7 +30,7 @@ export function RegistrarComercialModal({
   // RN-36: pré-seleciona N/A quando não há técnica disponível
   const [naoAplicavel, setNaoAplicavel] = useState(() => propostasTecnicas.length === 0)
   const [tecnicaId, setTecnicaId] = useState('')
-  const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataEnvio, setDataEnvio] = useState(todayInput())
 
   // Campos comerciais
   const [valorMontagem, setValorMontagem] = useState('')
@@ -71,7 +71,7 @@ export function RegistrarComercialModal({
   const resetForm = () => {
     setNaoAplicavel(propostasTecnicas.length === 0)
     setTecnicaId(propostasTecnicas[0] ? String(propostasTecnicas[0].id) : '')
-    setDataEnvio(new Date().toISOString().split('T')[0])
+    setDataEnvio(todayInput())
     setValorMontagem('')
     setPossuiTerceiros(false)
     setValEletrica(''); setValIsolamento(''); setValCivil(''); setValFibra(''); setValOutros('')

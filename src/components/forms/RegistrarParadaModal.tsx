@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
-import { formatCurrency, formatDate, formatRev } from '@/lib/utils'
+import { formatCurrency, formatDate, formatRev, todayInput } from '@/lib/utils'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const [diasParada, setDiasParada] = useState('')
   const [turno, setTurno] = useState('')
   const [finaisDeSemana, setFinaisDeSemana] = useState(false)
-  const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataEnvio, setDataEnvio] = useState(todayInput())
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -215,7 +215,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
   })
   const [valorTotal, setValorTotal] = useState('')
   const [valorTerceiros, setValorTerceiros] = useState('')
-  const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataEnvio, setDataEnvio] = useState(todayInput())
   const [dataBase, setDataBase] = useState('')
 
   const [loading, setLoading] = useState(false)

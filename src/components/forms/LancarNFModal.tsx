@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, todayInput } from '@/lib/utils'
 import type { AcordoListItem } from '@/types'
 
 interface Props {
@@ -17,14 +17,14 @@ interface Props {
 export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
   const [numeroNf, setNumeroNf] = useState('')
   const [valor, setValor] = useState('')
-  const [dataEmissao, setDataEmissao] = useState(new Date().toISOString().split('T')[0])
+  const [dataEmissao, setDataEmissao] = useState(todayInput())
   const [dataVencimento, setDataVencimento] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const resetForm = () => {
     setNumeroNf(''); setValor('')
-    setDataEmissao(new Date().toISOString().split('T')[0]); setDataVencimento('')
+    setDataEmissao(todayInput()); setDataVencimento('')
   }
 
   const handleSubmit = async () => {

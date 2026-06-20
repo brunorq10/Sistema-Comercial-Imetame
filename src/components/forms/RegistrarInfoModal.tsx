@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
+import { todayInput } from '@/lib/utils'
 
 interface Props {
   open: boolean
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export function RegistrarInfoModal({ open, onClose, onSuccess, solicitacaoId, numero }: Props) {
-  const [data, setData] = useState(new Date().toISOString().split('T')[0])
+  const [data, setData] = useState(todayInput())
   const [comentario, setComentario] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +33,7 @@ export function RegistrarInfoModal({ open, onClose, onSuccess, solicitacaoId, nu
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
-      setComentario(''); setData(new Date().toISOString().split('T')[0])
+      setComentario(''); setData(todayInput())
       onSuccess(); onClose()
     } finally { setLoading(false) }
   }

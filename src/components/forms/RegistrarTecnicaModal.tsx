@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, AutoInput, IntegerInput, CurrencyInput } from '@/components/ui/Input'
+import { todayInput } from '@/lib/utils'
 
 interface Props {
   open: boolean
@@ -17,7 +18,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
   const [hhDireto, setHhDireto] = useState('')
   const [hhIndireto, setHhIndireto] = useState('')
   const [pesoMontagem, setPesoMontagem] = useState('')
-  const [dataEnvio, setDataEnvio] = useState(new Date().toISOString().split('T')[0])
+  const [dataEnvio, setDataEnvio] = useState(todayInput())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +50,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
 
       setHhDireto(''); setHhIndireto(''); setPesoMontagem('')
-      setDataEnvio(new Date().toISOString().split('T')[0])
+      setDataEnvio(todayInput())
       onSuccess()
       onClose()
     } catch (err) {
