@@ -11,6 +11,7 @@ export interface PainelItem {
   id: number
   numero: string
   created_at: string
+  data_atribuicao: string | null
   data_recebimento: string | null
   cliente: string
   cliente_final: string | null

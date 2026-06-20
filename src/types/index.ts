@@ -27,6 +27,7 @@ export const STATUS_LABELS: Record<StatusSolicitacao, string> = {
   CONTRATO_GANHO: 'Contrato ganho',
   RECUSADA: 'Recusada',
   CANCELADA: 'Cancelada',
+  SUSPENSA: 'Suspensa',
 }
 
 export const CLASSIFICACAO_LABELS: Record<Classificacao, string> = {
@@ -106,6 +107,10 @@ export interface SolicitacaoListItem {
   versao_atual: number
   as_sold: boolean
   cancelled_at: string | null
+  suspended_at: string | null
+  suspend_reason: string | null
+  data_atribuicao: string | null
+  tem_proposta_enviada: boolean
   motivo_reprovacao: MotivoReprovacao | null
   obs_reprovacao: string | null
 }

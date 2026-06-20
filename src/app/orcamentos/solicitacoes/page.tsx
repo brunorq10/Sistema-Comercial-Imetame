@@ -25,6 +25,7 @@ const STATUS_TABS: { label: string; status: StatusSolicitacao | null }[] = [
   { label: 'Prop. enviada', status: 'PROPOSTA_ENVIADA' },
   { label: 'Contrato ganho', status: 'CONTRATO_GANHO' },
   { label: 'Recusadas', status: 'RECUSADA' },
+  { label: 'Suspensas', status: 'SUSPENSA' },
   { label: 'Canceladas', status: 'CANCELADA' },
 ]
 

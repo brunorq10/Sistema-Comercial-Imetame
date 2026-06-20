@@ -34,6 +34,7 @@ export function StatusBadge({ status }: { status: StatusSolicitacao }) {
     CONTRATO_GANHO: { label: 'Contrato ganho', variant: 'green' },
     RECUSADA: { label: 'Recusada', variant: 'red' },
     CANCELADA: { label: 'Cancelada', variant: 'gray' },
+    SUSPENSA: { label: 'Suspensa', variant: 'amber' },
   }
   const { label, variant } = map[status]
   return <Badge variant={variant}>{label}</Badge>

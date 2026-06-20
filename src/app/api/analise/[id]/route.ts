@@ -170,6 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         status_analise: 'APROVADA',
         status: 'EM_ELABORACAO',
         orcamentista_id: d.orcamentista_id,
+        data_atribuicao: new Date(),
         ...(d.escopo !== undefined && { escopo: d.escopo }),
         ...(d.classificacao !== undefined && { classificacao: d.classificacao as Classificacao }),
         ...(d.interesse !== undefined && { interesse: d.interesse as Interesse }),

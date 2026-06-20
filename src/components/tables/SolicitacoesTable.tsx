@@ -130,10 +130,12 @@ export function SolicitacoesTable({
         cell: ({ row }) => {
           const item = row.original
           const isCancelada = !!item.cancelled_at
+          const isSuspensa = item.status === 'SUSPENSA'
+          const isInativa = isCancelada || isSuspensa
           const isReprovada = item.status_analise === 'REPROVADA'
           return (
             <div className="flex gap-1">
-              {canRevisao && !isCancelada && !item.as_sold && (
+              {canRevisao && !isInativa && !item.as_sold && (
                 <Button
                   variant="warning"
                   size="sm"
@@ -143,7 +145,7 @@ export function SolicitacoesTable({
                   ↻
                 </Button>
               )}
-              {isReprovada && !isCancelada && onReenviar && (
+              {isReprovada && !isInativa && onReenviar && (
                 <Button
                   variant="warning"
                   size="sm"
@@ -163,7 +165,7 @@ export function SolicitacoesTable({
                   ↺
                 </Button>
               )}
-              {canEdit && !isCancelada && (
+              {canEdit && !isInativa && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -173,12 +175,12 @@ export function SolicitacoesTable({
                   ✎
                 </Button>
               )}
-              {canCancel && !isCancelada && (
+              {canCancel && !isInativa && (
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={(e) => { e.stopPropagation(); onCancel(item) }}
-                  title="Cancelar"
+                  title="Cancelar/Suspender"
                 >
                   ✕
                 </Button>

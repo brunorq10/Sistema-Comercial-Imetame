@@ -32,6 +32,7 @@ enum StatusSolicitacao {
   CONTRATO_GANHO
   RECUSADA
   CANCELADA
+  SUSPENSA
 }
 
 enum Classificacao {
@@ -232,6 +233,9 @@ model Solicitacao {
   created_by      Int
   cancelled_at    DateTime?
   cancel_reason   String?
+  suspended_at    DateTime?
+  suspend_reason  String?
+  data_atribuicao DateTime?
 
   cliente        Cliente  @relation("SolicitacaoCliente", fields: [cliente_id], references: [id])
   cliente_final  Cliente? @relation("SolicitacaoClienteFinal", fields: [cliente_final_id], references: [id])

@@ -142,27 +142,42 @@ export async function GET(req: NextRequest) {
         visita_tecnica: true,
         as_sold: true,
         cancelled_at: true,
+        suspended_at: true,
+        suspend_reason: true,
+        data_atribuicao: true,
         motivo_reprovacao: true,
         obs_reprovacao: true,
         cliente: { select: { id: true, nome: true } },
         cliente_final: { select: { id: true, nome: true } },
         orcamentista: { select: { id: true, nome: true } },
-        propostas_tecnicas: { select: { versao: true }, orderBy: { versao: 'desc' }, take: 1 },
+        propostas_tecnicas: { select: { versao: true, data_envio: true }, orderBy: { versao: 'desc' } },
+        propostas_comerciais: { where: { data_envio: { not: null } }, select: { id: true }, take: 1 },
+        propostas_fabricacao: { where: { data_envio: { not: null } }, select: { id: true }, take: 1 },
       },
     }),
     prisma.solicitacao.count({ where }),
   ])
 
-  const data = items.map((s) => ({
-    ...s,
-    created_at: s.created_at.toISOString(),
-    prazo_tecnica: s.prazo_tecnica?.toISOString() ?? null,
-    prazo_comercial: s.prazo_comercial?.toISOString() ?? null,
-    data_recebimento: s.data_recebimento?.toISOString() ?? null,
-    data_visita: s.data_visita?.toISOString() ?? null,
-    cancelled_at: s.cancelled_at?.toISOString() ?? null,
-    versao_atual: s.propostas_tecnicas[0]?.versao ?? 1,
-  }))
+  const data = items.map((s) => {
+    const { propostas_tecnicas, propostas_comerciais, propostas_fabricacao, ...rest } = s
+    const temPropostaEnviada =
+      propostas_tecnicas.some((t) => t.data_envio != null) ||
+      propostas_comerciais.length > 0 ||
+      propostas_fabricacao.length > 0
+    return {
+      ...rest,
+      created_at: s.created_at.toISOString(),
+      prazo_tecnica: s.prazo_tecnica?.toISOString() ?? null,
+      prazo_comercial: s.prazo_comercial?.toISOString() ?? null,
+      data_recebimento: s.data_recebimento?.toISOString() ?? null,
+      data_visita: s.data_visita?.toISOString() ?? null,
+      cancelled_at: s.cancelled_at?.toISOString() ?? null,
+      suspended_at: s.suspended_at?.toISOString() ?? null,
+      data_atribuicao: s.data_atribuicao?.toISOString() ?? null,
+      versao_atual: propostas_tecnicas[0]?.versao ?? 1,
+      tem_proposta_enviada: temPropostaEnviada,
+    }
+  })
 
   return NextResponse.json({ data, total, page, limit, pages: Math.ceil(total / limit), error: null })
 }

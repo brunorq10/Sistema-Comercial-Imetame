@@ -21,12 +21,25 @@ export async function GET(req: NextRequest) {
       status: { in: ['AGUARDANDO_ANALISE', 'EM_ELABORACAO', 'PROPOSTA_ENVIADA'] },
       ...(classificacao && { classificacao: classificacao as never }),
       ...(interesse && { interesse: interesse as never }),
+      // Período de ATRIBUIÇÃO = data em que o analista aprovou (data_atribuicao).
+      // Registros antigos sem data_atribuicao usam created_at como fallback.
       ...(data_de || data_ate
         ? {
-            created_at: {
-              ...(data_de && { gte: new Date(data_de) }),
-              ...(data_ate && { lte: new Date(data_ate + 'T23:59:59') }),
-            },
+            OR: [
+              {
+                data_atribuicao: {
+                  ...(data_de && { gte: new Date(data_de) }),
+                  ...(data_ate && { lte: new Date(data_ate + 'T23:59:59') }),
+                },
+              },
+              {
+                data_atribuicao: null,
+                created_at: {
+                  ...(data_de && { gte: new Date(data_de) }),
+                  ...(data_ate && { lte: new Date(data_ate + 'T23:59:59') }),
+                },
+              },
+            ],
           }
         : {}),
     },
@@ -72,6 +85,7 @@ export async function GET(req: NextRequest) {
       id: s.id,
       numero: s.numero,
       created_at: s.created_at.toISOString(),
+      data_atribuicao: s.data_atribuicao?.toISOString() ?? null,
       data_recebimento: s.data_recebimento?.toISOString() ?? null,
       cliente: s.cliente.nome,
       cliente_final: s.cliente_final?.nome ?? null,

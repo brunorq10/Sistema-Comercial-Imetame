@@ -252,6 +252,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 // ─── DELETE /api/solicitacoes/:id (soft cancel) ───────────────────────────────
 
 const cancelSchema = z.object({
+  acao: z.enum(['cancelar', 'suspender']).default('cancelar'),
   cancel_reason: z.string().min(5, 'Justificativa obrigatória (mín. 5 caracteres)'),
 })
 
@@ -270,6 +271,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       { status: 400 },
     )
   }
+  const { acao, cancel_reason } = parsed.data
 
   const existing = await prisma.solicitacao.findUnique({
     where: { id },
@@ -278,16 +280,55 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     },
   })
   if (!existing) return NextResponse.json({ data: null, error: 'Não encontrada' }, { status: 404 })
-  if (existing.cancelled_at) {
+  if (existing.cancelled_at || existing.status === 'CANCELADA') {
     return NextResponse.json({ data: null, error: 'Já cancelada' }, { status: 409 })
+  }
+  if (existing.status === 'SUSPENSA') {
+    return NextResponse.json({ data: null, error: 'Já suspensa' }, { status: 409 })
+  }
+
+  // "Proposta enviada ao cliente" = qualquer proposta com data de envio (mesma
+  // condição que faz a solicitação aparecer na aba Propostas).
+  const temPropostaEnviada =
+    !!(await prisma.propostaComercial.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } } })) ||
+    !!(await prisma.propostaTecnica.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } } })) ||
+    !!(await prisma.propostaFabricacao.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } } }))
+
+  // ── SUSPENDER ──────────────────────────────────────────────────────────────
+  if (acao === 'suspender') {
+    const updated = await prisma.solicitacao.update({
+      where: { id },
+      data: {
+        status: 'SUSPENSA',
+        suspended_at: new Date(),
+        suspend_reason: cancel_reason,
+      },
+    })
+    // Removida do painel do orçamentista (filtro de status exclui SUSPENSA).
+    // As propostas já enviadas permanecem na aba Propostas (cancelled_at = null).
+    if (existing.orcamentista) {
+      createNotificacao(
+        existing.orcamentista.id,
+        `Solicitação suspensa — ${existing.numero}`,
+        `A solicitação ${existing.numero} foi suspensa e removida do seu painel. As propostas já enviadas permanecem registradas.`,
+        '/orcamentos/painel',
+      )
+    }
+    return NextResponse.json({ data: updated, error: null })
+  }
+
+  // ── CANCELAR ───────────────────────────────────────────────────────────────
+  // Só pode cancelar se nenhuma proposta foi enviada ao cliente.
+  if (temPropostaEnviada) {
+    return NextResponse.json(
+      { data: null, error: 'Já há proposta enviada ao cliente — só é possível suspender.' },
+      { status: 409 },
+    )
   }
 
   // RN-12: Não cancelar quando proposta está com status Ganhou ou Perdeu
   const propostasAtivas = await prisma.propostaComercial.findFirst({
-    where: {
-      solicitacao_id: id,
-      resultado: { in: ['GANHOU', 'PERDEU'] },
-    },
+    where: { solicitacao_id: id, resultado: { in: ['GANHOU', 'PERDEU'] } },
   })
   if (propostasAtivas) {
     return NextResponse.json(
@@ -306,14 +347,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       where: { id },
       data: {
         cancelled_at: new Date(),
-        cancel_reason: parsed.data.cancel_reason,
+        cancel_reason,
         status: 'CANCELADA',
         status_analise: 'REPROVADA',
       },
     })
   })
 
-  // RN-13: Notificar orçamentista se houver ciclo em aberto
   if (existing.orcamentista) {
     createNotificacao(
       existing.orcamentista.id,
