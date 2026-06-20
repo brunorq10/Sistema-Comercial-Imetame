@@ -10,6 +10,7 @@ import { Line } from 'react-chartjs-2'
 import { cn } from '@/lib/utils'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { LancamentoHhModal } from '@/components/acordos/LancamentoHhModal'
+import { FabricacoesView } from '@/components/acordos/FabricacoesView'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -1303,19 +1304,22 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Categoria = 'obras' | 'paradas'
+type Categoria = 'obras' | 'paradas' | 'fabricacoes'
 type Visao    = 'contratos' | 'resumo'
 
 export default function ControleHhPage() {
   const searchParams = useSearchParams()
-  const [categoria, setCategoria] = useState<Categoria>(
-    () => searchParams.get('tab') === 'paradas' ? 'paradas' : 'obras'
-  )
+  const [categoria, setCategoria] = useState<Categoria>(() => {
+    const t = searchParams.get('tab')
+    return t === 'paradas' ? 'paradas' : t === 'fabricacoes' ? 'fabricacoes' : 'obras'
+  })
   const [visao,     setVisao]     = useState<Visao>('contratos')
   const [contratos, setContratos] = useState<ContratoHh[]>([])
   const [loading,   setLoading]   = useState(true)
 
   const fetchData = useCallback(async () => {
+    // Fabricações tem seu próprio componente/fetch
+    if (categoria === 'fabricacoes') { setContratos([]); setLoading(false); return }
     setLoading(true)
     try {
       const cls = categoria === 'obras' ? 'OBRAS' : 'PARADAS'
@@ -1339,7 +1343,7 @@ export default function ControleHhPage() {
       </div>
 
       <div className="flex gap-2 mb-3 flex-shrink-0">
-        {([['obras','Obras'],['paradas','Paradas']] as [Categoria,string][]).map(([k,l]) => (
+        {([['obras','Obras'],['paradas','Paradas'],['fabricacoes','Fabricações']] as [Categoria,string][]).map(([k,l]) => (
           <button key={k} onClick={() => setCategoria(k)}
             className={cn('px-5 py-2 text-[12px] font-semibold rounded-full border transition-colors',
               categoria === k ? 'bg-green-primary text-white border-green-primary' : 'bg-white text-gray-600 border-gray-300 hover:border-green-primary')}>
@@ -1361,7 +1365,9 @@ export default function ControleHhPage() {
           </div>
         )}
 
-        {loading ? (
+        {categoria === 'fabricacoes' ? (
+          <FabricacoesView />
+        ) : loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : categoria === 'paradas' ? (
           <div className="flex-1 min-h-0 flex flex-col">
