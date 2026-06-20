@@ -12,15 +12,28 @@ import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 
-type FiltroIndicador = 'todas' | 'elaboracao' | 'atrasado' | 'tecnica' | 'enviadas'
+type FiltroIndicador = 'todas' | 'elaboracao' | 'noprazo' | 'atrasado' | 'enviadas'
 type SubFiltro = 'tec' | 'com' | null
+
+// ── Classificação de cada solicitação ──────────────────────────────────────────
+// Enviada por completo: ambas as propostas resolvidas (enviada OU não aplicável
+// para esta revisão) e ao menos uma efetivamente enviada.
+function isEnviadaCompleta(i: PainelItem): boolean {
+  const tecDone = i.tecnica_enviada || i.tecnica_nao_aplicavel
+  const comDone = i.comercial_enviada || i.comercial_nao_aplicavel
+  return tecDone && comDone && (i.tecnica_enviada || i.comercial_enviada)
+}
+// Em elaboração: ainda não enviada por completo (= No prazo + Atrasadas)
+const isEmElaboracao = (i: PainelItem) => !isEnviadaCompleta(i)
+const isAtrasada     = (i: PainelItem) => isEmElaboracao(i) && (i.tecnica_atrasada || i.comercial_atrasada)
+const isNoPrazo      = (i: PainelItem) => isEmElaboracao(i) && !i.tecnica_atrasada && !i.comercial_atrasada
 
 export default function PainelOrcamentosPage() {
   const router = useRouter()
   const [items, setItems] = useState<PainelItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [filtroAtivo, setFiltroAtivo] = useState<FiltroIndicador>('todas')
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroIndicador>('elaboracao')
   const [subFiltro, setSubFiltro] = useState<SubFiltro>(null)
 
   const [dataDe, setDataDe] = useState('')
@@ -58,12 +71,12 @@ export default function PainelOrcamentosPage() {
   // Contagens para os indicadores
   const contagens = useMemo(() => ({
     todas: items.length,
-    elaboracao: items.filter((i) => !i.tecnica_atrasada && !i.comercial_atrasada && !i.comercial_enviada && !(i.tecnica_enviada && !i.comercial_enviada)).length,
-    atrasado: items.filter((i) => i.tecnica_atrasada || i.comercial_atrasada).length,
-    atrasadoTec: items.filter((i) => i.tecnica_atrasada).length,
-    atrasadoCom: items.filter((i) => i.comercial_atrasada).length,
-    tecnica: items.filter((i) => i.tecnica_enviada && !i.comercial_enviada && !i.comercial_atrasada).length,
-    enviadas: items.filter((i) => i.comercial_enviada).length,
+    elaboracao: items.filter(isEmElaboracao).length,
+    noprazo: items.filter(isNoPrazo).length,
+    atrasado: items.filter(isAtrasada).length,
+    atrasadoTec: items.filter((i) => isEmElaboracao(i) && i.tecnica_atrasada).length,
+    atrasadoCom: items.filter((i) => isEmElaboracao(i) && i.comercial_atrasada).length,
+    enviadas: items.filter(isEnviadaCompleta).length,
   }), [items])
 
   // Clientes únicos derivados dos itens carregados
@@ -77,15 +90,15 @@ export default function PainelOrcamentosPage() {
   const itemsFiltrados = useMemo(() => {
     let lista = items
     if (filtroAtivo === 'elaboracao') {
-      lista = items.filter((i) => !i.tecnica_enviada && !i.tecnica_atrasada)
+      lista = items.filter(isEmElaboracao)
+    } else if (filtroAtivo === 'noprazo') {
+      lista = items.filter(isNoPrazo)
     } else if (filtroAtivo === 'atrasado') {
-      lista = items.filter((i) => i.tecnica_atrasada || i.comercial_atrasada)
+      lista = items.filter(isAtrasada)
       if (subFiltro === 'tec') lista = lista.filter((i) => i.tecnica_atrasada)
       if (subFiltro === 'com') lista = lista.filter((i) => i.comercial_atrasada)
-    } else if (filtroAtivo === 'tecnica') {
-      lista = items.filter((i) => i.tecnica_enviada && !i.comercial_enviada && !i.comercial_atrasada)
     } else if (filtroAtivo === 'enviadas') {
-      lista = items.filter((i) => i.comercial_enviada)
+      lista = items.filter(isEnviadaCompleta)
     }
     if (clienteFiltro) lista = lista.filter((i) => i.cliente === clienteFiltro)
 
@@ -130,10 +143,18 @@ export default function PainelOrcamentosPage() {
         <IndicadorCard
           label="Em elaboração"
           valor={contagens.elaboracao}
-          sub="no prazo"
-          variant="blue"
+          sub="no prazo + atrasadas"
+          variant="amber"
           active={filtroAtivo === 'elaboracao'}
           onClick={() => handleSetFiltro('elaboracao')}
+        />
+        <IndicadorCard
+          label="No prazo"
+          valor={contagens.noprazo}
+          sub="dentro do prazo"
+          variant="blue"
+          active={filtroAtivo === 'noprazo'}
+          onClick={() => handleSetFiltro('noprazo')}
         />
         <IndicadorCard
           label="Atrasadas"
@@ -170,17 +191,9 @@ export default function PainelOrcamentosPage() {
           </div>
         </IndicadorCard>
         <IndicadorCard
-          label="Técnica enviada"
-          valor={contagens.tecnica}
-          sub="aguardando comercial"
-          variant="amber"
-          active={filtroAtivo === 'tecnica'}
-          onClick={() => handleSetFiltro('tecnica')}
-        />
-        <IndicadorCard
           label="Total enviadas"
           valor={contagens.enviadas}
-          sub="propostas enviadas"
+          sub="envio completo"
           variant="green"
           active={filtroAtivo === 'enviadas'}
           onClick={() => handleSetFiltro('enviadas')}
