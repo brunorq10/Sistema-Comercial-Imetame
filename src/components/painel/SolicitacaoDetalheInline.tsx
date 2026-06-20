@@ -198,7 +198,7 @@ export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, 
                   {!isFabricacao && (
                     <Td>
                       {c.tecnica_na
-                        ? <span className="text-gray-400 italic">N/A</span>
+                        ? <span className="text-gray-500 italic">Não aplicável a esta revisão</span>
                         : c.tecnica_data
                           ? <span className="text-green-700 font-medium">Enviada em {formatDate(c.tecnica_data)}</span>
                           : <span className="text-amber-600">Aguardando</span>}
@@ -210,7 +210,7 @@ export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, 
                           ? <span className="text-green-700 font-medium">Enviada em {formatDate(c.fabricacao_data)}</span>
                           : <span className="text-amber-600">Aguardando</span>)
                       : (c.comercial_na
-                          ? <span className="text-gray-400 italic">N/A</span>
+                          ? <span className="text-gray-500 italic">Não aplicável a esta revisão</span>
                           : c.comercial_data
                             ? <span className="text-green-700 font-medium">Enviada em {formatDate(c.comercial_data)}</span>
                             : <span className="text-amber-600">Aguardando</span>)}
