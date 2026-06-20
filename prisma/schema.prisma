@@ -133,6 +133,8 @@ model User {
   contratos_criados           Contrato[]             @relation("ContratoCriador")
   hh_lancamentos              HhLancamento[]         @relation("HhLancamentoCriador")
   hh_realizados               HhRealizado[]          @relation("HhRealizadoCriador")
+  fabricacao_itens_criados    FabricacaoItem[]       @relation("FabricacaoItemCriador")
+  fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -489,6 +491,65 @@ model HhRealizado {
   @@map("hh_realizado")
 }
 
+// ── Fabricações: HH por ITEM (descrição, peso, datas) ────────────────────────
+model FabricacaoItem {
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  descricao   String
+  peso_total  Decimal? @db.Decimal(14, 2)
+  data_inicio DateTime
+  data_fim    DateTime
+  ordem       Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  created_by  Int
+
+  contrato   Contrato              @relation(fields: [contrato_id], references: [id])
+  criador    User                  @relation("FabricacaoItemCriador", fields: [created_by], references: [id])
+  meses      FabricacaoItemMes[]
+  realizados FabricacaoRealizado[]
+
+  @@index([contrato_id])
+  @@map("fabricacao_itens")
+}
+
+// HH orçado/previsto planejado por mês para cada item (habilitado pelo intervalo de datas)
+model FabricacaoItemMes {
+  id          Int  @id @default(autoincrement())
+  item_id     Int
+  mes         Int
+  ano         Int
+  hh_orcado   Int?
+  hh_previsto Int?
+
+  item FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@unique([item_id, mes, ano])
+  @@index([item_id])
+  @@map("fabricacao_item_mes")
+}
+
+// HH realizado + % de avanço (INCREMENTO do mês) por item
+model FabricacaoRealizado {
+  id           Int      @id @default(autoincrement())
+  item_id      Int
+  mes          Int
+  ano          Int
+  hh_realizado Int?
+  pct_avanco   Decimal? @db.Decimal(6, 2)
+  observacoes  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   Int
+
+  item    FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  criador User           @relation("FabricacaoRealizadoCriador", fields: [created_by], references: [id])
+
+  @@unique([item_id, mes, ano])
+  @@index([item_id])
+  @@map("fabricacao_realizado")
+}
+
 model ParadaHhConfig {
   id                     Int      @id @default(autoincrement())
   contrato_id            Int      @unique
@@ -647,6 +708,7 @@ model Contrato {
   historico      HistoricoContrato[]
   hh_lancamentos   HhLancamento[]
   hh_realizados    HhRealizado[]
+  fabricacao_itens FabricacaoItem[]
   parada_hh_config ParadaHhConfig?
 
   @@index([cliente_id])
