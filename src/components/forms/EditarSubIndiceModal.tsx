@@ -456,7 +456,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               </p>
             )}
 
-            <div className="grid grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               {MESES.map((m, mi) => {
                 const ativo = isMesAtivo(ano, mi, dataInicio, dataFim)
                 const past = isMesPast(ano, mi)

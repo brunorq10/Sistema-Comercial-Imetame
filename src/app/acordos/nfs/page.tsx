@@ -121,7 +121,7 @@ export default function RegistroNFsPage() {
         </p>
 
         {/* Indicadores filtráveis */}
-        <div className="grid grid-cols-5 gap-2 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-3">
           <IndicadorCard label="Total de NFs" valor={contagens.total} sub={formatCurrency(contagens.totalValor)}
             variant="green" active={filtroVenc === 'todas'} onClick={() => handleFiltroVenc('todas')} />
           <IndicadorCard label="Vencidas" valor={contagens.vencidas} sub={formatCurrency(contagens.totalVencidas)}

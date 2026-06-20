@@ -627,7 +627,7 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateMes,
               </p>
             )}
 
-            <div className="grid grid-cols-6 gap-1">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
               {MESES.map((m, mi) => {
                 const ativo = isMesAtivo(ano, mi, data.data_inicio, data.data_fim)
                 return (

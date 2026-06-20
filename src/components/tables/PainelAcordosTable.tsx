@@ -2,6 +2,7 @@
 
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { CLASSIFICACAO_LABELS } from '@/types'
 import type { Classificacao } from '@/types'
 
@@ -35,12 +36,15 @@ const W = {
   aFaturar:  120,
 }
 
-const L = {
-  indice:    0,
-  cliente:   W.indice,
-  descricao: W.indice + W.cliente,
+// Offsets de congelamento (desktop). No mobile usamos EMPTY_L (undefined) para
+// que as colunas não fixem e a tabela role inteira, sem sobreposição.
+const LD = {
+  indice:    0 as number | undefined,
+  cliente:   W.indice as number | undefined,
+  descricao: (W.indice + W.cliente) as number | undefined,
 }
-const FROZEN_TOTAL = L.descricao + W.descricao
+const EMPTY_L = { indice: undefined, cliente: undefined, descricao: undefined }
+const FROZEN_TOTAL = (LD.descricao ?? 0) + W.descricao
 const MIN_W = FROZEN_TOTAL + 12 * W.mes + W.totalPrev + W.totalFat + W.aFaturar
 
 function fatColorClass(fat: number, prev: number): string {
@@ -48,6 +52,10 @@ function fatColorClass(fat: number, prev: number): string {
 }
 
 export function PainelAcordosTable({ contratos, mesAtual }: Props) {
+  // Congelar colunas só no desktop; no mobile a tabela rola inteira (sem sobreposição).
+  const isDesktop = useIsDesktop()
+  const L = isDesktop ? LD : EMPTY_L
+
   if (contratos.length === 0) {
     return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato atribuído a você neste ano.</p>
   }

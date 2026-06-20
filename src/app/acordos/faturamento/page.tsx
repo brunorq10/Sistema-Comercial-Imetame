@@ -456,8 +456,8 @@ export default function FaturamentoPage() {
       {/* ── filtros por aba (zona congelada) ─────────────────────────────────── */}
       {aba === 'controle' && (
         <>
-          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mt-1 flex gap-1.5 items-end">
-            <div className="flex-1 min-w-0">
+          <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mt-1 flex flex-wrap gap-1.5 items-end">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Ano referência</label>
               <SearchableSelect
                 value={ano}
@@ -466,7 +466,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todos os anos"
               />
             </div>
-            <div className="flex-[2] min-w-0">
+            <div className="flex-[2] min-w-[160px]">
               <label className={fLbl}>Cliente</label>
               <SearchableSelect
                 value={clienteId}
@@ -474,7 +474,7 @@ export default function FaturamentoPage() {
                 options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Mercado</label>
               <SearchableSelect
                 value={mercado}
@@ -483,7 +483,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todos"
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº OS</label>
               <SearchableSelect
                 value={numOs}
@@ -492,7 +492,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todas"
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº Acordo</label>
               <SearchableSelect
                 value={numAcordo}
@@ -500,7 +500,7 @@ export default function FaturamentoPage() {
                 options={opcoesAcordo.map((v) => ({ value: v, label: v }))}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº Proposta</label>
               <SearchableSelect
                 value={numProposta}
@@ -509,7 +509,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todas"
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Status</label>
               <SearchableSelect
                 value={status}
@@ -522,7 +522,7 @@ export default function FaturamentoPage() {
                 ]}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Responsável</label>
               <SearchableSelect
                 value={responsavelId}

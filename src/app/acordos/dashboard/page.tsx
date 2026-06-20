@@ -451,7 +451,7 @@ export default function DashboardAcordosPage() {
       {!loading && !error && data && (
         <>
           {/* ── Linha 1: Cards anuais ─────────────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MetricCard label="Valor Total Faturado" sub={`Ano ${data.anoAtual}`}         value={data.totalFaturadoAno} />
             <MetricCard label="Prev. Faturamento"    sub={`Ano ${data.anoAtual}`}         value={data.prevFaturamentoAno} />
             <MetricCard label="À Faturar"            sub={`Ano ${data.anoAtual}`}         value={data.aFaturarAno} />
@@ -459,7 +459,7 @@ export default function DashboardAcordosPage() {
           </div>
 
           {/* ── Linha 2: Cards mensais ────────────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MetricCard label={`Previsão Fat. ${mesLabel}`}    sub="Mês atual"   value={data.prevMesAtual} />
             <MetricCard label={`Faturado ${mesLabel}`}         sub="Mês atual"   value={data.faturadoMesAtual} />
             <MetricCard label={`Faturado ${mesAntLabel}`}      sub="Último mês"  value={data.faturadoUltimoMes} />
