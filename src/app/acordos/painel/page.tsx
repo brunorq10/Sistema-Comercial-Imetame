@@ -282,14 +282,14 @@ export default function MeuPainelAcordosPage() {
 
         {/* Indicadores */}
         <div className="flex flex-col gap-2 mb-4">
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <MetricCard label="Total de contratos"                                                value={String(indicators.totalContratos)} />
             <MetricCard label={`Previsão ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.prevMesAtual)} />
             <MetricCard label={`Faturado ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.fatMesAtual)} />
             <MetricCard label={`Faturado ${indicators.mesPassadoLabel}`} sub="último mês"        value={formatCurrency(indicators.fatUltimoMes)} />
             <MetricCard label={`Previsão ${indicators.mesProximoLabel}`} sub="próximo mês"       value={formatCurrency(indicators.prevProxMes)} />
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <MetricCard label="Valor total contratado"                                            value={formatCurrency(indicators.valorTotalContratado)} />
             <MetricCard label={`Previsão ${indicators.anoAtual}`}        sub="faturamento ano"   value={formatCurrency(indicators.prevAnoAtual)} />
             <MetricCard label={`Faturado ${indicators.anoAtual}`}        sub="ano atual"         value={formatCurrency(indicators.fatAnoAtual)} />

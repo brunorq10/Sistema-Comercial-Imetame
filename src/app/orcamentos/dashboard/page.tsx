@@ -380,7 +380,7 @@ function CardsAbertas({
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 8 }}>
       {cards.map((c) => (
         <div
           key={c.key}
@@ -461,7 +461,7 @@ function DetalheAberta({ s }: { s: SolicitacaoAberta }) {
   const atrasadoStyle: React.CSSProperties = { color: '#C62828', fontWeight: 700 }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, padding: '8px 12px 10px', background: '#f0f4f8', borderBottom: '0.5px solid #d1d5db' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, padding: '8px 12px 10px', background: '#f0f4f8', borderBottom: '0.5px solid #d1d5db' }}>
       {/* Chegada */}
       <div style={sectionStyle}>
         <p style={labelStyle}>Data de Chegada</p>
@@ -891,7 +891,7 @@ export default function DashboardComercialPage() {
       ) : aba === 'solicitacoes' ? (
         <>
           {/* ── Linha 1: KPIs ───────────────────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap, marginBottom: gap }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap, marginBottom: gap }}>
             <KPI label="Total Solicitações" value={data.total} color="#111" />
             <KPI label="Aprovadas" value={data.aprovadas} color={GREEN} />
             <KPI label="Agradecidas" value={data.reprovadas} color="#C62828" />
@@ -904,7 +904,7 @@ export default function DashboardComercialPage() {
           </div>
 
           {/* ── Linha 3: Tipo + Interesse + Carteira ────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap, marginBottom: gap }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap, marginBottom: gap }}>
             <GraficoTipo
               porClassificacao={data.por_classificacao}
               filtroClassificacao={classificacao}

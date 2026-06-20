@@ -154,38 +154,38 @@ export default function PropostasPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex gap-1.5 items-end">
-          <div className="flex-1 min-w-0">
+        <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex flex-wrap gap-1.5 items-end">
+          <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Nº Proposta</label>
             <SearchableSelect value={numero} onChange={setNumero}
               options={numeros.map(n => ({ value: n, label: n }))} emptyLabel="Todas" />
           </div>
-          <div className="flex-[2] min-w-0">
+          <div className="flex-[2] min-w-[160px]">
             <label className={fLbl}>Cliente</label>
             <SearchableMultiSelect values={clienteIds} onChange={setClienteIds}
               options={clientes.map(c => ({ value: String(c.id), label: c.nome }))} />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Cidade/UF</label>
             <SearchableSelect value={cidade} onChange={setCidade}
               options={cidades.map(c => ({ value: c, label: c }))} emptyLabel="Todas" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Classificação</label>
             <SearchableMultiSelect values={classificacoes} onChange={setClassificacoes}
               options={opClassificacao} emptyLabel="Todas" />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Orçamentista</label>
             <SearchableMultiSelect values={orcamentistaIds} onChange={setOrcamentistaIds}
               options={orcamentistas.map(o => ({ value: String(o.id), label: o.nome }))} />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Resultado</label>
             <SearchableMultiSelect values={resultados} onChange={setResultados}
               options={opResultado} />
           </div>
-          <div className="flex-[2] min-w-0">
+          <div className="flex-[2] min-w-[160px]">
             <label className={fLbl}>Escopo</label>
             <SearchableSelect value={escopo} onChange={setEscopo}
               options={escopos.map(e => ({ value: e, label: e }))} placeholder="Digite para filtrar…" />
