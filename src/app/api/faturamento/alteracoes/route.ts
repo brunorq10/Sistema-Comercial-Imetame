@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   const statusParam = searchParams.get('status') ?? undefined
   const historyParam = searchParams.get('history')
   const perfil = session.user.perfil
-  const isGestao = perfil === 'GESTAO_ACORDOS'
+  const isGestao = perfil === 'GESTAO_ACORDOS' || perfil === 'ADM_GERAL'
   const userId = Number(session.user.id)
 
   try {

@@ -22,8 +22,8 @@ export async function PUT(
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const perfil = session.user.perfil
-  if (perfil !== 'GESTAO_ACORDOS') {
-    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode aprovar ou reprovar alterações' }, { status: 403 })
+  if (perfil !== 'GESTAO_ACORDOS' && perfil !== 'ADM_GERAL') {
+    return NextResponse.json({ data: null, error: 'Apenas a coordenação de Acordos (ou ADM Geral) pode aprovar ou reprovar alterações' }, { status: 403 })
   }
 
   const id = Number(params.id)
