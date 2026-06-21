@@ -71,7 +71,49 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const data = alteracoes.map(serializeAlteracao)
+    // Previsão completa do item (todos os anos com previsão) p/ exibir nas aprovações
+    const contratoIds = Array.from(
+      new Set(alteracoes.map((a) => a.subindice?.contrato_id).filter((x): x is number => x != null)),
+    )
+    const subsByContrato = new Map<number, Array<Record<string, unknown>>>()
+    if (contratoIds.length > 0) {
+      const subs = await prisma.subIndiceFaturamento.findMany({
+        where: { contrato_id: { in: contratoIds } },
+        select: {
+          id: true, contrato_id: true, ordem: true, descricao: true, data_inicio: true,
+          jan: true, fev: true, mar: true, abr: true, mai: true, jun: true,
+          jul: true, ago: true, set: true, out: true, nov: true, dez: true,
+          contrato: { select: { ano_referencia: true } },
+        },
+      })
+      for (const s of subs) {
+        const arr = subsByContrato.get(s.contrato_id) ?? []
+        arr.push(s as unknown as Record<string, unknown>)
+        subsByContrato.set(s.contrato_id, arr)
+      }
+    }
+
+    const buildItemPrevisao = (a: typeof alteracoes[number]) => {
+      const cid = a.subindice?.contrato_id
+      const desc = a.subindice?.descricao
+      if (cid == null) return []
+      const irmaos = (subsByContrato.get(cid) ?? []).filter((s) => s.descricao === desc)
+      return irmaos
+        .map((s) => {
+          const di = s.data_inicio as Date | null
+          const ano = di ? new Date(di).getUTCFullYear() : Number((s.contrato as { ano_referencia: number }).ano_referencia)
+          return {
+            subindice_id: Number(s.id),
+            ano,
+            ordem: Number(s.ordem),
+            is_altered: Number(s.id) === a.subindice_id,
+            meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? Number(s[m]) : null])),
+          }
+        })
+        .sort((x, y) => x.ano - y.ano)
+    }
+
+    const data = alteracoes.map((a) => ({ ...serializeAlteracao(a), item_previsao: buildItemPrevisao(a) }))
     return NextResponse.json({ data, error: null })
   } catch (err) {
     logger.error('[GET /api/faturamento/alteracoes]', err)

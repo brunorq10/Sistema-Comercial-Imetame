@@ -497,6 +497,14 @@ export interface PrevisaoAlteracaoItem {
   responsavel: { id: number; nome: string }
   revisor: { id: number; nome: string } | null
   contrato?: { id: number; indice: string; descricao: string | null; cliente: { id: number; nome: string } }
+  // Previsão completa do item (todos os anos), p/ exibição nas aprovações
+  item_previsao?: Array<{
+    subindice_id: number
+    ano: number
+    ordem: number
+    is_altered: boolean
+    meses: Record<string, number | null>
+  }>
 }
 
 export interface SubIndiceComAlteracaoPendente extends SubIndiceItem {

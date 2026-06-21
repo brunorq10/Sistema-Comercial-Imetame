@@ -1022,7 +1022,9 @@ function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem
 }
 
 function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAprovacaoRowProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
+
+  const mv = (suf: 'de' | 'para', m: string) => Number(alteracao[`${m}_${suf}` as keyof PrevisaoAlteracaoItem]) || 0
 
   // Detecta quais meses mudaram
   const mesesMudados = MESES.filter((m) => {
@@ -1030,6 +1032,12 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
     const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
     return de !== para
   })
+
+  // Previsão completa do item (todos os anos); fallback p/ apenas o ano alterado
+  const previsaoAnos = alteracao.item_previsao && alteracao.item_previsao.length > 0
+    ? alteracao.item_previsao
+    : [{ subindice_id: alteracao.subindice_id, ano: 0, ordem: alteracao.subindice.ordem, is_altered: true,
+         meses: Object.fromEntries(MESES.map((m) => [m, mv('de', m)])) as Record<string, number | null> }]
 
   // Totais de previsão: antes (Σ de) e proposto (Σ para)
   const totalDe = MESES.reduce((s, m) => s + (Number(alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem]) || 0), 0)
@@ -1118,29 +1126,52 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
         </div>
       </div>
 
-      {/* Detalhes dos meses quando expandido */}
+      {/* Previsão completa do item — todos os anos, com de → para no ano alterado */}
       {expanded && (
-        <div className="border-t border-gray-100 pt-3 mt-1">
-          <div className="grid grid-cols-12 gap-1">
-            {MESES.map((m, mi) => {
-              const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
-              const para = alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem] as number | null
-              const mudou = de !== para
-              return (
-                <div key={m} className={cn('text-center rounded p-1', mudou ? 'bg-amber-50 border border-amber-200' : '')}>
-                  <p className="text-[8px] uppercase text-gray-300 mb-0.5">{MESES_LABELS[mi]}</p>
-                  {mudou ? (
-                    <>
-                      <p className="text-[9px] text-gray-400 line-through">{de != null ? formatCurrency(de) : '—'}</p>
-                      <p className="text-[10px] font-bold text-amber-700">{para != null ? formatCurrency(para) : '—'}</p>
-                    </>
-                  ) : (
-                    <p className="text-[10px] text-gray-400">{para != null ? formatCurrency(para) : '—'}</p>
-                  )}
-                </div>
-              )
-            })}
+        <div className="border-t border-gray-100 pt-3 mt-2">
+          <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mb-1.5">
+            Previsão do item — todos os anos {previsaoAnos.length > 1 ? `(${previsaoAnos.length} anos)` : ''} · valores em R$
+          </p>
+          <div className="overflow-x-auto border border-gray-100 rounded">
+            <table className="text-[10px] border-collapse min-w-max">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500">
+                  <th className="px-2 py-1 text-left font-semibold sticky left-0 bg-gray-50 whitespace-nowrap">Ano / Linha</th>
+                  {MESES_LABELS.map((l) => <th key={l} className="px-2 py-1 text-right font-semibold whitespace-nowrap">{l}</th>)}
+                  <th className="px-2 py-1 text-right font-semibold whitespace-nowrap bg-gray-100">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previsaoAnos.flatMap((yr) => {
+                  if (yr.is_altered) {
+                    const sumDe = MESES.reduce((s, m) => s + mv('de', m), 0)
+                    const sumPara = MESES.reduce((s, m) => s + mv('para', m), 0)
+                    return [
+                      <tr key={`${yr.subindice_id}-atual`} className="border-t border-gray-100">
+                        <td className="px-2 py-1 sticky left-0 bg-white whitespace-nowrap font-medium text-gray-600">{yr.ano > 0 ? yr.ano : ''} · Atual</td>
+                        {MESES.map((m) => { const de = mv('de', m); return <td key={m} className="px-2 py-1 text-right text-gray-400">{de > 0 ? formatCurrency(de) : '—'}</td> })}
+                        <td className="px-2 py-1 text-right font-semibold text-gray-500 bg-gray-50">{formatCurrency(sumDe)}</td>
+                      </tr>,
+                      <tr key={`${yr.subindice_id}-prop`} className="border-t border-amber-100 bg-amber-50/40">
+                        <td className="px-2 py-1 sticky left-0 bg-amber-50/40 whitespace-nowrap font-bold text-amber-800">{yr.ano > 0 ? yr.ano : ''} · Proposto</td>
+                        {MESES.map((m) => { const de = mv('de', m); const para = mv('para', m); const mudou = Math.abs(de - para) > 0.01; return <td key={m} className={cn('px-2 py-1 text-right', mudou ? 'font-bold text-amber-700 bg-amber-100/70' : 'text-gray-500')}>{para > 0 ? formatCurrency(para) : '—'}</td> })}
+                        <td className="px-2 py-1 text-right font-bold text-amber-800 bg-amber-100/50">{formatCurrency(sumPara)}</td>
+                      </tr>,
+                    ]
+                  }
+                  const sum = MESES.reduce((s, m) => s + (Number(yr.meses[m]) || 0), 0)
+                  return [
+                    <tr key={yr.subindice_id} className="border-t border-gray-100">
+                      <td className="px-2 py-1 sticky left-0 bg-white whitespace-nowrap text-gray-600">Previsão {yr.ano}</td>
+                      {MESES.map((m) => { const v = Number(yr.meses[m]) || 0; return <td key={m} className="px-2 py-1 text-right text-gray-500">{v > 0 ? formatCurrency(v) : '—'}</td> })}
+                      <td className="px-2 py-1 text-right font-semibold text-gray-600 bg-gray-50">{formatCurrency(sum)}</td>
+                    </tr>,
+                  ]
+                })}
+              </tbody>
+            </table>
           </div>
+          <p className="text-[9px] text-gray-400 mt-1">As linhas <strong>Atual</strong> e <strong>Proposto</strong> mostram o de → para do ano alterado; os demais anos exibem a previsão vigente.</p>
         </div>
       )}
     </div>
