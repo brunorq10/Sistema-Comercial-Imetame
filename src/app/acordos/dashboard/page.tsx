@@ -17,10 +17,8 @@ const TREEMAP_COLORS = [
 function fmt(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-// Abreviado em milhões para cards/gráficos
+// Valor por extenso (sem abreviação M/K) — pontos de milhar e vírgula decimal
 function fmtM(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M`
-  if (Math.abs(v) >= 1_000)     return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mil`
   return fmt(v)
 }
 
@@ -289,7 +287,7 @@ export default function IndicadoresAcordosPage() {
   const selectCls = 'w-full px-2 py-[5px] border border-gray-300 rounded text-[11px] text-gray-800 bg-white outline-none focus:border-green-primary transition-colors'
 
   // Chart configs
-  const yTick = (v: string | number) => typeof v === 'number' ? `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}M` : v
+  const yTick = (v: string | number) => typeof v === 'number' ? `R$ ${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : v
   const mesChart = data && {
     labels: MES_LABEL,
     datasets: [

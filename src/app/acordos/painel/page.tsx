@@ -81,10 +81,8 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={cn('text-[11px]', m.cls)}>{m.label}</span>
 }
 
-// Abreviado em milhões (mesmo formato dos cards de Indicadores Acordos)
+// Valor por extenso (sem abreviação M/K)
 function fmtM(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M`
-  if (Math.abs(v) >= 1_000)     return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mil`
   return formatCurrency(v)
 }
 

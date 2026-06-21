@@ -861,7 +861,7 @@ function TabelaResponsavel({ data }: { data: OrcDashboardData['por_responsavel']
 
 // ── Aba "Valor e Resultado" ──────────────────────────────────────────────────
 const fmtMoney  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const fmtMoneyM = (v: number) => Math.abs(v) >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M` : fmtMoney(v)
+const fmtMoneyM = (v: number) => fmtMoney(v)   // sem abreviação M/K — número por extenso
 const fmtInt    = (v: number) => v.toLocaleString('pt-BR')
 
 function CardNum({ label, value, sub, color = '#111' }: { label: string; value: string; sub?: string; color?: string }) {

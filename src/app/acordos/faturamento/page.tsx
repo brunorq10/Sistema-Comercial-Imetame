@@ -1077,15 +1077,30 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
         </div>
       </div>
 
-      {/* Resumo: escopo do contrato + valor total previsto (antes → agora) */}
+      {/* Resumo: contrato (item principal) + escopo + subitem + valor previsto (antes → agora) */}
       <div className="bg-gray-50 border border-gray-100 rounded p-2.5 mb-1 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
-        <div className="min-w-0">
-          <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do contrato</p>
-          <p className="text-[11px] text-gray-700 truncate" title={alteracao.contrato?.descricao ?? ''}>
-            {alteracao.contrato?.descricao ?? '—'}
-          </p>
+        <div className="min-w-0 space-y-1.5">
+          <div>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Contrato (item principal)</p>
+            <p className="text-[11px] text-gray-700">
+              <strong className="text-green-dark">{alteracao.contrato?.indice ?? '—'}</strong>
+              {alteracao.contrato?.cliente?.nome ? ` · ${alteracao.contrato.cliente.nome}` : ''}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do contrato</p>
+            <p className="text-[11px] text-gray-700 truncate" title={alteracao.contrato?.descricao ?? ''}>
+              {alteracao.contrato?.descricao ?? '—'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Subitem alterado</p>
+            <p className="text-[11px] text-gray-700 truncate" title={alteracao.subindice.descricao}>
+              <strong className="text-gray-800">{alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem}</strong> — {alteracao.subindice.descricao}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2.5 flex-shrink-0">
+        <div className="flex items-center gap-2.5 flex-shrink-0 self-start">
           <div className="text-right">
             <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Total previsto antes</p>
             <p className="text-[12px] font-semibold text-gray-500 line-through">{formatCurrency(totalDe)}</p>

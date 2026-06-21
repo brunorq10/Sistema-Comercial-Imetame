@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, MapPin, User, Building2, Briefcase } from 'lucide-react'
+import { CurrencyInput } from '@/components/ui/Input'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -672,11 +673,11 @@ export default function ParadaHhPage() {
                     <div className="text-[10px] font-normal text-gray-400 mt-0.5">Orçado no faturamento</div>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <input type="number" min={0} step={0.01}
+                    <CurrencyInput
                       value={cfg.fin_prev_valor_servico}
-                      onChange={(e) => setCfg((p) => ({ ...p, fin_prev_valor_servico: e.target.value }))}
+                      onChange={(v) => setCfg((p) => ({ ...p, fin_prev_valor_servico: v }))}
                       placeholder="0,00"
-                      className="w-36 rounded border border-gray-300 px-2 py-1 text-right focus:border-green-500 focus:outline-none" />
+                      className="w-36 text-right" />
                   </td>
                   <td className="px-4 py-2 text-right text-gray-800 font-semibold">
                     {fmtR$(finRealValor > 0 ? finRealValor : null)}
@@ -688,11 +689,11 @@ export default function ParadaHhPage() {
                   <td className="px-4 py-2 font-medium text-gray-600">Serviços Extras (ASE)</td>
                   <td className="px-4 py-2 text-center text-gray-300">—</td>
                   <td className="px-4 py-2 text-right">
-                    <input type="number" min={0} step={0.01}
+                    <CurrencyInput
                       value={cfg.fin_prev_ase}
-                      onChange={(e) => setCfg((p) => ({ ...p, fin_prev_ase: e.target.value }))}
+                      onChange={(v) => setCfg((p) => ({ ...p, fin_prev_ase: v }))}
                       placeholder="0,00"
-                      className="w-36 rounded border border-gray-300 px-2 py-1 text-right focus:border-green-500 focus:outline-none" />
+                      className="w-36 text-right" />
                   </td>
                   <td className="px-4 py-2 text-center text-gray-300">—</td>
                 </tr>
@@ -917,7 +918,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                             onBlur={(e) => {
                               const num = n(e.target.value)
                               setDiaProp(etapa, d, prop,
-                                num > 0 ? num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '')
+                                num > 0 ? num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
                             }}
                             className="w-full bg-transparent px-0.5 py-0.5 focus:bg-yellow-50 focus:outline-none"
                             style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
