@@ -46,6 +46,7 @@ export async function GET(req: Request) {
       where: whereContrato,
       include: {
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
+        responsavel: { select: { id: true, nome: true } },
         subindices: {
           include: { notas_fiscais: { where: { ativa: true } } },
         },
@@ -82,7 +83,18 @@ export async function GET(req: Request) {
   const previstoSubPorMes = new Array<number>(12).fill(0)
   const faturadoPorMes    = new Array<number>(12).fill(0)
 
+  // Acumuladores para projeção multi-ano, aderência por responsável e contratos ativos
+  const previstoPorAno  = new Map<number, number>()
+  const realizadoPorAno = new Map<number, number>()
+  const porResp = new Map<string, { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number }>()
+  const contratosAtivos: { id: number; indice: string; cliente: string; valorTotal: number; faturado: number; pct: number }[] = []
+
   for (const contrato of contratos) {
+    let contratoTotal = 0          // valor total do contrato (soma dos sub-índices)
+    let contratoNFsTotal = 0       // faturado (todas as NFs, todos os anos)
+    let contratoNFsAno = 0         // faturado no ano de referência
+    let contratoPrevistoAno = 0    // previsto no ano de referência
+
     for (const sub of contrato.subindices) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const anoSub = (sub as any).data_inicio
@@ -91,10 +103,15 @@ export async function GET(req: Request) {
         : contrato.ano_referencia
 
       const valorSub = Number(sub.valor_total)
+      contratoTotal += valorSub
+
+      const mensalSub = Array.from({ length: 12 }, (_, i) => getMonthValue(sub, i + 1)).reduce((a, b) => a + b, 0)
+      if (anoSub != null) previstoPorAno.set(anoSub, (previstoPorAno.get(anoSub) ?? 0) + mensalSub)
 
       if (anoSub === anoAtual) {
         prevMesAtual += getMonthValue(sub, mesAtual)
         for (let m = 1; m <= 12; m++) previstoSubPorMes[m - 1] += getMonthValue(sub, m)
+        contratoPrevistoAno += mensalSub
       }
       if (anoSub > anoAtual) faturamentoProxAnos += valorSub
       if (anoSub === anoMesProx)  prevProxMes  += getMonthValue(sub, mesProximo)
@@ -105,9 +122,13 @@ export async function GET(req: Request) {
         const nfMes   = emissao.getUTCMonth() + 1
         const valor   = Number(nf.valor_atribuido)
 
+        contratoNFsTotal += valor
+        realizadoPorAno.set(nfAno, (realizadoPorAno.get(nfAno) ?? 0) + valor)
+
         if (nfAno === anoAtual) {
           totalFaturadoAno += valor
           faturadoPorMes[nfMes - 1] += valor
+          contratoNFsAno += valor
 
           // Agrupamento por ramo e cliente (faturado no ano atual)
           const ramo = contrato.cliente.ramo_atuacao ?? 'OUTROS'
@@ -121,6 +142,28 @@ export async function GET(req: Request) {
           if (nfAno === anoMesAnt && nfMes === mesAnterior)   faturadoUltimoMes += valor
         }
       }
+    }
+
+    // Aderência por responsável
+    const respKey = contrato.responsavel ? String(contrato.responsavel.id) : 'none'
+    const respEntry = porResp.get(respKey) ?? {
+      id: contrato.responsavel?.id ?? null,
+      nome: contrato.responsavel?.nome ?? 'Não atribuído',
+      contratos: 0, valorSobGestao: 0, previsto: 0, realizado: 0,
+    }
+    respEntry.contratos += 1
+    respEntry.valorSobGestao += contratoTotal
+    respEntry.previsto += contratoPrevistoAno
+    respEntry.realizado += contratoNFsAno
+    porResp.set(respKey, respEntry)
+
+    // Contratos ativos — progresso de faturamento
+    if (contratoTotal > 0) {
+      contratosAtivos.push({
+        id: contrato.id, indice: contrato.indice, cliente: contrato.cliente.nome,
+        valorTotal: contratoTotal, faturado: contratoNFsTotal,
+        pct: (contratoNFsTotal / contratoTotal) * 100,
+      })
     }
   }
 
@@ -171,6 +214,33 @@ export async function GET(req: Request) {
     }
   })
 
+  // Projeção multi-ano (carteira contratada): realizado x a faturar por ano
+  const anosSet = new Set<number>([...Array.from(previstoPorAno.keys()), ...Array.from(realizadoPorAno.keys())])
+  const projecaoMultiAno = Array.from(anosSet)
+    .filter((a) => !isNaN(a))
+    .sort((a, b) => a - b)
+    .map((a) => {
+      const realizado = realizadoPorAno.get(a) ?? 0
+      const previsto  = previstoPorAno.get(a) ?? 0
+      return { ano: a, realizado, aFaturar: Math.max(0, previsto - realizado) }
+    })
+    .filter((p) => p.realizado > 0 || p.aFaturar > 0)
+
+  // Aderência por responsável
+  const porResponsavel = Array.from(porResp.values())
+    .map((r) => ({
+      id: r.id, nome: r.nome, contratos: r.contratos,
+      valorSobGestao: r.valorSobGestao, previsto: r.previsto, realizado: r.realizado,
+      aderencia: r.previsto > 0 ? (r.realizado / r.previsto) * 100 : 0,
+      saldo: Math.max(0, r.previsto - r.realizado),
+    }))
+    .sort((a, b) => b.valorSobGestao - a.valorSobGestao)
+
+  // Contratos ativos — ordenados por % faturado desc
+  const contratosAtivosData = contratosAtivos
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 30)
+
   return NextResponse.json({
     data: {
       anoAtual,
@@ -188,6 +258,9 @@ export async function GET(req: Request) {
       porRamo:    porRamoData,
       porCliente: porClienteData,
       porMes,
+      projecaoMultiAno,
+      porResponsavel,
+      contratosAtivos: contratosAtivosData,
     },
     error: null,
   })

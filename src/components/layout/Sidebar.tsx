@@ -29,8 +29,8 @@ const NAV_SECTIONS = [
       { label: 'Meu Painel',              href: '/acordos/painel' },
       { label: 'Controle de faturamento', href: '/acordos/faturamento' },
       { label: 'Consolidado x Realizado', href: '/acordos/previsao' },
-      { label: 'Dashboard Acordos',       href: '/acordos/dashboard' },
       { label: 'Controle de HH',          href: '/acordos/hh' },
+      { label: 'Indicadores Acordos',     href: '/acordos/dashboard' },
     ],
   },
 ]
