@@ -87,6 +87,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   const [loadingSiblings, setLoadingSiblings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showPending, setShowPending] = useState(false)
 
   const subAno = subindice.data_inicio
     ? parseInt(subindice.data_inicio.substring(0, 4), 10)
@@ -97,6 +98,21 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
     useApprovalFlow && 'alteracao_pendente' in subindice
       ? (subindice as unknown as { alteracao_pendente: PrevisaoAlteracaoItem | null }).alteracao_pendente
       : null
+
+  // RN-CF-36: detalhamento da alteração pendente (mês a mês: de → para)
+  const pendingChanges = useMemo(() => {
+    if (!alteracaoPendente) return [] as { label: string; de: number; para: number }[]
+    const section = anos[subAno]
+    const out: { label: string; de: number; para: number }[] = []
+    for (let mi = 0; mi < MESES.length; mi++) {
+      const m = MESES[mi]
+      const raw = (alteracaoPendente as unknown as Record<string, unknown>)[`${m}_para`]
+      const para = raw != null ? Number(raw) : null
+      const de = section?.original[m] ? Number(section.original[m]) : 0
+      if (para != null && Math.abs(para - de) > 0.01) out.push({ label: MESES_LABELS[mi], de, para })
+    }
+    return out
+  }, [alteracaoPendente, anos, subAno])
 
   const hasPastMonthChanges = useMemo(() => {
     for (const anoStr of Object.keys(anos)) {
@@ -348,7 +364,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
             <Button onClick={handleSave} disabled={loading || loadingSiblings}>
               {loading
                 ? (useApprovalFlow ? 'Enviando...' : 'Salvando...')
-                : (useApprovalFlow ? 'Enviar proposta' : 'Salvar')}
+                : (useApprovalFlow ? 'Enviar para Aprovação' : 'Salvar')}
             </Button>
           )}
         </>
@@ -358,13 +374,49 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
       )}
 
-      {/* RN-CF-36: aviso de proposta pendente */}
+      {/* RN-CF-36: aviso de proposta pendente + detalhamento da alteração */}
       {useApprovalFlow && alteracaoPendente && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-[11px] px-3 py-2.5 rounded mb-3 flex gap-2 items-start">
-          <span className="text-[14px] leading-none mt-px">⏳</span>
-          <span>
-            <strong>Proposta pendente de aprovação.</strong> Enviar uma nova proposta irá substituir a anterior.
-          </span>
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 text-[11px] rounded mb-3">
+          <div className="px-3 py-2.5 flex gap-2 items-start">
+            <span className="text-[14px] leading-none mt-px">⏳</span>
+            <span className="flex-1">
+              <strong>Alteração pendente de aprovação.</strong> Enviar uma nova proposta irá substituir a anterior.
+            </span>
+            {pendingChanges.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPending((v) => !v)}
+                className="text-amber-900 underline font-semibold whitespace-nowrap hover:text-amber-700"
+              >
+                {showPending ? 'Ocultar alteração' : 'Ver alteração pendente'}
+              </button>
+            )}
+          </div>
+          {showPending && pendingChanges.length > 0 && (
+            <div className="border-t border-amber-200 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold mb-1.5">Alteração aguardando aprovação</p>
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-amber-700">
+                    <th className="text-left font-semibold py-0.5">Mês</th>
+                    <th className="text-right font-semibold py-0.5">Valor atual</th>
+                    <th className="text-center font-semibold py-0.5 w-6"></th>
+                    <th className="text-right font-semibold py-0.5">Proposto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingChanges.map((c) => (
+                    <tr key={c.label} className="border-t border-amber-100">
+                      <td className="py-0.5 font-medium text-amber-900">{c.label}</td>
+                      <td className="py-0.5 text-right text-gray-500">R$ {fmt(c.de)}</td>
+                      <td className="py-0.5 text-center text-amber-500">→</td>
+                      <td className="py-0.5 text-right font-bold text-green-700">R$ {fmt(c.para)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

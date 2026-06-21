@@ -156,7 +156,7 @@ export default function MeuPainelAcordosPage() {
       if (json.error) { setError(json.error); return }
       const data: ContratoComAlteracoes[] = json.data ?? []
       setContratos(data)
-      setExpandidos(new Set(data.map((c) => c.id)))
+      setExpandidos(new Set())
     } catch (err) {
       setError(String(err))
     } finally {

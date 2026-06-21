@@ -496,7 +496,7 @@ export interface PrevisaoAlteracaoItem {
   subindice: { id: number; ordem: number; descricao: string; contrato_id: number }
   responsavel: { id: number; nome: string }
   revisor: { id: number; nome: string } | null
-  contrato?: { id: number; indice: string; cliente: { id: number; nome: string } }
+  contrato?: { id: number; indice: string; descricao: string | null; cliente: { id: number; nome: string } }
 }
 
 export interface SubIndiceComAlteracaoPendente extends SubIndiceItem {

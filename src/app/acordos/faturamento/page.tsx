@@ -1031,6 +1031,11 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
     return de !== para
   })
 
+  // Totais de previsão: antes (Σ de) e proposto (Σ para)
+  const totalDe = MESES.reduce((s, m) => s + (Number(alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem]) || 0), 0)
+  const totalPara = MESES.reduce((s, m) => s + (Number(alteracao[`${m}_para` as keyof PrevisaoAlteracaoItem]) || 0), 0)
+  const diff = totalPara - totalDe
+
   return (
     <div className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
       {/* Cabeçalho */}
@@ -1069,6 +1074,32 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
           <Button size="sm" onClick={() => onAprovar(alteracao.id)}>
             Aprovar
           </Button>
+        </div>
+      </div>
+
+      {/* Resumo: escopo do contrato + valor total previsto (antes → agora) */}
+      <div className="bg-gray-50 border border-gray-100 rounded p-2.5 mb-1 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
+        <div className="min-w-0">
+          <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do contrato</p>
+          <p className="text-[11px] text-gray-700 truncate" title={alteracao.contrato?.descricao ?? ''}>
+            {alteracao.contrato?.descricao ?? '—'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Total previsto antes</p>
+            <p className="text-[12px] font-semibold text-gray-500 line-through">{formatCurrency(totalDe)}</p>
+          </div>
+          <span className="text-gray-400">→</span>
+          <div className="text-right">
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Proposto agora</p>
+            <p className="text-[12px] font-bold text-green-700">{formatCurrency(totalPara)}</p>
+          </div>
+          <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded',
+            Math.abs(diff) < 0.01 ? 'bg-gray-100 text-gray-500'
+            : diff > 0 ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700')}>
+            {diff > 0 ? '+' : ''}{formatCurrency(diff)}
+          </span>
         </div>
       </div>
 

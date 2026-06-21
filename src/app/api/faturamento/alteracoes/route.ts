@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
               select: {
                 id: true,
                 indice: true,
+                descricao: true,
                 cliente: { select: { id: true, nome: true } },
               },
             },
@@ -147,6 +148,7 @@ export async function POST(req: NextRequest) {
               select: {
                 id: true,
                 indice: true,
+                descricao: true,
                 cliente: { select: { id: true, nome: true } },
               },
             },
