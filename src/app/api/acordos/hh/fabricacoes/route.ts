@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
       realizados: it.realizados.map((r) => ({
         mes: r.mes, ano: r.ano,
         hh_realizado: r.hh_realizado,
+        peso_previsto: r.peso_previsto != null ? Number(r.peso_previsto) : null,
+        peso_realizado: r.peso_realizado != null ? Number(r.peso_realizado) : null,
         pct_avanco: r.pct_avanco != null ? Number(r.pct_avanco) : null,
       })),
     }))
@@ -54,6 +56,9 @@ export async function GET(req: NextRequest) {
     const hhOrcado = itens.reduce((a, i) => a + i.meses.reduce((b, m) => b + (m.hh_orcado ?? 0), 0), 0)
     const hhPrevisto = itens.reduce((a, i) => a + i.meses.reduce((b, m) => b + (m.hh_previsto ?? 0), 0), 0)
     const hhRealizado = itens.reduce((a, i) => a + i.realizados.reduce((b, r) => b + (r.hh_realizado ?? 0), 0), 0)
+    const pesoPrevisto = itens.reduce((a, i) => a + i.realizados.reduce((b, r) => b + (r.peso_previsto ?? 0), 0), 0)
+    const pesoRealizado = itens.reduce((a, i) => a + i.realizados.reduce((b, r) => b + (r.peso_realizado ?? 0), 0), 0)
+    const pesoTotal = itens.reduce((a, i) => a + (i.peso_total ?? 0), 0)
 
     return {
       id: c.id, indice: c.indice, num_os: c.num_os,
@@ -67,6 +72,9 @@ export async function GET(req: NextRequest) {
       hh_orcado:   hhOrcado   > 0 ? hhOrcado   : null,
       hh_previsto: hhPrevisto > 0 ? hhPrevisto : null,
       hh_realizado: hhRealizado > 0 ? hhRealizado : null,
+      peso_total:     pesoTotal     > 0 ? pesoTotal     : null,
+      peso_previsto:  pesoPrevisto  > 0 ? pesoPrevisto  : null,
+      peso_realizado: pesoRealizado > 0 ? pesoRealizado : null,
       itens,
     }
   })

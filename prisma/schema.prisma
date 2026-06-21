@@ -532,12 +532,14 @@ model FabricacaoItemMes {
 // HH realizado + % de avanço (INCREMENTO do mês) por item
 model FabricacaoRealizado {
   id           Int      @id @default(autoincrement())
-  item_id      Int
-  mes          Int
-  ano          Int
-  hh_realizado Int?
-  pct_avanco   Decimal? @db.Decimal(6, 2)
-  observacoes  String?
+  item_id        Int
+  mes            Int
+  ano            Int
+  hh_realizado   Int?
+  peso_previsto  Decimal? @db.Decimal(14, 2)
+  peso_realizado Decimal? @db.Decimal(14, 2)
+  pct_avanco     Decimal? @db.Decimal(6, 2)
+  observacoes    String?
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
   created_by   Int
