@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels)
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const fmtHh = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -105,11 +106,19 @@ export function ParadasResumoView() {
     plugins: {
       legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } },
       tooltip: { callbacks: { label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => `${ctx.dataset.label}: ${fmtHh(ctx.parsed.y ?? 0)}` } },
+      datalabels: {
+        anchor: 'end' as const,
+        align: 'end' as const,
+        color: '#444',
+        font: { size: 10, weight: 'bold' as const },
+        formatter: (v: number) => v > 0 ? Math.round(v).toLocaleString('pt-BR') : '',
+      },
     },
     scales: {
       x: { grid: { display: false }, ticks: { font: { size: 10 } } },
       y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: (v: string | number) => typeof v === 'number' ? v.toLocaleString('pt-BR') : v } },
     },
+    layout: { padding: { top: 20 } },
   }
 
   return (

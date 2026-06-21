@@ -80,7 +80,7 @@ function Gauge({ percent, faturado, previsto }: { percent: number; faturado: num
   }
   const opts = {
     responsive: true, maintainAspectRatio: false, cutout: '72%',
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } },
   }
   return (
     <div className="relative mx-auto" style={{ height: 200, maxWidth: 320 }}>
@@ -169,8 +169,7 @@ function Treemap({ data }: { data: { nome: string; valor: number; percentual: nu
           <div key={rect.nome} className="absolute flex flex-col items-center justify-center rounded text-center px-1"
             style={{ left: rect.x + 1.5, top: rect.y + 1.5, width: cellW, height: cellH, backgroundColor: TREEMAP_COLORS[i % TREEMAP_COLORS.length] }}>
             <span className="text-white font-bold leading-tight" style={{ fontSize: cellW < 80 ? 10 : 13, textShadow: '0 1px 2px rgba(0,0,0,0.4)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rect.nome}</span>
-            {cellH > 40 && <span className="text-white/90 font-medium mt-0.5" style={{ fontSize: cellW < 80 ? 9 : 11 }}>{fmtM(rect.valor)}</span>}
-            <span className="text-white font-bold mt-0.5" style={{ fontSize: cellW < 80 ? 10 : 12, textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{rect.percentual.toFixed(1)}%</span>
+            <span className="text-white font-bold mt-0.5" style={{ fontSize: cellW < 80 ? 10 : 12, textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{rect.percentual.toFixed(1).replace('.', ',')}%</span>
           </div>
         )
       })}
@@ -297,7 +296,7 @@ export default function IndicadoresAcordosPage() {
   }
   const mesOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
+    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, datalabels: { display: false }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
     scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: yTick } } },
   }
   const projChart = data && {
@@ -309,7 +308,7 @@ export default function IndicadoresAcordosPage() {
   }
   const projOpts = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
+    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, datalabels: { display: false }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
     scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } }, y: { stacked: true, grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: yTick } } },
   }
 

@@ -176,9 +176,10 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
           {formatDate(item.data_recebimento ?? item.created_at)}
         </CardField>
 
-        {/* Linha 4: data de atribuição */}
+        {/* Linha 4: data de atribuição = quando o analista crítico aprovou e a
+            solicitação ficou disponível para o orçamentista (fallback p/ registros antigos) */}
         <CardField label="Data de Atribuição">
-          {formatDate(item.created_at)}
+          {formatDate(item.data_atribuicao ?? item.created_at)}
         </CardField>
       </div>
 

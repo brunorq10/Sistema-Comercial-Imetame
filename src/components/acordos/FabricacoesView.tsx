@@ -701,6 +701,7 @@ const chartOptsFactory = (fmt: (v: number) => string) => ({
   responsive: true, maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
+    datalabels: { display: false },
     tooltip: {
       mode: 'index' as const, intersect: false,
       callbacks: {

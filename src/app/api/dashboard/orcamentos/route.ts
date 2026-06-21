@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
       classificacao: true,
       motivo_reprovacao: true,
       data_recebimento: true,
+      data_atribuicao: true,
       created_at: true,
       criador: { select: { id: true, nome: true } },
       prazo_tecnica: true,
@@ -245,7 +246,7 @@ export async function GET(req: NextRequest) {
           cliente_final: s.cliente_final?.nome ?? null,
           orcamentista: s.orcamentista?.nome ?? null,
           data_recebimento: s.data_recebimento ? s.data_recebimento.toISOString() : null,
-          data_atribuicao: s.orcamentista_id ? s.created_at.toISOString() : null,
+          data_atribuicao: s.data_atribuicao ? s.data_atribuicao.toISOString() : (s.orcamentista_id ? s.created_at.toISOString() : null),
           prazo_tecnica: s.prazo_tecnica ? s.prazo_tecnica.toISOString() : null,
           prazo_tecnica_indeterminado: s.prazo_tecnica_indeterminado,
           prazo_tecnica_enviada: isFabType
