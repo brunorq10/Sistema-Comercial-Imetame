@@ -84,3 +84,47 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ data: { ok: true }, error: null })
 }
+
+// ── DELETE: exclui todos os lançamentos (realizados) de um contrato, com motivo ─
+const deleteSchema = z.object({
+  contrato_id: z.number().int().positive(),
+  motivo: z.string().min(1, 'Motivo obrigatório'),
+})
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  const userId = Number(session.user.id)
+
+  const parsed = deleteSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
+  }
+  const { contrato_id, motivo } = parsed.data
+
+  const itens = await prisma.fabricacaoItem.findMany({
+    where: { contrato_id },
+    select: { id: true, _count: { select: { realizados: true } } },
+  })
+  const comLancamentos = itens.filter((it) => it._count.realizados > 0)
+  const itemIds = comLancamentos.map((it) => it.id)
+
+  if (itemIds.length === 0) {
+    return NextResponse.json({ data: { ok: true, removidos: 0 }, error: null })
+  }
+
+  const hist: Prisma.FabricacaoItemHistoricoCreateManyInput[] = comLancamentos.map((it) => ({
+    item_id: it.id,
+    campo: 'Lançamentos excluídos',
+    valor_de: `${it._count.realizados} lançamento(s)`,
+    valor_para: `Motivo: ${motivo}`,
+    created_by: userId,
+  }))
+
+  await prisma.$transaction([
+    prisma.fabricacaoRealizado.deleteMany({ where: { item_id: { in: itemIds } } }),
+    prisma.fabricacaoItemHistorico.createMany({ data: hist }),
+  ])
+
+  return NextResponse.json({ data: { ok: true, removidos: itemIds.length }, error: null })
+}

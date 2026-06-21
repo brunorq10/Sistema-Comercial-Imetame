@@ -9,6 +9,8 @@ import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { cn, formatDate } from '@/lib/utils'
+import { AcaoButton, ACAO_ICONS } from '@/components/acordos/AcaoButton'
+import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
@@ -39,8 +41,10 @@ interface ItemFab {
 export interface ContratoFab {
   id: number
   indice: string
-  cliente: { id: number; nome: string }
+  num_os: string | null
+  cliente: { id: number; nome: string; ramo_atuacao?: string | null }
   cliente_final: { id: number; nome: string } | null
+  responsavel: { id: number; nome: string } | null
   cidade: string | null
   estado: string | null
   classificacao: string | null
@@ -88,6 +92,12 @@ export function FabricacoesView() {
   const [cadastro, setCadastro] = useState<ContratoFab | null>(null)
   const [lancamento, setLancamento] = useState<ContratoFab | null>(null)
   const [historico, setHistorico] = useState<ContratoFab | null>(null)
+  const [excluir, setExcluir] = useState<ContratoFab | null>(null)
+
+  const [filters, setFilters] = useState<FilterState>({})
+  const setFilter = (k: string, v: string[]) => setFilters((p) => ({ ...p, [k]: v }))
+  const opts = useFilterOptions(contratos)
+  const filtradas = applyFilters(contratos, filters)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -116,16 +126,21 @@ export function FabricacoesView() {
         )}
       </div>
 
+      {!loading && contratos.length > 0 && (
+        <Filters opts={opts} filters={filters} onChange={setFilter} />
+      )}
+
       {loading ? (
         <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
       ) : visao === 'resumo' ? (
-        <ResumoFab contratos={contratos} />
+        <ResumoFab contratos={filtradas} />
       ) : (
         <ContratosFab
-          contratos={contratos}
+          contratos={filtradas}
           onEditar={(c) => setCadastro(c)}
           onLancar={(c) => setLancamento(c)}
           onHistorico={(c) => setHistorico(c)}
+          onExcluir={(c) => setExcluir(c)}
         />
       )}
 
@@ -152,19 +167,72 @@ export function FabricacoesView() {
       {historico && (
         <HistoricoFabModal contrato={historico} onClose={() => setHistorico(null)} />
       )}
+      {excluir && (
+        <ExcluirLancamentosModal
+          contrato={excluir}
+          onClose={() => setExcluir(null)}
+          onSuccess={() => { setExcluir(null); fetchData() }}
+        />
+      )}
     </div>
   )
 }
 
+// ── Excluir lançamentos do contrato (com motivo obrigatório) ──────────────────
+function ExcluirLancamentosModal({ contrato, onClose, onSuccess }: {
+  contrato: ContratoFab; onClose: () => void; onSuccess: () => void
+}) {
+  const [motivo, setMotivo] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (!motivo.trim()) return
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch('/api/acordos/hh/fabricacoes/realizado', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contrato_id: contrato.id, motivo: motivo.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao excluir'); return }
+      onSuccess()
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Excluir lançamentos — ${contrato.indice}`}
+      footer={
+        <>
+          <ModalCancelButton disabled={loading} />
+          <Button variant="danger" onClick={handleDelete} disabled={!motivo.trim() || loading}>
+            {loading ? 'Excluindo...' : 'Confirmar exclusão'}
+          </Button>
+        </>
+      }>
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>}
+      <p className="text-[12px] text-gray-600 mb-3">
+        Esta ação remove <strong>todos os lançamentos de realizado</strong> (HH e peso) dos itens deste contrato. O cadastro dos itens é mantido. Informe o motivo:
+      </p>
+      <textarea
+        value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3}
+        placeholder="Motivo (obrigatório)"
+        className="w-full text-[12px] border border-gray-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-green-primary"
+      />
+    </Modal>
+  )
+}
+
 // ── Tabela de contratos cadastrados ─────────────────────────────────────────
-function ContratosFab({ contratos, onEditar, onLancar, onHistorico }: {
+function ContratosFab({ contratos, onEditar, onLancar, onHistorico, onExcluir }: {
   contratos: ContratoFab[]
   onEditar: (c: ContratoFab) => void
   onLancar: (c: ContratoFab) => void
   onHistorico: (c: ContratoFab) => void
+  onExcluir: (c: ContratoFab) => void
 }) {
   if (contratos.length === 0) {
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato de Fabricação cadastrado. Use “+ Novo cadastro”.</p>
+    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato corresponde aos filtros. Use “+ Novo cadastro” para incluir.</p>
   }
   return (
     <div className="overflow-auto border border-gray-200 rounded-md bg-white">
@@ -203,10 +271,11 @@ function ContratosFab({ contratos, onEditar, onLancar, onHistorico }: {
                 <td className="px-2 py-1.5 text-right text-green-dark">{pReal > 0 ? fmtPeso(pReal) : '—'}</td>
                 <td className="px-2 py-1.5 text-right font-semibold text-[#1565C0]">{fmtPct(pctAvanco(pPrev, pReal))}</td>
                 <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                  <div className="flex gap-1 justify-center">
-                    <Button size="sm" variant="outline" onClick={() => onEditar(c)} title="Editar itens">✎</Button>
-                    <Button size="sm" onClick={() => onLancar(c)} title="Lançar realizado">HH</Button>
-                    <Button size="sm" variant="outline" onClick={() => onHistorico(c)} title="Histórico de alterações">Hist.</Button>
+                  <div className="flex items-center gap-1 justify-center">
+                    <AcaoButton onClick={() => onEditar(c)} title="Editar itens" color="green">{ACAO_ICONS.editar}</AcaoButton>
+                    <AcaoButton onClick={() => onLancar(c)} title="Lançar realizado" color="gray">{ACAO_ICONS.lancar}</AcaoButton>
+                    <AcaoButton onClick={() => onHistorico(c)} title="Histórico de alterações" color="gray">{ACAO_ICONS.historico}</AcaoButton>
+                    <AcaoButton onClick={() => onExcluir(c)} title="Excluir lançamentos" color="red">{ACAO_ICONS.excluir}</AcaoButton>
                   </div>
                 </td>
               </tr>
