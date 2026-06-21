@@ -33,6 +33,8 @@ export interface OrcDashboardData {
   por_mes: number[]           // índice 0=Jan … 11=Dez
   por_classificacao: Record<string, number>
   por_interesse: { ALTO: number; MEDIO: number; BAIXO: number }
+  por_motivo_recusa: Array<{ motivo: string; total: number }>
+  por_responsavel: Array<{ id: number; nome: string; OBRAS: number; PARADAS: number; OLEO_GAS: number; FABRICACOES: number }>
   situacao_carteira: { no_prazo: number; atrasada: number; atendida: number }
   por_orc: Array<{ nome: string; total: number }>
   solicitacoes_abertas: SolicitacaoAberta[]
@@ -107,8 +109,10 @@ export async function GET(req: NextRequest) {
       status_analise: true,
       interesse: true,
       classificacao: true,
+      motivo_reprovacao: true,
       data_recebimento: true,
       created_at: true,
+      criador: { select: { id: true, nome: true } },
       prazo_tecnica: true,
       prazo_tecnica_indeterminado: true,
       prazo_comercial: true,
@@ -140,6 +144,10 @@ export async function GET(req: NextRequest) {
   const porMes = Array(12).fill(0)
   const porClassificacao: Record<string, number> = {}
   const porInteresse = { ALTO: 0, MEDIO: 0, BAIXO: 0 }
+  const porMotivo: Record<string, number> = {}
+  type RespRow = { id: number; nome: string; OBRAS: number; PARADAS: number; OLEO_GAS: number; FABRICACOES: number }
+  const respMap = new Map<number, RespRow>()
+  const CLASSIF_KEYS = ['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES'] as const
   const situacao = { no_prazo: 0, atrasada: 0, atendida: 0 }
   const orcMap = new Map<string, number>()
   const solicitacoes_abertas: SolicitacaoAberta[] = []
@@ -163,6 +171,18 @@ export async function GET(req: NextRequest) {
     // Por interesse
     if (s.interesse && s.interesse in porInteresse) {
       porInteresse[s.interesse as keyof typeof porInteresse]++
+    }
+
+    // Motivos de recusa (preenchidos em solicitações recusadas)
+    if (s.motivo_reprovacao) {
+      porMotivo[s.motivo_reprovacao] = (porMotivo[s.motivo_reprovacao] ?? 0) + 1
+    }
+
+    // Por responsável (criador) × classificação
+    if (s.classificacao && s.criador && (CLASSIF_KEYS as readonly string[]).includes(s.classificacao)) {
+      const row = respMap.get(s.criador.id) ?? { id: s.criador.id, nome: s.criador.nome, OBRAS: 0, PARADAS: 0, OLEO_GAS: 0, FABRICACOES: 0 }
+      row[s.classificacao as typeof CLASSIF_KEYS[number]]++
+      respMap.set(s.criador.id, row)
     }
 
     // Situação da carteira — inclui todas as aprovadas (em elaboração, enviadas, ganhas)
@@ -274,6 +294,9 @@ export async function GET(req: NextRequest) {
     por_mes: porMes,
     por_classificacao: porClassificacao,
     por_interesse: porInteresse,
+    por_motivo_recusa: Object.entries(porMotivo).map(([motivo, total]) => ({ motivo, total })).sort((a, b) => b.total - a.total),
+    por_responsavel: Array.from(respMap.values()).sort((a, b) =>
+      (b.OBRAS + b.PARADAS + b.OLEO_GAS + b.FABRICACOES) - (a.OBRAS + a.PARADAS + a.OLEO_GAS + a.FABRICACOES)),
     situacao_carteira: situacao,
     por_orc,
     solicitacoes_abertas,

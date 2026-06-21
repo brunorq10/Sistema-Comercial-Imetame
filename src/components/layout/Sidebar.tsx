@@ -17,7 +17,7 @@ const NAV_SECTIONS = [
       { label: 'Meu Painel',          href: '/orcamentos/painel' },
       { label: 'Solicitações',        href: '/orcamentos/solicitacoes' },
       { label: 'Propostas',           href: '/orcamentos/propostas' },
-      { label: 'Dashboard Comercial', href: '/orcamentos/dashboard' },
+      { label: 'Indicadores Comercial', href: '/orcamentos/dashboard' },
     ],
   },
   {
