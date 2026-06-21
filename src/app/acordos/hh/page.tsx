@@ -10,6 +10,7 @@ import { Line } from 'react-chartjs-2'
 import { cn } from '@/lib/utils'
 import { LancamentoHhModal } from '@/components/acordos/LancamentoHhModal'
 import { FabricacoesView } from '@/components/acordos/FabricacoesView'
+import { ParadasResumoView } from '@/components/acordos/ParadasResumoView'
 import { AcaoButton as ABtn, ACAO_ICONS } from '@/components/acordos/AcaoButton'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
@@ -1281,7 +1282,7 @@ export default function ControleHhPage() {
       </div>
 
       <>
-        {categoria === 'obras' && (
+        {(categoria === 'obras' || categoria === 'paradas') && (
           <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
             {([['contratos','Contratos'],['resumo','Resumo']] as [Visao,string][]).map(([k,l]) => (
               <button key={k} onClick={() => setVisao(k)}
@@ -1295,17 +1296,23 @@ export default function ControleHhPage() {
 
         {categoria === 'fabricacoes' ? (
           <FabricacoesView />
+        ) : categoria === 'paradas' ? (
+          visao === 'resumo' ? (
+            <ParadasResumoView />
+          ) : loading ? (
+            <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+          ) : (
+            <div className="flex-1 min-h-0 flex flex-col">
+              <VisaoContratos
+                contratos={contratos}
+                opts={opts}
+                onRefresh={fetchData}
+                classificacao="PARADAS"
+              />
+            </div>
+          )
         ) : loading ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-        ) : categoria === 'paradas' ? (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <VisaoContratos
-              contratos={contratos}
-              opts={opts}
-              onRefresh={fetchData}
-              classificacao="PARADAS"
-            />
-          </div>
         ) : visao === 'contratos' ? (
           <div className="flex-1 min-h-0 flex flex-col">
             <VisaoContratos
