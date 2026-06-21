@@ -1133,7 +1133,7 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
             Previsão do item — todos os anos {previsaoAnos.length > 1 ? `(${previsaoAnos.length} anos)` : ''} · valores em R$
           </p>
           <div className="overflow-x-auto border border-gray-100 rounded">
-            <table className="text-[10px] border-collapse min-w-max">
+            <table className="text-[10px] border-collapse w-full min-w-[760px]">
               <thead>
                 <tr className="bg-gray-50 text-gray-500">
                   <th className="px-2 py-1 text-left font-semibold sticky left-0 bg-gray-50 whitespace-nowrap">Ano / Linha</th>
