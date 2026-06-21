@@ -6,8 +6,9 @@ import { useSession } from 'next-auth/react'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
-import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
+import type { SubIndiceItem, PrevisaoAlteracaoItem, ContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -131,6 +132,7 @@ export default function MeuPainelAcordosPage() {
   const [modalHistorico, setModalHistorico] = useState<{
     tipo: 'contrato' | 'subindice'; id: number; titulo: string
   } | null>(null)
+  const [lancarFat, setLancarFat] = useState<{ contrato: ContratoComAlteracoes; subindice: SubIndiceComAlteracao } | null>(null)
 
   useEffect(() => {
     fetch('/api/faturamento/filtros')
@@ -383,6 +385,7 @@ export default function MeuPainelAcordosPage() {
             canEdit={isGestao || responsavelId === String(userId)}
             onEditar={(sub, label, anoRef) => setModalEditar({ subindice: sub, indiceLabel: label, anoRef })}
             onHistorico={(tipo, id, titulo) => setModalHistorico({ tipo, id, titulo })}
+            onLancarFaturamento={(contrato, sub) => setLancarFat({ contrato, subindice: sub })}
           />
         )}
       </div>
@@ -408,6 +411,16 @@ export default function MeuPainelAcordosPage() {
           tipo={modalHistorico.tipo}
           itemId={modalHistorico.id}
           titulo={modalHistorico.titulo}
+        />
+      )}
+      {lancarFat && (
+        <LancarNFContratoModal
+          open={true}
+          onClose={() => setLancarFat(null)}
+          onSuccess={() => fetchContratos()}
+          contrato={lancarFat.contrato as unknown as ContratoItem}
+          subindice={lancarFat.subindice}
+          approvalFlow={!isGestao}
         />
       )}
     </div>
@@ -440,9 +453,10 @@ interface PainelTableProps {
   canEdit: boolean
   onEditar: (sub: SubIndiceItem, indiceLabel: string, anoRef: number) => void
   onHistorico: (tipo: 'contrato' | 'subindice', id: number, titulo: string) => void
+  onLancarFaturamento: (contrato: ContratoComAlteracoes, sub: SubIndiceComAlteracao) => void
 }
 
-function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHistorico }: PainelTableProps) {
+function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHistorico, onLancarFaturamento }: PainelTableProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
 
@@ -744,6 +758,11 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                         >
                           {canEdit ? 'Editar prev.' : 'Ver prev.'}
                         </button>
+                        {canEdit && contrato.status !== 'CANCELADO' && (
+                          <button onClick={() => onLancarFaturamento(contrato, sub)}
+                            className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
+                            title="Lançar Faturamento">$</button>
+                        )}
                         <button onClick={() => onHistorico('subindice', sub.id, indiceLabel)}
                           className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
                           title="Histórico">📋</button>

@@ -824,6 +824,12 @@ model NotaFiscalContrato {
   ativa             Boolean  @default(true)
   motivo_inativacao String?
   tipo_documento    String?  @default("NF")
+  // Fluxo de aprovação de lançamento de faturamento (responsável -> coordenação)
+  status_aprovacao  String   @default("APROVADO") // APROVADO | PENDENTE | REPROVADO
+  solicitado_por    Int?
+  revisado_por      Int?
+  revisado_em       DateTime?
+  motivo_recusa     String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   created_by        Int
@@ -833,6 +839,7 @@ model NotaFiscalContrato {
 
   @@index([subindice_id])
   @@index([numero_nf, ativa])
+  @@index([status_aprovacao])
   @@map("notas_fiscais_contratos")
 }
 

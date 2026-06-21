@@ -13,11 +13,12 @@ interface Props {
   onSuccess: () => void
   contrato: ContratoItem
   subindice: SubIndiceItem
+  approvalFlow?: boolean   // responsável: lançamento vai para aprovação da coordenação
 }
 
 type Aba = 'lancar' | 'historico'
 
-export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice }: Props) {
+export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice, approvalFlow }: Props) {
   const [aba, setAba] = useState<Aba>('lancar')
   const [tipoDocumento, setTipoDocumento] = useState<'NF' | 'Recibo' | 'Outros'>('NF')
   const [numeroNF, setNumeroNF] = useState('')
@@ -28,6 +29,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
+  const [enviadoAprovacao, setEnviadoAprovacao] = useState(false)
   const [nfAlocado, setNfAlocado] = useState<number | null>(null)
 
   const valorAtribuido = valorTotal && percentual
@@ -39,7 +41,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       setAba('lancar')
       setTipoDocumento('NF')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
-      setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null)
+      setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null); setEnviadoAprovacao(false)
     }
   }, [open])
 
@@ -81,7 +83,9 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         }),
       })
       const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar NF'); return }
+      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar faturamento'); return }
+      // Responsável: lançamento enviado para aprovação da coordenação
+      if (json.pendente) { setEnviadoAprovacao(true); onSuccess(); return }
       // RN-CF-16: alerta informativo (não bloqueia)
       if (json.warning) { setWarning(json.warning); onSuccess(); return }
       onSuccess(); onClose()
@@ -102,11 +106,15 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       title={`NF — ${indiceSubindice} · ${subindice.descricao}`}
       wide
       footer={
-        aba === 'lancar' ? (
+        enviadoAprovacao ? (
+          <ModalCancelButton label="Fechar" />
+        ) : aba === 'lancar' ? (
           <>
             <ModalCancelButton disabled={loading} />
             <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Lançando...' : 'Lançar NF'}
+              {loading
+                ? (approvalFlow ? 'Enviando...' : 'Lançando...')
+                : (approvalFlow ? 'Enviar para Aprovação' : 'Lançar Faturamento')}
             </Button>
           </>
         ) : (
@@ -124,7 +132,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               : 'border-transparent text-gray-400 hover:text-gray-600'
           }`}
         >
-          Lançar NF
+          Lançar Faturamento
         </button>
         <button
           onClick={() => setAba('historico')}
@@ -143,8 +151,20 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         </button>
       </div>
 
-      {/* ── Aba: Lançar NF ── */}
-      {aba === 'lancar' && (
+      {/* ── Lançamento enviado para aprovação ── */}
+      {enviadoAprovacao && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4 text-center my-2">
+          <p className="text-[28px] mb-1">✅</p>
+          <p className="text-[13px] font-semibold text-green-800">Lançamento enviado para aprovação</p>
+          <p className="text-[11px] text-green-700 mt-1">
+            O faturamento foi registrado e está aguardando aprovação da coordenação de Acordos.
+            Ele <strong>só entrará no faturamento após a aprovação</strong>.
+          </p>
+        </div>
+      )}
+
+      {/* ── Aba: Lançar Faturamento ── */}
+      {!enviadoAprovacao && aba === 'lancar' && (
         <>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-4">{error}</div>
