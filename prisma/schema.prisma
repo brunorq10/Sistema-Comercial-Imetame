@@ -135,6 +135,7 @@ model User {
   hh_realizados               HhRealizado[]          @relation("HhRealizadoCriador")
   fabricacao_itens_criados    FabricacaoItem[]       @relation("FabricacaoItemCriador")
   fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
+  fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -508,6 +509,7 @@ model FabricacaoItem {
   criador    User                  @relation("FabricacaoItemCriador", fields: [created_by], references: [id])
   meses      FabricacaoItemMes[]
   realizados FabricacaoRealizado[]
+  historico  FabricacaoItemHistorico[]
 
   @@index([contrato_id])
   @@map("fabricacao_itens")
@@ -515,12 +517,13 @@ model FabricacaoItem {
 
 // HH orçado/previsto planejado por mês para cada item (habilitado pelo intervalo de datas)
 model FabricacaoItemMes {
-  id          Int  @id @default(autoincrement())
-  item_id     Int
-  mes         Int
-  ano         Int
-  hh_orcado   Int?
-  hh_previsto Int?
+  id            Int      @id @default(autoincrement())
+  item_id       Int
+  mes           Int
+  ano           Int
+  hh_orcado     Int?
+  hh_previsto   Int?
+  peso_previsto Decimal? @db.Decimal(14, 2)
 
   item FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
 
@@ -529,20 +532,18 @@ model FabricacaoItemMes {
   @@map("fabricacao_item_mes")
 }
 
-// HH realizado + % de avanço (INCREMENTO do mês) por item
+// Realizado lançado por mês: HH realizado + peso realizado (% de avanço = realizado/previsto, calculado)
 model FabricacaoRealizado {
-  id           Int      @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   item_id        Int
   mes            Int
   ano            Int
   hh_realizado   Int?
-  peso_previsto  Decimal? @db.Decimal(14, 2)
   peso_realizado Decimal? @db.Decimal(14, 2)
-  pct_avanco     Decimal? @db.Decimal(6, 2)
   observacoes    String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  created_by   Int
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  created_by     Int
 
   item    FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
   criador User           @relation("FabricacaoRealizadoCriador", fields: [created_by], references: [id])
@@ -550,6 +551,23 @@ model FabricacaoRealizado {
   @@unique([item_id, mes, ano])
   @@index([item_id])
   @@map("fabricacao_realizado")
+}
+
+// Histórico de alterações de um item de Fabricação (cadastro e lançamentos)
+model FabricacaoItemHistorico {
+  id         Int      @id @default(autoincrement())
+  item_id    Int
+  campo      String
+  valor_de   String?
+  valor_para String?
+  created_at DateTime @default(now())
+  created_by Int
+
+  item    FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  usuario User           @relation("FabItemHistCriador", fields: [created_by], references: [id])
+
+  @@index([item_id])
+  @@map("fabricacao_item_historico")
 }
 
 model ParadaHhConfig {
