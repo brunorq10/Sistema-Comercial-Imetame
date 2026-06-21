@@ -14,6 +14,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2'
 import ChartDataLabels, { type Context as DLContext } from 'chartjs-plugin-datalabels'
 import type { OrcDashboardData, SolicitacaoAberta } from '@/app/api/dashboard/orcamentos/route'
+import type { ResultadoDashboardData } from '@/app/api/dashboard/orcamentos/resultado/route'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
@@ -858,11 +859,155 @@ function TabelaResponsavel({ data }: { data: OrcDashboardData['por_responsavel']
   )
 }
 
+// ── Aba "Valor e Resultado" ──────────────────────────────────────────────────
+const fmtMoney  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmtMoneyM = (v: number) => Math.abs(v) >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M` : fmtMoney(v)
+const fmtInt    = (v: number) => v.toLocaleString('pt-BR')
+
+function CardNum({ label, value, sub, color = '#111' }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{ background: '#fff', border: '0.5px solid #e5e7eb', borderRadius: 6, padding: '12px 16px' }}>
+      <p style={{ fontSize: 10, color: '#6B7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
+      <p style={{ fontSize: 24, fontWeight: 700, color, margin: '4px 0 2px', lineHeight: 1 }}>{value}</p>
+      {sub && <p style={{ fontSize: 10, color: '#9CA3AF', margin: 0 }}>{sub}</p>}
+    </div>
+  )
+}
+
+function GraficoGanhosMes({ porMes }: { porMes: number[] }) {
+  const chartData = { labels: MESES, datasets: [{ data: porMes, backgroundColor: GREEN, borderRadius: 2, barThickness: 26 }] }
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.y ?? 0} contratos` } },
+      datalabels: { anchor: 'end' as const, align: 'end' as const, color: '#444', font: { size: 10, weight: 'bold' as const }, formatter: (v: number) => v > 0 ? v : '' },
+    },
+    scales: { x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f0f0f0' } } },
+    layout: { padding: { top: 16 } },
+  } as const
+  return <Card title="Contratos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></Card>
+}
+
+function pontBadge(p: number) { return p >= 80 ? { bg: '#DCFCE7', text: '#15803D' } : p >= 60 ? { bg: '#FEF3C7', text: '#B45309' } : { bg: '#FEE2E2', text: '#B91C1C' } }
+
+function TabelaPontualidade({ data }: { data: ResultadoDashboardData['pontualidade'] }) {
+  const tot = data.reduce((a, r) => ({ enviadas: a.enviadas + r.enviadas, no_prazo: a.no_prazo + r.no_prazo, atrasadas: a.atrasadas + r.atrasadas, em_elaboracao: a.em_elaboracao + r.em_elaboracao }), { enviadas: 0, no_prazo: 0, atrasadas: 0, em_elaboracao: 0 })
+  const totPct = tot.enviadas > 0 ? (tot.no_prazo / tot.enviadas) * 100 : 0
+  const td: React.CSSProperties = { padding: '9px 14px', fontSize: 12, borderBottom: '0.5px solid #eee' }
+  const tdC: React.CSSProperties = { ...td, textAlign: 'center', color: '#374151' }
+  return (
+    <div style={{ border: '0.5px solid #ccc', borderRadius: 6, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ background: NAVY, color: '#fff', padding: '8px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Propostas enviadas no prazo combinado, por orçamentista</div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+          <thead>
+            <tr style={{ background: '#F8FAF9' }}>
+              <th style={{ ...td, textAlign: 'left', color: '#6B7280', fontWeight: 600 }}>Orçamentista</th>
+              <th style={{ ...tdC, color: '#6B7280', fontWeight: 600 }}>Enviadas</th>
+              <th style={{ ...tdC, color: '#6B7280', fontWeight: 600 }}>No prazo</th>
+              <th style={{ ...tdC, color: '#6B7280', fontWeight: 600 }}>Atrasadas</th>
+              <th style={{ ...td, textAlign: 'left', color: '#6B7280', fontWeight: 600, width: 180 }}>% Pontualidade</th>
+              <th style={{ ...tdC, color: '#6B7280', fontWeight: 600 }}>Em elaboração</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 ? (
+              <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#aaa' }}>Sem propostas enviadas no período.</td></tr>
+            ) : data.map((r) => {
+              const c = pontBadge(r.pct)
+              return (
+                <tr key={r.id}>
+                  <td style={td}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Initials nome={r.nome} /><span style={{ fontWeight: 600, color: '#374151' }}>{r.nome}</span></div></td>
+                  <td style={tdC}>{r.enviadas}</td>
+                  <td style={tdC}>{r.no_prazo}</td>
+                  <td style={tdC}>{r.atrasadas}</td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, height: 8, background: '#eef0f2', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.min(r.pct, 100)}%`, height: '100%', background: c.text, borderRadius: 4 }} /></div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: c.bg, color: c.text }}>{r.pct.toFixed(1).replace('.', ',')}%</span>
+                    </div>
+                  </td>
+                  <td style={tdC}><span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 12, background: '#E3F0FB', color: '#1E5FA8' }}>{r.em_elaboracao}</span></td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: '#F3F4F6' }}>
+              <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>Total geral</td>
+              <td style={{ ...tdC, fontWeight: 700, borderBottom: 'none' }}>{tot.enviadas}</td>
+              <td style={{ ...tdC, fontWeight: 700, borderBottom: 'none' }}>{tot.no_prazo}</td>
+              <td style={{ ...tdC, fontWeight: 700, borderBottom: 'none' }}>{tot.atrasadas}</td>
+              <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>{totPct.toFixed(1).replace('.', ',')}%</td>
+              <td style={{ ...tdC, fontWeight: 700, borderBottom: 'none' }}>{tot.em_elaboracao}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function TabelaTicketTipo({ data }: { data: ResultadoDashboardData['ticket_tipo'] }) {
+  const order = ['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES']
+  const rows = order.map((k) => data.find((d) => d.classificacao === k)).filter(Boolean) as ResultadoDashboardData['ticket_tipo']
+  const totG = rows.reduce((a, r) => a + r.ganhos, 0)
+  const totHh = rows.reduce((a, r) => a + r.hh_total, 0)
+  const totV = rows.reduce((a, r) => a + r.valor_total, 0)
+  const td: React.CSSProperties = { padding: '9px 14px', fontSize: 12, borderBottom: '0.5px solid #eee' }
+  const tdR: React.CSSProperties = { ...td, textAlign: 'right', color: '#374151' }
+  return (
+    <div style={{ border: '0.5px solid #ccc', borderRadius: 6, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ background: HEADER, color: '#fff', padding: '8px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Valor médio dos contratos ganhos, por classificação</div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+          <thead>
+            <tr style={{ background: '#F8FAF9' }}>
+              <th style={{ ...td, textAlign: 'left', color: '#6B7280', fontWeight: 600 }}>Tipo de serviço</th>
+              <th style={{ ...tdR, color: '#6B7280', fontWeight: 600 }}>Contratos ganhos</th>
+              <th style={{ ...tdR, color: '#6B7280', fontWeight: 600 }}>HH total</th>
+              <th style={{ ...tdR, color: '#6B7280', fontWeight: 600 }}>Valor total</th>
+              <th style={{ ...tdR, color: '#6B7280', fontWeight: 600 }}>Ticket médio</th>
+              <th style={{ ...tdR, color: '#6B7280', fontWeight: 600 }}>R$/HH</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#aaa' }}>Nenhum contrato ganho no período.</td></tr>
+            ) : rows.map((r) => (
+              <tr key={r.classificacao}>
+                <td style={{ ...td, fontWeight: 600, color: '#374151' }}>{TIPO_LABELS[r.classificacao] ?? r.classificacao}</td>
+                <td style={tdR}>{r.ganhos}</td>
+                <td style={tdR}>{fmtInt(r.hh_total)}</td>
+                <td style={tdR}>{fmtMoneyM(r.valor_total)}</td>
+                <td style={tdR}>{fmtMoneyM(r.ticket_medio)}</td>
+                <td style={tdR}>{r.rs_hh != null ? fmtMoney(r.rs_hh) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: '#F3F4F6' }}>
+              <td style={{ ...td, fontWeight: 700, borderBottom: 'none' }}>Total / média geral</td>
+              <td style={{ ...tdR, fontWeight: 700, borderBottom: 'none' }}>{totG}</td>
+              <td style={{ ...tdR, fontWeight: 700, borderBottom: 'none' }}>{fmtInt(totHh)}</td>
+              <td style={{ ...tdR, fontWeight: 700, borderBottom: 'none' }}>{fmtMoneyM(totV)}</td>
+              <td style={{ ...tdR, fontWeight: 700, borderBottom: 'none' }}>{totG > 0 ? fmtMoneyM(totV / totG) : '—'}</td>
+              <td style={{ ...tdR, fontWeight: 700, borderBottom: 'none' }}>{totHh > 0 ? fmtMoney(totV / totHh) : '—'}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Página principal ─────────────────────────────────────────────────────────
-type Aba = 'solicitacoes' | 'propostas'
+type Aba = 'solicitacoes' | 'propostas' | 'resultado'
 
 export default function DashboardComercialPage() {
   const [data, setData] = useState<OrcDashboardData | null>(null)
+  const [resultado, setResultado] = useState<ResultadoDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [clientes, setClientes] = useState<{ id: number; nome: string }[]>([])
   const [aba, setAba] = useState<Aba>('solicitacoes')
@@ -893,9 +1038,14 @@ export default function DashboardComercialPage() {
       if (orcamentistaId) params.set('orcamentista_id', orcamentistaId)
       if (segmento)       params.set('segmento', segmento)
       if (cidadeUf)       params.set('cidade', cidadeUf)
-      const res = await fetch(`/api/dashboard/orcamentos?${params}`)
+      const [res, resR] = await Promise.all([
+        fetch(`/api/dashboard/orcamentos?${params}`),
+        fetch(`/api/dashboard/orcamentos/resultado?${params}`),
+      ])
       const json = await res.json()
+      const jsonR = await resR.json()
       setData(json.data ?? null)
+      setResultado(jsonR.data ?? null)
     } finally {
       setLoading(false)
     }
@@ -1050,6 +1200,7 @@ export default function DashboardComercialPage() {
         <div style={{ display: 'flex', gap: 2, marginTop: 8 }}>
           {([
             { key: 'solicitacoes', label: 'Solicitações' },
+            { key: 'resultado',    label: 'Valor e Resultado' },
             { key: 'propostas',    label: 'Propostas' },
           ] as { key: Aba; label: string }[]).map((a) => (
             <button
@@ -1129,6 +1280,43 @@ export default function DashboardComercialPage() {
           <SectionLabel>Solicitações por responsável (Adm Comercial / Analista) — por classificação</SectionLabel>
           <TabelaResponsavel data={data.por_responsavel} />
         </>
+      ) : aba === 'resultado' ? (
+        !resultado ? (
+          <p style={{ textAlign: 'center', color: '#aaa', padding: '40px 0', fontSize: 13 }}>Carregando indicadores...</p>
+        ) : (
+          <>
+            {/* 1 — KPIs de resultado */}
+            <SectionLabel>Resultado comercial do período</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap }}>
+              <CardNum label="Contratos ganhos" value={fmtInt(resultado.contratos_ganhos)} sub="no período" color={GREEN} />
+              <CardNum label="Valor total dos contratos" value={fmtMoneyM(resultado.valor_ganhos)} sub="contratos fechados" color="#111" />
+              <CardNum label="Ticket médio geral" value={fmtMoneyM(resultado.ticket_medio)} sub="por contrato ganho" color={BLUE} />
+              <CardNum label="Taxa de conversão" value={`${resultado.taxa_conversao.toFixed(1).replace('.', ',')}%`} sub="ganhos ÷ enviadas" color={AMBER} />
+            </div>
+
+            {/* 2 — Ganhos por mês */}
+            <SectionLabel>Contratos ganhos por mês</SectionLabel>
+            <GraficoGanhosMes porMes={resultado.ganhos_por_mes} />
+
+            {/* 3–7 — Indicadores de valor e prazo */}
+            <SectionLabel>Indicadores de valor e prazo</SectionLabel>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap }}>
+              <CardNum label="R$/HH médio" value={resultado.rs_hh_medio != null ? fmtMoney(resultado.rs_hh_medio) : '—'} sub="propostas do período" color={TEAL} />
+              <CardNum label="R$/ton médio" value={resultado.rs_ton_medio != null ? fmtMoney(resultado.rs_ton_medio) : '—'} sub="montagem" color={TEAL} />
+              <CardNum label="Valor médio por proposta" value={resultado.valor_medio_proposta != null ? fmtMoneyM(resultado.valor_medio_proposta) : '—'} sub="todas enviadas" color="#111" />
+              <CardNum label="Prazo médio — Técnica" value={resultado.prazo_medio_tecnica != null ? `${resultado.prazo_medio_tecnica.toFixed(1).replace('.', ',')} dias` : '—'} sub="atribuição → entrega" color={BLUE} />
+              <CardNum label="Prazo médio — Comercial" value={resultado.prazo_medio_comercial != null ? `${resultado.prazo_medio_comercial.toFixed(1).replace('.', ',')} dias` : '—'} sub="técnica → envio" color={BLUE} />
+            </div>
+
+            {/* 8 — Pontualidade por orçamentista */}
+            <SectionLabel>Pontualidade de envio por orçamentista</SectionLabel>
+            <TabelaPontualidade data={resultado.pontualidade} />
+
+            {/* 9 — Ticket médio por tipo de serviço */}
+            <SectionLabel>Ticket médio por tipo de serviço</SectionLabel>
+            <TabelaTicketTipo data={resultado.ticket_tipo} />
+          </>
+        )
       ) : (
         /* ── Aba Propostas ──────────────────────────────────────────────── */
         <Card title="Solicitações em Aberto — Propostas Pendentes">
