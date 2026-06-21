@@ -81,18 +81,28 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={cn('text-[11px]', m.cls)}>{m.label}</span>
 }
 
-// ── MetricCard — mesmo estilo do Dashboard Acordos ────────────────────────────
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+// Abreviado em milhões (mesmo formato dos cards de Indicadores Acordos)
+function fmtM(v: number) {
+  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M`
+  if (Math.abs(v) >= 1_000)     return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} mil`
+  return formatCurrency(v)
+}
+
+// ── Cards no estilo "Indicadores Acordos" — Visão consolidada do ano ──────────
+function BigCard({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent: string }) {
   return (
-    <div className="rounded-md overflow-hidden border border-gray-200 shadow-sm">
-      <div className="bg-green-dark px-2.5 py-1.5">
-        <p className="text-[9px] font-semibold text-white/85 leading-snug uppercase tracking-[0.04em]">
-          {label}{sub && <span className="text-white/50 font-normal normal-case"> · {sub}</span>}
-        </p>
-      </div>
-      <div className="bg-white px-2.5 py-2">
-        <p className="text-[14px] font-bold text-gray-900 leading-none">{value}</p>
-      </div>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 border-l-4" style={{ borderLeftColor: accent }}>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>
+      <p className="text-[22px] font-bold leading-none tracking-tight" style={{ color: accent }}>{fmtM(value)}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-1.5">{sub}</p>}
+    </div>
+  )
+}
+function MiniCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm px-3.5 py-2.5">
+      <p className="text-[10px] font-medium text-gray-400 mb-0.5">{label}</p>
+      <p className="text-[15px] font-bold text-gray-800 leading-none">{fmtM(value)}</p>
     </div>
   )
 }
@@ -260,6 +270,7 @@ export default function MeuPainelAcordosPage() {
       prevAnoAtual:  sumAno(subsAnoAtual),
       fatAnoAtual:   sumNFAno(anoAtual),
       prevProxAno:   sumAno(subsAnoProximo),
+      prevAnosSeguintes: filteredContratos.reduce((a, c) => a + (c.prev_anos_seguintes ?? 0), 0),
       mesAtualLabel:  MESES_LABELS[m],
       mesPassadoLabel: MESES_LABELS[mp],
       mesProximoLabel: MESES_LABELS[mn],
@@ -280,20 +291,20 @@ export default function MeuPainelAcordosPage() {
           <h2 className="text-[15px] font-bold">Meu Painel — Acordos</h2>
         </div>
 
-        {/* Indicadores */}
-        <div className="flex flex-col gap-2 mb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            <MetricCard label="Total de contratos"                                                value={String(indicators.totalContratos)} />
-            <MetricCard label={`Previsão ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.prevMesAtual)} />
-            <MetricCard label={`Faturado ${indicators.mesAtualLabel}`}   sub="mês atual"         value={formatCurrency(indicators.fatMesAtual)} />
-            <MetricCard label={`Faturado ${indicators.mesPassadoLabel}`} sub="último mês"        value={formatCurrency(indicators.fatUltimoMes)} />
-            <MetricCard label={`Previsão ${indicators.mesProximoLabel}`} sub="próximo mês"       value={formatCurrency(indicators.prevProxMes)} />
+        {/* Indicadores — Visão consolidada do ano */}
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <BigCard label={`Total faturado no ano (${indicators.anoAtual})`} value={indicators.fatAnoAtual} accent="#16A34A"
+              sub={`${(indicators.prevAnoAtual > 0 ? (indicators.fatAnoAtual / indicators.prevAnoAtual) * 100 : 0).toFixed(1).replace('.', ',')}% da previsão`} />
+            <BigCard label="Previsão de faturamento no ano" value={indicators.prevAnoAtual} accent="#1565C0" sub="meta anual de receita" />
+            <BigCard label="Falta faturar no ano" value={Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual)} accent="#D97706" sub="saldo até dezembro" />
+            <BigCard label="Previsão anos seguintes" value={indicators.prevAnosSeguintes} accent="#475569" sub="contratos multi-ano" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <MetricCard label="Valor total contratado"                                            value={formatCurrency(indicators.valorTotalContratado)} />
-            <MetricCard label={`Previsão ${indicators.anoAtual}`}        sub="faturamento ano"   value={formatCurrency(indicators.prevAnoAtual)} />
-            <MetricCard label={`Faturado ${indicators.anoAtual}`}        sub="ano atual"         value={formatCurrency(indicators.fatAnoAtual)} />
-            <MetricCard label={`Previsão ${indicators.anoProximo}`}      sub="próximo ano"       value={formatCurrency(indicators.prevProxAno)} />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <MiniCard label={`Previsão mês atual (${indicators.mesAtualLabel})`} value={indicators.prevMesAtual} />
+            <MiniCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={indicators.fatMesAtual} />
+            <MiniCard label={`Faturado último mês (${indicators.mesPassadoLabel})`} value={indicators.fatUltimoMes} />
+            <MiniCard label={`Previsão próximo mês (${indicators.mesProximoLabel})`} value={indicators.prevProxMes} />
           </div>
         </div>
 
