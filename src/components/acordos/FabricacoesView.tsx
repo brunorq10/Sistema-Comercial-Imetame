@@ -42,6 +42,7 @@ export interface ContratoFab {
   id: number
   indice: string
   num_os: string | null
+  ano_referencia?: number | null
   cliente: { id: number; nome: string; ramo_atuacao?: string | null }
   cliente_final: { id: number; nome: string } | null
   responsavel: { id: number; nome: string } | null

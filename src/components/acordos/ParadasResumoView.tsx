@@ -1,9 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
+import { Bar } from 'react-chartjs-2'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
+
+const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const fmtHh = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtRsHh = (v: number | null) => v == null ? '—' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -14,10 +19,12 @@ function barColors(pct: number) {
 }
 
 interface FaseVal { prev: number; real: number }
+interface MesHh { ano: number; mes: number; prev: number; real: number }
 interface ParadaResumo {
   id: number
   indice: string
   num_os: string | null
+  ano_referencia?: number | null
   cliente: { id: number; nome: string; ramo_atuacao?: string | null }
   cliente_final: { id: number; nome: string } | null
   responsavel: { id: number; nome: string } | null
@@ -25,6 +32,7 @@ interface ParadaResumo {
   fases: { mob: FaseVal; integ: FaseVal; prep: FaseVal; parada: FaseVal; acomp: FaseVal; desmob: FaseVal; folga: FaseVal }
   hh_prev: number
   hh_real: number
+  meses: MesHh[]
   valor_orcado: number
   valor_faturado: number
   ase: number
@@ -59,12 +67,20 @@ export function ParadasResumoView() {
   const agg = useMemo(() => {
     const fases = Object.fromEntries(FASES.map((f) => [f.key, { prev: 0, real: 0 }])) as ParadaResumo['fases']
     let hhPrev = 0, hhReal = 0, orcado = 0, faturado = 0, ase = 0
+    const mesesMap = new Map<string, MesHh>()
     for (const l of filtradas) {
       for (const f of FASES) { fases[f.key].prev += l.fases[f.key].prev; fases[f.key].real += l.fases[f.key].real }
       hhPrev += l.hh_prev; hhReal += l.hh_real
       orcado += l.valor_orcado; faturado += l.valor_faturado; ase += l.ase
+      for (const m of l.meses ?? []) {
+        const k = `${m.ano}-${m.mes}`
+        if (!mesesMap.has(k)) mesesMap.set(k, { ano: m.ano, mes: m.mes, prev: 0, real: 0 })
+        const e = mesesMap.get(k)!
+        e.prev += m.prev; e.real += m.real
+      }
     }
-    return { fases, hhPrev, hhReal, orcado, faturado, ase }
+    const meses = Array.from(mesesMap.values()).sort((a, b) => a.ano - b.ano || a.mes - b.mes)
+    return { fases, hhPrev, hhReal, orcado, faturado, ase, meses }
   }, [filtradas])
 
   if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
@@ -74,7 +90,27 @@ export function ParadasResumoView() {
   const pctFatOrc = agg.orcado > 0 ? (agg.faturado / agg.orcado) * 100 : 0
   const rsHhOrcado = agg.hhPrev > 0 ? agg.orcado / agg.hhPrev : null
   const rsHhReal = agg.hhReal > 0 ? agg.faturado / agg.hhReal : null
+  const pctAseFat = agg.faturado > 0 ? (agg.ase / agg.faturado) * 100 : null
   const desvCor = (v: number) => (v <= 0 ? '#16A34A' : '#DC2626')
+
+  const chartData = {
+    labels: agg.meses.map((m) => `${MESES_LABELS[m.mes]}/${String(m.ano).slice(2)}`),
+    datasets: [
+      { label: 'Previsto', data: agg.meses.map((m) => m.prev), backgroundColor: '#185FA5' },
+      { label: 'Realizado', data: agg.meses.map((m) => m.real), backgroundColor: '#16A34A' },
+    ],
+  }
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } },
+      tooltip: { callbacks: { label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => `${ctx.dataset.label}: ${fmtHh(ctx.parsed.y ?? 0)}` } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: (v: string | number) => typeof v === 'number' ? v.toLocaleString('pt-BR') : v } },
+    },
+  }
 
   return (
     <div className="space-y-4">
@@ -93,9 +129,21 @@ export function ParadasResumoView() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KpiCard label="Valor Total Orçado" value={formatCurrency(agg.orcado)} color="#185FA5" small />
         <FaturadoCard orcado={agg.orcado} faturado={agg.faturado} pct={pctFatOrc} />
-        <KpiCard label="Serviço Extra (ASE)" value={formatCurrency(agg.ase)} color="#6A1B9A" small />
+        <KpiCard label="Serviço Extra (ASE)" value={formatCurrency(agg.ase)} color="#6A1B9A" small
+          sub={pctAseFat != null ? `${pctAseFat.toFixed(1)}% do faturado` : 'sem faturamento'} />
         <KpiCard label="R$/HH Orçado" value={fmtRsHh(rsHhOrcado)} color="#185FA5" small />
         <KpiCard label="R$/HH Realizado" value={fmtRsHh(rsHhReal)} color="#16A34A" small />
+      </div>
+
+      {/* Gráfico HH previsto x realizado mês a mês */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Total — Previsto x Realizado</p>
+        <p className="text-[11px] text-gray-400 mb-3">Distribuição mês a mês</p>
+        {agg.meses.length === 0 ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Sem HH lançado para exibir.</p>
+        ) : (
+          <div style={{ height: 280 }}><Bar data={chartData} options={chartOpts} /></div>
+        )}
       </div>
 
       {/* Total Geral de HH por fase */}
@@ -156,11 +204,12 @@ export function ParadasResumoView() {
   )
 }
 
-function KpiCard({ label, value, color, small }: { label: string; value: string; color: string; small?: boolean }) {
+function KpiCard({ label, value, color, small, sub }: { label: string; value: string; color: string; small?: boolean; sub?: string }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
       <p className={cn('font-bold leading-none tracking-tight', small ? 'text-[18px]' : 'text-[28px]')} style={{ color }}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-1.5">{sub}</p>}
     </div>
   )
 }

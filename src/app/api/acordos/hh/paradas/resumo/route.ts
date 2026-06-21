@@ -63,6 +63,25 @@ export async function GET() {
     const hhPrev = mob.prev + integ.prev + prep.prev + parada.prev + acomp.prev + desmob.prev + folga.prev
     const hhReal = mob.real + integ.real + prep.real + parada.real + acomp.real + desmob.real + folga.real
 
+    // Série mensal: dias têm data própria; adicionais são alocados às datas-base da config
+    const mesesMap = new Map<string, { ano: number; mes: number; prev: number; real: number }>()
+    const bucket = (date: Date | null | undefined, prev: number, real: number) => {
+      if (!date || (prev === 0 && real === 0)) return
+      const ano = date.getUTCFullYear(), mes = date.getUTCMonth()
+      const k = `${ano}-${mes}`
+      if (!mesesMap.has(k)) mesesMap.set(k, { ano, mes, prev: 0, real: 0 })
+      const e = mesesMap.get(k)!
+      e.prev += prev; e.real += real
+    }
+    for (const d of dias) bucket(d.data, Number(d.hh_plan ?? 0), Number(d.hh_real ?? 0))
+    const refIni = cfg?.parada_inicio ?? cfg?.prep_inicio ?? cfg?.acomp_inicio ?? null
+    const refFim = cfg?.parada_fim ?? cfg?.acomp_fim ?? cfg?.parada_inicio ?? null
+    bucket(refIni, mob.prev, mob.real)
+    bucket(refIni, integ.prev, integ.real)
+    bucket(refIni, folga.prev, folga.real)
+    bucket(refFim, desmob.prev, desmob.real)
+    const meses = Array.from(mesesMap.values())
+
     // Financeiro
     const valorOrcado = c.subindices.reduce((acc, s) =>
       acc + MESES.reduce((b, m) => b + Number((s as Record<string, unknown>)[m] ?? 0), 0), 0)
@@ -71,10 +90,10 @@ export async function GET() {
     const ase = num(cfg?.fin_prev_ase)
 
     return {
-      id: c.id, indice: c.indice, num_os: c.num_os,
+      id: c.id, indice: c.indice, num_os: c.num_os, ano_referencia: c.ano_referencia,
       cliente: c.cliente, cliente_final: c.cliente_final ?? null,
       responsavel: c.responsavel, descricao: c.descricao,
-      fases, hh_prev: hhPrev, hh_real: hhReal,
+      fases, hh_prev: hhPrev, hh_real: hhReal, meses,
       valor_orcado: valorOrcado, valor_faturado: valorFaturado, ase,
     }
   })

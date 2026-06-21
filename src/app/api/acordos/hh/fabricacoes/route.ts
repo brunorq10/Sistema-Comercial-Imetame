@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     const pesoTotal = itens.reduce((a, i) => a + (i.peso_total ?? 0), 0)
 
     return {
-      id: c.id, indice: c.indice, num_os: c.num_os,
+      id: c.id, indice: c.indice, num_os: c.num_os, ano_referencia: c.ano_referencia,
       num_acordo: c.num_acordo ?? null, num_proposta: c.num_proposta ?? null,
       cidade: c.cidade, estado: c.estado, classificacao: c.classificacao,
       cliente: c.cliente, cliente_final: c.cliente_final ?? null,

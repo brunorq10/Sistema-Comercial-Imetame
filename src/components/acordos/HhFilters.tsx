@@ -10,12 +10,14 @@ export interface FiltravelContrato {
   num_os: string | null
   responsavel: { id: number; nome: string } | null
   descricao: string | null
+  ano_referencia?: number | null
 }
 
 export type FilterState = Record<string, string[]>
 
 export function useFilterOptions(contratos: FiltravelContrato[]) {
   return useMemo(() => ({
+    anos:           Array.from(new Set(contratos.map(c => c.ano_referencia).filter((v): v is number => v != null))).sort((a, b) => b - a).map(v => ({ value: String(v), label: String(v) })),
     clientes:       Array.from(new Map(contratos.map(c => [c.cliente.id, c.cliente.nome])).entries()).map(([v, l]) => ({ value: String(v), label: l })),
     clientesFinais: Array.from(new Map(contratos.filter(c => c.cliente_final).map(c => [c.cliente_final!.id, c.cliente_final!.nome])).entries()).map(([v, l]) => ({ value: String(v), label: l })),
     oss:            Array.from(new Set(contratos.map(c => c.num_os).filter((v): v is string => v != null))).map(v => ({ value: v, label: v })),
@@ -32,6 +34,7 @@ export function HhFilters({ opts, filters, onChange }: {
 }) {
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em] whitespace-nowrap'
   const filterDefs = [
+    { key: 'anos',           label: 'Ano',           opts: opts.anos },
     { key: 'clientes',       label: 'Cliente',       opts: opts.clientes },
     { key: 'clientesFinais', label: 'Cliente Final', opts: opts.clientesFinais },
     { key: 'oss',            label: 'OS',            opts: opts.oss },
@@ -58,6 +61,7 @@ export function HhFilters({ opts, filters, onChange }: {
 
 export function applyFilters<T extends FiltravelContrato>(contratos: T[], filters: FilterState): T[] {
   return contratos.filter(c => {
+    if (filters.anos?.length           && !filters.anos.includes(String(c.ano_referencia)))               return false
     if (filters.clientes?.length       && !filters.clientes.includes(String(c.cliente.id)))               return false
     if (filters.clientesFinais?.length && !filters.clientesFinais.includes(String(c.cliente_final?.id)))  return false
     if (filters.oss?.length            && !filters.oss.includes(c.num_os ?? ''))                          return false
