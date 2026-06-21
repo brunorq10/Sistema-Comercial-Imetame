@@ -741,6 +741,7 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
 
   const pctHhOrc = pctAvanco(totals.orc, totals.real)
   const pctHhPrev = pctAvanco(totals.prev, totals.real)
+  const pctPrevOrc = pctAvanco(totals.orc, totals.prev)
   const pctPeso = pctAvanco(totals.pesoPrev, totals.pesoReal)
 
   const labels = serie.map((s) => `${MESES_LABELS[s.mes]}/${String(s.ano).slice(2)}`)
@@ -772,7 +773,8 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
       {/* Cards de avanço — estilo Obras */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <AvancoCard label="HH Orçado" value={fmtHh(totals.orc)} color={COR.orcado} bgIcon="#FEF3C7" sub="total orçado dos itens" />
-        <AvancoCard label="HH Previsto" value={fmtHh(totals.prev)} color={COR.previsto} bgIcon="#DBEAFE" sub="distribuído nos meses" />
+        <AvancoCard label="HH Previsto" value={fmtHh(totals.prev)} color={COR.previsto} bgIcon="#DBEAFE" sub="distribuído nos meses"
+          bars={[{ titulo: '% do Orçado', pct: pctPrevOrc }]} />
         <AvancoCard label="HH Realizado" value={fmtHh(totals.real)} color={COR.realizado} bgIcon="#DCFCE7" sub="acumulado lançado"
           bars={[{ titulo: '% do Orçado', pct: pctHhOrc }, { titulo: '% do Previsto', pct: pctHhPrev }]} />
       </div>
@@ -853,45 +855,25 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
                     <td className="px-2 py-1.5 text-right text-green-dark">{fmtPeso(pReal)}</td>
                     <td className="px-2 py-1.5 text-right font-semibold text-[#1565C0]">{fmtPct(pctAvanco(pPrev, pReal))}</td>
                   </tr>
-                  {aberto && (
-                    <tr className="bg-slate-50/70">
-                      <td colSpan={9} className="px-3 py-2">
-                        <div className="overflow-x-auto">
-                          <table className="text-[10px] border-collapse min-w-max">
-                            <thead>
-                              <tr className="text-gray-500">
-                                <th className="px-2 py-1 text-left font-semibold sticky left-0 bg-slate-50">Indicador</th>
-                                {meses.map(({ mes, ano }) => (
-                                  <th key={key(ano, mes)} className="px-2 py-1 text-center font-semibold whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {([
-                                ['HH Orçado', (m: number, a: number) => fmtNumOrDash(planMap.get(key(a, m))?.hh_orcado)],
-                                ['HH Previsto', (m: number, a: number) => fmtNumOrDash(planMap.get(key(a, m))?.hh_previsto)],
-                                ['HH Realizado', (m: number, a: number) => fmtNumOrDash(realMap.get(key(a, m))?.hh_realizado)],
-                                ['Peso Previsto (t)', (m: number, a: number) => fmtPesoOrDash(planMap.get(key(a, m))?.peso_previsto)],
-                                ['Peso Realizado (t)', (m: number, a: number) => fmtPesoOrDash(realMap.get(key(a, m))?.peso_realizado)],
-                                ['% Avanço (mês)', (m: number, a: number) => {
-                                  const pp = planMap.get(key(a, m))?.peso_previsto ?? 0
-                                  const pr = realMap.get(key(a, m))?.peso_realizado ?? 0
-                                  return pp > 0 && pr > 0 ? fmtPct((pr / pp) * 100) : '—'
-                                }],
-                              ] as [string, (m: number, a: number) => string][]).map(([lbl, fn]) => (
-                                <tr key={lbl} className="border-t border-gray-100">
-                                  <td className="px-2 py-1 font-medium text-gray-600 sticky left-0 bg-slate-50 whitespace-nowrap">{lbl}</td>
-                                  {meses.map(({ mes, ano }) => (
-                                    <td key={key(ano, mes)} className="px-2 py-1 text-center text-gray-600">{fn(mes, ano)}</td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                  {aberto && meses.map(({ mes, ano }) => {
+                    const k = key(ano, mes)
+                    const mPlan = planMap.get(k)
+                    const mReal = realMap.get(k)
+                    const pp = mPlan?.peso_previsto ?? 0
+                    const pr = mReal?.peso_realizado ?? 0
+                    return (
+                      <tr key={`${it.id}-${k}`} className="bg-slate-50/70 border-b border-gray-100 text-[10px] text-gray-600">
+                        <td className="bg-slate-50/70"></td>
+                        <td colSpan={2} className="px-2 py-1 pl-8 text-gray-500 whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</td>
+                        <td className="px-2 py-1 text-right">{fmtNumOrDash(mPlan?.hh_orcado)}</td>
+                        <td className="px-2 py-1 text-right">{fmtNumOrDash(mPlan?.hh_previsto)}</td>
+                        <td className="px-2 py-1 text-right">{fmtNumOrDash(mReal?.hh_realizado)}</td>
+                        <td className="px-2 py-1 text-right text-[#185FA5]">{fmtPesoOrDash(mPlan?.peso_previsto)}</td>
+                        <td className="px-2 py-1 text-right text-green-dark">{fmtPesoOrDash(mReal?.peso_realizado)}</td>
+                        <td className="px-2 py-1 text-right text-[#1565C0]">{pp > 0 && pr > 0 ? fmtPct((pr / pp) * 100) : '—'}</td>
+                      </tr>
+                    )
+                  })}
                 </Fragment>
               )
             })}
