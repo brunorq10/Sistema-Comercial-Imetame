@@ -293,8 +293,9 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
     )
   }
 
-  const ativas   = nfs.filter((nf) => nf.ativa)
-  const inativas = nfs.filter((nf) => !nf.ativa)
+  const ativas    = nfs.filter((nf) => nf.ativa)
+  const pendentes = nfs.filter((nf) => !nf.ativa && nf.status_aprovacao === 'PENDENTE')
+  const inativas  = nfs.filter((nf) => !nf.ativa && nf.status_aprovacao !== 'PENDENTE')
   const totalAtribuido = ativas.reduce((a, nf) => a + nf.valor_atribuido, 0)
 
   return (
@@ -323,6 +324,14 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
           <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Notas fiscais ativas</p>
           <NFTable nfs={ativas} />
         </>
+      )}
+
+      {/* Tabela NFs em aprovação */}
+      {pendentes.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] font-semibold text-amber-600 uppercase mb-1.5">⏳ Em aprovação (aguardando a coordenação — ainda não entram no faturamento)</p>
+          <NFTable nfs={pendentes} inativa />
+        </div>
       )}
 
       {/* Tabela NFs inativas */}

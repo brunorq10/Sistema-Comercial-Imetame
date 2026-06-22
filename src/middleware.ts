@@ -12,6 +12,11 @@ export default auth((req) => {
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
 
   if (!req.auth && !isPublic) {
+    // Chamadas de API recebem 401 JSON (o cliente trata sessão expirada);
+    // navegação de telas é redirecionada para o login.
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ data: null, error: 'Sessão expirada ou não autenticada' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/login', req.url))
   }
 

@@ -349,6 +349,7 @@ function serializeSubindice(s: any, nfTotalMap: Record<string, number> = {}) {
       data_emissao: nf.data_emissao.toISOString(),
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa, motivo_inativacao: nf.motivo_inativacao, tipo_documento: nf.tipo_documento ?? 'NF',
+      status_aprovacao: nf.status_aprovacao ?? 'APROVADO',
       created_at: nf.created_at.toISOString(),
     })) ?? [],
   }

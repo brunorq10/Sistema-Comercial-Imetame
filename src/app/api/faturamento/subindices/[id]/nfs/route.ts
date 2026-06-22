@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { withApi } from '@/lib/apiHandler'
 
 const schema = z.object({
   numero_nf: z.string().min(1),
@@ -13,7 +14,7 @@ const schema = z.object({
   tipo_documento: z.string().optional().default('NF'),
 })
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export const POST = withApi(async (req: NextRequest, { params }: { params: { id: string } }) => {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
@@ -125,4 +126,4 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     warning,
     error: null,
   }, { status: 201 })
-}
+})

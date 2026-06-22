@@ -7,7 +7,7 @@ const HH_DIA = 8.8
 
 async function getParadas(disponivel: boolean) {
   const contratos = await prisma.contrato.findMany({
-    where: { cancelled_at: null, classificacao: 'PARADAS' },
+    where: { cancelled_at: null, hh_cancelado_at: null, classificacao: 'PARADAS' },
     orderBy: { indice: 'asc' },
     include: {
       cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
@@ -131,6 +131,7 @@ export async function GET(req: NextRequest) {
   const contratos = await prisma.contrato.findMany({
     where: {
       cancelled_at: null,
+      hh_cancelado_at: null,
       ...(classificacao !== 'TODOS' && { classificacao: classificacao as never }),
     },
     orderBy: { indice: 'asc' },

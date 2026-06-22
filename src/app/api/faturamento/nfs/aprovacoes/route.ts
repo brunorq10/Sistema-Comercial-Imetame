@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { withApi } from '@/lib/apiHandler'
 
 // GET /api/faturamento/nfs/aprovacoes
 // Lança­mentos de faturamento (NFs) pendentes de aprovação da coordenação.
 // ?history=true → APROVADO + REPROVADO (que passaram pelo fluxo de aprovação)
-export async function GET(req: NextRequest) {
+export const GET = withApi(async (req: NextRequest) => {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
@@ -64,4 +65,4 @@ export async function GET(req: NextRequest) {
   }))
 
   return NextResponse.json({ data, error: null })
-}
+})

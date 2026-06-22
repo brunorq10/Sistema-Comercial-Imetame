@@ -5,8 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 const MONTH_KEYS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getMonthValue(sub: any, month: number): number {
+function getMonthValue(sub: Record<string, unknown>, month: number): number {
   const key = MONTH_KEYS[month - 1]
   const val = sub[key]
   return val ? Number(val) : 0
@@ -42,19 +41,26 @@ export async function GET(req: Request) {
   if (ramoFiltro) whereContrato.cliente    = { is: { ramo_atuacao: ramoFiltro as RamoAtuacao } }
 
   const [contratos, consolidados, clientes] = await Promise.all([
+    // Carrega apenas os campos usados na agregação (evita trazer linhas inteiras)
     prisma.contrato.findMany({
       where: whereContrato,
-      include: {
+      select: {
+        id: true, indice: true, ano_referencia: true,
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
-          include: { notas_fiscais: { where: { ativa: true } } },
+          select: {
+            valor_total: true, data_inicio: true,
+            jan: true, fev: true, mar: true, abr: true, mai: true, jun: true,
+            jul: true, ago: true, set: true, out: true, nov: true, dez: true,
+            notas_fiscais: { where: { ativa: true }, select: { data_emissao: true, valor_atribuido: true } },
+          },
         },
       },
     }),
     prisma.consolidadoMes.findMany({
       where: { ano: anoAtual },
-      include: { itens: true },
+      select: { mes: true, itens: { select: { valor_previsto: true } } },
     }),
     prisma.cliente.findMany({
       where: { ativo: true },
@@ -96,25 +102,24 @@ export async function GET(req: Request) {
     let contratoPrevistoAno = 0    // previsto no ano de referência
 
     for (const sub of contrato.subindices) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anoSub = (sub as any).data_inicio
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? new Date((sub as any).data_inicio).getUTCFullYear()
+      const subRec = sub as unknown as Record<string, unknown>
+      const anoSub = sub.data_inicio
+        ? new Date(sub.data_inicio).getUTCFullYear()
         : contrato.ano_referencia
 
       const valorSub = Number(sub.valor_total)
       contratoTotal += valorSub
 
-      const mensalSub = Array.from({ length: 12 }, (_, i) => getMonthValue(sub, i + 1)).reduce((a, b) => a + b, 0)
+      const mensalSub = Array.from({ length: 12 }, (_, i) => getMonthValue(subRec, i + 1)).reduce((a, b) => a + b, 0)
       if (anoSub != null) previstoPorAno.set(anoSub, (previstoPorAno.get(anoSub) ?? 0) + mensalSub)
 
       if (anoSub === anoAtual) {
-        prevMesAtual += getMonthValue(sub, mesAtual)
-        for (let m = 1; m <= 12; m++) previstoSubPorMes[m - 1] += getMonthValue(sub, m)
+        prevMesAtual += getMonthValue(subRec, mesAtual)
+        for (let m = 1; m <= 12; m++) previstoSubPorMes[m - 1] += getMonthValue(subRec, m)
         contratoPrevistoAno += mensalSub
       }
       if (anoSub > anoAtual) faturamentoProxAnos += valorSub
-      if (anoSub === anoMesProx)  prevProxMes  += getMonthValue(sub, mesProximo)
+      if (anoSub === anoMesProx)  prevProxMes  += getMonthValue(subRec, mesProximo)
 
       for (const nf of sub.notas_fiscais) {
         const emissao = new Date(nf.data_emissao)

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { withApi } from '@/lib/apiHandler'
 
 const schema = z.object({
   acao: z.enum(['APROVAR', 'REPROVAR']),
@@ -10,7 +11,7 @@ const schema = z.object({
 })
 
 // PATCH /api/faturamento/nfs/aprovacoes/[id] — aprova/reprova um lançamento de faturamento
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export const PATCH = withApi(async (req: NextRequest, { params }: { params: { id: string } }) => {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
@@ -43,6 +44,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const userId = Number(session.user.id)
   const aprovado = acao === 'APROVAR'
 
+  // RN-19: ao aprovar, revalida que o % alocado do número da NF não ultrapassa 100%
+  // (NFs pendentes não reservam %; por isso a checagem acontece também aqui)
+  if (aprovado) {
+    const agg = await prisma.notaFiscalContrato.aggregate({
+      where: { numero_nf: nf.numero_nf, ativa: true, id: { not: id } },
+      _sum: { percentual: true },
+    })
+    const jaAlocado = Number(agg._sum.percentual ?? 0)
+    if (jaAlocado + Number(nf.percentual) > 100 + 0.001) {
+      return NextResponse.json(
+        { data: null, error: `Não é possível aprovar: a NF ${nf.numero_nf} ficaria com ${(jaAlocado + Number(nf.percentual)).toFixed(2)}% alocados (máximo 100%). Já há ${jaAlocado.toFixed(2)}% ativos.` },
+        { status: 422 },
+      )
+    }
+  }
+
   await prisma.notaFiscalContrato.update({
     where: { id },
     data: {
@@ -67,4 +84,4 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   return NextResponse.json({ data: { ok: true }, error: null })
-}
+})

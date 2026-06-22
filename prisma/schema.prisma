@@ -136,6 +136,7 @@ model User {
   fabricacao_itens_criados    FabricacaoItem[]       @relation("FabricacaoItemCriador")
   fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
   fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
+  hh_acomp_historico          HhAcompanhamentoHistorico[] @relation("HhAcompHistCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -718,6 +719,10 @@ model Contrato {
   cancelled_at   DateTime?
   cancel_reason  String?
   rascunho       Boolean               @default(false)
+  // Soft-cancel do acompanhamento de HH (Obras/Paradas) — RN-18 (não exclui, cancela com motivo)
+  hh_cancelado_at   DateTime?
+  hh_cancel_motivo  String?
+  hh_cancelado_por  Int?
 
   cliente        Cliente                @relation("ContratoCliente", fields: [cliente_id], references: [id])
   cliente_final  Cliente?               @relation("ContratoClienteFinal", fields: [cliente_final_id], references: [id])
@@ -728,6 +733,7 @@ model Contrato {
   historico      HistoricoContrato[]
   hh_lancamentos   HhLancamento[]
   hh_realizados    HhRealizado[]
+  hh_acomp_historico HhAcompanhamentoHistorico[]
   fabricacao_itens FabricacaoItem[]
   parada_hh_config ParadaHhConfig?
 
@@ -737,7 +743,24 @@ model Contrato {
   @@index([ano_referencia])
   @@index([status])
   @@index([cancelled_at])
+  @@index([hh_cancelado_at])
   @@map("contratos")
+}
+
+// Histórico de remoção/reativação do acompanhamento de HH (RN-18: rastreabilidade)
+model HhAcompanhamentoHistorico {
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  acao        String   // CANCELADO | REATIVADO
+  motivo      String?
+  created_at  DateTime @default(now())
+  created_by  Int
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  usuario  User     @relation("HhAcompHistCriador", fields: [created_by], references: [id])
+
+  @@index([contrato_id])
+  @@map("hh_acompanhamento_historico")
 }
 
 model HistoricoContrato {

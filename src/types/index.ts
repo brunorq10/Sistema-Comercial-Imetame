@@ -389,6 +389,7 @@ export interface NFContratoItem {
   ativa: boolean
   motivo_inativacao: string | null
   tipo_documento?: string | null
+  status_aprovacao?: string | null   // APROVADO | PENDENTE | REPROVADO
 }
 
 export interface SubIndiceItem {

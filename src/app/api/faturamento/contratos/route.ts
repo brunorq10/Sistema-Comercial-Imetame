@@ -328,6 +328,7 @@ function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number, n
       ativa: nf.ativa,
       motivo_inativacao: nf.motivo_inativacao,
       tipo_documento: nf.tipo_documento ?? 'NF',
+      status_aprovacao: nf.status_aprovacao ?? 'APROVADO',
     })) ?? [],
   }
 }

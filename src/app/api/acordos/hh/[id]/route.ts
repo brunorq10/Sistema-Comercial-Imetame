@@ -1,41 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { withApi } from '@/lib/apiHandler'
 
-// DELETE — remove todos os dados de HH do contrato (excluindo-o do acompanhamento)
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+// DELETE — "Remover do acompanhamento" de HH (Obras/Paradas).
+// RN-18: NÃO exclui os dados. Faz soft-cancel com justificativa obrigatória e histórico.
+// O contrato deixa de aparecer na lista de HH, mas os lançamentos são preservados
+// e podem ser reativados (basta salvar um novo lançamento para o contrato).
+export const DELETE = withApi(async (req: NextRequest, { params }: { params: { id: string } }) => {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  // Busca IDs de lançamentos para deletar os meses sem filtro relacional
-  const lancamentos = await prisma.hhLancamento.findMany({
-    where: { contrato_id: id },
-    select: { id: true },
-  })
-  const lancamentoIds = lancamentos.map(l => l.id)
+  // Justificativa obrigatória (RN-18)
+  let motivo = ''
+  try {
+    const body = await req.json()
+    motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  } catch { /* corpo ausente */ }
+  if (motivo.length < 3) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da remoção (mínimo 3 caracteres).' }, { status: 400 })
+  }
 
-  // Busca config de parada para deletar dias sem filtro relacional
-  const paradaConfig = await prisma.paradaHhConfig.findUnique({
-    where: { contrato_id: id },
-    select: { id: true },
-  })
+  const contrato = await prisma.contrato.findUnique({ where: { id }, select: { id: true } })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
 
+  const userId = Number(session.user.id)
   await prisma.$transaction([
-    // Obras: remove meses → lançamentos → realizados
-    ...(lancamentoIds.length > 0
-      ? [prisma.hhLancamentoMes.deleteMany({ where: { lancamento_id: { in: lancamentoIds } } })]
-      : []),
-    prisma.hhLancamento.deleteMany({ where: { contrato_id: id } }),
-    prisma.hhRealizado.deleteMany({ where: { contrato_id: id } }),
-    // Paradas: remove dias → config
-    ...(paradaConfig
-      ? [prisma.paradaHhDia.deleteMany({ where: { config_id: paradaConfig.id } })]
-      : []),
-    prisma.paradaHhConfig.deleteMany({ where: { contrato_id: id } }),
+    prisma.contrato.update({
+      where: { id },
+      data: { hh_cancelado_at: new Date(), hh_cancel_motivo: motivo, hh_cancelado_por: userId },
+    }),
+    prisma.hhAcompanhamentoHistorico.create({
+      data: { contrato_id: id, acao: 'CANCELADO', motivo, created_by: userId },
+    }),
   ])
 
-  return NextResponse.json({ data: null, error: null })
-}
+  return NextResponse.json({ data: { ok: true }, error: null })
+})
