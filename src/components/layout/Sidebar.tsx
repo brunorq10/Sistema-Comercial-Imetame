@@ -102,15 +102,17 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
 
       {/* ── Cabeçalho verde ────────────────────────────────────────────── */}
       <div className={cn('bg-green-primary flex flex-col items-center pt-5 pb-5', railMode && 'lg:py-3')}>
-        {/* Logo */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo.svg"
-          alt="Imetame"
-          width={120}
-          style={{ filter: 'brightness(0) invert(1)' }}
-          className={cn('select-none', hideInRail)}
-        />
+        {/* Logo — leva à tela inicial (boas-vindas) */}
+        <Link href="/home" title="Página inicial" className={cn('select-none', hideInRail)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.svg"
+            alt="Imetame"
+            width={120}
+            style={{ filter: 'brightness(0) invert(1)' }}
+            className="cursor-pointer"
+          />
+        </Link>
 
         {/* Divider */}
         <div className={cn('w-full border-t border-white/20 mt-4 mb-4', hideInRail)} />

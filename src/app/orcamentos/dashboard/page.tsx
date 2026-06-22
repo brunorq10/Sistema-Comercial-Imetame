@@ -709,32 +709,7 @@ function KpiSituacao({ total, aprovadas, reprovadas, em_analise }: { total: numb
   )
 }
 
-// 2 — Funil de status
-function Funil({ total, aprovadas, reprovadas }: { total: number; aprovadas: number; reprovadas: number }) {
-  const steps = [
-    { label: 'Recebidas', value: total, pct: 100, color: NAVY },
-    { label: 'Aprovadas', value: aprovadas, pct: total > 0 ? (aprovadas / total) * 100 : 0, color: '#157A3D' },
-    { label: 'Recusadas/Agradecidas', value: reprovadas, pct: total > 0 ? (reprovadas / total) * 100 : 0, color: RED },
-  ]
-  return (
-    <Card title="Funil de Status — Todas as Solicitações">
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 0 }}>
-        {steps.map((s, i) => (
-          <div key={s.label} style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-            <div style={{ flex: 1, background: s.color, borderRadius: 6, padding: '18px 12px', textAlign: 'center', color: '#fff', minWidth: 0 }}>
-              <p style={{ fontSize: 28, fontWeight: 700, margin: 0, lineHeight: 1 }}>{s.value.toLocaleString('pt-BR')}</p>
-              <p style={{ fontSize: 12, margin: '4px 0 2px', opacity: 0.95 }}>{s.label}</p>
-              <p style={{ fontSize: 12, fontWeight: 600, margin: 0, opacity: 0.85 }}>{s.pct.toFixed(1).replace('.', ',')}%</p>
-            </div>
-            {i < steps.length - 1 && <span style={{ color: '#9CA3AF', fontSize: 20, padding: '0 6px', flexShrink: 0 }}>›</span>}
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
-
-// 4 — Motivos de recusa
+// Motivos de recusa
 function MotivosRecusa({ data }: { data: Array<{ motivo: string; total: number }> }) {
   const totalRecusas = data.reduce((a, m) => a + m.total, 0)
   return (
@@ -1241,12 +1216,7 @@ export default function DashboardComercialPage() {
           <SectionLabel>Situação geral das solicitações</SectionLabel>
           <KpiSituacao total={data.total} aprovadas={data.aprovadas} reprovadas={data.reprovadas} em_analise={data.em_analise} />
 
-          {/* 2 — Funil */}
-          <div style={{ marginTop: gap }}>
-            <Funil total={data.total} aprovadas={data.aprovadas} reprovadas={data.reprovadas} />
-          </div>
-
-          {/* 3 — Solicitações por mês */}
+          {/* 2 — Solicitações por mês */}
           <SectionLabel>Solicitações por mês</SectionLabel>
           <GraficoMensal porMes={data.por_mes} />
 
