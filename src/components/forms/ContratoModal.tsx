@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, CurrencyInput } from '@/components/ui/Input'
+import { maskOS } from '@/lib/utils'
 import type { ContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 
@@ -583,7 +584,7 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateMes,
           <Input placeholder="Ex: Mobilização" value={data.descricao} onChange={(e) => onUpdate('descricao', e.target.value)} />
         </Field>
         <Field label="Nº OS">
-          <Input placeholder="Ex: OS-0001" value={data.num_os} onChange={(e) => onUpdate('num_os', e.target.value)} />
+          <Input placeholder="Ex: 0798.02.003" value={data.num_os} onChange={(e) => onUpdate('num_os', maskOS(e.target.value))} />
         </Field>
       </div>
 

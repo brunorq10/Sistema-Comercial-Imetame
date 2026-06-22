@@ -113,6 +113,7 @@ export default function FaturamentoPage() {
   const [motivoRecusa, setMotivoRecusa] = useState('')
   // Aprovações de lançamento de faturamento (NFs)
   const [nfPendentes, setNfPendentes] = useState<NfAprovacaoItem[]>([])
+  const [nfHistorico, setNfHistorico] = useState<NfAprovacaoItem[]>([])
   const [reprovarNfModal, setReprovarNfModal] = useState<NfAprovacaoItem | null>(null)
   const [motivoNf, setMotivoNf] = useState('')
   const [nfDecisao, setNfDecisao] = useState(false)
@@ -202,16 +203,18 @@ export default function FaturamentoPage() {
     if (!canEditar) return
     setAlteracoesLoading(true); setAlteracoesError(null)
     try {
-      const [resPend, resHist, resNf] = await Promise.all([
+      const [resPend, resHist, resNf, resNfHist] = await Promise.all([
         fetch('/api/faturamento/alteracoes?status=PENDENTE'),
         fetch('/api/faturamento/alteracoes?history=true'),
         fetch('/api/faturamento/nfs/aprovacoes'),
+        fetch('/api/faturamento/nfs/aprovacoes?history=true'),
       ])
-      const [jsonPend, jsonHist, jsonNf] = await Promise.all([resPend.json(), resHist.json(), resNf.json()])
+      const [jsonPend, jsonHist, jsonNf, jsonNfHist] = await Promise.all([resPend.json(), resHist.json(), resNf.json(), resNfHist.json()])
       if (jsonPend.error) { setAlteracoesError(jsonPend.error); return }
       setAlteracoes(jsonPend.data ?? [])
       setHistorico(jsonHist.data ?? [])
       setNfPendentes(jsonNf.data ?? [])
+      setNfHistorico(jsonNfHist.data ?? [])
     } catch (err) {
       setAlteracoesError(String(err))
     } finally {
@@ -720,6 +723,7 @@ export default function FaturamentoPage() {
             onAprovar={handleAprovar}
             onReprovar={(a) => { setReprovarModal(a); setMotivoRecusa(''); setReprovarError(null) }}
             nfPendentes={nfPendentes}
+            nfHistorico={nfHistorico}
             nfDecisao={nfDecisao}
             onAprovarNf={handleAprovarNf}
             onReprovarNf={(nf) => { setReprovarNfModal(nf); setMotivoNf(''); setReprovarError(null) }}
@@ -999,13 +1003,15 @@ interface AbaAprovacoes {
   onAprovar: (id: number) => void
   onReprovar: (a: PrevisaoAlteracaoItem) => void
   nfPendentes: NfAprovacaoItem[]
+  nfHistorico: NfAprovacaoItem[]
   nfDecisao: boolean
   onAprovarNf: (id: number) => void
   onReprovarNf: (nf: NfAprovacaoItem) => void
 }
 
-function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error, onAprovar, onReprovar, nfPendentes, nfDecisao, onAprovarNf, onReprovarNf }: AbaAprovacoes) {
+function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error, onAprovar, onReprovar, nfPendentes, nfHistorico, nfDecisao, onAprovarNf, onReprovarNf }: AbaAprovacoes) {
   const [showHistorico, setShowHistorico] = useState(false)
+  const totalHist = historico.length + nfHistorico.length
 
   if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
   if (error) return (
@@ -1052,8 +1058,8 @@ function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error
         >
           <span>{showHistorico ? '▾' : '▸'}</span>
           Histórico de decisões
-          {historico.length > 0 && (
-            <span className="text-gray-400 font-normal">({historico.length})</span>
+          {totalHist > 0 && (
+            <span className="text-gray-400 font-normal">({totalHist})</span>
           )}
         </button>
 
@@ -1061,12 +1067,17 @@ function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error
           <div className="mt-3 space-y-2">
             {historicoLoading ? (
               <p className="text-center text-gray-400 py-4 text-sm">Carregando...</p>
-            ) : historico.length === 0 ? (
+            ) : totalHist === 0 ? (
               <p className="text-center text-gray-400 py-4 text-sm">Nenhum histórico encontrado.</p>
             ) : (
-              historico.map((a) => (
-                <AlteracaoHistoricoRow key={a.id} alteracao={a} />
-              ))
+              <>
+                {nfHistorico.map((nf) => (
+                  <NfHistoricoRow key={`nf-${nf.id}`} nf={nf} />
+                ))}
+                {historico.map((a) => (
+                  <AlteracaoHistoricoRow key={a.id} alteracao={a} />
+                ))}
+              </>
             )}
           </div>
         )}
@@ -1131,6 +1142,30 @@ function NfAprovacaoRow({ nf, loading, onAprovar, onReprovar }: {
         </div>
       </div>
       <p className="text-[9px] text-gray-400 mt-1">Enquanto pendente, este lançamento <strong>não entra no faturamento</strong>. Só passa a contar após a aprovação.</p>
+    </div>
+  )
+}
+
+// Linha de histórico de decisão de um lançamento de faturamento (NF)
+function NfHistoricoRow({ nf }: { nf: NfAprovacaoItem }) {
+  const aprovado = nf.status_aprovacao === 'APROVADO'
+  return (
+    <div className={cn('border rounded-md p-3 text-[11px]', aprovado ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200')}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={cn('font-bold text-[10px] px-1.5 py-0.5 rounded uppercase', aprovado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+          {aprovado ? 'Aprovado' : 'Reprovado'}
+        </span>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 uppercase">Faturamento</span>
+        <span className="font-semibold text-gray-700">{nf.contrato?.indice ?? '—'}.{nf.subindice.ordem} · {nf.subindice.descricao}</span>
+        <span className="text-gray-400">·</span>
+        <span className="text-gray-500">{nf.tipo_documento} {nf.numero_nf} — {formatCurrency(nf.valor_atribuido)}</span>
+      </div>
+      <div className="flex items-center gap-3 mt-0.5 text-[10px] text-gray-400 flex-wrap">
+        <span>Solicitante: <strong className="text-gray-600">{nf.solicitante}</strong></span>
+        {nf.revisor && <span>Revisor: <strong className="text-gray-600">{nf.revisor}</strong></span>}
+        {nf.revisado_em && <span>{formatDate(nf.revisado_em)}</span>}
+        {!aprovado && nf.motivo_recusa && <span className="text-red-600">Motivo: {nf.motivo_recusa}</span>}
+      </div>
     </div>
   )
 }

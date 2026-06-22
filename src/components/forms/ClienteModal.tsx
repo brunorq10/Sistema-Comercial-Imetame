@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { maskCNPJ } from '@/lib/utils'
 import type { ClienteListItem, Segmento } from '@/types'
 import { SEGMENTO_LABELS } from '@/types'
 
@@ -116,7 +117,7 @@ export function ClienteModal({ open, onClose, onSuccess, editando }: Props) {
           <Input placeholder="Ex: Petrobras S.A." value={nome} onChange={(e) => setNome(e.target.value)} />
         </Field>
         <Field label="CNPJ">
-          <Input placeholder="00.000.000/0001-00" value={cnpj} onChange={(e) => setCnpj(e.target.value)} />
+          <Input placeholder="07.986.997/0001-40" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
         </Field>
         <Field label="Ramo de atuação *">
           <Select value={ramo} onChange={(e) => setRamo(e.target.value)}>

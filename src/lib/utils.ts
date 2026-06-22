@@ -70,3 +70,23 @@ export function isAtrasado(prazo: Date | null | undefined): boolean {
 export function formatRev(versao: number): string {
   return `Rev${String(versao - 1).padStart(2, '0')}`
 }
+
+// Máscara de Nº OS no formato 0798.02.003 (4-2-3 dígitos)
+export function maskOS(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 9)
+  let out = d.slice(0, 4)
+  if (d.length > 4) out += '.' + d.slice(4, 6)
+  if (d.length > 6) out += '.' + d.slice(6, 9)
+  return out
+}
+
+// Máscara de CNPJ no formato 07.986.997/0001-40 (14 dígitos)
+export function maskCNPJ(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 14)
+  let out = d.slice(0, 2)
+  if (d.length > 2)  out += '.' + d.slice(2, 5)
+  if (d.length > 5)  out += '.' + d.slice(5, 8)
+  if (d.length > 8)  out += '/' + d.slice(8, 12)
+  if (d.length > 12) out += '-' + d.slice(12, 14)
+  return out
+}

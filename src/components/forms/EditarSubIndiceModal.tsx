@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
+import { maskOS } from '@/lib/utils'
 import type { SubIndiceItem, PrevisaoAlteracaoItem } from '@/types'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
@@ -220,6 +221,20 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       return
     }
 
+    // Mesmas regras da edição do Controle de Faturamento:
+    // a soma da previsão mensal não pode ultrapassar o valor total do sub-índice,
+    // nem ficar abaixo do que já foi faturado.
+    const somaMeses = MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
+    const vtNum = Number(valorTotal || subindice.valor_total)
+    if (somaMeses > vtNum + 0.01) {
+      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) ultrapassa o valor total do sub-índice (R$ ${fmt(vtNum)})`)
+      return
+    }
+    if (somaMeses < section.jaFaturado - 0.01) {
+      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) não pode ser menor que o já faturado (R$ ${fmt(section.jaFaturado)})`)
+      return
+    }
+
     const valores_para = Object.fromEntries(
       MESES.map((m) => [m, section.meses[m] ? Number(section.meses[m]) : null])
     )
@@ -433,7 +448,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} disabled={readOnly} />
         </Field>
         <Field label="Nº OS">
-          <Input placeholder="Ex: OS-0001" value={numOs} onChange={(e) => setNumOs(e.target.value)} disabled={readOnly} />
+          <Input placeholder="Ex: 0798.02.003" value={numOs} onChange={(e) => setNumOs(maskOS(e.target.value))} disabled={readOnly} />
         </Field>
         <Field label={hasPastMonthChanges ? 'Motivo da alteração *' : 'Comentários'}>
           <Input

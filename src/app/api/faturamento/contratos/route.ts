@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger'
 
 const subindiceSchema = z.object({
   descricao: z.string().min(1),
+  num_os: z.string().optional().nullable(),
   valor_total: z.number().nonnegative(),
   data_inicio: z.string().optional(),
   data_fim: z.string().optional(),
@@ -176,6 +177,7 @@ export async function POST(req: NextRequest) {
         create: parsed.data.subindices.map((s, i) => ({
           ordem: i + 1,
           descricao: s.descricao,
+          num_os: s.num_os ?? null,
           valor_total: s.valor_total,
           data_inicio: s.data_inicio ? new Date(s.data_inicio) : null,
           data_fim: s.data_fim ? new Date(s.data_fim) : null,

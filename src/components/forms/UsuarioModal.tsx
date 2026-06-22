@@ -137,7 +137,7 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
       )}
 
       <ModalSection>{isEdit ? 'Redefinir senha (opcional)' : 'Senha inicial *'}</ModalSection>
-      <Field label={isEdit ? 'Nova senha — deixe em branco para não alterar' : 'Senha (mín. 6 caracteres)'}>
+      <Field label={isEdit ? 'Nova senha — deixe em branco para não alterar' : 'Senha (mín. 6 caracteres) *'}>
         <Input
           type="password"
           placeholder={isEdit ? '••••••••' : 'mínimo 6 caracteres'}
