@@ -25,7 +25,7 @@ export function Topbar({ title, onMenuClick, onToggleCollapse, collapsed }: Topb
     : perfilLabel
 
   return (
-    <header className="flex h-[46px] flex-shrink-0 items-center justify-between gap-2 bg-green-primary px-[14px]">
+    <header className="relative z-30 flex h-[46px] flex-shrink-0 items-center justify-between gap-2 bg-green-primary px-[14px] shadow-sm">
       <div className="flex min-w-0 items-center gap-2">
         {/* Hambúrguer mobile — abre o drawer (abaixo de lg) */}
         <button
