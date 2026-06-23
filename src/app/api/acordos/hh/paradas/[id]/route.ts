@@ -6,8 +6,10 @@ const DiaSchema = z.object({
   etapa: z.enum(['PREPARATIVO', 'PARADA', 'ACOMP_DESMOB']),
   data: z.string(), // ISO date
   efetivo_plan: z.number().int().nullable().optional(),
+  horas_dia_plan: z.number().nullable().optional(),
   hh_plan: z.number().nullable().optional(),
   efetivo_real: z.number().int().nullable().optional(),
+  horas_dia_real: z.number().nullable().optional(),
   hh_real: z.number().nullable().optional(),
 })
 
@@ -197,14 +199,18 @@ export async function PUT(
             etapa: d.etapa,
             data: new Date(d.data),
             efetivo_plan: d.efetivo_plan ?? null,
+            horas_dia_plan: d.horas_dia_plan ?? null,
             hh_plan: d.hh_plan != null ? d.hh_plan : null,
             efetivo_real: d.efetivo_real ?? null,
+            horas_dia_real: d.horas_dia_real ?? null,
             hh_real: d.hh_real != null ? d.hh_real : null,
           },
           update: {
             efetivo_plan: d.efetivo_plan ?? null,
+            horas_dia_plan: d.horas_dia_plan ?? null,
             hh_plan: d.hh_plan != null ? d.hh_plan : null,
             efetivo_real: d.efetivo_real ?? null,
+            horas_dia_real: d.horas_dia_real ?? null,
             hh_real: d.hh_real != null ? d.hh_real : null,
           },
         }),

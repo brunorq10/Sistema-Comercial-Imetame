@@ -11,9 +11,16 @@ type Etapa = 'PREPARATIVO' | 'PARADA' | 'ACOMP_DESMOB'
 
 interface DiaState {
   efetivo_plan: string
+  horas_dia_plan: string
   hh_plan: string
   efetivo_real: string
+  horas_dia_real: string
   hh_real: string
+}
+
+const HORAS_DIA_PADRAO = '9,8'
+function emptyDia(): DiaState {
+  return { efetivo_plan: '', horas_dia_plan: HORAS_DIA_PADRAO, hh_plan: '', efetivo_real: '', horas_dia_real: HORAS_DIA_PADRAO, hh_real: '' }
 }
 
 interface ContratoInfo {
@@ -217,16 +224,19 @@ export default function ParadaHhPage() {
         setCfg(configFromApi(json.data.config as Record<string, unknown>))
         const diasApi = (json.data.config.dias ?? []) as Array<{
           etapa: Etapa; data: string
-          efetivo_plan: number | null; hh_plan: number | null
-          efetivo_real: number | null; hh_real: number | null
+          efetivo_plan: number | null; horas_dia_plan: number | null; hh_plan: number | null
+          efetivo_real: number | null; horas_dia_real: number | null; hh_real: number | null
         }>
         const map = new Map<string, DiaState>()
+        const sBr = (v: number | null) => v != null ? String(v).replace('.', ',') : ''
         for (const d of diasApi) {
           map.set(`${d.etapa}__${d.data.substring(0, 10)}`, {
             efetivo_plan: d.efetivo_plan != null ? String(d.efetivo_plan) : '',
-            hh_plan: d.hh_plan != null ? String(d.hh_plan) : '',
+            horas_dia_plan: d.horas_dia_plan != null ? sBr(d.horas_dia_plan) : HORAS_DIA_PADRAO,
+            hh_plan: d.hh_plan != null ? sBr(d.hh_plan) : '',
             efetivo_real: d.efetivo_real != null ? String(d.efetivo_real) : '',
-            hh_real: d.hh_real != null ? String(d.hh_real) : '',
+            horas_dia_real: d.horas_dia_real != null ? sBr(d.horas_dia_real) : HORAS_DIA_PADRAO,
+            hh_real: d.hh_real != null ? sBr(d.hh_real) : '',
           })
         }
         setDias(map)
@@ -242,15 +252,24 @@ export default function ParadaHhPage() {
   const diasAcomp  = useMemo(() => diasEntreDatas(cfg.acomp_inicio,  cfg.acomp_fim),  [cfg.acomp_inicio, cfg.acomp_fim])
 
   const getDia = useCallback((etapa: Etapa, data: string): DiaState =>
-    dias.get(`${etapa}__${data}`) ?? { efetivo_plan: '', hh_plan: '', efetivo_real: '', hh_real: '' },
+    dias.get(`${etapa}__${data}`) ?? emptyDia(),
     [dias])
 
   const setDiaProp = useCallback((etapa: Etapa, data: string, prop: keyof DiaState, value: string) => {
     const key = `${etapa}__${data}`
     setDias((prev) => {
       const next = new Map(prev)
-      const cur = next.get(key) ?? { efetivo_plan: '', hh_plan: '', efetivo_real: '', hh_real: '' }
-      next.set(key, { ...cur, [prop]: value })
+      const cur = next.get(key) ?? emptyDia()
+      const upd = { ...cur, [prop]: value }
+      // HHT (dia) = Efetivo × Horas dia — recalculado automaticamente
+      const fmtHH = (x: number) => x > 0 ? x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''
+      if (prop === 'efetivo_plan' || prop === 'horas_dia_plan') {
+        upd.hh_plan = fmtHH(n(upd.efetivo_plan) * n(upd.horas_dia_plan))
+      }
+      if (prop === 'efetivo_real' || prop === 'horas_dia_real') {
+        upd.hh_real = fmtHH(n(upd.efetivo_real) * n(upd.horas_dia_real))
+      }
+      next.set(key, upd)
       return next
     })
   }, [])
@@ -360,8 +379,10 @@ export default function ParadaHhPage() {
           return {
             etapa: etapa as Etapa, data,
             efetivo_plan: val.efetivo_plan ? parseInt(val.efetivo_plan) : null,
+            horas_dia_plan: val.horas_dia_plan ? n(val.horas_dia_plan) : null,
             hh_plan: val.hh_plan ? n(val.hh_plan) : null,
             efetivo_real: val.efetivo_real ? parseInt(val.efetivo_real) : null,
+            horas_dia_real: val.horas_dia_real ? n(val.horas_dia_real) : null,
             hh_real: val.hh_real ? n(val.hh_real) : null,
           }
         }),
@@ -449,7 +470,7 @@ export default function ParadaHhPage() {
             inicio={cfg.parada_inicio} fim={cfg.parada_fim}
             onChangeInicio={(v) => setCfg((p) => ({ ...p, parada_inicio: v }))}
             onChangeFim={(v) => setCfg((p) => ({ ...p, parada_fim: v }))} />
-          <EtapaCard label="Acomp. e Desmob."
+          <EtapaCard label="Pós Parada"
             inicio={cfg.acomp_inicio} fim={cfg.acomp_fim}
             onChangeInicio={(v) => setCfg((p) => ({ ...p, acomp_inicio: v }))}
             onChangeFim={(v) => setCfg((p) => ({ ...p, acomp_fim: v }))} />
@@ -618,7 +639,7 @@ export default function ParadaHhPage() {
                   { label: 'Integração',         prev: adicionais.integ_prev,  real: adicionais.integ_real },
                   { label: 'Preparativo',        prev: totPrep.sumHhPlan,      real: totPrep.sumHhReal },
                   { label: 'Parada',             prev: totParada.sumHhPlan,    real: totParada.sumHhReal },
-                  { label: 'Acomp. e Desmob.',   prev: totAcomp.sumHhPlan,     real: totAcomp.sumHhReal },
+                  { label: 'Pós Parada',         prev: totAcomp.sumHhPlan,     real: totAcomp.sumHhReal },
                   { label: 'Desmobilização',     prev: adicionais.desmob_prev, real: adicionais.desmob_real },
                   { label: 'Folga',              prev: adicionais.folga_prev,  real: adicionais.folga_real },
                 ]).map((row) => {
@@ -807,18 +828,20 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
   const etapaSections: Array<{ etapa: Etapa; label: string; dias: string[] }> = [
     { etapa: 'PREPARATIVO',  label: 'Preparativo',       dias: diasPrep },
     { etapa: 'PARADA',       label: 'Parada',            dias: diasParada },
-    { etapa: 'ACOMP_DESMOB', label: 'Acomp. e Desmob.', dias: diasAcomp },
+    { etapa: 'ACOMP_DESMOB', label: 'Pós Parada', dias: diasAcomp },
   ]
 
   const ROWS: Array<{ key: string; label: string; bg?: string; bold?: boolean }> = [
-    { key: 'efetivo_plan', label: 'Efetivo plan.',    bg: '#EEF7EE' },
-    { key: 'hh_plan',      label: 'HHT plan. (dia)', bg: '#EEF7EE' },
-    { key: 'acum_plan',    label: '∑ HHT plan.',     bg: '#DCEDC8', bold: true },
-    { key: 'efetivo_real', label: 'Efetivo real.' },
-    { key: 'hh_real',      label: 'HHT real. (dia)' },
-    { key: 'acum_real',    label: '∑ HHT real.',     bg: '#E3F2FD', bold: true },
-    { key: 'desvio_hh',    label: 'Desvio HH (dia)', bg: '#FAFAFA' },
-    { key: 'desvio_pct',   label: 'Desvio % (dia)',  bg: '#FAFAFA' },
+    { key: 'efetivo_plan',   label: 'Efetivo plan.',    bg: '#EEF7EE' },
+    { key: 'horas_dia_plan', label: 'Horas dia (plan.)', bg: '#EEF7EE' },
+    { key: 'hh_plan',        label: 'HHT plan. (dia)',  bg: '#EEF7EE' },
+    { key: 'acum_plan',      label: '∑ HHT plan.',      bg: '#DCEDC8', bold: true },
+    { key: 'efetivo_real',   label: 'Efetivo real.' },
+    { key: 'horas_dia_real', label: 'Horas dia (real.)' },
+    { key: 'hh_real',        label: 'HHT real. (dia)' },
+    { key: 'acum_real',      label: '∑ HHT real.',      bg: '#E3F2FD', bold: true },
+    { key: 'desvio_hh',      label: 'Desvio HH (dia)',  bg: '#FAFAFA' },
+    { key: 'desvio_pct',     label: 'Desvio % (dia)',   bg: '#FAFAFA' },
   ]
 
   const STICKY_W = 148
@@ -899,15 +922,15 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W }}>
-                          <input type="number" min={0} step="1" value={val}
-                            onChange={(e) => setDiaProp(etapa, d, prop, e.target.value)}
-                            className="w-full bg-transparent px-0.5 py-0.5 focus:bg-yellow-50 focus:outline-none"
+                          <input type="text" inputMode="numeric" value={val}
+                            onChange={(e) => setDiaProp(etapa, d, prop, e.target.value.replace(/\D/g, ''))}
+                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
                             style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
                       )
                     }
 
-                    if (key === 'hh_plan' || key === 'hh_real') {
+                    if (key === 'horas_dia_plan' || key === 'horas_dia_real') {
                       const prop = key as keyof DiaState
                       const val = dia[prop]
                       return (
@@ -918,10 +941,22 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                             onBlur={(e) => {
                               const num = n(e.target.value)
                               setDiaProp(etapa, d, prop,
-                                num > 0 ? num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                                num > 0 ? num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : '')
                             }}
-                            className="w-full bg-transparent px-0.5 py-0.5 focus:bg-yellow-50 focus:outline-none"
-                            style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
+                            className="w-full bg-transparent px-0.5 py-0.5 text-center text-gray-500 focus:bg-yellow-50 focus:outline-none"
+                            style={{ textAlign: 'center' }} />
+                        </td>
+                      )
+                    }
+
+                    if (key === 'hh_plan' || key === 'hh_real') {
+                      const prop = key as keyof DiaState
+                      const val = dia[prop]
+                      return (
+                        <td key={`${etapa}_${d}`} className="border border-gray-200"
+                          style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W, textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : '#374151' }}
+                          title="Calculado: Efetivo × Horas dia">
+                          {val || ''}
                         </td>
                       )
                     }

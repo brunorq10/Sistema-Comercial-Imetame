@@ -629,8 +629,10 @@ model ParadaHhDia {
   data             DateTime @db.Date
 
   efetivo_plan     Int?
+  horas_dia_plan   Decimal? @db.Decimal(5, 2) @default(9.8)
   hh_plan          Decimal? @db.Decimal(10, 2)
   efetivo_real     Int?
+  horas_dia_real   Decimal? @db.Decimal(5, 2) @default(9.8)
   hh_real          Decimal? @db.Decimal(10, 2)
 
   created_at       DateTime @default(now())

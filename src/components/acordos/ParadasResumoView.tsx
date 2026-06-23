@@ -44,7 +44,7 @@ const FASES: { key: keyof ParadaResumo['fases']; label: string }[] = [
   { key: 'integ',  label: 'Integração' },
   { key: 'prep',   label: 'Preparativo' },
   { key: 'parada', label: 'Parada' },
-  { key: 'acomp',  label: 'Acomp. e Desmob.' },
+  { key: 'acomp',  label: 'Pós Parada' },
   { key: 'desmob', label: 'Desmobilização' },
   { key: 'folga',  label: 'Folga' },
 ]
