@@ -23,6 +23,12 @@ function emptyDia(): DiaState {
   return { efetivo_plan: '', horas_dia_plan: HORAS_DIA_PADRAO, hh_plan: '', efetivo_real: '', horas_dia_real: HORAS_DIA_PADRAO, hh_real: '' }
 }
 
+// Inteiro com separador de milhar enquanto digita: 1234 -> "1.234"
+function maskInt(s: string): string {
+  const d = s.replace(/\D/g, '')
+  return d ? Number(d).toLocaleString('pt-BR') : ''
+}
+
 interface ContratoInfo {
   id: number
   numero: string
@@ -231,10 +237,10 @@ export default function ParadaHhPage() {
         const sBr = (v: number | null) => v != null ? String(v).replace('.', ',') : ''
         for (const d of diasApi) {
           map.set(`${d.etapa}__${d.data.substring(0, 10)}`, {
-            efetivo_plan: d.efetivo_plan != null ? String(d.efetivo_plan) : '',
+            efetivo_plan: d.efetivo_plan != null ? d.efetivo_plan.toLocaleString('pt-BR') : '',
             horas_dia_plan: d.horas_dia_plan != null ? sBr(d.horas_dia_plan) : HORAS_DIA_PADRAO,
             hh_plan: d.hh_plan != null ? sBr(d.hh_plan) : '',
-            efetivo_real: d.efetivo_real != null ? String(d.efetivo_real) : '',
+            efetivo_real: d.efetivo_real != null ? d.efetivo_real.toLocaleString('pt-BR') : '',
             horas_dia_real: d.horas_dia_real != null ? sBr(d.horas_dia_real) : HORAS_DIA_PADRAO,
             hh_real: d.hh_real != null ? sBr(d.hh_real) : '',
           })
@@ -378,10 +384,10 @@ export default function ParadaHhPage() {
           const [etapa, data] = key.split('__')
           return {
             etapa: etapa as Etapa, data,
-            efetivo_plan: val.efetivo_plan ? parseInt(val.efetivo_plan) : null,
+            efetivo_plan: val.efetivo_plan ? Math.round(n(val.efetivo_plan)) : null,
             horas_dia_plan: val.horas_dia_plan ? n(val.horas_dia_plan) : null,
             hh_plan: val.hh_plan ? n(val.hh_plan) : null,
-            efetivo_real: val.efetivo_real ? parseInt(val.efetivo_real) : null,
+            efetivo_real: val.efetivo_real ? Math.round(n(val.efetivo_real)) : null,
             horas_dia_real: val.horas_dia_real ? n(val.horas_dia_real) : null,
             hh_real: val.hh_real ? n(val.hh_real) : null,
           }
@@ -923,7 +929,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W }}>
                           <input type="text" inputMode="numeric" value={val}
-                            onChange={(e) => setDiaProp(etapa, d, prop, e.target.value.replace(/\D/g, ''))}
+                            onChange={(e) => setDiaProp(etapa, d, prop, maskInt(e.target.value))}
                             className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
                             style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
@@ -956,7 +962,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                         <td key={`${etapa}_${d}`} className="border border-gray-200"
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W, textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : '#374151' }}
                           title="Calculado: Efetivo × Horas dia">
-                          {val || ''}
+                          {val !== '' ? fmtCellHH(n(val)) : ''}
                         </td>
                       )
                     }
