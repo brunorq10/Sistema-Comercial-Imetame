@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { SolicitacaoCard, type PainelItem } from '@/components/painel/SolicitacaoCard'
 import { RegistrarTecnicaModal } from '@/components/forms/RegistrarTecnicaModal'
 import { RegistrarComercialModal } from '@/components/forms/RegistrarComercialModal'
@@ -30,6 +31,8 @@ const isNoPrazo      = (i: PainelItem) => isEmElaboracao(i) && !i.tecnica_atrasa
 
 export default function PainelOrcamentosPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const userId = session?.user?.id ?? ''
   const [items, setItems] = useState<PainelItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,6 +44,8 @@ export default function PainelOrcamentosPage() {
   const [classificacao, setClassificacao] = useState('')
   const [interesse, setInteresse] = useState('')
   const [clienteFiltro, setClienteFiltro] = useState('')
+  const [orcamentistaFiltro, setOrcamentistaFiltro] = useState('')   // '' = meu painel
+  const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
 
   const [modalTecnica, setModalTecnica] = useState<PainelItem | null>(null)
   const [modalComercial, setModalComercial] = useState<PainelItem | null>(null)
@@ -57,6 +62,7 @@ export default function PainelOrcamentosPage() {
       if (dataAte) params.set('data_ate', dataAte)
       if (classificacao) params.set('classificacao', classificacao)
       if (interesse) params.set('interesse', interesse)
+      if (orcamentistaFiltro) params.set('orcamentista_id', orcamentistaFiltro)
 
       const res = await fetch(`/api/painel/orcamentista?${params.toString()}`)
       const json = await res.json()
@@ -64,9 +70,17 @@ export default function PainelOrcamentosPage() {
     } finally {
       setLoading(false)
     }
-  }, [dataDe, dataAte, classificacao, interesse])
+  }, [dataDe, dataAte, classificacao, interesse, orcamentistaFiltro])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Lista de orçamentistas para o filtro (ver painel de outro orçamentista)
+  useEffect(() => {
+    fetch('/api/users/orcamentistas')
+      .then((r) => r.json())
+      .then((j) => setOrcamentistas(j.data ?? []))
+      .catch(() => {})
+  }, [])
 
   // Contagens para os indicadores
   const contagens = useMemo(() => ({
@@ -202,6 +216,14 @@ export default function PainelOrcamentosPage() {
 
       {/* Filtros de período e categoria */}
       <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
+        <Field label="Orçamentista" className="min-w-[150px] flex-1">
+          <Select value={orcamentistaFiltro} onChange={(e) => setOrcamentistaFiltro(e.target.value)}>
+            <option value="">Meu painel</option>
+            {orcamentistas
+              .filter((o) => String(o.id) !== String(userId))
+              .map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+          </Select>
+        </Field>
         <Field label="Período de atribuição — de" className="min-w-[130px] flex-1">
           <Input type="date" value={dataDe} onChange={(e) => setDataDe(e.target.value)} />
         </Field>
@@ -235,7 +257,7 @@ export default function PainelOrcamentosPage() {
         </Field>
         <div className="flex-shrink-0">
           <button
-            onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro('') }}
+            onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro(''); setOrcamentistaFiltro('') }}
             className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
           >
             ✕ Limpar

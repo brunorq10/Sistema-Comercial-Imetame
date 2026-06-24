@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   const data_ate = searchParams.get('data_ate') ?? undefined
   const classificacao = searchParams.get('classificacao') ?? undefined
   const interesse = searchParams.get('interesse') ?? undefined
-
-  const userId = Number(session.user.id)
+  // Permite visualizar o painel de outro orçamentista (default: o próprio usuário)
+  const orcParam = searchParams.get('orcamentista_id')
+  const orcamentistaId = orcParam ? Number(orcParam) : Number(session.user.id)
 
   const items = await prisma.solicitacao.findMany({
     where: {
-      orcamentista_id: userId,
+      orcamentista_id: orcamentistaId,
       cancelled_at: null,
       status: { in: ['AGUARDANDO_ANALISE', 'EM_ELABORACAO', 'PROPOSTA_ENVIADA'] },
       ...(classificacao && { classificacao: classificacao as never }),

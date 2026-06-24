@@ -343,8 +343,36 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
   const [saving,         setSaving]         = useState(false)
   const [error,          setError]          = useState<string | null>(null)
 
+  const isParada = contrato.classificacao === 'PARADAS'
+  const [aba, setAba] = useState<'dados' | 'ucr'>('dados')
+  const [ucr, setUcr] = useState<Record<UcrKeys, string>>({
+    ucr_nao_suficiente: '161,98', ucr_a_evoluir: '162,00', ucr_bom: '180,00', ucr_otimo: '234,00', ucr_esplendido: '270,00',
+  })
+
+  // Carrega as faixas de UCR já configuradas para a parada
+  useEffect(() => {
+    if (!isParada) return
+    fetch(`/api/acordos/hh/paradas/${contrato.id}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const c = j?.data?.config
+        if (!c) return
+        const br = (v: unknown, fb: string) => v != null ? String(v).replace('.', ',') : fb
+        setUcr({
+          ucr_nao_suficiente: br(c.ucr_nao_suficiente, '161,98'),
+          ucr_a_evoluir:      br(c.ucr_a_evoluir, '162,00'),
+          ucr_bom:            br(c.ucr_bom, '180,00'),
+          ucr_otimo:          br(c.ucr_otimo, '234,00'),
+          ucr_esplendido:     br(c.ucr_esplendido, '270,00'),
+        })
+      })
+      .catch(() => {})
+  }, [isParada, contrato.id])
+
   const iLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-wider'
   const iCls = 'w-full border border-gray-300 rounded-md px-2.5 py-[5px] text-[11px] focus:outline-none focus:ring-2 focus:ring-green-primary/30'
+
+  const parseBr = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
 
   const handleSave = async () => {
     setSaving(true); setError(null)
@@ -365,6 +393,24 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
+
+      // Paradas: salva também as faixas de UCR na config da parada
+      if (isParada) {
+        const resU = await fetch(`/api/acordos/hh/paradas/${contrato.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ucr_nao_suficiente: parseBr(ucr.ucr_nao_suficiente) || 161.98,
+            ucr_a_evoluir:      parseBr(ucr.ucr_a_evoluir)      || 162.00,
+            ucr_bom:            parseBr(ucr.ucr_bom)            || 180.00,
+            ucr_otimo:          parseBr(ucr.ucr_otimo)          || 234.00,
+            ucr_esplendido:     parseBr(ucr.ucr_esplendido)     || 270.00,
+          }),
+        })
+        const jsonU = await resU.json()
+        if (!resU.ok || jsonU.error) { setError(jsonU.error ?? 'Erro ao salvar faixas de UCR'); return }
+      }
+
       onSuccess(); onClose()
     } finally { setSaving(false) }
   }
@@ -379,8 +425,38 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
         </div>
+
+        {isParada && (
+          <div className="flex border-b border-gray-200 px-5 pt-2 gap-1 flex-shrink-0">
+            {([['dados', 'Dados cadastrais'], ['ucr', 'Faixas de UCR']] as ['dados' | 'ucr', string][]).map(([k, l]) => (
+              <button key={k} onClick={() => setAba(k)}
+                className={cn('px-3 py-1.5 text-[11px] font-semibold border-b-2 -mb-px transition-colors',
+                  aba === k ? 'border-green-primary text-green-primary' : 'border-transparent text-gray-400 hover:text-gray-600')}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="p-5 flex flex-col gap-3 overflow-y-auto">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] px-3 py-2 rounded-md">{error}</div>}
+
+          {aba === 'ucr' ? (
+            <>
+              <p className="text-[11px] text-gray-500">Defina os limites de R$/HH para cada faixa de classificação (UCR) deste contrato.</p>
+              <div className="flex flex-col gap-2.5">
+                {UCR_ROWS_CFG.map(({ label, cor, bg, key }) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <div className="w-[140px] rounded-md px-3 py-1.5 text-[11px] font-semibold flex-shrink-0" style={{ background: bg, color: cor }}>{label}</div>
+                    <span className="text-[10px] text-gray-400 flex-shrink-0">até R$</span>
+                    <input value={ucr[key]} onChange={e => setUcr(p => ({ ...p, [key]: e.target.value }))}
+                      className="flex-1 border border-gray-300 rounded px-2 py-1 text-[11px] text-right focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+          <>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={iLbl}>Cliente Final</label>
@@ -429,6 +505,8 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
             <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={3}
               className="w-full border border-gray-300 rounded-md px-2.5 py-[5px] text-[11px] resize-none focus:outline-none focus:ring-2 focus:ring-green-primary/30" />
           </div>
+          </>
+          )}
         </div>
         <div className="border-t border-gray-100 px-5 py-3 flex justify-end gap-2 bg-gray-50">
           <button onClick={onClose} className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">Cancelar</button>
