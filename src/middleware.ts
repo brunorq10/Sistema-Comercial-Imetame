@@ -3,10 +3,9 @@ import { NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/login']
 
-const PERFIS_COMERCIAL = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'ADM_GERAL']
-const PERFIS_ACORDOS = ['ADM_COMERCIAL', 'GESTAO_ACORDOS', 'ACORDOS', 'ADM_GERAL']
-const PERFIS_CADASTROS = ['ADM_COMERCIAL', 'ADM_GERAL']
-
+// RN: todos os perfis podem VISUALIZAR Orçamentos e Acordos (as ações são
+// restritas por permissão em cada rota). Cadastros é módulo de gestão:
+// acessível ao ADM Comercial, ADM Geral e a quem tem o flag Analista Crítico.
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
@@ -25,17 +24,14 @@ export default auth((req) => {
   }
 
   const perfil = req.auth?.user?.perfil as string | undefined
+  const isAnalista = !!req.auth?.user?.is_analista_critico
 
-  if (pathname.startsWith('/orcamentos') && perfil && !PERFIS_COMERCIAL.includes(perfil)) {
-    return NextResponse.redirect(new URL('/acordos/painel', req.url))
-  }
-
-  if (pathname.startsWith('/acordos') && perfil && !PERFIS_ACORDOS.includes(perfil)) {
-    return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
-  }
-
-  if (pathname.startsWith('/cadastros') && perfil && !PERFIS_CADASTROS.includes(perfil)) {
-    return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
+  // Apenas o módulo Cadastros permanece com acesso restrito a nível de tela.
+  if (pathname.startsWith('/cadastros')) {
+    const podeCadastros = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' || isAnalista
+    if (perfil && !podeCadastros) {
+      return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
+    }
   }
 
   return NextResponse.next()

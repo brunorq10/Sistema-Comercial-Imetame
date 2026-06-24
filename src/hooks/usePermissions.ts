@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import type { Perfil } from '@/types'
+import { pode as podeLib, ehDono as ehDonoLib, type Permissao, type Usuario, type TipoRegistro } from '@/lib/permissoes'
 
 const GRUPOS = {
   gestores: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL'] as Perfil[],
@@ -18,6 +19,14 @@ export function usePermissions() {
   const is = (...perfis: Perfil[]) => !!perfil && perfis.includes(perfil)
   const inGroup = (grupo: keyof typeof GRUPOS) => !!perfil && GRUPOS[grupo].includes(perfil)
 
+  // ── Novo controle de acesso (matriz da planilha) ──────────────────────────
+  const usuario: Usuario | null = perfil
+    ? { id: session?.user?.id ? Number(session.user.id) : 0, perfil: perfil as Usuario['perfil'], is_analista_critico: isAnalistaCritico }
+    : null
+  const pode = (permissao: Permissao, opts?: { ehDono?: boolean }) => podeLib(usuario, permissao, opts)
+  const ehDono = (registro: { orcamentista_id?: number | null; responsavel_id?: number | null; created_by?: number | null } | null | undefined, tipo: TipoRegistro) =>
+    ehDonoLib(usuario, registro, tipo)
+
   // ADM_GERAL is sovereign — unrestricted access to everything
   const isAdmGeral = is('ADM_GERAL')
   const can = (check: boolean) => isAdmGeral || check
@@ -28,6 +37,10 @@ export function usePermissions() {
     userName: session?.user?.nome ?? '',
     isAnalistaCritico,
     isLoading: status === 'loading',
+
+    // Verificação por permissão (matriz). pode('chave', { ehDono }) e ehDono(registro, tipo).
+    pode,
+    ehDono,
 
     // Solicitações
     canCreateSolicitacao: can(is('ADM_COMERCIAL')),
