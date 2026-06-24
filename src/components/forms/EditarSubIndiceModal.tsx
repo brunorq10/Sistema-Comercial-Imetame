@@ -221,13 +221,14 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       return
     }
 
-    // Mesmas regras da edição do Controle de Faturamento:
-    // a soma da previsão mensal não pode ultrapassar o valor total do sub-índice,
-    // nem ficar abaixo do que já foi faturado.
+    // Mesmas regras da edição do Controle de Faturamento, aplicadas ao sub-índice
+    // específico que está sendo alterado (não ao total multi-ano):
+    // a soma dos meses não pode ultrapassar o valor do sub-índice nem ficar
+    // abaixo do já faturado daquele ano.
     const somaMeses = MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
-    const vtNum = Number(valorTotal || subindice.valor_total)
+    const vtNum = Number(subindice.valor_total)
     if (somaMeses > vtNum + 0.01) {
-      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) ultrapassa o valor total do sub-índice (R$ ${fmt(vtNum)})`)
+      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) ultrapassa o valor do sub-índice (R$ ${fmt(vtNum)})`)
       return
     }
     if (somaMeses < section.jaFaturado - 0.01) {
