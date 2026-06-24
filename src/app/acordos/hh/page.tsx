@@ -88,11 +88,11 @@ function MiniBar({ pct }: { pct: number }) {
 // ─── UCR style helper ─────────────────────────────────────────────────────────
 
 const UCR_STYLE: Record<string, { cor: string; bg: string }> = {
-  'Não Suficiente': { cor: '#C62828', bg: '#FFCDD2' },
-  'A Evoluir':      { cor: '#F9A825', bg: '#FFF9C4' },
-  'Bom':            { cor: '#2E7D32', bg: '#C8E6C9' },
-  'Ótimo':          { cor: '#1565C0', bg: '#BBDEFB' },
-  'Esplêndido':     { cor: '#4040A0', bg: '#D3D3FF' },
+  'Não Suficiente': { cor: '#D4554F', bg: '#F7D4D2' },
+  'A Evoluir':      { cor: '#BE9B1E', bg: '#FAF0C4' },
+  'Bom':            { cor: '#5FA06D', bg: '#D9EBDB' },
+  'Ótimo':          { cor: '#5E9BD2', bg: '#D7E8F6' },
+  'Esplêndido':     { cor: '#8779C8', bg: '#E1DDF4' },
 }
 function ucrStyle(label: string | null) { return label ? UCR_STYLE[label] ?? null : null }
 
@@ -618,11 +618,11 @@ function NovoLancamentoModal({ onClose, onSelect, classificacao }: { onClose: ()
 // ─── UCR Config Modal ────────────────────────────────────────────────────────
 
 const UCR_ROWS_CFG = [
-  { label: 'Não Suficiente', cor: '#C62828', bg: '#FFCDD2', key: 'ucr_nao_suficiente' as const },
-  { label: 'A Evoluir',      cor: '#F9A825', bg: '#FFF9C4', key: 'ucr_a_evoluir'      as const },
-  { label: 'Bom',            cor: '#2E7D32', bg: '#C8E6C9', key: 'ucr_bom'            as const },
-  { label: 'Ótimo',          cor: '#1565C0', bg: '#BBDEFB', key: 'ucr_otimo'          as const },
-  { label: 'Esplêndido',     cor: '#4040A0', bg: '#D3D3FF', key: 'ucr_esplendido'     as const },
+  { label: 'Não Suficiente', cor: '#D4554F', bg: '#F7D4D2', key: 'ucr_nao_suficiente' as const },
+  { label: 'A Evoluir',      cor: '#BE9B1E', bg: '#FAF0C4', key: 'ucr_a_evoluir'      as const },
+  { label: 'Bom',            cor: '#5FA06D', bg: '#D9EBDB', key: 'ucr_bom'            as const },
+  { label: 'Ótimo',          cor: '#5E9BD2', bg: '#D7E8F6', key: 'ucr_otimo'          as const },
+  { label: 'Esplêndido',     cor: '#8779C8', bg: '#E1DDF4', key: 'ucr_esplendido'     as const },
 ]
 
 type UcrKeys = 'ucr_nao_suficiente' | 'ucr_a_evoluir' | 'ucr_bom' | 'ucr_otimo' | 'ucr_esplendido'

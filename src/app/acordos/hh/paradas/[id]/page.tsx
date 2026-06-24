@@ -409,11 +409,11 @@ export default function ParadaHhPage() {
   }
 
   const UCR_ROWS = [
-    { label: 'Não Suficiente', cor: '#C62828', bg: '#FFCDD2', cfgKey: 'ucr_nao_suficiente' as const },
-    { label: 'A Evoluir',      cor: '#F9A825', bg: '#FFF9C4', cfgKey: 'ucr_a_evoluir'      as const },
-    { label: 'Bom',            cor: '#2E7D32', bg: '#C8E6C9', cfgKey: 'ucr_bom'            as const },
-    { label: 'Ótimo',          cor: '#1565C0', bg: '#BBDEFB', cfgKey: 'ucr_otimo'          as const },
-    { label: 'Esplêndido',     cor: '#AD1457', bg: '#F8BBD9', cfgKey: 'ucr_esplendido'     as const },
+    { label: 'Não Suficiente', cor: '#D4554F', bg: '#F7D4D2', cfgKey: 'ucr_nao_suficiente' as const },
+    { label: 'A Evoluir',      cor: '#BE9B1E', bg: '#FAF0C4', cfgKey: 'ucr_a_evoluir'      as const },
+    { label: 'Bom',            cor: '#5FA06D', bg: '#D9EBDB', cfgKey: 'ucr_bom'            as const },
+    { label: 'Ótimo',          cor: '#5E9BD2', bg: '#D7E8F6', cfgKey: 'ucr_otimo'          as const },
+    { label: 'Esplêndido',     cor: '#8779C8', bg: '#E1DDF4', cfgKey: 'ucr_esplendido'     as const },
   ]
 
   function getUcrStyle(label: string | null) {
