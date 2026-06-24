@@ -123,7 +123,7 @@ export function FabricacoesView() {
           ))}
         </div>
         {visao === 'contratos' && (
-          <Button onClick={() => setPicker(true)}>+ Novo cadastro</Button>
+          <Button onClick={() => setPicker(true)}>+ Novo Lançamento</Button>
         )}
       </div>
 
@@ -233,7 +233,7 @@ function ContratosFab({ contratos, onEditar, onLancar, onHistorico, onExcluir }:
   onExcluir: (c: ContratoFab) => void
 }) {
   if (contratos.length === 0) {
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato corresponde aos filtros. Use “+ Novo cadastro” para incluir.</p>
+    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato corresponde aos filtros. Use “+ Novo Lançamento” para incluir.</p>
   }
   return (
     <div className="overflow-auto border border-gray-200 rounded-md bg-white">
@@ -301,7 +301,7 @@ function PickerModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c:
   const filtrada = lista.filter((c) =>
     `${c.indice} ${c.cliente.nome} ${c.descricao ?? ''}`.toLowerCase().includes(busca.toLowerCase()))
   return (
-    <Modal open onClose={onClose} title="Novo cadastro — escolher contrato" wide
+    <Modal open onClose={onClose} title="Novo Lançamento — escolher contrato" wide
       footer={<ModalCancelButton label="Fechar" />}>
       <Field label="Buscar">
         <Input placeholder="Índice, cliente ou descrição…" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -407,7 +407,7 @@ function CadastroModal({ contrato, onClose, onSuccess }: {
   }
 
   return (
-    <Modal open onClose={onClose} extraWide
+    <Modal open onClose={onClose} wide
       hasChanges
       title={`Itens de Fabricação — ${contrato.indice} · ${contrato.cliente.nome}`}
       footer={
@@ -455,7 +455,7 @@ function CadastroModal({ contrato, onClose, onSuccess }: {
                       <tr className="bg-gray-50">
                         <th className="px-2 py-1 text-left font-semibold text-gray-500 sticky left-0 bg-gray-50">Mês</th>
                         {meses.map(({ mes, ano }) => (
-                          <th key={key(ano, mes)} className="px-2 py-1 text-center font-semibold text-gray-500 whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
+                          <th key={key(ano, mes)} className="px-1 py-1 text-center font-semibold text-gray-500 whitespace-nowrap w-[84px]">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -464,21 +464,21 @@ function CadastroModal({ contrato, onClose, onSuccess }: {
                         <td className="px-2 py-1 font-semibold text-gray-500 sticky left-0 bg-white whitespace-nowrap">HH Orçado</td>
                         {meses.map(({ mes, ano }) => {
                           const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1"><IntegerInput value={it.meses[k]?.orcado ?? ''} onChange={(v) => updMes(i, k, 'orcado', v)} placeholder="0" /></td>
+                          return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={it.meses[k]?.orcado ?? ''} onChange={(v) => updMes(i, k, 'orcado', v)} placeholder="0" className="h-7 text-center" /></td>
                         })}
                       </tr>
                       <tr className="border-t border-gray-100">
                         <td className="px-2 py-1 font-semibold text-gray-500 sticky left-0 bg-white whitespace-nowrap">HH Previsto</td>
                         {meses.map(({ mes, ano }) => {
                           const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1"><IntegerInput value={it.meses[k]?.previsto ?? ''} onChange={(v) => updMes(i, k, 'previsto', v)} placeholder="0" /></td>
+                          return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={it.meses[k]?.previsto ?? ''} onChange={(v) => updMes(i, k, 'previsto', v)} placeholder="0" className="h-7 text-center" /></td>
                         })}
                       </tr>
                       <tr className="border-t border-gray-100 bg-[#E3F2FD]">
                         <td className="px-2 py-1 font-semibold text-[#185FA5] sticky left-0 bg-[#E3F2FD] whitespace-nowrap">Peso Previsto (t)</td>
                         {meses.map(({ mes, ano }) => {
                           const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1"><CurrencyInput value={it.meses[k]?.pesoPrev ?? ''} onChange={(v) => updMes(i, k, 'pesoPrev', v)} placeholder="0,00" /></td>
+                          return <td key={k} className="px-1 py-1 w-[84px]"><CurrencyInput value={it.meses[k]?.pesoPrev ?? ''} onChange={(v) => updMes(i, k, 'pesoPrev', v)} placeholder="0,00" className="h-7 text-center" /></td>
                         })}
                       </tr>
                     </tbody>
@@ -554,7 +554,7 @@ function LancamentoModal({ contrato, onClose, onSuccess }: {
   }
 
   return (
-    <Modal open onClose={onClose} extraWide hasChanges
+    <Modal open onClose={onClose} wide hasChanges
       title={`Lançar realizado — ${contrato.indice} · ${contrato.cliente.nome}`}
       footer={
         <>
@@ -587,7 +587,7 @@ function LancamentoModal({ contrato, onClose, onSuccess }: {
                     <tr className="bg-gray-50">
                       <th className="px-2 py-1 text-left font-semibold text-gray-500 sticky left-0 bg-gray-50">Indicador</th>
                       {meses.map(({ mes, ano }) => (
-                        <th key={key(ano, mes)} className="px-2 py-1 text-center font-semibold text-gray-500 whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
+                        <th key={key(ano, mes)} className="px-1 py-1 text-center font-semibold text-gray-500 whitespace-nowrap w-[84px]">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
                       ))}
                     </tr>
                   </thead>
@@ -600,7 +600,7 @@ function LancamentoModal({ contrato, onClose, onSuccess }: {
                       <td className="px-2 py-1 font-semibold text-green-dark sticky left-0 bg-[#F1F8E9] whitespace-nowrap">HH Realizado</td>
                       {meses.map(({ mes, ano }) => {
                         const k = key(ano, mes)
-                        return <td key={k} className="px-1 py-1"><IntegerInput value={dados[it.id]?.[k]?.hh ?? ''} onChange={(v) => set(it.id, k, 'hh', v)} placeholder="0" /></td>
+                        return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={dados[it.id]?.[k]?.hh ?? ''} onChange={(v) => set(it.id, k, 'hh', v)} placeholder="0" className="h-7 text-center" /></td>
                       })}
                     </tr>
                     <tr className="border-t border-gray-100">
@@ -614,7 +614,7 @@ function LancamentoModal({ contrato, onClose, onSuccess }: {
                       <td className="px-2 py-1 font-semibold text-green-dark sticky left-0 bg-[#E8F5E9] whitespace-nowrap">Peso Realizado (t)</td>
                       {meses.map(({ mes, ano }) => {
                         const k = key(ano, mes)
-                        return <td key={k} className="px-1 py-1"><CurrencyInput value={dados[it.id]?.[k]?.pesoReal ?? ''} onChange={(v) => set(it.id, k, 'pesoReal', v)} placeholder="0,00" /></td>
+                        return <td key={k} className="px-1 py-1 w-[84px]"><CurrencyInput value={dados[it.id]?.[k]?.pesoReal ?? ''} onChange={(v) => set(it.id, k, 'pesoReal', v)} placeholder="0,00" className="h-7 text-center" /></td>
                       })}
                     </tr>
                     <tr className="border-t border-gray-100">
