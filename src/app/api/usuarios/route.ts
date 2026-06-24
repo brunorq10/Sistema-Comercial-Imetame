@@ -3,6 +3,8 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { pode } from '@/lib/permissoes'
+import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
 
 const PERFIS_VALIDOS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'GESTAO_ACORDOS', 'ACORDOS', 'ADM_GERAL'] as const
 
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  if (!pode(usuarioDaSessao(session), 'cadastro.usuario.gerenciar')) return respostaSemPermissao()
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

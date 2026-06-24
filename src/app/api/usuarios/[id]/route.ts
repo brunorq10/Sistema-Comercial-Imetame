@@ -3,6 +3,8 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { pode } from '@/lib/permissoes'
+import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
 
 const schema = z.object({
   nome: z.string().min(2).optional(),
@@ -18,11 +20,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  // CRÍTICO-3: apenas admins podem modificar usuários
-  const ADMIN_PERFIS = ['ADM_COMERCIAL', 'ADM_GERAL']
-  if (!ADMIN_PERFIS.includes(session.user.perfil as string)) {
-    return NextResponse.json({ data: null, error: 'Apenas administradores podem modificar usuários' }, { status: 403 })
-  }
+  // Gerenciar usuários é exclusivo do ADM Geral (matriz de permissões)
+  if (!pode(usuarioDaSessao(session), 'cadastro.usuario.gerenciar')) return respostaSemPermissao()
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

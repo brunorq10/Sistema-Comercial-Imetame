@@ -12,7 +12,9 @@ import type { ClienteListItem, UsuarioListItem } from '@/types'
 type Tab = 'clientes' | 'usuarios'
 
 export default function CadastrosPage() {
-  const { isAdmin } = usePermissions()
+  const { pode } = usePermissions()
+  const podeCliente = pode('cadastro.cliente.editar')   // criar/editar/inativar têm os mesmos perfis
+  const podeUsuario = pode('cadastro.usuario.gerenciar')
   const [tab, setTab] = useState<Tab>('clientes')
 
   // ── Clientes ──────────────────────────────────────────────────────────────
@@ -85,7 +87,7 @@ export default function CadastrosPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
-        {(['clientes', 'usuarios'] as Tab[]).map((t) => (
+        {(['clientes', 'usuarios'] as Tab[]).filter((t) => t === 'clientes' ? podeCliente : podeUsuario).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -121,7 +123,7 @@ export default function CadastrosPage() {
               Incluir inativos
             </label>
             <div className="ml-auto">
-              {isAdmin && (
+              {podeCliente && (
                 <Button onClick={() => { setEditandoCliente(null); setClienteModal(true) }}>
                   + Novo Cliente
                 </Button>
@@ -140,19 +142,19 @@ export default function CadastrosPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Cidade / UF</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Ramo</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  {isAdmin && <th className="px-4 py-3" />}
+                  {podeCliente && <th className="px-4 py-3" />}
                 </tr>
               </thead>
               <tbody>
                 {loadingClientes ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="text-center py-10 text-gray-400">
+                    <td colSpan={podeCliente ? 8 : 7} className="text-center py-10 text-gray-400">
                       Carregando...
                     </td>
                   </tr>
                 ) : clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="text-center py-10 text-gray-400">
+                    <td colSpan={podeCliente ? 8 : 7} className="text-center py-10 text-gray-400">
                       Nenhum cliente encontrado.
                     </td>
                   </tr>
@@ -182,7 +184,7 @@ export default function CadastrosPage() {
                         {c.ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </td>
-                    {isAdmin && (
+                    {podeCliente && (
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 justify-end">
                           <button
@@ -236,7 +238,7 @@ export default function CadastrosPage() {
               Incluir inativos
             </label>
             <div className="ml-auto">
-              {isAdmin && (
+              {podeUsuario && (
                 <Button onClick={() => { setEditandoUsuario(null); setUsuarioModal(true) }}>
                   + Novo Usuário
                 </Button>
@@ -253,19 +255,19 @@ export default function CadastrosPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Perfil</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  {isAdmin && <th className="px-4 py-3" />}
+                  {podeUsuario && <th className="px-4 py-3" />}
                 </tr>
               </thead>
               <tbody>
                 {loadingUsuarios ? (
                   <tr>
-                    <td colSpan={isAdmin ? 6 : 5} className="text-center py-10 text-gray-400">
+                    <td colSpan={podeUsuario ? 6 : 5} className="text-center py-10 text-gray-400">
                       Carregando...
                     </td>
                   </tr>
                 ) : usuarios.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 6 : 5} className="text-center py-10 text-gray-400">
+                    <td colSpan={podeUsuario ? 6 : 5} className="text-center py-10 text-gray-400">
                       Nenhum usuário encontrado.
                     </td>
                   </tr>
@@ -285,7 +287,7 @@ export default function CadastrosPage() {
                         {u.ativo ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </td>
-                    {isAdmin && (
+                    {podeUsuario && (
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 justify-end">
                           <button
@@ -314,7 +316,7 @@ export default function CadastrosPage() {
             onClose={() => setUsuarioModal(false)}
             onSuccess={() => { setUsuarioModal(false); fetchUsuarios() }}
             editando={editandoUsuario}
-            isAdmin={isAdmin}
+            isAdmin={podeUsuario}
           />
         </>
       )}
