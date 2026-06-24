@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
+import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
 
 const schema = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSolicitacao(session, id, 'orc.proposta.enviar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schema.safeParse(body)
@@ -152,6 +154,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSolicitacao(session, id, 'orc.proposta.enviar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

@@ -42,24 +42,24 @@ export function usePermissions() {
     pode,
     ehDono,
 
-    // Solicitações
-    canCreateSolicitacao: can(is('ADM_COMERCIAL')),
-    canEditSolicitacao: can(inGroup('comercial') || isAnalistaCritico),
-    canCancelSolicitacao: can(is('ADM_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico),
-    canAtribuirOrcamentista: can(isAnalistaCritico),
-    canRecusarSolicitacao: can(isAnalistaCritico),
-    canVerTodasSolicitacoes: can(is('ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL') || isAnalistaCritico),
-    canCriarRevisao: can(is('ADM_COMERCIAL')),
-    canTransferirOrcamentista: can(is('ADM_COMERCIAL')),
-    canAnalisarSolicitacao: can(isAnalistaCritico),
+    // Solicitações (matriz: criar/editar/revisão/cancelar = ADM_COMERCIAL + Analista)
+    canCreateSolicitacao: pode('orc.solicitacao.criar'),
+    canEditSolicitacao: pode('orc.solicitacao.editar'),
+    canCancelSolicitacao: pode('orc.solicitacao.cancelar'),
+    canAtribuirOrcamentista: pode('orc.analise.decidir'),
+    canRecusarSolicitacao: pode('orc.analise.decidir'),
+    canVerTodasSolicitacoes: pode('orc.analise.ver'),
+    canCriarRevisao: pode('orc.solicitacao.revisao'),
+    canTransferirOrcamentista: pode('orc.solicitacao.editar'),
+    canAnalisarSolicitacao: pode('orc.analise.decidir'),
 
-    // Propostas
-    canRegistrarTecnica: can(is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL')),
-    canRegistrarComercial: can(is('ORCAMENTISTA', 'ADM_COMERCIAL', 'GESTAO_COMERCIAL')),
+    // Propostas (matriz: enviar/editar = Orçamentista no próprio registro)
+    canRegistrarTecnica: pode('orc.proposta.enviar', { ehDono: true }),
+    canRegistrarComercial: pode('orc.proposta.enviar', { ehDono: true }),
 
     // Acordos
     canGerirAcordos: can(inGroup('acordos')),
-    canLancarNF: can(is('ACORDOS', 'GESTAO_ACORDOS', 'ADM_COMERCIAL')),
+    canLancarNF: pode('acordos.faturamento.lancar', { ehDono: true }),
 
     // Admin
     isAdmin: inGroup('admin'),

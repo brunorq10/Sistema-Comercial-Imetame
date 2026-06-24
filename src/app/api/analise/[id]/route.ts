@@ -8,14 +8,14 @@ import {
   emailSolicitacaoReprovada,
 } from '@/lib/notifications'
 import type { Classificacao, Interesse, MotivoReprovacao } from '@prisma/client'
+import { pode } from '@/lib/permissoes'
+import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
 
 // GET /api/analise/:id → detalhes completos da solicitação
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
-  if (!session.user.is_analista_critico) {
-    return NextResponse.json({ data: null, error: 'Acesso negado' }, { status: 403 })
-  }
+  if (!pode(usuarioDaSessao(session), 'orc.analise.abrir')) return respostaSemPermissao()
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
@@ -90,9 +90,7 @@ const MOTIVO_LABELS: Record<string, string> = {
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
-  if (!session.user.is_analista_critico) {
-    return NextResponse.json({ data: null, error: 'Acesso negado' }, { status: 403 })
-  }
+  if (!pode(usuarioDaSessao(session), 'orc.analise.decidir')) return respostaSemPermissao()
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
@@ -129,9 +127,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
-  if (!session.user.is_analista_critico) {
-    return NextResponse.json({ data: null, error: 'Acesso negado' }, { status: 403 })
-  }
+  if (!pode(usuarioDaSessao(session), 'orc.analise.decidir')) return respostaSemPermissao()
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

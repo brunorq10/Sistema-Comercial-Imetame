@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
 
 const schemaEquipamento = z.object({
   descricao: z.string().min(1),
@@ -33,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSolicitacao(session, id, 'orc.proposta.enviar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schemaPatch.safeParse(body)
@@ -88,6 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSolicitacao(session, id, 'orc.proposta.enviar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schemaPost.safeParse(body)
@@ -162,6 +165,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSolicitacao(session, id, 'orc.proposta.enviar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schemaPost.safeParse(body)

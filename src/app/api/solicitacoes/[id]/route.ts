@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { emailStatusAlterado } from '@/lib/notifications'
 import { createNotificacao } from '@/lib/notifications'
+import { pode } from '@/lib/permissoes'
+import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
 import { formatDate } from '@/lib/utils'
 import type { Classificacao, Interesse, Origem, Segmento, StatusSolicitacao } from '@prisma/client'
 
@@ -88,6 +90,8 @@ const updateSchema = z.object({
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  // editar e cancelar/suspender têm os mesmos perfis (ADM Comercial + Analista)
+  if (!pode(usuarioDaSessao(session), 'orc.solicitacao.editar')) return respostaSemPermissao()
 
   const EDIT_PERFIS_AMPLOS = ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ADM_GERAL']
   const perfil = session.user.perfil as string

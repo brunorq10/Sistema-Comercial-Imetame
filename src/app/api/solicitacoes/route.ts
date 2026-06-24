@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { gerarNumeroSolicitacao } from '@/lib/utils'
 import { emailNovaSolicitacao } from '@/lib/notifications'
+import { pode } from '@/lib/permissoes'
+import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
 import type { Classificacao, Interesse, Origem, Segmento, StatusSolicitacao } from '@prisma/client'
 
 // ─── GET /api/solicitacoes?modo=filtros ──────────────────────────────────────
@@ -212,6 +214,7 @@ const createSchema = z.object({
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  if (!pode(usuarioDaSessao(session), 'orc.solicitacao.criar')) return respostaSemPermissao()
 
   const body = await req.json()
   const parsed = createSchema.safeParse(body)
