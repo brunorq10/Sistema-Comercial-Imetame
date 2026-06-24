@@ -22,7 +22,8 @@ interface Contagens {
 }
 
 export default function RegistroNFsPage() {
-  const { canLancarNF } = usePermissions()
+  const { pode } = usePermissions()
+  const canInativar = pode('acordos.nf.inativar')
 
   const [items, setItems] = useState<NFListItem[]>([])
   const [contagens, setContagens] = useState<Contagens>({ total: 0, vencidas: 0, proximas: 0, ok: 0, inativas: 0, totalValor: 0, totalVencidas: 0 })
@@ -176,7 +177,7 @@ export default function RegistroNFsPage() {
               <NFsTable
                 data={items}
                 onToggleAtiva={handleToggleAtiva}
-                canInativar={canLancarNF}
+                canInativar={canInativar}
               />
             </div>
             <Pagination page={page} pages={pages} total={total} limit={10} onPage={setPage} />

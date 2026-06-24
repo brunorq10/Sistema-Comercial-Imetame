@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { exigirPermissao, exigirTitularNfContrato } from '@/lib/permissaoApi'
 
 const schema = z.object({
   // inativação / reativação
@@ -20,12 +21,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  // CRÍTICO-3: apenas perfis com permissão de faturamento podem modificar NFs
-  const NF_PERFIS = ['ACORDOS', 'GESTAO_ACORDOS', 'ADM_COMERCIAL', 'ADM_GERAL']
-  if (!NF_PERFIS.includes(session.user.perfil as string)) {
-    return NextResponse.json({ data: null, error: 'Sem permissão para modificar NFs' }, { status: 403 })
-  }
-
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
@@ -36,6 +31,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const d = parsed.data
+
+  // Editar exige titularidade do contrato; inativar/reativar é exclusivo da gestão.
+  { const _n = await exigirTitularNfContrato(session, id, 'acordos.nf.editar'); if (_n) return _n }
+  if (d.ativa !== undefined) {
+    const { erro } = await exigirPermissao('acordos.nf.inativar'); if (erro) return erro
+  }
 
   // Busca NF atual para recalcular valor_atribuido se necessário
   const nfAtual = await prisma.notaFiscalContrato.findUnique({ where: { id } })
@@ -87,6 +88,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  { const { erro } = await exigirPermissao('acordos.nf.excluir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

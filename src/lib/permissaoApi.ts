@@ -58,3 +58,51 @@ export async function exigirTitularContrato(
   if (!pode(usuario, permissao, { ehDono: ehDono(usuario, ct, 'contrato') })) return respostaSemPermissao()
   return null
 }
+
+// Guard por titularidade resolvendo o contrato a partir de um sub-índice.
+export async function exigirTitularSubindice(
+  session: Session | null,
+  subindiceId: number,
+  permissao: Permissao,
+): Promise<NextResponse | null> {
+  const usuario = usuarioDaSessao(session)
+  if (!usuario) return respostaNaoAutorizado()
+  const sub = await prisma.subIndiceFaturamento.findUnique({
+    where: { id: subindiceId },
+    select: { contrato: { select: { responsavel_id: true } } },
+  })
+  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, sub?.contrato, 'contrato') })) return respostaSemPermissao()
+  return null
+}
+
+// Guard por titularidade resolvendo o contrato a partir de uma NF de contrato.
+export async function exigirTitularNfContrato(
+  session: Session | null,
+  nfId: number,
+  permissao: Permissao,
+): Promise<NextResponse | null> {
+  const usuario = usuarioDaSessao(session)
+  if (!usuario) return respostaNaoAutorizado()
+  const nf = await prisma.notaFiscalContrato.findUnique({
+    where: { id: nfId },
+    select: { subindice: { select: { contrato: { select: { responsavel_id: true } } } } },
+  })
+  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, nf?.subindice?.contrato, 'contrato') })) return respostaSemPermissao()
+  return null
+}
+
+// Guard por titularidade resolvendo o contrato a partir de um item de fabricação.
+export async function exigirTitularFabItem(
+  session: Session | null,
+  itemId: number,
+  permissao: Permissao,
+): Promise<NextResponse | null> {
+  const usuario = usuarioDaSessao(session)
+  if (!usuario) return respostaNaoAutorizado()
+  const item = await prisma.fabricacaoItem.findUnique({
+    where: { id: itemId },
+    select: { contrato: { select: { responsavel_id: true } } },
+  })
+  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, item?.contrato, 'contrato') })) return respostaSemPermissao()
+  return null
+}

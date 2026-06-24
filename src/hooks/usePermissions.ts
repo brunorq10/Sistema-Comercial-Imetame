@@ -59,7 +59,7 @@ export function usePermissions() {
 
     // Acordos
     canGerirAcordos: can(inGroup('acordos')),
-    canLancarNF: pode('acordos.faturamento.lancar', { ehDono: true }),
+    canLancarNF: pode('acordos.faturamento.lancar'),
 
     // Admin
     isAdmin: inGroup('admin'),

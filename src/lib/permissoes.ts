@@ -56,7 +56,8 @@ export const CATALOGO = {
   // ─────────── Acordos ───────────
   // Meu Painel
   'acordos.painel.prev.editar':       { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
-  // Faturamento (lançar): gestão em qualquer; responsável apenas no próprio
+  // Lançar faturamento (criar NF): gestão lança qualquer (APROVADO direto);
+  // responsável (ACORDOS) lança no PRÓPRIO contrato via Meu Painel (gera PENDENTE).
   'acordos.faturamento.lancar':       { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   // Controle de Faturamento
   'acordos.faturamento.item.editar':  { perfis: ['GESTAO_ACORDOS'] },

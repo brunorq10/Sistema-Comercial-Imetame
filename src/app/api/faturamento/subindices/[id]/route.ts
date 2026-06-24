@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { logger } from '@/lib/logger'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 
@@ -50,9 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem editar sub-índices diretamente
-  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
-    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode editar sub-índices diretamente' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('acordos.faturamento.item.editar'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
@@ -121,9 +120,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem excluir sub-índices
-  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
-    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode excluir sub-índices' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('acordos.faturamento.item.excluir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const CAMPO_LABELS: Record<string, string> = {
   num_os: 'Nº OS', num_acordo: 'Nº Acordo', num_proposta: 'Nº Proposta',
@@ -124,6 +125,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  { const { erro } = await exigirPermissao('acordos.faturamento.item.editar'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
@@ -192,9 +194,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   // RN-CF-22: apenas GESTAO_ACORDOS ou ADM_GERAL podem cancelar contratos
-  if (session.user.perfil !== 'GESTAO_ACORDOS' && session.user.perfil !== 'ADM_GERAL') {
-    return NextResponse.json({ data: null, error: 'Apenas Gestão Acordos pode cancelar contratos' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('acordos.faturamento.item.excluir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

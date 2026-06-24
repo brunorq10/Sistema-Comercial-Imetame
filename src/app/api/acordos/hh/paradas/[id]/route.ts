@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { auth } from '@/lib/auth'
+import { exigirTitularContrato } from '@/lib/permissaoApi'
 
 const DiaSchema = z.object({
   etapa: z.enum(['PREPARATIVO', 'PARADA', 'ACOMP_DESMOB']),
@@ -109,8 +111,12 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
   const contratoId = parseInt(params.id, 10)
   if (isNaN(contratoId)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularContrato(session, contratoId, 'acordos.paradas.controlehh.editar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = BodySchema.safeParse(body)

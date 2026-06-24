@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { withApi } from '@/lib/apiHandler'
+import { exigirTitularSubindice } from '@/lib/permissaoApi'
 
 const schema = z.object({
   numero_nf: z.string().min(1),
@@ -20,6 +21,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
 
   const subindiceId = Number(params.id)
   if (isNaN(subindiceId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularSubindice(session, subindiceId, 'acordos.faturamento.lancar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

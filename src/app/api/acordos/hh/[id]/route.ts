@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { withApi } from '@/lib/apiHandler'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 // DELETE — "Remover do acompanhamento" de HH (Obras/Paradas).
 // RN-18: NÃO exclui os dados. Faz soft-cancel com justificativa obrigatória e histórico.
@@ -10,6 +11,7 @@ import { withApi } from '@/lib/apiHandler'
 export const DELETE = withApi(async (req: NextRequest, { params }: { params: { id: string } }) => {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  { const { erro } = await exigirPermissao('acordos.obras.remover'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 // Contratos elegíveis para Fabricações: classificação Fabricações ou Óleo e Gás
 const CLASSIF_FABRICACAO = ['FABRICACOES', 'OLEO_GAS'] as const
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
   const userId = Number(session.user.id)
+  { const { erro } = await exigirPermissao('acordos.fab.itens.editar'); if (erro) return erro }
 
   const parsed = bodySchema.safeParse(await req.json())
   if (!parsed.success) {

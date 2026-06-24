@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
+import { exigirTitularSubindice } from '@/lib/permissaoApi'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -138,6 +139,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { subindice_id, valores_para } = parsed.data
+
+  // Solicitar alteração de previsão = editar previsão no Meu Painel (titularidade)
+  { const _n = await exigirTitularSubindice(session, subindice_id, 'acordos.painel.prev.editar'); if (_n) return _n }
 
   try {
     // Verifica se o subindice existe

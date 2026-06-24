@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -21,10 +22,7 @@ export async function PUT(
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  const perfil = session.user.perfil
-  if (perfil !== 'GESTAO_ACORDOS' && perfil !== 'ADM_GERAL') {
-    return NextResponse.json({ data: null, error: 'Apenas a coordenação de Acordos (ou ADM Geral) pode aprovar ou reprovar alterações' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('acordos.aprovacoes.decidir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

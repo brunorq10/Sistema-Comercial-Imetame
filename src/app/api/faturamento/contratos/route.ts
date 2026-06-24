@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const subindiceSchema = z.object({
   descricao: z.string().min(1),
@@ -128,6 +129,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  { const { erro } = await exigirPermissao('acordos.faturamento.novo'); if (erro) return erro }
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

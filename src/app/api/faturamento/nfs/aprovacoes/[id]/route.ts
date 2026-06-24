@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { withApi } from '@/lib/apiHandler'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const schema = z.object({
   acao: z.enum(['APROVAR', 'REPROVAR']),
@@ -15,10 +16,7 @@ export const PATCH = withApi(async (req: NextRequest, { params }: { params: { id
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
-  const perfil = session.user.perfil
-  if (perfil !== 'GESTAO_ACORDOS' && perfil !== 'ADM_GERAL') {
-    return NextResponse.json({ data: null, error: 'Apenas a coordenação de Acordos pode aprovar lançamentos.' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('acordos.aprovacoes.decidir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

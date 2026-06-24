@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { exigirTitularContrato } from '@/lib/permissaoApi'
 
 const schema = z.object({
   mes:          z.number().int().min(1).max(12),
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+  { const _n = await exigirTitularContrato(session, id, 'acordos.obras.hh.lancar'); if (_n) return _n }
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

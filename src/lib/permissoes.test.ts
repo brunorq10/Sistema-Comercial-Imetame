@@ -50,6 +50,15 @@ describe('Módulo Acordos', () => {
     expect(pode(u('GESTAO_ACORDOS'), 'acordos.nf.excluir')).toBe(false)
     expect(pode(u('ADM_GERAL'), 'acordos.nf.excluir')).toBe(true)
   })
+  it('lançar faturamento: GESTAO em qualquer; ACORDOS só no próprio contrato', () => {
+    expect(pode(u('GESTAO_ACORDOS'), 'acordos.faturamento.lancar', { ehDono: false })).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.faturamento.lancar', { ehDono: true })).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.faturamento.lancar', { ehDono: false })).toBe(false)
+  })
+  it('inativar NF é gestão-only (responsável não inativa)', () => {
+    expect(pode(u('GESTAO_ACORDOS'), 'acordos.nf.inativar')).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.nf.inativar', { ehDono: true })).toBe(false)
+  })
 })
 
 describe('Módulo Cadastro', () => {

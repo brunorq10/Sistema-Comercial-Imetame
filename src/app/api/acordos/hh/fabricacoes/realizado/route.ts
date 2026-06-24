@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { exigirTitularContrato, exigirTitularFabItem } from '@/lib/permissaoApi'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const mesLabel = (mes: number, ano: number) => `${MESES[mes]}/${String(ano).slice(2)}`
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
   const lancamentos = parsed.data.lancamentos
+
+  // Titularidade: o contrato do item determina quem pode lançar realizado
+  { const _n = await exigirTitularFabItem(session, lancamentos[0].item_id, 'acordos.fab.realizado.lancar'); if (_n) return _n }
 
   // Estado atual para diff do histórico
   const itemIds = Array.from(new Set(lancamentos.map((l) => l.item_id)))
@@ -101,6 +105,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
   const { contrato_id, motivo } = parsed.data
+
+  { const _n = await exigirTitularContrato(session, contrato_id, 'acordos.fab.realizado.lancar'); if (_n) return _n }
 
   const itens = await prisma.fabricacaoItem.findMany({
     where: { contrato_id },

@@ -47,12 +47,13 @@ const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'S
 
 export default function FaturamentoPage() {
   const router = useRouter()
-  const { canLancarNF: _canLancarNF, canGerirAcordos, isAdmin, isLoading: sessionLoading } = usePermissions()
+  const { canLancarNF: _canLancarNF, pode, isLoading: sessionLoading } = usePermissions()
   // Keep last known permissions during session reload to prevent button flicker
   const canEditarRef   = useRef(false)
   const canLancarNFRef = useRef(false)
   if (!sessionLoading) {
-    canEditarRef.current   = canGerirAcordos || isAdmin
+    // Controle de Faturamento: editar/criar itens é exclusivo da gestão (matriz)
+    canEditarRef.current   = pode('acordos.faturamento.item.editar')
     canLancarNFRef.current = _canLancarNF
   }
   const canEditar   = canEditarRef.current
