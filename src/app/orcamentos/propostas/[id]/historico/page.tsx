@@ -16,8 +16,7 @@ import { Line } from 'react-chartjs-2'
 import { formatDate, formatCurrency, formatRev } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
-import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
-import { TIPO_INTERACAO_MAP, IMPACTO_LABEL } from '@/lib/interacoes'
+import { LinhaTempoNegociacao } from '@/components/painel/LinhaTempoNegociacao'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, ChartDataLabels)
 
@@ -58,11 +57,6 @@ interface FabData {
   resultado: string | null; data_envio: string | null
   equipamentos: EquipFab[]
 }
-interface InfoData {
-  id: number; tipo: string | null; data: string; comentario: string
-  impacto: string[]; versao: number | null; created_at: string
-  created_by: number; autor: string
-}
 interface HistoricoData {
   id: number; numero: string; created_at: string; data_recebimento: string | null
   cliente: string; cliente_final: string | null; cidade: string | null; estado: string | null
@@ -72,7 +66,6 @@ interface HistoricoData {
   propostas_tecnicas: TecData[]
   propostas_comerciais: ComData[]
   propostas_fabricacao: FabData[]
-  informacoes: InfoData[]
 }
 
 // Rev unificada para Paradas/Obras
@@ -238,7 +231,7 @@ export default function HistoricoPage({ params, searchParams }: { params: { id: 
 
   // Fabricações usa modelo próprio
   if (isFab) {
-    return <HistoricoFabricacao raw={raw} router={router} fromUrl={fromUrl} onChanged={load} />
+    return <HistoricoFabricacao raw={raw} router={router} fromUrl={fromUrl} />
   }
 
   if (revisions.length === 0) return <div className="p-8 text-center text-gray-400 text-sm">Nenhuma revisão registrada.</div>
@@ -523,11 +516,11 @@ export default function HistoricoPage({ params, searchParams }: { params: { id: 
         </div>
       </div>
 
-      <InfoSection
-        infos={raw.informacoes}
+      <LinhaTempoNegociacao
         solicitacaoId={raw.id}
         numero={raw.numero}
-        onChanged={load}
+        cliente={raw.cliente}
+        escopo={raw.escopo}
         canCreate={pode('orc.info.registrar')}
         userId={userId}
         canSupervise={pode('orc.info.excluir')}
@@ -538,7 +531,7 @@ export default function HistoricoPage({ params, searchParams }: { params: { id: 
 
 // ─── Fabricação layout ────────────────────────────────────────────────────────
 
-function HistoricoFabricacao({ raw, router, fromUrl, onChanged }: { raw: HistoricoData; router: ReturnType<typeof useRouter>; fromUrl: string; onChanged: () => void }) {
+function HistoricoFabricacao({ raw, router, fromUrl }: { raw: HistoricoData; router: ReturnType<typeof useRouter>; fromUrl: string }) {
   const { userId, pode } = usePermissions()
   const fabs = raw.propostas_fabricacao
 
@@ -753,11 +746,11 @@ function HistoricoFabricacao({ raw, router, fromUrl, onChanged }: { raw: Histori
         </div>
       </div>
 
-      <InfoSection
-        infos={raw.informacoes}
+      <LinhaTempoNegociacao
         solicitacaoId={raw.id}
         numero={raw.numero}
-        onChanged={onChanged}
+        cliente={raw.cliente}
+        escopo={raw.escopo}
         canCreate={pode('orc.info.registrar')}
         userId={userId}
         canSupervise={pode('orc.info.excluir')}
@@ -767,116 +760,6 @@ function HistoricoFabricacao({ raw, router, fromUrl, onChanged }: { raw: Histori
 }
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
-
-interface InfoSectionProps {
-  infos: InfoData[]
-  solicitacaoId: number
-  numero: string
-  onChanged: () => void
-  canCreate: boolean
-  userId: number | null
-  canSupervise: boolean
-}
-
-function InfoSection({ infos, solicitacaoId, numero, onChanged, canCreate, userId, canSupervise }: InfoSectionProps) {
-  const [modal, setModal] = useState(false)
-  const [removendo, setRemovendo] = useState<number | null>(null)
-
-  const excluir = async (id: number) => {
-    if (!confirm('Excluir esta interação? Esta ação não pode ser desfeita.')) return
-    setRemovendo(id)
-    try {
-      const res = await fetch(`/api/solicitacoes/${solicitacaoId}/informacoes/${id}`, { method: 'DELETE' })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok || json.error) { alert(json.error ?? 'Erro ao excluir'); return }
-      onChanged()
-    } finally { setRemovendo(null) }
-  }
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
-      <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-gray-700">Linha do Tempo de Negociação</p>
-        {canCreate && (
-          <button
-            onClick={() => setModal(true)}
-            className="text-[11px] font-semibold text-green-primary border border-green-primary rounded px-2.5 py-1 hover:bg-green-light transition-colors"
-          >
-            + Nova Interação
-          </button>
-        )}
-      </div>
-
-      {infos.length === 0 ? (
-        <p className="px-4 py-6 text-center text-[11px] text-gray-400">Nenhuma interação registrada ainda.</p>
-      ) : (
-        <div className="divide-y divide-gray-50">
-          {infos.map(info => {
-            const cfg = info.tipo ? TIPO_INTERACAO_MAP[info.tipo] : undefined
-            const Icon = cfg?.icon
-            const podeExcluir = canSupervise || (userId != null && info.created_by === userId)
-            return (
-              <div key={info.id} className="px-4 py-3 flex gap-3">
-                <div className="shrink-0 text-center min-w-[64px]">
-                  <p className="text-[10px] font-semibold text-gray-700">{formatDate(info.data)}</p>
-                  {info.versao != null && (
-                    <span className="inline-block mt-0.5 text-[9px] bg-green-50 text-green-700 border border-green-200 rounded-full px-1.5 py-0.5 font-semibold">
-                      Relacionado: {formatRev(info.versao)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  {cfg && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold mb-1"
-                      style={{ color: cfg.cor, backgroundColor: cfg.corBg }}
-                    >
-                      {Icon && <Icon width={11} height={11} />}
-                      {cfg.label}
-                    </span>
-                  )}
-                  <p className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap">{info.comentario}</p>
-                  {info.impacto.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {info.impacto.map(imp => (
-                        <span key={imp} className="text-[9px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-1.5 py-0.5">
-                          {IMPACTO_LABEL[imp] ?? imp}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
-                  <p className="text-[9px] font-semibold text-gray-500">{info.autor}</p>
-                  <p className="text-[9px] text-gray-400">{formatDate(info.created_at)} {new Date(info.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                  {podeExcluir && (
-                    <button
-                      onClick={() => excluir(info.id)}
-                      disabled={removendo === info.id}
-                      className="text-[9px] text-red-400 hover:text-red-600 font-semibold mt-0.5 disabled:opacity-50"
-                    >
-                      {removendo === info.id ? 'Excluindo...' : 'Excluir'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {modal && (
-        <RegistrarInfoModal
-          open
-          onClose={() => setModal(false)}
-          onSuccess={onChanged}
-          solicitacaoId={solicitacaoId}
-          numero={numero}
-        />
-      )}
-    </div>
-  )
-}
 
 function HeaderBar({ raw, onBack, onExport }: { raw: HistoricoData; onBack: () => void; onExport: () => void }) {
   return (
