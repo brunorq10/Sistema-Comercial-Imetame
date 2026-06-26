@@ -40,7 +40,11 @@ export const CATALOGO = {
   // ─────────── Orçamentos ───────────
   // Meu Painel
   'orc.proposta.enviar':     { todos: [],                proprio: ['ORCAMENTISTA'] },
-  'orc.info.registrar':      { todos: [],                proprio: ['ORCAMENTISTA'] },
+  // Interações (Linha do Tempo): qualquer perfil com acesso à solicitação cria
+  'orc.info.registrar':      { perfis: ['ADM_COMERCIAL', 'ORCAMENTISTA', 'GESTAO_COMERCIAL'], analista: true },
+  // Excluir interação: supervisão (Gestão Comercial / ADM Geral) — autor é
+  // verificado à parte na rota (created_by). ADM_GERAL é soberano.
+  'orc.info.excluir':        { perfis: ['GESTAO_COMERCIAL'] },
   // Solicitações
   'orc.solicitacao.criar':   { perfis: ['ADM_COMERCIAL'], analista: true },
   'orc.solicitacao.revisao': { perfis: ['ADM_COMERCIAL'], analista: true },

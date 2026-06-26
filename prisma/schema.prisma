@@ -429,6 +429,12 @@ model SolicitacaoInfo {
   solicitacao_id Int
   data           DateTime
   comentario     String
+  // Tipo da interação (REUNIAO_CALL, DECISAO_INTERNA, FEEDBACK_CLIENTE,
+  // CONCORRENCIA, ALTERACAO_INFORMAL, COMPROMISSO_ASSUMIDO). Nullable para
+  // registros legados/automáticos (encerramento de revisão).
+  tipo           String?
+  // Impacto (múltipla seleção): AFETA_PRAZO, AFETA_VALOR, AFETA_ESCOPO, NENHUM
+  impacto        String[]
   versao         Int?
   created_at     DateTime @default(now())
   created_by     Int

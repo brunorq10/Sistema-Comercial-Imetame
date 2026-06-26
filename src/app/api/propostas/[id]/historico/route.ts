@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         include: { equipamentos: { orderBy: { ordem: 'asc' } } },
       },
       solicitacoes_info: {
-        orderBy: { data: 'asc' },
+        orderBy: [{ data: 'desc' }, { created_at: 'desc' }],
         include: { criador: { select: { nome: true } } },
       },
     },
@@ -113,10 +113,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       })),
       informacoes: sol.solicitacoes_info.map(i => ({
         id: i.id,
+        tipo: i.tipo,
         data: i.data.toISOString(),
         comentario: i.comentario,
+        impacto: i.impacto,
         versao: i.versao,
         created_at: i.created_at.toISOString(),
+        created_by: i.created_by,
         autor: i.criador.nome,
       })),
     },

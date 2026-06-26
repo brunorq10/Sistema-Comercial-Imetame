@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirPermissao } from '@/lib/permissaoApi'
+
+const TIPOS = ['REUNIAO_CALL', 'DECISAO_INTERNA', 'FEEDBACK_CLIENTE', 'CONCORRENCIA', 'ALTERACAO_INFORMAL', 'COMPROMISSO_ASSUMIDO'] as const
+const IMPACTOS = ['AFETA_PRAZO', 'AFETA_VALOR', 'AFETA_ESCOPO', 'NENHUM'] as const
 
 const schemaPost = z.object({
-  data: z.string().min(1),
-  comentario: z.string().min(1),
+  tipo: z.enum(TIPOS, { required_error: 'Selecione o tipo de interação' }),
+  data: z.string().min(1, 'Informe a data do evento'),
+  comentario: z.string().min(1, 'Informe a descrição'),
+  impacto: z.array(z.enum(IMPACTOS)).optional().default([]),
   versao: z.number().int().optional(),
 })
 
@@ -26,10 +31,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({
     data: infos.map(i => ({
       id: i.id,
+      tipo: i.tipo,
       data: i.data.toISOString(),
       comentario: i.comentario,
+      impacto: i.impacto,
       versao: i.versao,
       created_at: i.created_at.toISOString(),
+      created_by: i.created_by,
       autor: i.criador.nome,
     })),
     error: null,
@@ -42,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
-  { const _n = await exigirTitularSolicitacao(session, id, 'orc.info.registrar'); if (_n) return _n }
+  { const { erro } = await exigirPermissao('orc.info.registrar'); if (erro) return erro }
 
   const body = await req.json()
   const parsed = schemaPost.safeParse(body)
@@ -70,8 +78,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const info = await prisma.solicitacaoInfo.create({
     data: {
       solicitacao_id: id,
+      tipo: parsed.data.tipo,
       data: new Date(parsed.data.data),
       comentario: parsed.data.comentario,
+      impacto: parsed.data.impacto,
       versao: versaoAtual,
       created_by: Number(session.user.id),
     },
@@ -81,10 +91,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({
     data: {
       id: info.id,
+      tipo: info.tipo,
       data: info.data.toISOString(),
       comentario: info.comentario,
+      impacto: info.impacto,
       versao: info.versao,
       created_at: info.created_at.toISOString(),
+      created_by: info.created_by,
       autor: info.criador.nome,
     },
     error: null,

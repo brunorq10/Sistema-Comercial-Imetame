@@ -24,6 +24,18 @@ describe('Módulo Orçamentos', () => {
     expect(pode(u('GESTAO_COMERCIAL', true), 'orc.analise.decidir')).toBe(true)      // base + Analista → concedida
     expect(pode(u('ORCAMENTISTA', true), 'orc.solicitacao.criar')).toBe(true)        // Analista soma ao Orçamentista
   })
+  it('interação: criar é liberado para comercial + analista; ACORDOS não cria', () => {
+    expect(pode(u('ORCAMENTISTA'), 'orc.info.registrar')).toBe(true)
+    expect(pode(u('ADM_COMERCIAL'), 'orc.info.registrar')).toBe(true)
+    expect(pode(u('GESTAO_COMERCIAL'), 'orc.info.registrar')).toBe(true)
+    expect(pode(u('ACORDOS', true), 'orc.info.registrar')).toBe(true)   // flag analista soma
+    expect(pode(u('ACORDOS'), 'orc.info.registrar')).toBe(false)
+  })
+  it('interação: excluir (supervisão) só Gestão Comercial / ADM Geral', () => {
+    expect(pode(u('GESTAO_COMERCIAL'), 'orc.info.excluir')).toBe(true)
+    expect(pode(u('ADM_GERAL'), 'orc.info.excluir')).toBe(true)
+    expect(pode(u('ORCAMENTISTA'), 'orc.info.excluir')).toBe(false)
+  })
   it('titularidade: enviar proposta só na própria solicitação', () => {
     expect(pode(u('ORCAMENTISTA'), 'orc.proposta.enviar', { ehDono: true })).toBe(true)
     expect(pode(u('ORCAMENTISTA'), 'orc.proposta.enviar', { ehDono: false })).toBe(false)
