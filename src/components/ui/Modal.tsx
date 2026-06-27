@@ -26,6 +26,7 @@ interface ModalProps {
   open: boolean
   onClose: () => void
   title: string
+  subtitle?: React.ReactNode
   children: React.ReactNode
   footer?: React.ReactNode
   wide?: boolean
@@ -35,7 +36,7 @@ interface ModalProps {
   confirmClose?: boolean
 }
 
-export function Modal({ open, onClose, title, children, footer, wide, extraWide, hasChanges, confirmClose }: ModalProps) {
+export function Modal({ open, onClose, title, subtitle, children, footer, wide, extraWide, hasChanges, confirmClose }: ModalProps) {
   const [confirmingClose, setConfirmingClose] = useState(false)
   // Marca se o usuário realmente editou algum campo enquanto o modal esteve aberto.
   // Assim só perguntamos "sair sem salvar?" quando houve edição — não ao apenas abrir/fechar.
@@ -70,11 +71,14 @@ export function Modal({ open, onClose, title, children, footer, wide, extraWide,
             extraWide ? 'w-[960px] max-w-[96%]' : wide ? 'w-[680px] max-w-[96%]' : 'w-[540px] max-w-[96%]',
           )}
         >
-          <div className="bg-green-primary text-white px-[18px] py-[13px] font-bold text-[13px] flex items-center justify-between flex-shrink-0">
-            <span>{title}</span>
+          <div className="bg-green-primary text-white px-[18px] py-[13px] flex items-start justify-between flex-shrink-0">
+            <div className="min-w-0">
+              <span className="font-bold text-[13px] block">{title}</span>
+              {subtitle && <span className="text-[11px] font-normal text-white/80 block truncate">{subtitle}</span>}
+            </div>
             <button
               onClick={handleClose}
-              className="text-white/80 hover:text-white text-lg leading-none"
+              className="text-white/80 hover:text-white text-lg leading-none shrink-0 ml-3"
               aria-label="Fechar"
             >
               ✕

@@ -5,11 +5,11 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 export const TIPOS_OCORRENCIA = [
+  { value: 'FALTA_ENERGIA',          label: 'Falta de Energia' },
   { value: 'CHUVA',                  label: 'Chuva' },
-  { value: 'INDISPONIBILIDADE_LOCAL', label: 'Indisponibilidade do Local' },
+  { value: 'ENTREGA_MATERIAL',       label: 'Entrega de Material' },
   { value: 'PARALISACAO_TERCEIROS',  label: 'Paralisação por Terceiros' },
-  { value: 'ALTERACAO_ESCOPO',       label: 'Alteração de Escopo' },
-  { value: 'ATRASO_MATERIAL',        label: 'Atraso de Material/Insumo' },
+  { value: 'INDISPONIBILIDADE_LOCAL', label: 'Indisponibilidade do Local' },
   { value: 'OUTROS',                 label: 'Outros' },
 ] as const
 
@@ -26,9 +26,10 @@ export interface ResponsabilidadeCfg {
 
 export const RESPONSABILIDADES: ResponsabilidadeCfg[] = [
   { value: 'CLIENTE',     label: 'Cliente',     cor: '#A32D2D', corBg: '#FCEDED' },
-  { value: 'FORCA_MAIOR', label: 'Força Maior', cor: '#7C3AED', corBg: '#F3EDFE' },
   { value: 'IMETAME',     label: 'Imetame',     cor: '#185FA5', corBg: '#EAF2FB' },
   { value: 'TERCEIROS',   label: 'Terceiros',   cor: '#B45309', corBg: '#FEF6EC' },
+  { value: 'FORCA_MAIOR', label: 'Força Maior', cor: '#7C3AED', corBg: '#F3EDFE' },
+  { value: 'A_APURAR',    label: 'A apurar',    cor: '#6B7280', corBg: '#F3F4F6' },
 ]
 
 export const RESPONSABILIDADE_MAP: Record<string, ResponsabilidadeCfg> = Object.fromEntries(
@@ -38,6 +39,8 @@ export const RESPONSABILIDADE_MAP: Record<string, ResponsabilidadeCfg> = Object.
 export const IMPACTOS_OCORRENCIA = [
   { value: 'PRAZO',            label: 'Prazo' },
   { value: 'CUSTO',            label: 'Custo' },
+  { value: 'IMPRODUTIVIDADE',  label: 'Improdutividade' },
+  { value: 'SEGURANCA',        label: 'Segurança' },
   { value: 'CRONOGRAMA',       label: 'Cronograma' },
   { value: 'MARCO_CONTRATUAL', label: 'Marco Contratual' },
   { value: 'OUTROS',           label: 'Outros' },

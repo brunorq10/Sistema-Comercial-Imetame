@@ -7,6 +7,7 @@ import {
   RESPONSABILIDADES, RESPONSABILIDADE_MAP,
   IMPACTO_OCORRENCIA_LABEL, PERIODOS,
 } from '@/lib/ocorrencias'
+import { NovaOcorrenciaModal } from '@/components/forms/NovaOcorrenciaModal'
 
 interface Anexo { id: number; nome: string; tipo: string; url: string; tamanho: number | null }
 interface Ocorrencia {
@@ -55,8 +56,10 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
   const [items, setItems] = useState<Ocorrencia[]>([])
   const [total, setTotal] = useState(0)
   const [responsaveis, setResponsaveis] = useState<Responsavel[]>([])
+  const [proximoCodigo, setProximoCodigo] = useState('OC-0001')
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Ocorrencia | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
       .then(j => {
         if (!ativo || j.error) return
         setItems(j.data.items); setTotal(j.data.total); setResponsaveis(j.data.responsaveis)
+        if (j.data.proximoCodigo) setProximoCodigo(j.data.proximoCodigo)
       })
       .finally(() => { if (ativo) setLoading(false) })
     return () => { ativo = false }
@@ -96,9 +100,6 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
     setReloadKey(k => k + 1)
   }
 
-  const novaOcorrencia = () => {
-    alert('O formulário de lançamento de ocorrências será disponibilizado em breve.')
-  }
 
   // ── Detalhe (substitui a tabela) ──────────────────────────────────────────
   if (selected) {
@@ -188,7 +189,7 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
           <p className="text-[11px] text-gray-500 truncate">{subtitulo}</p>
         </div>
         {canCreate && (
-          <button onClick={novaOcorrencia} className="shrink-0 bg-green-primary hover:bg-green-dark text-white text-[12px] font-semibold rounded px-3 py-1.5 transition-colors">
+          <button onClick={() => setModalOpen(true)} className="shrink-0 bg-green-primary hover:bg-green-dark text-white text-[12px] font-semibold rounded px-3 py-1.5 transition-colors">
             + Nova Ocorrência
           </button>
         )}
@@ -304,6 +305,18 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
             </tbody>
           </table>
         </div>
+      )}
+
+      {modalOpen && (
+        <NovaOcorrenciaModal
+          open
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => setReloadKey(k => k + 1)}
+          contratoId={contratoId}
+          numero={numero}
+          subtitulo={subtitulo}
+          proximoCodigo={proximoCodigo}
+        />
       )}
     </div>
   )
