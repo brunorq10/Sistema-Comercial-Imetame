@@ -1,20 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { formatDate, formatRev } from '@/lib/utils'
-import { TIPO_INTERACAO_MAP, IMPACTO_LABEL } from '@/lib/interacoes'
+import { formatDate } from '@/lib/utils'
+import { TIPO_INTERACAO_MAP } from '@/lib/interacoes'
 import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
 
 interface Info {
   id: number
+  codigo: string | null
   tipo: string | null
   data: string
   comentario: string
-  impacto: string[]
-  versao: number | null
   created_at: string
   created_by: number
   autor: string
+  anexosCount: number
 }
 
 interface Props {
@@ -58,13 +58,19 @@ const IconInbox = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
   </svg>
 )
+const IconClip = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+)
 
 export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, canCreate, userId, canSupervise }: Props) {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
-  const [tipo, setTipo] = useState<'all' | 'DECISAO_INTERNA'>('all')
+  const [tipo, setTipo] = useState<'all' | 'DEFINICAO_INTERNA'>('all')
   const [items, setItems] = useState<Info[]>([])
   const [total, setTotal] = useState(0)
+  const [proximoCodigo, setProximoCodigo] = useState('INF-0001')
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [modal, setModal] = useState(false)
@@ -91,7 +97,12 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
     setLoading(true)
     fetch(buildUrl(0))
       .then(r => r.json())
-      .then(j => { if (ativo && !j.error) { setItems(j.data.items); setTotal(j.data.total) } })
+      .then(j => {
+        if (ativo && !j.error) {
+          setItems(j.data.items); setTotal(j.data.total)
+          if (j.data.proximoCodigo) setProximoCodigo(j.data.proximoCodigo)
+        }
+      })
       .finally(() => { if (ativo) setLoading(false) })
     return () => { ativo = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +164,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
         )}
         <div className="flex items-center gap-1.5 mt-2.5">
           <span className="text-[10px] text-gray-400 mr-1">Filtrar:</span>
-          {([['all', 'Todos'], ['DECISAO_INTERNA', 'Decisões']] as const).map(([val, label]) => (
+          {([['all', 'Todos'], ['DEFINICAO_INTERNA', 'Decisões']] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setTipo(val)}
@@ -205,6 +216,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
 
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {info.codigo && <span className="text-[10px] font-bold text-green-primary">{info.codigo}</span>}
                       <span
                         className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                         style={{ color: cor, backgroundColor: corBg }}
@@ -212,6 +224,9 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
                         {label}
                       </span>
                       <span className="text-[10px] text-gray-400">{formatDate(info.data)} · {info.autor}</span>
+                      <span className="text-[10px] text-gray-400 inline-flex items-center gap-0.5">
+                        {info.anexosCount > 0 ? <><IconClip className="w-3 h-3" />{info.anexosCount}</> : '—'}
+                      </span>
                       {podeExcluir && (
                         <button
                           onClick={() => excluir(info.id)}
@@ -225,20 +240,6 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
                     <p className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap mt-0.5">
                       {highlight(info.comentario, debouncedQ)}
                     </p>
-                    {(info.impacto.length > 0 || info.versao != null) && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {info.impacto.map(imp => (
-                          <span key={imp} className="text-[9px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-1.5 py-0.5">
-                            {IMPACTO_LABEL[imp] ?? imp}
-                          </span>
-                        ))}
-                        {info.versao != null && (
-                          <span className="text-[9px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-1.5 py-0.5">
-                            Relacionado: {formatRev(info.versao)}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -264,6 +265,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
           onSuccess={() => { setQ(''); setTipo('all'); setReloadKey(k => k + 1) }}
           solicitacaoId={solicitacaoId}
           numero={numero}
+          proximoCodigo={proximoCodigo}
         />
       )}
     </div>

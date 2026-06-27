@@ -428,13 +428,16 @@ model EquipamentoFabricacao {
 model SolicitacaoInfo {
   id             Int      @id @default(autoincrement())
   solicitacao_id Int
+  // Código sequencial por solicitação (INF-0001...). Nullable: registros
+  // automáticos (encerramento de revisão) não recebem código.
+  codigo         String?
   data           DateTime
   comentario     String
-  // Tipo da interação (REUNIAO_CALL, DECISAO_INTERNA, FEEDBACK_CLIENTE,
-  // CONCORRENCIA, ALTERACAO_INFORMAL, COMPROMISSO_ASSUMIDO). Nullable para
-  // registros legados/automáticos (encerramento de revisão).
+  // Tipo da informação (REUNIAO_CALL, DEFINICAO_INTERNA, FEEDBACK_CLIENTE,
+  // DEFINICAO_ESCOPO, CONCORRENCIA, OUTROS). Nullable para registros
+  // automáticos (encerramento de revisão).
   tipo           String?
-  // Impacto (múltipla seleção): AFETA_PRAZO, AFETA_VALOR, AFETA_ESCOPO, NENHUM
+  // impacto: descontinuado (mantido só por histórico, não exibido)
   impacto        String[]
   versao         Int?
   created_at     DateTime @default(now())
@@ -442,9 +445,25 @@ model SolicitacaoInfo {
 
   solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id])
   criador     User        @relation(fields: [created_by], references: [id])
+  anexos      SolicitacaoInfoAnexo[]
 
   @@index([solicitacao_id])
   @@map("solicitacoes_info")
+}
+
+model SolicitacaoInfoAnexo {
+  id         Int      @id @default(autoincrement())
+  info_id    Int
+  nome       String
+  tipo       String   // mime/extensão
+  url        String   // data URL (base64) ou URL externa
+  tamanho    Int?
+  created_at DateTime @default(now())
+
+  info SolicitacaoInfo @relation(fields: [info_id], references: [id], onDelete: Cascade)
+
+  @@index([info_id])
+  @@map("solicitacoes_info_anexos")
 }
 
 model HhLancamento {

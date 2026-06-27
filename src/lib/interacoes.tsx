@@ -41,9 +41,10 @@ const IconPencil: IconType = svg(<>
   <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
   <path d="m15 5 4 4" />
 </>)
-const IconClock: IconType = svg(<>
-  <circle cx="12" cy="12" r="10" />
-  <polyline points="12 6 12 12 16 14" />
+const IconDots: IconType = svg(<>
+  <circle cx="12" cy="12" r="1" />
+  <circle cx="19" cy="12" r="1" />
+  <circle cx="5" cy="12" r="1" />
 </>)
 
 export interface TipoInteracaoCfg {
@@ -54,26 +55,16 @@ export interface TipoInteracaoCfg {
   icon: IconType
 }
 
+// Tipos de Informação (Linha do Tempo de Negociação)
 export const TIPOS_INTERACAO: TipoInteracaoCfg[] = [
-  { value: 'REUNIAO_CALL',        label: 'Reunião / Call',      cor: '#15803D', corBg: '#ECFDF3', icon: IconUsers },
-  { value: 'DECISAO_INTERNA',     label: 'Decisão Interna',     cor: '#185FA5', corBg: '#EAF2FB', icon: IconGavel },
-  { value: 'FEEDBACK_CLIENTE',    label: 'Feedback do Cliente', cor: '#A32D2D', corBg: '#FCEDED', icon: IconMessage },
-  { value: 'CONCORRENCIA',        label: 'Concorrência',        cor: '#7C3AED', corBg: '#F3EDFE', icon: IconTarget },
-  { value: 'ALTERACAO_INFORMAL',  label: 'Alteração Informal',  cor: '#6B7280', corBg: '#F3F4F6', icon: IconPencil },
-  { value: 'COMPROMISSO_ASSUMIDO', label: 'Compromisso Assumido', cor: '#B45309', corBg: '#FEF6EC', icon: IconClock },
+  { value: 'REUNIAO_CALL',      label: 'Reunião / Call',      cor: '#15803D', corBg: '#ECFDF3', icon: IconUsers },
+  { value: 'DEFINICAO_INTERNA', label: 'Definição Interna',   cor: '#185FA5', corBg: '#EAF2FB', icon: IconGavel },
+  { value: 'FEEDBACK_CLIENTE',  label: 'Feedback Cliente',    cor: '#A32D2D', corBg: '#FCEDED', icon: IconMessage },
+  { value: 'DEFINICAO_ESCOPO',  label: 'Definição de Escopo', cor: '#B45309', corBg: '#FEF6EC', icon: IconPencil },
+  { value: 'CONCORRENCIA',      label: 'Concorrência',        cor: '#7C3AED', corBg: '#F3EDFE', icon: IconTarget },
+  { value: 'OUTROS',            label: 'Outros',              cor: '#6B7280', corBg: '#F3F4F6', icon: IconDots },
 ]
 
 export const TIPO_INTERACAO_MAP: Record<string, TipoInteracaoCfg> = Object.fromEntries(
   TIPOS_INTERACAO.map((t) => [t.value, t]),
-)
-
-export const IMPACTOS = [
-  { value: 'AFETA_PRAZO',  label: 'Afeta Prazo' },
-  { value: 'AFETA_VALOR',  label: 'Afeta Valor' },
-  { value: 'AFETA_ESCOPO', label: 'Afeta Escopo' },
-  { value: 'NENHUM',       label: 'Nenhum' },
-] as const
-
-export const IMPACTO_LABEL: Record<string, string> = Object.fromEntries(
-  IMPACTOS.map((i) => [i.value, i.label]),
 )

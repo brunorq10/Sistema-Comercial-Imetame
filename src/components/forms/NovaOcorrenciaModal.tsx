@@ -1,13 +1,12 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { todayInput } from '@/lib/utils'
 import { TIPOS_OCORRENCIA, RESPONSABILIDADES, IMPACTOS_OCORRENCIA } from '@/lib/ocorrencias'
-
-interface AnexoNovo { nome: string; tipo: string; url: string; tamanho: number }
+import { AnexosUploader, type AnexoNovo } from '@/components/forms/AnexosUploader'
 
 interface Props {
   open: boolean
@@ -20,9 +19,6 @@ interface Props {
   proximoCodigo: string
 }
 
-const MAX_FILE = 2 * 1024 * 1024   // 2 MB por arquivo
-const MAX_TOTAL = 3 * 1024 * 1024  // 3 MB no total (limite de payload da plataforma)
-
 const svg = (d: React.ReactNode) => (p: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" width={20} height={20} {...p}>{d}</svg>
 )
@@ -34,8 +30,6 @@ const TIPO_ICONS: Record<string, ReturnType<typeof svg>> = {
   INDISPONIBILIDADE_LOCAL: svg(<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><line x1="4.5" y1="4.5" x2="19.5" y2="19.5" /></>),
   OUTROS: svg(<><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></>),
 }
-const IconFile = svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><polyline points="14 2 14 8 20 8" /></>)
-const IconUpload = svg(<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>)
 
 const AMBAR = '#B45309'
 const AMBAR_BG = '#FEF6EC'
@@ -48,31 +42,11 @@ export function NovaOcorrenciaModal({ open, onClose, onSuccess, contratoId, nume
   const [impactos, setImpactos] = useState<string[]>([])
   const [dataNotif, setDataNotif] = useState('')
   const [anexos, setAnexos] = useState<AnexoNovo[]>([])
-  const [dragOver, setDragOver] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const toggleImpacto = (v: string) =>
     setImpactos((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
-
-  const lerArquivos = (files: FileList | null) => {
-    if (!files) return
-    const novos = Array.from(files)
-    let totalAtual = anexos.reduce((s, a) => s + a.tamanho, 0)
-    for (const f of novos) {
-      if (f.size > MAX_FILE) { setError(`"${f.name}" excede 3 MB.`); continue }
-      if (totalAtual + f.size > MAX_TOTAL) { setError('Tamanho total dos anexos excede 8 MB.'); break }
-      totalAtual += f.size
-      const reader = new FileReader()
-      reader.onload = () => {
-        setAnexos((prev) => [...prev, { nome: f.name, tipo: f.type || 'application/octet-stream', url: String(reader.result), tamanho: f.size }])
-      }
-      reader.readAsDataURL(f)
-    }
-  }
-
-  const removerAnexo = (i: number) => setAnexos((prev) => prev.filter((_, idx) => idx !== i))
 
   const handleSubmit = async () => {
     if (!tipo) { setError('Selecione o tipo de ocorrência'); return }
@@ -210,39 +184,12 @@ export function NovaOcorrenciaModal({ open, onClose, onSuccess, contratoId, nume
 
       {/* 7. Anexos */}
       <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] mb-1.5 block">Evidências / Anexos</label>
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); lerArquivos(e.dataTransfer.files) }}
-        onClick={() => inputRef.current?.click()}
-        className={
-          'border border-dashed rounded-lg px-4 py-5 text-center cursor-pointer transition-colors ' +
-          (dragOver ? 'border-green-primary bg-green-light/40' : 'border-gray-300 hover:bg-gray-50')
-        }
-      >
-        <IconUpload className="w-5 h-5 mx-auto text-gray-400 mb-1" />
-        <p className="text-[11px] text-gray-600 font-semibold">Arraste arquivos ou clique para anexar</p>
-        <p className="text-[10px] text-gray-400">Fotos, RDO, e-mails, comunicações oficiais — múltiplos arquivos</p>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
-          className="hidden"
-          onChange={(e) => { lerArquivos(e.target.files); e.target.value = '' }}
-        />
-      </div>
-      {anexos.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {anexos.map((a, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-full pl-2 pr-1 py-1 text-[10px] text-gray-700">
-              <IconFile className="w-3 h-3 text-gray-400" />
-              <span className="max-w-[160px] truncate">{a.nome}</span>
-              <button onClick={(e) => { e.stopPropagation(); removerAnexo(i) }} className="text-gray-400 hover:text-red-500 font-bold px-0.5" title="Remover">×</button>
-            </span>
-          ))}
-        </div>
-      )}
+      <AnexosUploader
+        value={anexos}
+        onChange={setAnexos}
+        onError={setError}
+        hint="Fotos, RDO, e-mails, comunicações oficiais — múltiplos arquivos"
+      />
     </Modal>
   )
 }
