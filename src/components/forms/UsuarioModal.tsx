@@ -12,6 +12,18 @@ const PERFIS: Perfil[] = [
   'ORCAMENTISTA', 'GESTAO_ACORDOS', 'ACORDOS', 'ADM_GERAL',
 ]
 
+const IconEye = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+  </svg>
+)
+const IconEyeOff = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+)
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -28,6 +40,7 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
   const [funcao, setFuncao] = useState('')
   const [perfil, setPerfil] = useState<Perfil | ''>('')
   const [senha, setSenha] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
   const [isAnalistaCritico, setIsAnalistaCritico] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +59,7 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
       setIsAnalistaCritico(false)
     }
     setError(null)
+    setMostrarSenha(false)
   }, [open, editando])
 
   const handleSubmit = async () => {
@@ -138,12 +152,24 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
 
       <ModalSection>{isEdit ? 'Redefinir senha (opcional)' : 'Senha inicial *'}</ModalSection>
       <Field label={isEdit ? 'Nova senha — deixe em branco para não alterar' : 'Senha (mín. 6 caracteres) *'}>
-        <Input
-          type="password"
-          placeholder={isEdit ? '••••••••' : 'mínimo 6 caracteres'}
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-        />
+        <div className="relative">
+          <Input
+            type={mostrarSenha ? 'text' : 'password'}
+            placeholder={isEdit ? '••••••••' : 'mínimo 6 caracteres'}
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            className="pr-9"
+          />
+          <button
+            type="button"
+            onClick={() => setMostrarSenha((v) => !v)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            title={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+            aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+          >
+            {mostrarSenha ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
+          </button>
+        </div>
       </Field>
     </Modal>
   )

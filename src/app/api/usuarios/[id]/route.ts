@@ -37,8 +37,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const { nova_senha, is_analista_critico, ...rest } = parsed.data
 
-  // RN-04: Bloquear desativação de Orçamentista com solicitações ativas
-  if (rest.ativo === false || rest.perfil) {
+  // RN-04: Bloquear apenas a DESATIVAÇÃO de Orçamentista com solicitações
+  // ativas. Editar os demais dados (nome, e-mail, perfil, senha) é permitido.
+  if (rest.ativo === false) {
     const usuario = await prisma.user.findUnique({ where: { id }, select: { perfil: true } })
     if (usuario?.perfil === 'ORCAMENTISTA') {
       const solicitacoesAtivas = await prisma.solicitacao.count({
