@@ -87,6 +87,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [estado, setEstado] = useState('')
   const [numAcordo, setNumAcordo] = useState('')
   const [numProposta, setNumProposta] = useState('')
+  const [numOs, setNumOs] = useState('')   // OS a nível de contrato (item macro)
   const [responsavelId, setResponsavelId] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -129,6 +130,8 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       setEstado(editando.estado ?? '')
       setNumAcordo(editando.num_acordo ?? '')
       setNumProposta(editando.num_proposta ?? '')
+      // OS no contrato; fallback p/ dados antigos que tinham OS no sub-índice
+      setNumOs(editando.num_os ?? (editando.subindices?.find((s) => s.num_os)?.num_os ?? ''))
       setResponsavelId(editando.responsavel ? String(editando.responsavel.id) : '')
       setDataInicio(editando.data_inicio ? editando.data_inicio.substring(0, 10) : '')
       setDataFim(editando.data_fim ? editando.data_fim.substring(0, 10) : '')
@@ -169,7 +172,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       prevClienteFinalRef.current = ''
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
       setClienteFinalId(''); setCidade(''); setEstado('')
-      setNumAcordo(''); setNumProposta(''); setResponsavelId('')
+      setNumAcordo(''); setNumProposta(''); setNumOs(''); setResponsavelId('')
       setDataInicio(''); setDataFim(''); setDescricao(''); setClassificacao(''); setValorContrato('')
       setSubindices([emptySubindice(anoAtual)])
     }
@@ -207,6 +210,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         descricao: descricao || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
+        num_os: numOs || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
         valor_contrato: valorContrato ? Number(valorContrato) : undefined,
         subindices: subindices
@@ -219,7 +223,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
               const vtAno = Number(s.valor_total) || 0
               return {
                 descricao: s.descricao,
-                num_os: s.num_os || undefined,
                 valor_total: vtAno,
                 data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
                 data_fim: isLast && s.data_fim ? s.data_fim : `${ano}-12-31`,
@@ -323,6 +326,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         estado: estado || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
+        num_os: numOs || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
         data_inicio: dataInicio || undefined,
         data_fim: dataFim || undefined,
@@ -340,7 +344,6 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             const vtAno = sumMeses > 0 ? sumMeses : (isFirst ? vtTotal : 0)
             return {
               descricao: s.descricao,
-              num_os: s.num_os || undefined,
               valor_total: vtAno,
               data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
               data_fim: isLast && s.data_fim ? s.data_fim : `${ano}-12-31`,
@@ -461,6 +464,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       </Field>
 
       <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+        <Field label="Nº OS">
+          <Input placeholder="Ex: 0798.02.003" value={numOs} onChange={(e) => setNumOs(maskOS(e.target.value))} />
+        </Field>
         <Field label="Nº Acordo">
           <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
@@ -579,12 +585,9 @@ function SubindiceCard({ indiceBase, ordem, anoRef, data, onUpdate, onUpdateMes,
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="mb-2">
         <Field label="Descrição / Evento">
           <Input placeholder="Ex: Mobilização" value={data.descricao} onChange={(e) => onUpdate('descricao', e.target.value)} />
-        </Field>
-        <Field label="Nº OS">
-          <Input placeholder="Ex: 0798.02.003" value={data.num_os} onChange={(e) => onUpdate('num_os', maskOS(e.target.value))} />
         </Field>
       </div>
 

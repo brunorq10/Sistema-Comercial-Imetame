@@ -10,6 +10,7 @@ import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import type { SubIndiceItem, PrevisaoAlteracaoItem, ContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
+import { compareContratos, nextSort, sortIndicator, type SortState } from '@/lib/sortContratos'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
@@ -459,11 +460,27 @@ interface PainelTableProps {
 function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHistorico, onLancarFaturamento }: PainelTableProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
+  const [sort, setSort] = useState<SortState | null>(null)
+  const contratosOrd = useMemo(
+    () => (sort ? [...contratos].sort((a, b) => compareContratos(a, b, sort)) : contratos),
+    [contratos, sort],
+  )
 
   const TH   = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
   const thF  = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
   const thS  = cn(TH, 'z-[10]')
   const thP  = cn(TH, 'bg-[#6A1B9A] z-[10]')
+
+  const sh = (key: string, label: string, opts?: { frozen?: boolean; shadow?: boolean; left?: number }) => (
+    <th
+      className={cn(opts?.frozen ? thF(opts.shadow) : thS, 'cursor-pointer hover:bg-green-dark')}
+      style={opts?.frozen ? { left: opts.left } : undefined}
+      onClick={() => setSort((s) => nextSort(s, key))}
+      title="Clique para ordenar"
+    >
+      {label}{sortIndicator(sort, key)}
+    </th>
+  )
 
   const rowBgContract = (key: string) =>
     selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
@@ -531,20 +548,25 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
 
           {/* ── Cabeçalhos ── */}
           <tr>
-            <th className={thF()} style={{ left: L.indice }}>Índice</th>
-            <th className={thF()} style={{ left: L.cliente }}>Cliente</th>
-            <th className={thF()} style={{ left: L.cliente_final }}>Cliente Final</th>
-            <th className={thF()} style={{ left: L.cidade }}>Cidade/UF</th>
+            {sh('indice', 'Índice', { frozen: true, left: L.indice })}
+            {sh('cliente', 'Cliente', { frozen: true, left: L.cliente })}
+            {sh('cliente_final', 'Cliente Final', { frozen: true, left: L.cliente_final })}
+            {sh('cidade', 'Cidade/UF', { frozen: true, left: L.cidade })}
             <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
-            <th className={thS}>Classificação</th><th className={thS}>Ramo</th>
-            <th className={thS}>Nº OS</th><th className={thS}>Ano</th>
-            <th className={thS}>Nº Acordo</th><th className={thS}>Nº Proposta</th>
-            <th className={thS}>Dt. Início</th><th className={thS}>Dt. Fim</th>
-            <th className={thS}>Status Fat.</th>
-            <th className={thS}>Valor Total Contrato</th>
-            <th className={thS}>Valor Total Faturado</th>
-            <th className={thS}>Saldo a Faturar</th>
-            <th className={thS}>Responsável</th><th className={thS}>Comentários</th>
+            {sh('classificacao', 'Classificação')}
+            {sh('ramo', 'Ramo')}
+            {sh('num_os', 'Nº OS')}
+            {sh('ano', 'Ano')}
+            {sh('num_acordo', 'Nº Acordo')}
+            {sh('num_proposta', 'Nº Proposta')}
+            {sh('data_inicio', 'Dt. Início')}
+            {sh('data_fim', 'Dt. Fim')}
+            {sh('status', 'Status Fat.')}
+            {sh('valor_total', 'Valor Total Contrato')}
+            {sh('valor_faturado', 'Valor Total Faturado')}
+            {sh('saldo', 'Saldo a Faturar')}
+            {sh('responsavel', 'Responsável')}
+            <th className={thS}>Comentários</th>
             {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
             <th className={thP}>Previsão prox. anos</th>
             <th className={thS}>Ações</th>
@@ -552,7 +574,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
         </thead>
 
         <tbody>
-          {contratos.map((contrato) => {
+          {contratosOrd.map((contrato) => {
             const expanded = expandidos.has(contrato.id)
             const ctKey    = `ct-${contrato.id}`
             const ctBg     = rowBgContract(ctKey)
@@ -604,7 +626,9 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                     ? <span className="text-gray-600 text-[10px]">{RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] ?? contrato.cliente.ramo_atuacao}</span>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className={mBase} style={{ background: ctBg }}>—</td>
+                <td className={mBase} style={{ background: ctBg }}>
+                  {contrato.num_os ? <span className="text-gray-700 font-mono text-[10px]">{contrato.num_os}</span> : <span className="text-gray-300">—</span>}
+                </td>
                 <td className={mBase} style={{ background: ctBg }}>
                   <span className="bg-gray-200 text-gray-700 rounded px-1 text-[10px]">{contrato.ano_referencia}</span>
                 </td>
