@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HistoricoFaturamentoLista } from '@/components/forms/HistoricoFaturamentoModal'
 import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
+import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
 
 interface Props {
   solicitacaoId: number
@@ -14,9 +15,23 @@ interface Props {
   canSupervise: boolean
 }
 
+interface ContratoLink { id: number; indice: string; cliente: string; cidade: string | null; estado: string | null }
+
 export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, canCreate, userId, canSupervise }: Props) {
-  const [aba, setAba] = useState<'sistema' | 'negociacao'>('negociacao')
+  const [aba, setAba] = useState<'sistema' | 'negociacao' | 'ocorrencias'>('negociacao')
+  const [contrato, setContrato] = useState<ContratoLink | null>(null)
+  const [contratoCarregado, setContratoCarregado] = useState(false)
   const subtitulo = `${numero} · ${cliente}${escopo ? ` — ${escopo}` : ''}`
+
+  // Resolve o contrato vinculado (módulo Acordos) para a aba de Ocorrências
+  useEffect(() => {
+    let ativo = true
+    fetch(`/api/solicitacoes/${solicitacaoId}/contrato`)
+      .then(r => r.json())
+      .then(j => { if (ativo && !j.error) setContrato(j.data) })
+      .finally(() => { if (ativo) setContratoCarregado(true) })
+    return () => { ativo = false }
+  }, [solicitacaoId])
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg mb-4">
@@ -28,7 +43,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
 
       {/* Abas */}
       <div className="flex items-center gap-1 border-b border-gray-200 px-2 overflow-x-auto">
-        {([['sistema', 'Histórico do Sistema'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
+        {([['sistema', 'Histórico do Sistema'], ['negociacao', 'Linha do Tempo da Negociação'], ['ocorrencias', 'Ocorrências Contratuais']] as const).map(([val, label]) => (
           <button
             key={val}
             onClick={() => setAba(val)}
@@ -46,7 +61,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
       <div className="p-4">
         {aba === 'sistema' ? (
           <HistoricoFaturamentoLista tipo="proposta" itemId={solicitacaoId} maxH="560px" />
-        ) : (
+        ) : aba === 'negociacao' ? (
           <InformacoesTabela
             solicitacaoId={solicitacaoId}
             numero={numero}
@@ -54,6 +69,22 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
             userId={userId}
             canSupervise={canSupervise}
           />
+        ) : (
+          // Ocorrências Contratuais — somente visualização (read-only)
+          !contratoCarregado ? (
+            <p className="text-center text-[11px] text-gray-400 py-8">Carregando...</p>
+          ) : contrato ? (
+            <OcorrenciasContratuais
+              contratoId={contrato.id}
+              numero={contrato.indice}
+              subtitulo={`${contrato.indice} · ${contrato.cliente}${contrato.cidade ? ` — ${contrato.cidade}${contrato.estado ? `, ${contrato.estado}` : ''}` : ''}`}
+              canCreate={false}
+              userId={null}
+              canSupervise={false}
+            />
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhum contrato vinculado a esta proposta.</p>
+          )
         )}
       </div>
     </div>

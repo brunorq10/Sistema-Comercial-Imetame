@@ -8,6 +8,7 @@ import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
+import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
 
 const ContratoFaturamentoBarChart = dynamic(
   () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoBarChart),
@@ -127,7 +128,7 @@ export default function ContratoVisaoGeralPage() {
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [anoSel, setAnoSel] = useState<number | null>(null)
-  const [abaHist, setAbaHist] = useState<'historico' | 'ocorrencias'>('historico')
+  const [abaHist, setAbaHist] = useState<'historico' | 'ocorrencias' | 'negociacao'>('historico')
   const { userId, pode } = usePermissions()
 
   const fetchData = useCallback(async () => {
@@ -303,15 +304,15 @@ export default function ContratoVisaoGeralPage() {
         </div>
       )}
 
-      {/* Histórico + Ocorrências (abas) */}
+      {/* Histórico + Ocorrências + Negociação (abas) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
-          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Ocorrências Contratuais']] as const).map(([val, label]) => (
+        <div className="flex items-center gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
+          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Ocorrências Contratuais'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setAbaHist(val)}
               className={
-                'text-[12px] font-semibold px-3 py-2 -mb-px border-b-2 transition-colors ' +
+                'text-[12px] font-semibold px-3 py-2 -mb-px border-b-2 whitespace-nowrap transition-colors ' +
                 (abaHist === val
                   ? 'border-green-primary text-green-primary'
                   : 'border-transparent text-gray-400 hover:text-gray-600')
@@ -333,7 +334,7 @@ export default function ContratoVisaoGeralPage() {
               </div>
             </div>
           )
-        ) : (
+        ) : abaHist === 'ocorrencias' ? (
           <OcorrenciasContratuais
             contratoId={contrato.id}
             numero={contrato.indice}
@@ -342,6 +343,19 @@ export default function ContratoVisaoGeralPage() {
             userId={userId}
             canSupervise={pode('acordos.ocorrencia.excluir')}
           />
+        ) : (
+          // Linha do Tempo da Negociação — somente visualização (read-only)
+          contrato.solicitacao ? (
+            <InformacoesTabela
+              solicitacaoId={contrato.solicitacao.id}
+              numero={contrato.solicitacao.numero}
+              canCreate={false}
+              userId={null}
+              canSupervise={false}
+            />
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhuma proposta/negociação vinculada a este contrato.</p>
+          )
         )}
       </section>
 
