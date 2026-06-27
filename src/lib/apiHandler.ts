@@ -11,6 +11,12 @@ export function withApi<C = unknown>(handler: RouteHandler<C>): RouteHandler<C> 
     try {
       return await handler(req, ctx)
     } catch (err) {
+      // Erros de controle do Next (uso dinâmico no build, redirect, notFound)
+      // precisam propagar — senão o build trata a rota como estática e falha.
+      if (err && typeof err === 'object' && 'digest' in err) {
+        const digest = String((err as { digest?: unknown }).digest ?? '')
+        if (digest === 'DYNAMIC_SERVER_USAGE' || digest.startsWith('NEXT_')) throw err
+      }
       logger.error(`[API ${req.method} ${req.nextUrl?.pathname ?? ''}]`, err)
       return NextResponse.json(
         { data: null, error: 'Erro interno do servidor. Por favor, tente novamente.' },

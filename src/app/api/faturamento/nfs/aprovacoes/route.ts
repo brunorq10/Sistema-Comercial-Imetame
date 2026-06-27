@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { withApi } from '@/lib/apiHandler'
 
+// Usa auth()/headers() e searchParams — sempre dinâmica (nunca pré-renderizar)
+export const dynamic = 'force-dynamic'
+
 // GET /api/faturamento/nfs/aprovacoes
 // Lança­mentos de faturamento (NFs) pendentes de aprovação da coordenação.
 // ?history=true → APROVADO + REPROVADO (que passaram pelo fluxo de aprovação)
