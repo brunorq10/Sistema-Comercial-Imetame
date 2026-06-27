@@ -336,7 +336,8 @@ export default function ContratoVisaoGeralPage() {
           timeline.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">Nenhum evento registrado.</p>
           ) : (
-            <div className="relative">
+            // Limita a ~8 eventos visíveis; o excedente entra na rolagem vertical.
+            <div className="relative overflow-y-auto max-h-[420px] pr-1">
               <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
               <div className="space-y-4">
                 {timeline.map((ev, i) => <TimelineItem key={i} event={ev} />)}
@@ -460,15 +461,16 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
 }
 
 function NFsContratoTable({ contrato }: { contrato: ContratoDetalhe }) {
-  const thCls = 'px-2 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
+  const thCls = 'px-2 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50 sticky top-0 z-10'
   const tdCls = 'px-2 py-2 text-[11px] whitespace-nowrap border-b border-gray-100'
 
   const allNFs = contrato.subindices.flatMap((s) =>
     s.notas_fiscais.map((nf) => ({ ...nf, subIndice: s }))
   ).sort((a, b) => new Date(b.data_emissao).getTime() - new Date(a.data_emissao).getTime())
 
+  // Limita a ~8 notas visíveis; o excedente entra na rolagem vertical.
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
+    <div className="border border-gray-200 rounded-md overflow-auto max-h-[340px]">
       <table className="w-full border-collapse" style={{ minWidth: 700 }}>
         <thead>
           <tr>

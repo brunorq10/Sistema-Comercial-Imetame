@@ -282,6 +282,7 @@ export default function PainelOrcamentosPage() {
             onRegistrarObra={(item, tab) => setModalObra({ item, tab })}
             onRegistrarInfo={setModalInfo}
             onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico?from=/orcamentos/painel`)}
+            readOnly={!!orcamentistaFiltro}
           />
         ))
       )}

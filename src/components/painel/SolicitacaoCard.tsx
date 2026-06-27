@@ -68,9 +68,11 @@ interface Props {
   onRegistrarObra: (item: PainelItem, tab: 'tecnica' | 'comercial') => void
   onRegistrarInfo: (item: PainelItem) => void
   onHistorico?: (item: PainelItem) => void
+  /** Visualização do painel de outro orçamentista — sem ações de edição. */
+  readOnly?: boolean
 }
 
-export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onHistorico }: Props) {
+export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onHistorico, readOnly }: Props) {
   const isFabricacaoType = item.classificacao === 'FABRICACOES' || item.classificacao === 'OLEO_GAS'
   const isParadasType = item.classificacao === 'PARADAS'
   const isObrasType = item.classificacao === 'OBRAS'
@@ -184,27 +186,33 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
       </div>
 
       {/* ── Actions ─────────────────────────────────────────────────────────── */}
-      <div className="flex gap-2 flex-wrap">
-        {isFabricacaoType ? (
-          <Button size="sm" onClick={() => onRegistrarFabricacao(item)}>
-            Enviar Proposta
-          </Button>
-        ) : isParadasType ? (
-          <Button size="sm" onClick={() => onRegistrarParada(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
-            Enviar Proposta
-          </Button>
-        ) : isObrasType ? (
-          <Button size="sm" onClick={() => onRegistrarObra(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
-            Enviar Proposta
-          </Button>
+      <div className="flex gap-2 flex-wrap items-center">
+        {readOnly ? (
+          <span className="text-[11px] text-gray-400 italic">Somente visualização — você só pode editar o seu painel.</span>
         ) : (
-          <Button size="sm" onClick={() => item.tecnica_enviada ? onRegistrarComercial(item) : onRegistrarTecnica(item)}>
-            Enviar Proposta
-          </Button>
+          <>
+            {isFabricacaoType ? (
+              <Button size="sm" onClick={() => onRegistrarFabricacao(item)}>
+                Enviar Proposta
+              </Button>
+            ) : isParadasType ? (
+              <Button size="sm" onClick={() => onRegistrarParada(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
+                Enviar Proposta
+              </Button>
+            ) : isObrasType ? (
+              <Button size="sm" onClick={() => onRegistrarObra(item, (item.tecnica_enviada || item.tecnica_nao_aplicavel) ? 'comercial' : 'tecnica')}>
+                Enviar Proposta
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => item.tecnica_enviada ? onRegistrarComercial(item) : onRegistrarTecnica(item)}>
+                Enviar Proposta
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => onRegistrarInfo(item)}>
+              Registrar Informação
+            </Button>
+          </>
         )}
-        <Button size="sm" variant="outline" onClick={() => onRegistrarInfo(item)}>
-          Registrar Informação
-        </Button>
         {onHistorico && item.versao_atual > 1 && (
           <Button size="sm" variant="outline" onClick={() => onHistorico(item)}>
             Histórico

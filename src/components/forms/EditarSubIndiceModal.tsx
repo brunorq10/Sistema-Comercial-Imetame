@@ -545,7 +545,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                       !ativo          ? 'text-gray-200'
                       : blockedByRole ? 'text-gray-300'
                       : pastChanged   ? 'text-amber-600 font-semibold'
-                      : 'text-gray-400'
+                      : 'text-green-dark font-bold'
                     }`}>
                       {MESES_LABELS[mi]}
                     </p>
@@ -558,7 +558,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
                           ? 'border-gray-100 bg-gray-50 text-gray-200 cursor-not-allowed'
                           : pastChanged
                           ? 'border-amber-400 bg-amber-50'
-                          : ''
+                          : 'border-green-primary bg-green-light/60 font-semibold text-green-dark'
                       }`}
                     />
                     {hasPending && (
