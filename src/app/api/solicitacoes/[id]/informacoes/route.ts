@@ -14,6 +14,14 @@ const TIPO_LABELS: Record<string, string> = {
 }
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
+function inicioPeriodo(periodo: string): Date | null {
+  const hoje = new Date()
+  if (periodo === '30d') return new Date(hoje.getTime() - 30 * 86400000)
+  if (periodo === '90d') return new Date(hoje.getTime() - 90 * 86400000)
+  if (periodo === 'mes_atual') return new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+  return null
+}
+
 const anexoSchema = z.object({
   nome: z.string().min(1),
   tipo: z.string().min(1),
@@ -52,12 +60,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const sp = req.nextUrl.searchParams
   const q = (sp.get('q') ?? '').trim()
   const tipoFiltro = sp.get('tipo') ?? ''
+  const periodo = sp.get('periodo') ?? 'all'
+  const autor = sp.get('autor') ?? ''
   const limit = Math.min(Math.max(Number(sp.get('limit') ?? 10), 1), 50)
   const offset = Math.max(Number(sp.get('offset') ?? 0), 0)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { solicitacao_id: id }
+  // Aba "Linha do Tempo" = registros manuais (com tipo). Breadcrumbs
+  // automáticos (tipo null) pertencem ao auditlog (aba Histórico do Sistema).
   if (tipoFiltro && (TIPOS as readonly string[]).includes(tipoFiltro)) where.tipo = tipoFiltro
+  else where.tipo = { not: null }
+  if (autor && !isNaN(Number(autor))) where.created_by = Number(autor)
+  const desde = inicioPeriodo(periodo)
+  if (desde) where.data = { gte: desde }
 
   if (q) {
     const nq = norm(q)
@@ -72,7 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     where.AND = [{ OR: or }]
   }
 
-  const [total, infos, proximoCodigo] = await Promise.all([
+  const [total, infos, proximoCodigo, autoresRaw] = await Promise.all([
     prisma.solicitacaoInfo.count({ where }),
     prisma.solicitacaoInfo.findMany({
       where,
@@ -82,12 +98,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       include: { criador: { select: { nome: true } }, _count: { select: { anexos: true } } },
     }),
     gerarCodigo(id),
+    // Autores de TODAS as informações (com tipo) da solicitação — para o select
+    prisma.solicitacaoInfo.findMany({
+      where: { solicitacao_id: id, tipo: { not: null } },
+      distinct: ['created_by'],
+      select: { created_by: true, criador: { select: { nome: true } } },
+      orderBy: { criador: { nome: 'asc' } },
+    }),
   ])
 
   return NextResponse.json({
     data: {
       total,
       proximoCodigo,
+      autores: autoresRaw.map((a) => ({ id: a.created_by, nome: a.criador.nome })),
       items: infos.map(i => ({
         id: i.id,
         codigo: i.codigo,

@@ -13,21 +13,24 @@ interface HistoricoEntry {
   alterado_por: string
 }
 
+type AuditTipo = 'subindice' | 'contrato' | 'proposta'
+
 interface Props {
   open: boolean
   onClose: () => void
-  tipo: 'subindice' | 'contrato' | 'proposta'
+  tipo: AuditTipo
   itemId: number
   titulo: string
 }
 
-export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo }: Props) {
+// Lista de auditlog reutilizável (sem o invólucro do modal). Usada no modal de
+// faturamento e inline na aba "Histórico do Sistema" da Linha do Tempo.
+export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { tipo: AuditTipo; itemId: number; maxH?: string }) {
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open) return
     setLoading(true)
     setError(null)
     const endpoint = tipo === 'subindice'
@@ -43,26 +46,20 @@ export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo 
       })
       .catch(() => setError('Erro ao carregar histórico'))
       .finally(() => setLoading(false))
-  }, [open, tipo, itemId])
+  }, [tipo, itemId])
+
+  if (error) return <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>
+  if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando histórico...</p>
+  if (historico.length === 0) return (
+    <div className="text-center py-10">
+      <p className="text-gray-400 text-sm">Nenhuma alteração registrada.</p>
+      <p className="text-gray-300 text-xs mt-1">Alterações futuras aparecerão aqui automaticamente.</p>
+    </div>
+  )
 
   return (
-    <Modal open={open} onClose={onClose} title={`Histórico de Alterações — ${titulo}`} wide>
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Carregando histórico...</p>
-      ) : historico.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-400 text-sm">Nenhuma alteração registrada.</p>
-          <p className="text-gray-300 text-xs mt-1">Alterações futuras aparecerão aqui automaticamente.</p>
-        </div>
-      ) : (
-        <div className="overflow-auto max-h-[480px]">
-          <table className="w-full border-collapse text-[11px]">
+    <div className="overflow-auto" style={{ maxHeight: maxH }}>
+      <table className="w-full border-collapse text-[11px]">
             <thead className="sticky top-0 z-10">
               <tr>
                 <th className="bg-green-primary text-white px-3 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap">
@@ -107,8 +104,14 @@ export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo 
               })}
             </tbody>
           </table>
-        </div>
-      )}
+    </div>
+  )
+}
+
+export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo }: Props) {
+  return (
+    <Modal open={open} onClose={onClose} title={`Histórico de Alterações — ${titulo}`} wide>
+      {open && <HistoricoFaturamentoLista tipo={tipo} itemId={itemId} />}
     </Modal>
   )
 }
