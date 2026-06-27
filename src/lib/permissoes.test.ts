@@ -71,6 +71,16 @@ describe('Módulo Acordos', () => {
     expect(pode(u('GESTAO_ACORDOS'), 'acordos.nf.inativar')).toBe(true)
     expect(pode(u('ACORDOS'), 'acordos.nf.inativar', { ehDono: true })).toBe(false)
   })
+  it('ocorrência: criar = gestão (qualquer) e responsável (próprio contrato)', () => {
+    expect(pode(u('GESTAO_ACORDOS'), 'acordos.ocorrencia.criar', { ehDono: false })).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.ocorrencia.criar', { ehDono: true })).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.ocorrencia.criar', { ehDono: false })).toBe(false)
+  })
+  it('ocorrência: excluir (supervisão) só Gestão Acordos / ADM Geral', () => {
+    expect(pode(u('GESTAO_ACORDOS'), 'acordos.ocorrencia.excluir')).toBe(true)
+    expect(pode(u('ADM_GERAL'), 'acordos.ocorrencia.excluir')).toBe(true)
+    expect(pode(u('ACORDOS'), 'acordos.ocorrencia.excluir')).toBe(false)
+  })
 })
 
 describe('Módulo Cadastro', () => {

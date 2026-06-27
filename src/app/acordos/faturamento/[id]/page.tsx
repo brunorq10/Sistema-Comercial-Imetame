@@ -6,6 +6,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
+import { usePermissions } from '@/hooks/usePermissions'
+import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
 
 const ContratoFaturamentoBarChart = dynamic(
   () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoBarChart),
@@ -125,6 +127,8 @@ export default function ContratoVisaoGeralPage() {
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [anoSel, setAnoSel] = useState<number | null>(null)
+  const [abaHist, setAbaHist] = useState<'historico' | 'ocorrencias'>('historico')
+  const { userId, pode } = usePermissions()
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -299,18 +303,45 @@ export default function ContratoVisaoGeralPage() {
         </div>
       )}
 
-      {/* Histórico */}
+      {/* Histórico + Ocorrências (abas) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Histórico do Contrato</h2>
-        {timeline.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">Nenhum evento registrado.</p>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
-            <div className="space-y-4">
-              {timeline.map((ev, i) => <TimelineItem key={i} event={ev} />)}
+        <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
+          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Ocorrências Contratuais']] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setAbaHist(val)}
+              className={
+                'text-[12px] font-semibold px-3 py-2 -mb-px border-b-2 transition-colors ' +
+                (abaHist === val
+                  ? 'border-green-primary text-green-primary'
+                  : 'border-transparent text-gray-400 hover:text-gray-600')
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {abaHist === 'historico' ? (
+          timeline.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhum evento registrado.</p>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
+              <div className="space-y-4">
+                {timeline.map((ev, i) => <TimelineItem key={i} event={ev} />)}
+              </div>
             </div>
-          </div>
+          )
+        ) : (
+          <OcorrenciasContratuais
+            contratoId={contrato.id}
+            numero={contrato.indice}
+            subtitulo={`${contrato.indice} · ${contrato.cliente.nome}${contrato.cidade ? ` — ${contrato.cidade}${contrato.estado ? `, ${contrato.estado}` : ''}` : ''}`}
+            canCreate={pode('acordos.ocorrencia.criar', { ehDono: contrato.responsavel?.id === userId })}
+            userId={userId}
+            canSupervise={pode('acordos.ocorrencia.excluir')}
+          />
         )}
       </section>
 

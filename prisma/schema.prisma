@@ -142,6 +142,7 @@ model User {
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
   historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
+  ocorrencias_criadas         OcorrenciaContratual[] @relation("OcorrenciaCriador")
   historico_solicitacoes      HistoricoSolicitacao[] @relation("HistSolicitacaoCriador")
   subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
   alteracoes_responsavel      PrevisaoAlteracao[]            @relation("AlteracaoResponsavel")
@@ -744,6 +745,7 @@ model Contrato {
   hh_acomp_historico HhAcompanhamentoHistorico[]
   fabricacao_itens FabricacaoItem[]
   parada_hh_config ParadaHhConfig?
+  ocorrencias    OcorrenciaContratual[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -785,6 +787,46 @@ model HistoricoContrato {
 
   @@index([contrato_id])
   @@map("historico_contratos")
+}
+
+// ─── Ocorrências Contratuais (gestão de acontecimentos durante o contrato) ────
+model OcorrenciaContratual {
+  id                     Int      @id @default(autoincrement())
+  contrato_id            Int
+  codigo                 String   // ex.: OC-0001 (sequencial por contrato)
+  tipo                   String   // ver TIPOS em src/lib/ocorrencias.ts
+  data                   DateTime // data do evento
+  responsabilidade       String   // CLIENTE | FORCA_MAIOR | IMETAME | TERCEIROS
+  impacto                String[] // PRAZO | CUSTO | CRONOGRAMA | MARCO_CONTRATUAL | OUTROS
+  descricao              String
+  data_notificacao_cliente DateTime?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  created_by             Int
+
+  contrato Contrato            @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador  User               @relation("OcorrenciaCriador", fields: [created_by], references: [id])
+  anexos   OcorrenciaAnexo[]
+
+  @@unique([contrato_id, codigo])
+  @@index([contrato_id])
+  @@index([data])
+  @@map("ocorrencias_contratuais")
+}
+
+model OcorrenciaAnexo {
+  id            Int      @id @default(autoincrement())
+  ocorrencia_id Int
+  nome          String
+  tipo          String   // mime/extensão (ex.: application/pdf, image/png)
+  url           String
+  tamanho       Int?     // bytes
+  created_at    DateTime @default(now())
+
+  ocorrencia OcorrenciaContratual @relation(fields: [ocorrencia_id], references: [id], onDelete: Cascade)
+
+  @@index([ocorrencia_id])
+  @@map("ocorrencias_anexos")
 }
 
 model SubIndiceFaturamento {
