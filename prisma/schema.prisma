@@ -143,6 +143,7 @@ model User {
   historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
   historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
   ocorrencias_criadas         OcorrenciaContratual[] @relation("OcorrenciaCriador")
+  multas_criadas              MultaPenalidade[]      @relation("MultaCriador")
   historico_solicitacoes      HistoricoSolicitacao[] @relation("HistSolicitacaoCriador")
   subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
   alteracoes_responsavel      PrevisaoAlteracao[]            @relation("AlteracaoResponsavel")
@@ -765,6 +766,7 @@ model Contrato {
   fabricacao_itens FabricacaoItem[]
   parada_hh_config ParadaHhConfig?
   ocorrencias    OcorrenciaContratual[]
+  multas         MultaPenalidade[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -831,6 +833,30 @@ model OcorrenciaContratual {
   @@index([contrato_id])
   @@index([data])
   @@map("ocorrencias_contratuais")
+}
+
+// ─── Multas / Penalidades (movimentações financeiras do contrato) ─────────────
+model MultaPenalidade {
+  id                       Int      @id @default(autoincrement())
+  contrato_id              Int
+  tipo                     String   // MULTA | GLOSAS | REEMBOLSOS | OUTROS
+  descricao                String
+  data_ocorrencia          DateTime
+  data_notificacao_cliente DateTime?
+  data_desconto            DateTime?
+  valor_total              Decimal  @db.Decimal(15, 2)
+  ativa                    Boolean  @default(true)
+  motivo_inativacao        String?
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
+  created_by               Int
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador  User     @relation("MultaCriador", fields: [created_by], references: [id])
+
+  @@index([contrato_id])
+  @@index([data_ocorrencia])
+  @@map("multas_penalidades")
 }
 
 model OcorrenciaAnexo {

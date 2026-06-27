@@ -465,7 +465,7 @@ export function FaturamentoContratoTable({
                         {canLancarNF && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onLancarNF(contrato, sub)}
                             className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
-                            title="Lançar Faturamento">$</button>
+                            title="Movimentações Financeiras">$</button>
                         )}
                         {canEditar && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onEditarSubindice(contrato, sub)}

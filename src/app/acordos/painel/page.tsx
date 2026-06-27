@@ -761,7 +761,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                         {canEdit && contrato.status !== 'CANCELADO' && (
                           <button onClick={() => onLancarFaturamento(contrato, sub)}
                             className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
-                            title="Lançar Faturamento">$</button>
+                            title="Movimentações Financeiras">$</button>
                         )}
                         <button onClick={() => onHistorico('subindice', sub.id, indiceLabel)}
                           className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"

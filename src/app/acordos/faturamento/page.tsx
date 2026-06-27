@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { FaturamentoContratoTable } from '@/components/tables/FaturamentoContratoTable'
 import { NfRegistroTable } from '@/components/tables/NfRegistroTable'
+import { MultasRegistroTable, type MultaListItem } from '@/components/tables/MultasRegistroTable'
+import { LancarMultaModal } from '@/components/forms/LancarMultaModal'
+import { TIPOS_MULTA } from '@/lib/multas'
 import { EditarNFModal } from '@/components/forms/EditarNFModal'
 import { ContratoModal } from '@/components/forms/ContratoModal'
 import { ConsolidadoMesModal } from '@/components/forms/ConsolidadoMesModal'
@@ -20,7 +23,8 @@ import { cn, formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
 
 type AcaoNF = { tipo: 'inativar' | 'excluir'; nf: NFContratoListItem }
-type Aba = 'controle' | 'nfs' | 'aprovacoes'
+type AcaoMulta = { tipo: 'inativar' | 'excluir'; multa: MultaListItem }
+type Aba = 'controle' | 'nfs' | 'multas' | 'aprovacoes'
 
 export interface NfAprovacaoItem {
   id: number
@@ -103,6 +107,20 @@ export default function FaturamentoPage() {
   const [nfClienteId, setNfClienteId] = useState('')
   const [nfAtiva, setNfAtiva] = useState('')
   const [nfBusca, setNfBusca] = useState('')
+
+  // ── Dados Multas/Penalidades ───────────────────────────────────────────────
+  const [multas, setMultas] = useState<MultaListItem[]>([])
+  const [multasLoading, setMultasLoading] = useState(false)
+  const [multaEditando, setMultaEditando] = useState<MultaListItem | null>(null)
+  const [multaAcao, setMultaAcao] = useState<AcaoMulta | null>(null)
+  const [multaMotivo, setMultaMotivo] = useState('')
+  const [multaAcaoLoading, setMultaAcaoLoading] = useState(false)
+  // Filtros multas
+  const [multaDe, setMultaDe] = useState('')
+  const [multaAte, setMultaAte] = useState('')
+  const [multaTipo, setMultaTipo] = useState('')
+  const [multaStatus, setMultaStatus] = useState('')
+  const [multaBusca, setMultaBusca] = useState('')
 
   // ── Aprovações ────────────────────────────────────────────────────────────────
   const [alteracoes, setAlteracoes] = useState<PrevisaoAlteracaoItem[]>([])
@@ -199,6 +217,24 @@ export default function FaturamentoPage() {
     }
   }, [nfAno, nfClienteId, nfAtiva, nfBusca])
 
+  // ── Fetch Multas/Penalidades ───────────────────────────────────────────────
+  const fetchMultas = useCallback(async () => {
+    setMultasLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (multaDe) params.set('de', multaDe)
+      if (multaAte) params.set('ate', multaAte)
+      if (multaTipo) params.set('tipo', multaTipo)
+      if (multaStatus) params.set('status', multaStatus)
+      if (multaBusca) params.set('q', multaBusca)
+      const res = await fetch(`/api/faturamento/multas?${params.toString()}`)
+      const json = await res.json()
+      if (!json.error) setMultas(json.data ?? [])
+    } finally {
+      setMultasLoading(false)
+    }
+  }, [multaDe, multaAte, multaTipo, multaStatus, multaBusca])
+
   // ── Fetch aprovações ──────────────────────────────────────────────────────────
   const fetchAlteracoes = useCallback(async () => {
     if (!canEditar) return
@@ -226,7 +262,32 @@ export default function FaturamentoPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { if (aba === 'nfs') fetchNfs() }, [aba, fetchNfs])
+  useEffect(() => { if (aba === 'multas') fetchMultas() }, [aba, fetchMultas])
   useEffect(() => { if (aba === 'aprovacoes') { setHistoricoLoading(true); fetchAlteracoes() } }, [aba, fetchAlteracoes])
+
+  const handleMultaAcao = async () => {
+    if (!multaAcao) return
+    const inativando = multaAcao.tipo === 'inativar' && multaAcao.multa.ativa
+    if (inativando && multaMotivo.trim().length < 3) { setMultaMotivo(multaMotivo); return }
+    setMultaAcaoLoading(true)
+    try {
+      if (multaAcao.tipo === 'excluir') {
+        const res = await fetch(`/api/faturamento/multas/${multaAcao.multa.id}`, { method: 'DELETE' })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.error) { alert(json.error ?? 'Erro ao excluir'); return }
+      } else {
+        const novaAtiva = !multaAcao.multa.ativa
+        const res = await fetch(`/api/faturamento/multas/${multaAcao.multa.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ativa: novaAtiva, motivo_inativacao: novaAtiva ? null : multaMotivo.trim() }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.error) { alert(json.error ?? 'Erro ao salvar'); return }
+      }
+      setMultaAcao(null); setMultaMotivo(''); fetchMultas()
+    } finally { setMultaAcaoLoading(false) }
+  }
 
   const handleCancelar = async () => {
     if (!cancelando) return
@@ -509,6 +570,9 @@ export default function FaturamentoPage() {
         <button className={`${tabBase} ${aba === 'nfs' ? tabAtivo : tabInativo}`} onClick={() => setAba('nfs')}>
           Registro de NF
         </button>
+        <button className={`${tabBase} ${aba === 'multas' ? tabAtivo : tabInativo}`} onClick={() => setAba('multas')}>
+          Registro de Multas/Penalidades
+        </button>
         {canEditar && (
           <button className={`${tabBase} ${aba === 'aprovacoes' ? tabAtivo : tabInativo}`} onClick={() => setAba('aprovacoes')}>
             Aprovações
@@ -661,6 +725,42 @@ export default function FaturamentoPage() {
           </div>
         </div>
       )}
+
+      {/* filtro Multas (zona congelada) */}
+      {aba === 'multas' && (
+        <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mt-1 flex flex-wrap gap-2.5 items-end">
+          <Field label="Período (de)" className="min-w-[130px]">
+            <Input type="date" value={multaDe} onChange={(e) => setMultaDe(e.target.value)} />
+          </Field>
+          <Field label="Período (até)" className="min-w-[130px]">
+            <Input type="date" value={multaAte} onChange={(e) => setMultaAte(e.target.value)} />
+          </Field>
+          <Field label="Tipo" className="min-w-[130px]">
+            <SearchableSelect
+              value={multaTipo}
+              onChange={setMultaTipo}
+              options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))}
+              emptyLabel="Todos"
+            />
+          </Field>
+          <Field label="Status" className="min-w-[120px]">
+            <SearchableSelect
+              value={multaStatus}
+              onChange={setMultaStatus}
+              options={[{ value: 'ativas', label: 'Ativas' }, { value: 'inativas', label: 'Inativas' }]}
+              emptyLabel="Todas"
+            />
+          </Field>
+          <Field label="Buscar" className="min-w-[160px] flex-1">
+            <Input placeholder="Descrição, índice, cliente..." value={multaBusca} onChange={(e) => setMultaBusca(e.target.value)} />
+          </Field>
+          <div className="flex-shrink-0">
+            <button onClick={() => { setMultaDe(''); setMultaAte(''); setMultaTipo(''); setMultaStatus(''); setMultaBusca('') }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
+              ✕ Limpar
+            </button>
+          </div>
+        </div>
+      )}
       </div>{/* fim zona congelada */}
 
       {/* ── Zona de scroll ────────────────────────────────────────────────────── */}
@@ -712,6 +812,21 @@ export default function FaturamentoPage() {
               />
             )}
           </>
+        )}
+
+        {aba === 'multas' && (
+          multasLoading ? (
+            <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+          ) : (
+            <MultasRegistroTable
+              multas={multas}
+              canEditar={canEditar}
+              canExcluir={pode('acordos.nf.excluir')}
+              onEditar={setMultaEditando}
+              onInativar={(m) => { setMultaAcao({ tipo: 'inativar', multa: m }); setMultaMotivo('') }}
+              onExcluir={(m) => setMultaAcao({ tipo: 'excluir', multa: m })}
+            />
+          )
         )}
 
         {aba === 'aprovacoes' && canEditar && (
@@ -824,6 +939,55 @@ export default function FaturamentoPage() {
               </Button>
               <Button variant={nfAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={handleNfAcaoConfirmar} disabled={nfAcaoLoading}>
                 {nfAcaoLoading ? 'Aguarde...' : nfAcao.tipo === 'excluir' ? 'Confirmar exclusão' : nfAcao.nf.ativa ? 'Confirmar inativação' : 'Confirmar reativação'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {multaEditando && (
+        <LancarMultaModal
+          open={true}
+          onClose={() => setMultaEditando(null)}
+          onSuccess={fetchMultas}
+          contratoId={multaEditando.contrato_id}
+          subtitulo={`${multaEditando.contrato_indice} · ${multaEditando.cliente_nome}`}
+          editando={multaEditando}
+        />
+      )}
+
+      {multaAcao && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
+            <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${
+              multaAcao.tipo === 'excluir' ? 'bg-red-600' : multaAcao.multa.ativa ? 'bg-orange-500' : 'bg-blue-600'
+            }`}>
+              {multaAcao.tipo === 'excluir' ? 'Excluir lançamento' : multaAcao.multa.ativa ? 'Inativar lançamento' : 'Reativar lançamento'}
+            </div>
+            <div className="p-[18px]">
+              {multaAcao.tipo === 'excluir' && (
+                <p className="text-[12px] text-gray-600">Este lançamento será excluído permanentemente. Esta ação não pode ser desfeita.</p>
+              )}
+              {multaAcao.tipo === 'inativar' && multaAcao.multa.ativa && (
+                <>
+                  <p className="text-[12px] text-gray-600 mb-3">O lançamento permanecerá no registro mas deixará de ser contabilizado. Informe o motivo.</p>
+                  <textarea
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-orange-400/40"
+                    rows={2}
+                    placeholder="Motivo da inativação (mínimo 3 caracteres)"
+                    value={multaMotivo}
+                    onChange={(e) => setMultaMotivo(e.target.value)}
+                  />
+                </>
+              )}
+              {multaAcao.tipo === 'inativar' && !multaAcao.multa.ativa && (
+                <p className="text-[12px] text-gray-600">Este lançamento será reativado e voltará a ser contabilizado.</p>
+              )}
+            </div>
+            <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => { setMultaAcao(null); setMultaMotivo('') }} disabled={multaAcaoLoading}>Voltar</Button>
+              <Button variant={multaAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={handleMultaAcao} disabled={multaAcaoLoading || (multaAcao.tipo === 'inativar' && multaAcao.multa.ativa && multaMotivo.trim().length < 3)}>
+                {multaAcaoLoading ? 'Aguarde...' : multaAcao.tipo === 'excluir' ? 'Confirmar exclusão' : multaAcao.multa.ativa ? 'Confirmar inativação' : 'Confirmar reativação'}
               </Button>
             </div>
           </div>

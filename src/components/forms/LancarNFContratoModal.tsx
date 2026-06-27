@@ -5,6 +5,7 @@ import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { MultaForm } from '@/components/forms/MultaForm'
 import type { SubIndiceItem, ContratoItem, NFContratoItem } from '@/types'
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
   approvalFlow?: boolean   // responsável: lançamento vai para aprovação da coordenação
 }
 
-type Aba = 'lancar' | 'historico'
+type Aba = 'lancar' | 'multas' | 'historico'
 
 export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice, approvalFlow }: Props) {
   const [aba, setAba] = useState<Aba>('lancar')
@@ -103,7 +104,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       open={open}
       confirmClose
       onClose={onClose}
-      title={`NF — ${indiceSubindice} · ${subindice.descricao}`}
+      title={`Movimentações Financeiras — ${indiceSubindice} · ${subindice.descricao}`}
       wide
       footer={
         enviadoAprovacao ? (
@@ -133,6 +134,16 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           }`}
         >
           Lançar Faturamento
+        </button>
+        <button
+          onClick={() => setAba('multas')}
+          className={`px-4 py-2 text-[12px] font-semibold border-b-2 transition-colors ${
+            aba === 'multas'
+              ? 'border-green-primary text-green-primary'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Multas/Penalidades
         </button>
         <button
           onClick={() => setAba('historico')}
@@ -273,6 +284,22 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               ⚠ O percentual restante ({(100 - Number(percentual)).toFixed(2)}%) deve ser lançado em outro item.
             </div>
           )}
+        </>
+      )}
+
+      {/* ── Aba: Multas/Penalidades ── */}
+      {aba === 'multas' && (
+        <>
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
+            <p className="text-[9px] text-gray-400 uppercase">Contrato</p>
+            <p className="text-[12px] font-bold text-green-dark">{contrato.indice} · {contrato.cliente.nome}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">O lançamento é por contrato (não vinculado a um evento de medição específico).</p>
+          </div>
+          <MultaForm
+            contratoId={contrato.id}
+            onSaved={() => { onSuccess(); onClose() }}
+            onCancel={onClose}
+          />
         </>
       )}
 

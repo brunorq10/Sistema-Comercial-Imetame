@@ -9,6 +9,7 @@ import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
 import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
+import { MultasContratoSection } from '@/components/acordos/MultasContratoSection'
 
 const ContratoFaturamentoBarChart = dynamic(
   () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoBarChart),
@@ -303,6 +304,14 @@ export default function ContratoVisaoGeralPage() {
           <NFsContratoTable contrato={contrato} />
         </div>
       )}
+
+      {/* Multas / Penalidades */}
+      <MultasContratoSection
+        contratoId={contrato.id}
+        indice={contrato.indice}
+        cliente={contrato.cliente.nome}
+        canLancar={pode('acordos.faturamento.item.editar')}
+      />
 
       {/* Histórico + Ocorrências + Negociação (abas) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
