@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { MultaForm } from '@/components/forms/MultaForm'
-import type { SubIndiceItem, ContratoItem, NFContratoItem } from '@/types'
+import { EditarNFModal } from '@/components/forms/EditarNFModal'
+import type { SubIndiceItem, ContratoItem, NFContratoItem, NFContratoListItem } from '@/types'
 
 interface Props {
   open: boolean
@@ -32,6 +33,9 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   const [warning, setWarning] = useState<string | null>(null)
   const [enviadoAprovacao, setEnviadoAprovacao] = useState(false)
   const [nfAlocado, setNfAlocado] = useState<number | null>(null)
+  // NFs lançadas exibidas na aba (cópia local, atualizada após edição)
+  const [nfsLocal, setNfsLocal] = useState<NFContratoItem[]>(subindice.notas_fiscais)
+  const [nfEditando, setNfEditando] = useState<NFContratoListItem | null>(null)
 
   const valorAtribuido = valorTotal && percentual
     ? (Number(valorTotal) * Number(percentual)) / 100
@@ -45,6 +49,29 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null); setEnviadoAprovacao(false)
     }
   }, [open])
+
+  // Mantém a lista local em sincronia com o sub-índice recebido
+  useEffect(() => { setNfsLocal(subindice.notas_fiscais) }, [subindice])
+
+  // Recarrega as NFs deste sub-índice e reflete no Controle de Faturamento
+  const refreshNfs = async () => {
+    try {
+      const res = await fetch(`/api/faturamento/contratos/${contrato.id}`)
+      const json = await res.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sub = json.data?.subindices?.find((s: any) => s.id === subindice.id)
+      if (sub) setNfsLocal(sub.notas_fiscais)
+    } catch { /* silencioso */ }
+    onSuccess()
+  }
+
+  const abrirEdicao = (nf: NFContratoItem) => setNfEditando({
+    ...nf,
+    created_at: '',
+    subindice: { id: subindice.id, ordem: subindice.ordem, descricao: subindice.descricao },
+    contrato: { id: contrato.id, indice: contrato.indice, num_acordo: contrato.num_acordo ?? null, num_proposta: contrato.num_proposta ?? null },
+    cliente: { id: contrato.cliente.id, nome: contrato.cliente.nome },
+  })
 
   const handleNumeroNFBlur = async () => {
     if (!numeroNF.trim()) { setNfAlocado(null); return }
@@ -105,7 +132,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       confirmClose
       onClose={onClose}
       title={`Movimentações Financeiras — ${indiceSubindice} · ${subindice.descricao}`}
-      wide
+      extraWide
       footer={
         enviadoAprovacao ? (
           <ModalCancelButton label="Fechar" />
@@ -154,9 +181,9 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           }`}
         >
           NFs lançadas
-          {subindice.notas_fiscais.length > 0 && (
+          {nfsLocal.length > 0 && (
             <span className="bg-gray-200 text-gray-600 rounded-full text-[10px] px-1.5 py-0.5 leading-none">
-              {subindice.notas_fiscais.length}
+              {nfsLocal.length}
             </span>
           )}
         </button>
@@ -305,13 +332,22 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
       {/* ── Aba: Histórico de NFs ── */}
       {aba === 'historico' && (
-        <NFHistoricoTab nfs={subindice.notas_fiscais} valorEvento={subindice.valor_total} />
+        <NFHistoricoTab nfs={nfsLocal} valorEvento={subindice.valor_total} onEditar={abrirEdicao} />
+      )}
+
+      {nfEditando && (
+        <EditarNFModal
+          open
+          onClose={() => setNfEditando(null)}
+          onSuccess={() => { setNfEditando(null); refreshNfs() }}
+          nf={nfEditando}
+        />
       )}
     </Modal>
   )
 }
 
-function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEvento: number }) {
+function NFHistoricoTab({ nfs, valorEvento, onEditar }: { nfs: NFContratoItem[]; valorEvento: number; onEditar?: (nf: NFContratoItem) => void }) {
   if (nfs.length === 0) {
     return (
       <div className="text-center text-gray-400 py-10 text-[12px]">
@@ -349,7 +385,7 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
       {ativas.length > 0 && (
         <>
           <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Notas fiscais ativas</p>
-          <NFTable nfs={ativas} />
+          <NFTable nfs={ativas} onEditar={onEditar} />
         </>
       )}
 
@@ -365,20 +401,20 @@ function NFHistoricoTab({ nfs, valorEvento }: { nfs: NFContratoItem[]; valorEven
       {inativas.length > 0 && (
         <div className="mt-4">
           <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Notas inativas (não entram no faturamento)</p>
-          <NFTable nfs={inativas} inativa />
+          <NFTable nfs={inativas} inativa onEditar={onEditar} />
         </div>
       )}
     </div>
   )
 }
 
-function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean }) {
+function NFTable({ nfs, inativa, onEditar }: { nfs: NFContratoItem[]; inativa?: boolean; onEditar?: (nf: NFContratoItem) => void }) {
   const thCls = 'px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
   const tdCls = `px-3 py-2 text-[11px] whitespace-nowrap border-b border-gray-100 ${inativa ? 'text-gray-400' : 'text-gray-700'}`
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-hidden">
-      <table className="w-full border-collapse">
+    <div className="border border-gray-200 rounded-md overflow-x-auto">
+      <table className="w-full border-collapse" style={{ minWidth: 680 }}>
         <thead>
           <tr>
             <th className={thCls}>Tipo</th>
@@ -390,6 +426,7 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
             <th className={thCls}>% Lançado</th>
             <th className={thCls}>Vlr. Atribuído</th>
             {inativa && <th className={thCls}>Motivo</th>}
+            {onEditar && <th className={thCls}>Ações</th>}
           </tr>
         </thead>
         <tbody>
@@ -424,6 +461,11 @@ function NFTable({ nfs, inativa }: { nfs: NFContratoItem[]; inativa?: boolean })
               {inativa && (
                 <td className={tdCls}>
                   <span className="text-gray-400 italic text-[10px]">{nf.motivo_inativacao ?? '—'}</span>
+                </td>
+              )}
+              {onEditar && (
+                <td className={tdCls}>
+                  <button onClick={() => onEditar(nf)} className="text-[11px] text-blue-600 hover:underline font-semibold">Editar</button>
                 </td>
               )}
             </tr>
