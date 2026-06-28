@@ -37,7 +37,7 @@ interface DashData {
   porMes:     MesData[]
   projecaoMultiAno: { ano: number; realizado: number; aFaturar: number }[]
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
-  ocorrenciasPorResponsavel: { id: number; nome: string; total: number }[]
+  ocorrenciasPorResponsavel: { id: number; nome: string; osSobGestao: number; total: number }[]
   contratosAtivos: { id: number; indice: string; cliente: string; valorTotal: number; faturado: number; pct: number }[]
   clientes: { id: number; nome: string }[]
 }
@@ -479,13 +479,15 @@ export default function IndicadoresAcordosPage() {
                   <thead>
                     <tr className="bg-slate-50 text-gray-600 text-[11px] border-b border-gray-200">
                       <th className="text-left px-4 py-2 font-semibold">Responsável</th>
-                      <th className="text-right px-4 py-2 font-semibold w-40">Ocorrências lançadas</th>
+                      <th className="text-right px-4 py-2 font-semibold w-40">OS sob gestão</th>
+                      <th className="text-right px-4 py-2 font-semibold w-44">Ocorrências lançadas (total)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.ocorrenciasPorResponsavel.map((r) => (
                       <tr key={r.id} className="border-b border-gray-100">
                         <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Avatar nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
+                        <td className="px-4 py-2.5 text-right text-gray-700 tabular-nums">{r.osSobGestao}</td>
                         <td className="px-4 py-2.5 text-right font-bold text-gray-700 tabular-nums">{r.total}</td>
                       </tr>
                     ))}
@@ -493,6 +495,7 @@ export default function IndicadoresAcordosPage() {
                   <tfoot>
                     <tr className="bg-green-primary text-white font-bold text-[12px]">
                       <td className="px-4 py-2.5">Total geral</td>
+                      <td className="px-4 py-2.5 text-right">{data.ocorrenciasPorResponsavel.reduce((s, r) => s + r.osSobGestao, 0)}</td>
                       <td className="px-4 py-2.5 text-right">{data.ocorrenciasPorResponsavel.reduce((s, r) => s + r.total, 0)}</td>
                     </tr>
                   </tfoot>

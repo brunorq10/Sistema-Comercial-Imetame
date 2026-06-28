@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     prisma.contrato.findMany({
       where: whereContrato,
       select: {
-        id: true, indice: true, ano_referencia: true,
+        id: true, indice: true, ano_referencia: true, num_os: true,
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
@@ -256,9 +256,27 @@ export async function GET(req: Request) {
     ? await prisma.user.findMany({ where: { id: { in: ocorrenciasRaw.map((o) => o.created_by) } }, select: { id: true, nome: true } })
     : []
   const ocNomeById = new Map(ocAutores.map((u) => [u.id, u.nome]))
-  const ocorrenciasPorResponsavel = ocorrenciasRaw
-    .map((o) => ({ id: o.created_by, nome: ocNomeById.get(o.created_by) ?? '—', total: o._count._all }))
-    .sort((a, b) => b.total - a.total)
+  const ocPorResp = new Map(ocorrenciasRaw.map((o) => [o.created_by, o._count._all]))
+
+  // OS sob gestão por responsável (contratos com Nº OS) + nomes
+  const osPorResp = new Map<number, number>()
+  const nomeResp = new Map<number, string>()
+  for (const c of contratos) {
+    if (!c.responsavel) continue
+    nomeResp.set(c.responsavel.id, c.responsavel.nome)
+    if (c.num_os) osPorResp.set(c.responsavel.id, (osPorResp.get(c.responsavel.id) ?? 0) + 1)
+  }
+  ocNomeById.forEach((nome, id) => nomeResp.set(id, nome))
+
+  const idsResp = Array.from(new Set([...Array.from(osPorResp.keys()), ...Array.from(ocPorResp.keys())]))
+  const ocorrenciasPorResponsavel = idsResp
+    .map((id) => ({
+      id,
+      nome: nomeResp.get(id) ?? '—',
+      osSobGestao: osPorResp.get(id) ?? 0,
+      total: ocPorResp.get(id) ?? 0,
+    }))
+    .sort((a, b) => b.total - a.total || b.osSobGestao - a.osSobGestao)
 
   return NextResponse.json({
     data: {

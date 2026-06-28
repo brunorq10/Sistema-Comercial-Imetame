@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import * as XLSX from 'xlsx'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { TIPO_MULTA_MAP } from '@/lib/multas'
+import { TIPOS_MULTA, TIPO_MULTA_MAP, TIPO_MULTA_LABEL } from '@/lib/multas'
 
 interface MultaItem {
   id: number
@@ -18,6 +19,8 @@ interface MultaItem {
   data_desconto: string | null
   valor_total: number
   ativa: boolean
+  motivo_inativacao: string | null
+  autor: string
 }
 interface Opcoes {
   clientes: { id: number; nome: string }[]
@@ -35,8 +38,10 @@ export function MultasIndicador() {
   const [clienteId, setClienteId] = useState('')
   const [cidade, setCidade] = useState('')
   const [responsavel, setResponsavel] = useState('')
+  const [tipo, setTipo] = useState('')
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
+  const [expandida, setExpandida] = useState<number | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -45,6 +50,7 @@ export function MultasIndicador() {
     if (clienteId) p.set('cliente_id', clienteId)
     if (cidade) p.set('cidade', cidade)
     if (responsavel) p.set('responsavel', responsavel)
+    if (tipo) p.set('tipo', tipo)
     if (de) p.set('de', de)
     if (ate) p.set('ate', ate)
     fetch(`/api/faturamento/multas?${p.toString()}`)
@@ -56,34 +62,68 @@ export function MultasIndicador() {
       })
       .finally(() => { if (ativo) setLoading(false) })
     return () => { ativo = false }
-  }, [clienteId, cidade, responsavel, de, ate])
+  }, [clienteId, cidade, responsavel, tipo, de, ate])
 
   const total = items.reduce((s, m) => s + m.valor_total, 0)
-  const limpar = () => { setClienteId(''); setCidade(''); setResponsavel(''); setDe(''); setAte('') }
+  const limpar = () => { setClienteId(''); setCidade(''); setResponsavel(''); setTipo(''); setDe(''); setAte('') }
+
+  // Resumo por tipo
+  const porTipo = TIPOS_MULTA.map((t) => {
+    const ds = items.filter((m) => m.tipo === t.value)
+    return { ...t, count: ds.length, valor: ds.reduce((s, m) => s + m.valor_total, 0) }
+  })
+
+  const exportarExcel = () => {
+    const rows = items.map((m) => ({
+      Tipo: TIPO_MULTA_LABEL[m.tipo] ?? m.tipo,
+      Índice: m.contrato_indice,
+      Cliente: m.cliente_nome,
+      'Cidade/UF': [m.cidade, m.estado].filter(Boolean).join(' / '),
+      Responsável: m.responsavel_nome,
+      Descrição: m.descricao,
+      'Data ocorrência': formatDate(m.data_ocorrencia),
+      'Data notificação': m.data_notificacao_cliente ? formatDate(m.data_notificacao_cliente) : '',
+      'Data desconto': m.data_desconto ? formatDate(m.data_desconto) : '',
+      Valor: m.valor_total,
+      Status: m.ativa ? 'Ativa' : 'Inativa',
+      'Lançado por': m.autor,
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Multas')
+    XLSX.writeFile(wb, `multas-penalidades-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       {/* Filtros */}
       <div className="flex flex-wrap gap-2.5 items-end mb-3">
-        <div className="min-w-[160px] flex-1">
+        <div className="min-w-[150px] flex-1">
           <label className={lblCls}>Cliente</label>
           <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={`${selCls} w-full`}>
             <option value="">Todos</option>
             {opcoes.clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
-        <div className="min-w-[130px]">
+        <div className="min-w-[120px]">
           <label className={lblCls}>Cidade</label>
           <select value={cidade} onChange={(e) => setCidade(e.target.value)} className={`${selCls} w-full`}>
             <option value="">Todas</option>
             {opcoes.cidades.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <div className="min-w-[150px]">
+        <div className="min-w-[140px]">
           <label className={lblCls}>Responsável</label>
           <select value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={`${selCls} w-full`}>
             <option value="">Todos</option>
             {opcoes.responsaveis.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+          </select>
+        </div>
+        <div className="min-w-[120px]">
+          <label className={lblCls}>Tipo</label>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={`${selCls} w-full`}>
+            <option value="">Todos</option>
+            {TIPOS_MULTA.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
         <div className="min-w-[120px]">
@@ -95,6 +135,23 @@ export function MultasIndicador() {
           <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={`${selCls} w-full`} />
         </div>
         <button onClick={limpar} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[6px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
+        <button onClick={exportarExcel} disabled={items.length === 0} className="bg-green-primary hover:bg-green-dark text-white rounded px-3 py-[6px] text-[11px] font-semibold transition-colors disabled:opacity-50">⭳ Exportar Excel</button>
+      </div>
+
+      {/* Cards de resumo por tipo + total */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-3">
+        {porTipo.map((t) => (
+          <div key={t.value} className="rounded-lg border p-2.5" style={{ borderColor: t.corBg, backgroundColor: t.corBg }}>
+            <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: t.cor }}>{t.label}</p>
+            <p className="text-[16px] font-bold text-gray-800 leading-tight">{t.count}</p>
+            <p className="text-[10px] text-gray-500">{formatCurrency(t.valor)}</p>
+          </div>
+        ))}
+        <div className="rounded-lg border border-slate-300 bg-slate-50 p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-600">Valor total</p>
+          <p className="text-[16px] font-bold text-slate-800 leading-tight">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-gray-500">{items.length} lançamento(s)</p>
+        </div>
       </div>
 
       {loading ? (
@@ -122,26 +179,52 @@ export function MultasIndicador() {
             <tbody className="divide-y divide-gray-100">
               {items.map((m) => {
                 const cfg = TIPO_MULTA_MAP[m.tipo]
+                const aberta = expandida === m.id
                 return (
-                  <tr key={m.id} className={m.ativa ? 'hover:bg-gray-50' : 'bg-gray-50/50 text-gray-400'}>
-                    <td className="px-3 py-2">
-                      <span className="text-[9px] font-bold uppercase rounded-full px-2 py-0.5 whitespace-nowrap" style={{ color: cfg?.cor ?? '#6B7280', backgroundColor: cfg?.corBg ?? '#F3F4F6' }}>{cfg?.label ?? m.tipo}</span>
-                    </td>
-                    <td className="px-3 py-2 font-semibold text-green-dark whitespace-nowrap">{m.contrato_indice}</td>
-                    <td className="px-3 py-2">{m.cliente_nome}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{[m.cidade, m.estado].filter(Boolean).join(' / ') || '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{m.responsavel_nome}</td>
-                    <td className="px-3 py-2 max-w-[240px] truncate" title={m.descricao}>{m.descricao}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDate(m.data_ocorrencia)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{m.data_notificacao_cliente ? formatDate(m.data_notificacao_cliente) : '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{m.data_desconto ? formatDate(m.data_desconto) : '—'}</td>
-                    <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${m.ativa ? 'text-auto-value' : ''}`}>{formatCurrency(m.valor_total)}</td>
-                    <td className="px-3 py-2">
-                      {m.ativa
-                        ? <span className="text-[9px] font-semibold text-green-700 bg-green-50 rounded-full px-1.5 py-0.5">Ativa</span>
-                        : <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">Inativa</span>}
-                    </td>
-                  </tr>
+                  <Fragment key={m.id}>
+                    <tr onClick={() => setExpandida(aberta ? null : m.id)} className={`cursor-pointer ${m.ativa ? 'hover:bg-gray-50' : 'bg-gray-50/50 text-gray-400'}`}>
+                      <td className="px-3 py-2">
+                        <span className="text-[9px] font-bold uppercase rounded-full px-2 py-0.5 whitespace-nowrap" style={{ color: cfg?.cor ?? '#6B7280', backgroundColor: cfg?.corBg ?? '#F3F4F6' }}>{cfg?.label ?? m.tipo}</span>
+                      </td>
+                      <td className="px-3 py-2 font-semibold text-green-dark whitespace-nowrap">{m.contrato_indice}</td>
+                      <td className="px-3 py-2">{m.cliente_nome}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{[m.cidade, m.estado].filter(Boolean).join(' / ') || '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{m.responsavel_nome}</td>
+                      <td className="px-3 py-2 max-w-[240px] truncate" title={m.descricao}>{m.descricao}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{formatDate(m.data_ocorrencia)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{m.data_notificacao_cliente ? formatDate(m.data_notificacao_cliente) : '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{m.data_desconto ? formatDate(m.data_desconto) : '—'}</td>
+                      <td className={`px-3 py-2 text-right font-semibold whitespace-nowrap ${m.ativa ? 'text-auto-value' : ''}`}>{formatCurrency(m.valor_total)}</td>
+                      <td className="px-3 py-2">
+                        {m.ativa
+                          ? <span className="text-[9px] font-semibold text-green-700 bg-green-50 rounded-full px-1.5 py-0.5">Ativa</span>
+                          : <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">Inativa</span>}
+                      </td>
+                    </tr>
+                    {aberta && (
+                      <tr className="bg-slate-50">
+                        <td colSpan={11} className="px-4 py-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+                            <Det label="Tipo" valor={cfg?.label ?? m.tipo} />
+                            <Det label="Contrato" valor={m.contrato_indice} />
+                            <Det label="Cliente" valor={m.cliente_nome} />
+                            <Det label="Cidade/UF" valor={[m.cidade, m.estado].filter(Boolean).join(' / ') || '—'} />
+                            <Det label="Responsável" valor={m.responsavel_nome} />
+                            <Det label="Data da ocorrência" valor={formatDate(m.data_ocorrencia)} />
+                            <Det label="Notificação ao cliente" valor={m.data_notificacao_cliente ? formatDate(m.data_notificacao_cliente) : '—'} />
+                            <Det label="Data do desconto" valor={m.data_desconto ? formatDate(m.data_desconto) : '—'} />
+                            <Det label="Valor total" valor={formatCurrency(m.valor_total)} />
+                            <Det label="Lançado por" valor={m.autor} />
+                            {!m.ativa && <Det label="Motivo da inativação" valor={m.motivo_inativacao ?? '—'} />}
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Descrição</p>
+                            <p className="text-[11px] text-gray-700 leading-relaxed whitespace-pre-wrap">{m.descricao}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
@@ -155,6 +238,15 @@ export function MultasIndicador() {
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+function Det({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div>
+      <p className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className="text-[11px] text-gray-700">{valor}</p>
     </div>
   )
 }
