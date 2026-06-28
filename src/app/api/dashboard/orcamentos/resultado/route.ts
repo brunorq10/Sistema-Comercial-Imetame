@@ -8,8 +8,11 @@ export interface ResultadoDashboardData {
   ticket_medio: number
   taxa_conversao: number          // %
   ganhos_por_mes: number[]        // 0=Jan … 11=Dez
+  valor_ganhos_por_mes: number[]  // valor R$ dos ganhos por mês
   rs_hh_medio: number | null
   rs_ton_medio: number | null
+  hh_total: number
+  hh_ton_medio: number | null
   valor_medio_proposta: number | null
   prazo_medio_tecnica: number | null    // dias
   prazo_medio_comercial: number | null  // dias
@@ -25,6 +28,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const ano             = searchParams.get('ano')             ?? undefined
+  const de              = searchParams.get('de')              ?? undefined
+  const ate             = searchParams.get('ate')             ?? undefined
   const classificacao   = searchParams.get('classificacao')   ?? undefined
   const interesse       = searchParams.get('interesse')       ?? undefined
   const cliente_id      = searchParams.get('cliente_id')      ?? undefined
@@ -40,9 +45,10 @@ export async function GET(req: NextRequest) {
     ...(cliente_id      && { cliente_id: Number(cliente_id) }),
     ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
     ...(cidade          && { cidade }),
-    ...(ano && {
-      data_recebimento: { gte: new Date(`${ano}-01-01`), lte: new Date(`${ano}-12-31T23:59:59`) },
-    }),
+    // Período: prioriza intervalo DE/ATÉ; senão usa o ano (compat.)
+    ...((de || ate)
+      ? { data_recebimento: { ...(de && { gte: new Date(de) }), ...(ate && { lte: new Date(`${ate}T23:59:59`) }) } }
+      : (ano ? { data_recebimento: { gte: new Date(`${ano}-01-01`), lte: new Date(`${ano}-12-31T23:59:59`) } } : {})),
   }
 
   const items = await prisma.solicitacao.findMany({
@@ -77,6 +83,7 @@ export async function GET(req: NextRequest) {
   let somaPrazoTec = 0, nPrazoTec = 0
   let somaPrazoCom = 0, nPrazoCom = 0
   const ganhosPorMes = Array(12).fill(0)
+  const valorGanhosPorMes = Array(12).fill(0)
 
   const pontMap = new Map<number, { id: number; nome: string; enviadas: number; no_prazo: number; atrasadas: number; em_elaboracao: number }>()
   const tipoMap = new Map<string, { ganhos: number; hh_total: number; valor_total: number }>()
@@ -108,7 +115,7 @@ export async function GET(req: NextRequest) {
       contratosGanhos++
       valorGanhos += valor
       const ref = dataEnvio ?? s.data_atribuicao
-      if (ref) ganhosPorMes[new Date(ref).getMonth()]++
+      if (ref) { const mi = new Date(ref).getMonth(); ganhosPorMes[mi]++; valorGanhosPorMes[mi] += valor }
       if (s.classificacao) {
         const t = tipoMap.get(s.classificacao) ?? { ganhos: 0, hh_total: 0, valor_total: 0 }
         t.ganhos++; t.hh_total += hh; t.valor_total += valor
@@ -148,8 +155,11 @@ export async function GET(req: NextRequest) {
     ticket_medio: contratosGanhos > 0 ? valorGanhos / contratosGanhos : 0,
     taxa_conversao: enviadas > 0 ? (contratosGanhos / enviadas) * 100 : 0,
     ganhos_por_mes: ganhosPorMes,
+    valor_ganhos_por_mes: valorGanhosPorMes,
     rs_hh_medio: somaHh > 0 ? somaValorComHh / somaHh : null,
     rs_ton_medio: somaPeso > 0 ? somaValorComPeso / somaPeso : null,
+    hh_total: somaHh,
+    hh_ton_medio: somaPeso > 0 ? somaHh / somaPeso : null,
     valor_medio_proposta: enviadas > 0 ? somaValorEnviadas / enviadas : null,
     prazo_medio_tecnica: nPrazoTec > 0 ? somaPrazoTec / nPrazoTec : null,
     prazo_medio_comercial: nPrazoCom > 0 ? somaPrazoCom / nPrazoCom : null,

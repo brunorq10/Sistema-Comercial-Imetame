@@ -424,6 +424,12 @@ function diffDias(from: string | null, to?: Date): number {
   return Math.max(0, Math.floor(ms / 86_400_000))
 }
 
+// Dias em relação ao prazo (assinado): >0 = atrasado; <0 = ainda no prazo.
+function diasPrazo(prazo: string | null): number | null {
+  if (!prazo) return null
+  return Math.floor((now.getTime() - new Date(prazo).getTime()) / 86_400_000)
+}
+
 function DetalheAberta({ s }: { s: SolicitacaoAberta }) {
   const diasComOrc = s.data_atribuicao
     ? (s.prazo_tecnica_enviada && s.prazo_comercial_enviada)
@@ -564,15 +570,17 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
   }
 
   return (
-    <div style={{ overflowX: 'auto', maxHeight: 440, overflowY: 'auto' }}>
+    // Limita a ~10 linhas visíveis; o restante entra na rolagem vertical
+    <div style={{ overflowX: 'auto', maxHeight: 348, overflowY: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: 28 }} />
           <col style={{ width: 90 }} />
           <col />{/* Escopo — ocupa o restante */}
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '14%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: '13%' }} />
+          <col style={{ width: 70 }} />
           <col style={{ width: 90 }} />
         </colgroup>
         <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
@@ -583,6 +591,7 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
             <th style={thStyle}>Cliente</th>
             <th style={thStyle}>Cliente Final</th>
             <th style={thStyle}>Orçamentista</th>
+            <th style={{ ...thStyle, textAlign: 'center' }}>Prazo (dias)</th>
             <th style={{ ...thStyle, textAlign: 'center' }}>Situação</th>
           </tr>
         </thead>
@@ -613,6 +622,13 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
                   <td style={{ ...tdStyle, color: s.orcamentista ? '#111' : '#aaa', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {s.orcamentista ?? '—'}
                   </td>
+                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
+                    {(() => {
+                      const d = (s.prazo_comercial_indeterminado || !s.prazo_comercial) ? null : diasPrazo(s.prazo_comercial)
+                      if (d == null) return <span style={{ color: '#9ca3af', fontWeight: 400 }}>—</span>
+                      return <span style={{ color: d > 0 ? '#C62828' : '#0A6E39' }}>{d > 0 ? `+${d}` : d}</span>
+                    })()}
+                  </td>
                   <td style={{ ...tdStyle, textAlign: 'center' }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
@@ -627,7 +643,7 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
                 </tr>
                 {expanded && (
                   <tr key={`${s.id}-detalhe`}>
-                    <td colSpan={7} style={{ padding: 0 }}>
+                    <td colSpan={8} style={{ padding: 0 }}>
                       <DetalheAberta s={s} />
                     </td>
                   </tr>
@@ -856,12 +872,33 @@ function GraficoGanhosMes({ porMes }: { porMes: number[] }) {
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.y ?? 0} contratos` } },
-      datalabels: { anchor: 'end' as const, align: 'end' as const, color: '#444', font: { size: 10, weight: 'bold' as const }, formatter: (v: number) => v > 0 ? v : '' },
+      datalabels: { anchor: 'end' as const, align: 'end' as const, offset: 2, clamp: true, color: '#444', font: { size: 10, weight: 'bold' as const }, formatter: (v: number) => v > 0 ? v : '' },
     },
-    scales: { x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f0f0f0' } } },
-    layout: { padding: { top: 16 } },
+    scales: { x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, grace: '12%', ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f0f0f0' } } },
+    layout: { padding: { top: 28 } },
   } as const
   return <Card title="Contratos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></Card>
+}
+
+function fmtCurto(v: number): string {
+  if (v >= 1e6) return `R$ ${(v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}M`
+  if (v >= 1e3) return `R$ ${Math.round(v / 1e3)}k`
+  return v > 0 ? `R$ ${Math.round(v)}` : ''
+}
+
+function GraficoValorGanhosMes({ porMes }: { porMes: number[] }) {
+  const chartData = { labels: MESES, datasets: [{ data: porMes, backgroundColor: BLUE, borderRadius: 2, barThickness: 26 }] }
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (ctx: TooltipItem<'bar'>) => fmtMoney(ctx.parsed.y ?? 0) } },
+      datalabels: { anchor: 'end' as const, align: 'end' as const, offset: 2, clamp: true, color: '#444', font: { size: 9, weight: 'bold' as const }, formatter: (v: number) => fmtCurto(v) },
+    },
+    scales: { x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, grace: '14%', ticks: { font: { size: 10 }, callback: (v: string | number) => fmtCurto(Number(v)) }, grid: { color: '#f0f0f0' } } },
+    layout: { padding: { top: 28 } },
+  } as const
+  return <Card title="Valor dos Contratos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></Card>
 }
 
 function pontBadge(p: number) { return p >= 80 ? { bg: '#DCFCE7', text: '#15803D' } : p >= 60 ? { bg: '#FEF3C7', text: '#B45309' } : { bg: '#FEE2E2', text: '#B91C1C' } }
@@ -988,6 +1025,8 @@ export default function DashboardComercialPage() {
   const [aba, setAba] = useState<Aba>('solicitacoes')
 
   const [ano, setAno] = useState('')
+  const [de, setDe] = useState('')   // aba Valor e Resultado: período DE
+  const [ate, setAte] = useState('') // aba Valor e Resultado: período ATÉ
   const [classificacao, setClassificacao] = useState('')
   const [interesse, setInteresse] = useState('')
   const [clienteId, setClienteId] = useState('')
@@ -1013,9 +1052,14 @@ export default function DashboardComercialPage() {
       if (orcamentistaId) params.set('orcamentista_id', orcamentistaId)
       if (segmento)       params.set('segmento', segmento)
       if (cidadeUf)       params.set('cidade', cidadeUf)
+      // Aba "Valor e Resultado" usa período DE/ATÉ no lugar do ano
+      const paramsR = new URLSearchParams(params)
+      paramsR.delete('ano')
+      if (de)  paramsR.set('de', de)
+      if (ate) paramsR.set('ate', ate)
       const [res, resR] = await Promise.all([
         fetch(`/api/dashboard/orcamentos?${params}`),
-        fetch(`/api/dashboard/orcamentos/resultado?${params}`),
+        fetch(`/api/dashboard/orcamentos/resultado?${paramsR}`),
       ])
       const json = await res.json()
       const jsonR = await resR.json()
@@ -1024,12 +1068,12 @@ export default function DashboardComercialPage() {
     } finally {
       setLoading(false)
     }
-  }, [ano, classificacao, interesse, clienteId, orcamentistaId, segmento, cidadeUf])
+  }, [ano, de, ate, classificacao, interesse, clienteId, orcamentistaId, segmento, cidadeUf])
 
   useEffect(() => { fetchData() }, [fetchData])
 
   const limpar = () => {
-    setAno(''); setClassificacao(''); setInteresse(''); setClienteId('')
+    setAno(''); setDe(''); setAte(''); setClassificacao(''); setInteresse(''); setClienteId('')
     setOrcamentistaId(''); setSegmento(''); setCidadeUf('')
     setFiltroAbertas('todas')
   }
@@ -1067,16 +1111,28 @@ export default function DashboardComercialPage() {
           borderRadius: 4,
           padding: '10px 14px',
         }}>
+        {aba === 'resultado' ? (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={labelStyle}>Período (de)</span>
+              <input type="date" style={selectStyle} value={de} onChange={(e) => setDe(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={labelStyle}>Período (até)</span>
+              <input type="date" style={selectStyle} value={ate} onChange={(e) => setAte(e.target.value)} />
+            </div>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={labelStyle}>Ano</span>
+            <select style={selectStyle} value={ano} onChange={(e) => setAno(e.target.value)}>
+              <option value="">Todos</option>
+              {(data?.anos_disponiveis ?? []).map((a) => <option key={a} value={String(a)}>{a}</option>)}
+            </select>
+          </div>
+        )}
+
         {[
-          {
-            label: 'Ano',
-            value: ano,
-            onChange: setAno,
-            options: [
-              { value: '', label: 'Todos' },
-              ...(data?.anos_disponiveis ?? []).map((a) => ({ value: String(a), label: String(a) })),
-            ],
-          },
           {
             label: 'Classificação',
             value: classificacao,
@@ -1264,45 +1320,48 @@ export default function DashboardComercialPage() {
               <CardNum label="Taxa de conversão" value={`${resultado.taxa_conversao.toFixed(1).replace('.', ',')}%`} sub="ganhos ÷ enviadas" color={AMBER} />
             </div>
 
-            {/* 2 — Ganhos por mês */}
+            {/* 2 — Ganhos por mês (quantidade) */}
             <SectionLabel>Contratos ganhos por mês</SectionLabel>
             <GraficoGanhosMes porMes={resultado.ganhos_por_mes} />
 
-            {/* 3–7 — Indicadores de valor e prazo */}
-            <SectionLabel>Indicadores de valor e prazo</SectionLabel>
+            {/* 2b — Valor dos contratos ganhos por mês */}
+            <SectionLabel>Valor dos contratos ganhos por mês</SectionLabel>
+            <GraficoValorGanhosMes porMes={resultado.valor_ganhos_por_mes} />
+
+            {/* 3 — Indicadores de propostas */}
+            <SectionLabel>Indicadores de propostas</SectionLabel>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap }}>
               <CardNum label="R$/HH médio" value={resultado.rs_hh_medio != null ? fmtMoney(resultado.rs_hh_medio) : '—'} sub="propostas do período" color={TEAL} />
               <CardNum label="R$/ton médio" value={resultado.rs_ton_medio != null ? fmtMoney(resultado.rs_ton_medio) : '—'} sub="montagem" color={TEAL} />
-              <CardNum label="Valor médio por proposta" value={resultado.valor_medio_proposta != null ? fmtMoneyM(resultado.valor_medio_proposta) : '—'} sub="todas enviadas" color="#111" />
-              <CardNum label="Prazo médio — Técnica" value={resultado.prazo_medio_tecnica != null ? `${resultado.prazo_medio_tecnica.toFixed(1).replace('.', ',')} dias` : '—'} sub="atribuição → entrega" color={BLUE} />
-              <CardNum label="Prazo médio — Comercial" value={resultado.prazo_medio_comercial != null ? `${resultado.prazo_medio_comercial.toFixed(1).replace('.', ',')} dias` : '—'} sub="técnica → envio" color={BLUE} />
+              <CardNum label="HH Total" value={fmtInt(resultado.hh_total)} sub="propostas do período" color="#111" />
+              <CardNum label="HH/ton médio" value={resultado.hh_ton_medio != null ? fmtInt(resultado.hh_ton_medio) : '—'} sub="HH por tonelada" color={BLUE} />
             </div>
-
-            {/* 8 — Pontualidade por orçamentista */}
-            <SectionLabel>Pontualidade de envio por orçamentista</SectionLabel>
-            <TabelaPontualidade data={resultado.pontualidade} />
-
-            {/* 9 — Ticket médio por tipo de serviço */}
-            <SectionLabel>Ticket médio por tipo de serviço</SectionLabel>
-            <TabelaTicketTipo data={resultado.ticket_tipo} />
           </>
         )
       ) : (
         /* ── Aba Propostas ──────────────────────────────────────────────── */
-        <Card title="Solicitações em Aberto — Propostas Pendentes">
-          <CardsAbertas
-            counts={data.abertas_counts}
-            filtro={filtroAbertas}
-            onChange={setFiltroAbertas}
-          />
-          <TabelaAbertas
-            items={
-              filtroAbertas === 'todas'
-                ? data.solicitacoes_abertas
-                : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
-            }
-          />
-        </Card>
+        <>
+          <Card title="Solicitações em Aberto — Propostas Pendentes">
+            <CardsAbertas
+              counts={data.abertas_counts}
+              filtro={filtroAbertas}
+              onChange={setFiltroAbertas}
+            />
+            <TabelaAbertas
+              items={
+                filtroAbertas === 'todas'
+                  ? data.solicitacoes_abertas
+                  : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
+              }
+            />
+          </Card>
+
+          {/* Pontualidade de envio por orçamentista (movida da aba Valor e Resultado) */}
+          <SectionLabel>Pontualidade de envio por orçamentista</SectionLabel>
+          {resultado
+            ? <TabelaPontualidade data={resultado.pontualidade} />
+            : <p style={{ textAlign: 'center', color: '#aaa', padding: '20px 0', fontSize: 12 }}>Carregando...</p>}
+        </>
       )}
     </div>
   )
