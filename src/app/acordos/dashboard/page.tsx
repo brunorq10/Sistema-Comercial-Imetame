@@ -5,6 +5,7 @@ import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
+import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -36,6 +37,7 @@ interface DashData {
   porMes:     MesData[]
   projecaoMultiAno: { ano: number; realizado: number; aFaturar: number }[]
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
+  ocorrenciasPorResponsavel: { id: number; nome: string; total: number }[]
   contratosAtivos: { id: number; indice: string; cliente: string; valorTotal: number; faturado: number; pct: number }[]
   clientes: { id: number; nome: string }[]
 }
@@ -259,6 +261,7 @@ export default function IndicadoresAcordosPage() {
   const [ano, setAno] = useState(String(ANO_ATUAL))
   const [clienteId, setClienteId] = useState('')
   const [ramo, setRamo] = useState('')
+  const [abaInd, setAbaInd] = useState<'geral' | 'responsavel'>('geral')
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null)
@@ -341,6 +344,23 @@ export default function IndicadoresAcordosPage() {
 
       {!loading && !error && data && (
         <>
+          {/* Abas de indicadores */}
+          <div className="flex items-center gap-1 border-b border-gray-200 !mt-3 overflow-x-auto">
+            {([['geral', 'Indicadores Gerais'], ['responsavel', 'Por Responsável / Multas']] as const).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setAbaInd(val)}
+                className={
+                  'text-[12px] font-semibold px-3 py-2 -mb-px border-b-2 whitespace-nowrap transition-colors ' +
+                  (abaInd === val ? 'border-green-primary text-green-primary' : 'border-transparent text-gray-400 hover:text-gray-600')
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {abaInd === 'geral' && (<>
           {/* 1 — Visão consolidada do ano */}
           <SectionTitle>Visão consolidada do ano</SectionTitle>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -393,7 +413,9 @@ export default function IndicadoresAcordosPage() {
               ? <p className="text-center text-gray-400 py-10 text-sm">Sem carteira para projetar.</p>
               : <div style={{ height: 280 }}>{projChart && <Bar data={projChart} options={projOpts} />}</div>}
           </div>
+          </>)}
 
+          {abaInd === 'responsavel' && (<>
           {/* 8 — Aderência por responsável */}
           <SectionTitle>Aderência por responsável de Acordos</SectionTitle>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -446,6 +468,45 @@ export default function IndicadoresAcordosPage() {
             </div>
           </div>
 
+          {/* Ocorrências contratuais lançadas por responsável */}
+          <SectionTitle>Ocorrências contratuais lançadas por responsável</SectionTitle>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {data.ocorrenciasPorResponsavel.length === 0 ? (
+              <p className="text-center text-gray-400 py-8 text-sm">Nenhuma ocorrência registrada.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px] border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-gray-600 text-[11px] border-b border-gray-200">
+                      <th className="text-left px-4 py-2 font-semibold">Responsável</th>
+                      <th className="text-right px-4 py-2 font-semibold w-40">Ocorrências lançadas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.ocorrenciasPorResponsavel.map((r) => (
+                      <tr key={r.id} className="border-b border-gray-100">
+                        <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Avatar nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
+                        <td className="px-4 py-2.5 text-right font-bold text-gray-700 tabular-nums">{r.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-green-primary text-white font-bold text-[12px]">
+                      <td className="px-4 py-2.5">Total geral</td>
+                      <td className="px-4 py-2.5 text-right">{data.ocorrenciasPorResponsavel.reduce((s, r) => s + r.total, 0)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Multas / Penalidades recebidas */}
+          <SectionTitle>Multas / Penalidades recebidas</SectionTitle>
+          <MultasIndicador />
+          </>)}
+
+          {abaInd === 'geral' && (<>
           {/* 9 — Contratos ativos */}
           <SectionTitle>Contratos ativos — progresso de faturamento</SectionTitle>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
@@ -467,6 +528,7 @@ export default function IndicadoresAcordosPage() {
               </div>
             )}
           </div>
+          </>)}
         </>
       )}
     </div>

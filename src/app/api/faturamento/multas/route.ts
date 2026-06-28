@@ -18,12 +18,21 @@ export async function GET(req: NextRequest) {
   const tipo = sp.get('tipo') ?? ''
   const status = sp.get('status') ?? '' // ''=todas | ativas | inativas
   const q = (sp.get('q') ?? '').trim()
+  const clienteId = sp.get('cliente_id') ?? ''
+  const cidade = sp.get('cidade') ?? ''
+  const responsavel = sp.get('responsavel') ?? ''
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {}
   if (tipo && TIPOS.includes(tipo)) where.tipo = tipo
   if (status === 'ativas') where.ativa = true
   if (status === 'inativas') where.ativa = false
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contratoWhere: any = {}
+  if (clienteId && !isNaN(Number(clienteId))) contratoWhere.cliente_id = Number(clienteId)
+  if (cidade) contratoWhere.cidade = cidade
+  if (responsavel && !isNaN(Number(responsavel))) contratoWhere.responsavel_id = Number(responsavel)
+  if (Object.keys(contratoWhere).length) where.contrato = { is: contratoWhere }
   if (de || ate) {
     where.data_ocorrencia = {}
     if (de) where.data_ocorrencia.gte = new Date(de)
@@ -42,31 +51,58 @@ export async function GET(req: NextRequest) {
     where.AND = [{ OR: or }]
   }
 
-  const multas = await prisma.multaPenalidade.findMany({
-    where,
-    orderBy: [{ data_ocorrencia: 'desc' }, { created_at: 'desc' }],
-    include: {
-      criador: { select: { nome: true } },
-      contrato: { select: { id: true, indice: true, cliente: { select: { nome: true } } } },
-    },
-  })
+  const [multas, opcoesRaw] = await Promise.all([
+    prisma.multaPenalidade.findMany({
+      where,
+      orderBy: [{ data_ocorrencia: 'desc' }, { created_at: 'desc' }],
+      include: {
+        criador: { select: { nome: true } },
+        contrato: { select: { id: true, indice: true, cidade: true, estado: true, cliente_id: true, cliente: { select: { nome: true } }, responsavel: { select: { id: true, nome: true } } } },
+      },
+    }),
+    // Opções dos filtros (contratos que possuem multas)
+    prisma.multaPenalidade.findMany({
+      distinct: ['contrato_id'],
+      select: { contrato: { select: { cliente_id: true, cidade: true, cliente: { select: { nome: true } }, responsavel: { select: { id: true, nome: true } } } } },
+    }),
+  ])
+
+  const clientesMap = new Map<number, string>()
+  const cidadesSet = new Set<string>()
+  const respMap = new Map<number, string>()
+  for (const o of opcoesRaw) {
+    const c = o.contrato
+    if (c.cliente_id) clientesMap.set(c.cliente_id, c.cliente.nome)
+    if (c.cidade) cidadesSet.add(c.cidade)
+    if (c.responsavel) respMap.set(c.responsavel.id, c.responsavel.nome)
+  }
 
   return NextResponse.json({
-    data: multas.map((m) => ({
-      id: m.id,
-      contrato_id: m.contrato_id,
-      contrato_indice: m.contrato.indice,
-      cliente_nome: m.contrato.cliente.nome,
-      tipo: m.tipo,
-      descricao: m.descricao,
-      data_ocorrencia: m.data_ocorrencia.toISOString(),
-      data_notificacao_cliente: m.data_notificacao_cliente?.toISOString() ?? null,
-      data_desconto: m.data_desconto?.toISOString() ?? null,
-      valor_total: Number(m.valor_total),
-      ativa: m.ativa,
-      motivo_inativacao: m.motivo_inativacao,
-      autor: m.criador.nome,
-    })),
+    data: {
+      opcoes: {
+        clientes: Array.from(clientesMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+        cidades: Array.from(cidadesSet).sort(),
+        responsaveis: Array.from(respMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      },
+      items: multas.map((m) => ({
+        id: m.id,
+        contrato_id: m.contrato_id,
+        contrato_indice: m.contrato.indice,
+        cliente_nome: m.contrato.cliente.nome,
+        cidade: m.contrato.cidade,
+        estado: m.contrato.estado,
+        responsavel_nome: m.contrato.responsavel?.nome ?? '—',
+        tipo: m.tipo,
+        descricao: m.descricao,
+        data_ocorrencia: m.data_ocorrencia.toISOString(),
+        data_notificacao_cliente: m.data_notificacao_cliente?.toISOString() ?? null,
+        data_desconto: m.data_desconto?.toISOString() ?? null,
+        valor_total: Number(m.valor_total),
+        ativa: m.ativa,
+        motivo_inativacao: m.motivo_inativacao,
+        autor: m.criador.nome,
+      })),
+    },
     error: null,
   })
 }

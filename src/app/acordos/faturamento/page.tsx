@@ -229,7 +229,7 @@ export default function FaturamentoPage() {
       if (multaBusca) params.set('q', multaBusca)
       const res = await fetch(`/api/faturamento/multas?${params.toString()}`)
       const json = await res.json()
-      if (!json.error) setMultas(json.data ?? [])
+      if (!json.error) setMultas(json.data?.items ?? [])
     } finally {
       setMultasLoading(false)
     }

@@ -118,17 +118,6 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
-        datalabels: {
-          display: (ctx: Context) =>
-            ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
-          anchor: 'end' as const,
-          align: 'end' as const,
-          rotation: -90,
-          offset: 4,
-          font: { size: 9, weight: 'bold' as const },
-          color: COLORS.previstoBorder,
-          formatter: (v: number) => fmtLabel(v),
-        },
       },
       {
         type: 'bar' as const,
@@ -139,17 +128,6 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
-        datalabels: {
-          display: (ctx: Context) =>
-            ((ctx.dataset.data[ctx.dataIndex] as number) ?? 0) > 0,
-          anchor: 'end' as const,
-          align: 'end' as const,
-          rotation: -90,
-          offset: 4,
-          font: { size: 9, weight: 'bold' as const },
-          color: COLORS.faturadoBorder,
-          formatter: (v: number) => fmtLabel(v),
-        },
       },
     ],
   }
@@ -158,8 +136,9 @@ export function ContratoFaturamentoBarChart({ previsto, faturado, labels }: Prop
     responsive: true,
     maintainAspectRatio: true,
     interaction: { mode: 'index' as const, intersect: false },
-    layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
-    plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
+    layout: { padding: { top: 8, right: 16, bottom: 0, left: 0 } },
+    // Rótulos de dados removidos do Faturamento Mensal
+    plugins: { legend: legendPlugin, tooltip: tooltipPlugin, datalabels: { display: false } },
     scales: { x: xScale, y: yScale },
   }
 

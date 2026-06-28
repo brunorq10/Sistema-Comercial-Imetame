@@ -246,6 +246,20 @@ export async function GET(req: Request) {
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 30)
 
+  // Ocorrências contratuais lançadas por responsável (autor do registro)
+  const ocorrenciasRaw = await prisma.ocorrenciaContratual.groupBy({
+    by: ['created_by'],
+    where: { contrato: whereContrato },
+    _count: { _all: true },
+  })
+  const ocAutores = ocorrenciasRaw.length
+    ? await prisma.user.findMany({ where: { id: { in: ocorrenciasRaw.map((o) => o.created_by) } }, select: { id: true, nome: true } })
+    : []
+  const ocNomeById = new Map(ocAutores.map((u) => [u.id, u.nome]))
+  const ocorrenciasPorResponsavel = ocorrenciasRaw
+    .map((o) => ({ id: o.created_by, nome: ocNomeById.get(o.created_by) ?? '—', total: o._count._all }))
+    .sort((a, b) => b.total - a.total)
+
   return NextResponse.json({
     data: {
       anoAtual,
@@ -265,6 +279,7 @@ export async function GET(req: Request) {
       porMes,
       projecaoMultiAno,
       porResponsavel,
+      ocorrenciasPorResponsavel,
       contratosAtivos: contratosAtivosData,
     },
     error: null,
