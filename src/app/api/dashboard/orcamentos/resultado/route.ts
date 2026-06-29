@@ -37,14 +37,23 @@ export async function GET(req: NextRequest) {
   const segmento        = searchParams.get('segmento')        ?? undefined
   const cidade          = searchParams.get('cidade')          ?? undefined
 
+  // Filtros multi-valor: lista separada por vírgula
+  const multi = (v: string | undefined) => (v ? v.split(',').filter(Boolean) : [])
+  const classifList = multi(classificacao)
+  const interesseList = multi(interesse)
+  const segmentoList = multi(segmento)
+  const clienteIds = multi(cliente_id).map(Number).filter((n) => !isNaN(n))
+  const orcamentistaIds = multi(orcamentista_id).map(Number).filter((n) => !isNaN(n))
+  const cidadeList = multi(cidade)
+
   const where = {
     cancelled_at: null,
-    ...(classificacao   && { classificacao: classificacao as never }),
-    ...(interesse       && { interesse: interesse as never }),
-    ...(segmento        && { segmento: segmento as never }),
-    ...(cliente_id      && { cliente_id: Number(cliente_id) }),
-    ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
-    ...(cidade          && { cidade }),
+    ...(classifList.length   && { classificacao: { in: classifList as never[] } }),
+    ...(interesseList.length && { interesse: { in: interesseList as never[] } }),
+    ...(segmentoList.length  && { segmento: { in: segmentoList as never[] } }),
+    ...(clienteIds.length    && { cliente_id: { in: clienteIds } }),
+    ...(orcamentistaIds.length && { orcamentista_id: { in: orcamentistaIds } }),
+    ...(cidadeList.length    && { cidade: { in: cidadeList } }),
     // Período: prioriza intervalo DE/ATÉ; senão usa o ano (compat.)
     ...((de || ate)
       ? { data_recebimento: { ...(de && { gte: new Date(de) }), ...(ate && { lte: new Date(`${ate}T23:59:59`) }) } }

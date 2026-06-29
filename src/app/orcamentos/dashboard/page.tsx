@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import {
   Chart as ChartJS,
   ArcElement,
@@ -1027,12 +1028,12 @@ export default function DashboardComercialPage() {
   const [ano, setAno] = useState('')
   const [de, setDe] = useState('')   // aba Valor e Resultado: período DE
   const [ate, setAte] = useState('') // aba Valor e Resultado: período ATÉ
-  const [classificacao, setClassificacao] = useState('')
-  const [interesse, setInteresse] = useState('')
-  const [clienteId, setClienteId] = useState('')
-  const [orcamentistaId, setOrcamentistaId] = useState('')
-  const [segmento, setSegmento] = useState('')
-  const [cidadeUf, setCidadeUf] = useState('')
+  const [classificacao, setClassificacao] = useState<string[]>([])
+  const [interesse, setInteresse] = useState<string[]>([])
+  const [clienteId, setClienteId] = useState<string[]>([])
+  const [orcamentistaId, setOrcamentistaId] = useState<string[]>([])
+  const [segmento, setSegmento] = useState<string[]>([])
+  const [cidadeUf, setCidadeUf] = useState<string[]>([])
   const [filtroAbertas, setFiltroAbertas] = useState<FiltroAbertas>('todas')
 
   useEffect(() => {
@@ -1045,13 +1046,13 @@ export default function DashboardComercialPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (ano)            params.set('ano', ano)
-      if (classificacao)  params.set('classificacao', classificacao)
-      if (interesse)      params.set('interesse', interesse)
-      if (clienteId)      params.set('cliente_id', clienteId)
-      if (orcamentistaId) params.set('orcamentista_id', orcamentistaId)
-      if (segmento)       params.set('segmento', segmento)
-      if (cidadeUf)       params.set('cidade', cidadeUf)
+      if (ano)                  params.set('ano', ano)
+      if (classificacao.length)  params.set('classificacao', classificacao.join(','))
+      if (interesse.length)      params.set('interesse', interesse.join(','))
+      if (clienteId.length)      params.set('cliente_id', clienteId.join(','))
+      if (orcamentistaId.length) params.set('orcamentista_id', orcamentistaId.join(','))
+      if (segmento.length)       params.set('segmento', segmento.join(','))
+      if (cidadeUf.length)       params.set('cidade', cidadeUf.join(','))
       // Aba "Valor e Resultado" usa período DE/ATÉ no lugar do ano
       const paramsR = new URLSearchParams(params)
       paramsR.delete('ano')
@@ -1073,8 +1074,8 @@ export default function DashboardComercialPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   const limpar = () => {
-    setAno(''); setDe(''); setAte(''); setClassificacao(''); setInteresse(''); setClienteId('')
-    setOrcamentistaId(''); setSegmento(''); setCidadeUf('')
+    setAno(''); setDe(''); setAte(''); setClassificacao([]); setInteresse([]); setClienteId([])
+    setOrcamentistaId([]); setSegmento([]); setCidadeUf([])
     setFiltroAbertas('todas')
   }
 
@@ -1156,58 +1157,44 @@ export default function DashboardComercialPage() {
               { value: 'BAIXO', label: 'Baixo' },
             ],
           },
-        ].map(({ label, value, onChange, options }) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={labelStyle}>{label}</span>
-            <select style={selectStyle} value={value} onChange={(e) => onChange(e.target.value)}>
-              {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-        ))}
+        ].map(({ label, value, onChange, options }) => {
+          const empty = options.find((o) => o.value === '')?.label ?? 'Todos'
+          const opts = options.filter((o) => o.value !== '')
+          return (
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', minWidth: 130 }}>
+              <span style={labelStyle}>{label}</span>
+              <SearchableMultiSelect values={value} onChange={onChange} options={opts} emptyLabel={empty} />
+            </div>
+          )
+        })}
 
         {/* Cliente */}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140, flex: 1 }}>
           <span style={labelStyle}>Cliente</span>
-          <select style={selectStyle} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Todos</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
+          <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
         </div>
 
         {/* Orçamentista */}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140, flex: 1 }}>
           <span style={labelStyle}>Orçamentista</span>
-          <select style={selectStyle} value={orcamentistaId} onChange={(e) => setOrcamentistaId(e.target.value)}>
-            <option value="">Todos</option>
-            {(data?.orcamentistas_disponiveis ?? []).map((o) => (
-              <option key={o.id} value={o.id}>{o.nome}</option>
-            ))}
-          </select>
+          <SearchableMultiSelect values={orcamentistaId} onChange={setOrcamentistaId} options={(data?.orcamentistas_disponiveis ?? []).map((o) => ({ value: String(o.id), label: o.nome }))} />
         </div>
 
         {/* Mercado (Segmento) */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 130 }}>
           <span style={labelStyle}>Mercado</span>
-          <select style={selectStyle} value={segmento} onChange={(e) => setSegmento(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="PAPEL_CELULOSE">Papel e Celulose</option>
-            <option value="SIDERURGIA">Siderurgia</option>
-            <option value="OLEO_GAS">Óleo e Gás</option>
-            <option value="OUTROS">Outros</option>
-          </select>
+          <SearchableMultiSelect values={segmento} onChange={setSegmento} options={[
+            { value: 'PAPEL_CELULOSE', label: 'Papel e Celulose' },
+            { value: 'SIDERURGIA', label: 'Siderurgia' },
+            { value: 'OLEO_GAS', label: 'Óleo e Gás' },
+            { value: 'OUTROS', label: 'Outros' },
+          ]} />
         </div>
 
         {/* Cidade / UF */}
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
           <span style={labelStyle}>Cidade / UF</span>
-          <select style={selectStyle} value={cidadeUf} onChange={(e) => setCidadeUf(e.target.value)}>
-            <option value="">Todas</option>
-            {(data?.cidades_disponiveis ?? []).map((c) => (
-              <option key={`${c.cidade}-${c.estado}`} value={c.cidade}>
-                {c.cidade} — {c.estado}
-              </option>
-            ))}
-          </select>
+          <SearchableMultiSelect values={cidadeUf} onChange={setCidadeUf} options={(data?.cidades_disponiveis ?? []).map((c) => ({ value: c.cidade, label: `${c.cidade} — ${c.estado}` }))} emptyLabel="Todas" />
         </div>
 
         <button

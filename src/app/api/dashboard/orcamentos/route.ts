@@ -82,15 +82,24 @@ export async function GET(req: NextRequest) {
   const cidades_disponiveis = cidadesDisp
     .filter((c): c is { cidade: string; estado: string } => !!c.cidade && !!c.estado)
 
+  // Filtros multi-valor: lista separada por vírgula (ex.: cliente_id=1,2,3)
+  const multi = (v: string | undefined) => (v ? v.split(',').filter(Boolean) : [])
+  const classifList = multi(classificacao)
+  const interesseList = multi(interesse)
+  const segmentoList = multi(segmento)
+  const clienteIds = multi(cliente_id).map(Number).filter((n) => !isNaN(n))
+  const orcamentistaIds = multi(orcamentista_id).map(Number).filter((n) => !isNaN(n))
+  const cidadeList = multi(cidade)
+
   // ── Where base (filtros) ─────────────────────────────────────────────────
   const where = {
     cancelled_at: null,
-    ...(classificacao   && { classificacao: classificacao as never }),
-    ...(interesse       && { interesse: interesse as never }),
-    ...(segmento        && { segmento: segmento as never }),
-    ...(cliente_id      && { cliente_id: Number(cliente_id) }),
-    ...(orcamentista_id && { orcamentista_id: Number(orcamentista_id) }),
-    ...(cidade          && { cidade }),
+    ...(classifList.length   && { classificacao: { in: classifList as never[] } }),
+    ...(interesseList.length && { interesse: { in: interesseList as never[] } }),
+    ...(segmentoList.length  && { segmento: { in: segmentoList as never[] } }),
+    ...(clienteIds.length    && { cliente_id: { in: clienteIds } }),
+    ...(orcamentistaIds.length && { orcamentista_id: { in: orcamentistaIds } }),
+    ...(cidadeList.length    && { cidade: { in: cidadeList } }),
     ...(ano && {
       data_recebimento: {
         gte: new Date(`${ano}-01-01`),
