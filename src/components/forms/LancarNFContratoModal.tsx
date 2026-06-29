@@ -7,6 +7,7 @@ import { Field, Input, CurrencyInput } from '@/components/ui/Input'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { MultaForm } from '@/components/forms/MultaForm'
 import { EditarNFModal } from '@/components/forms/EditarNFModal'
+import { usePermissions } from '@/hooks/usePermissions'
 import type { SubIndiceItem, ContratoItem, NFContratoItem, NFContratoListItem } from '@/types'
 
 interface Props {
@@ -36,6 +37,39 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   // NFs lançadas exibidas na aba (cópia local, atualizada após edição)
   const [nfsLocal, setNfsLocal] = useState<NFContratoItem[]>(subindice.notas_fiscais)
   const [nfEditando, setNfEditando] = useState<NFContratoListItem | null>(null)
+  // Inativar/Excluir NF (só Gestão Acordos / ADM Geral)
+  const { pode } = usePermissions()
+  const canInativar = pode('acordos.nf.inativar')
+  const canExcluir  = pode('acordos.nf.excluir')
+  const [nfAcao, setNfAcao] = useState<{ tipo: 'inativar' | 'excluir'; nf: NFContratoItem } | null>(null)
+  const [nfMotivo, setNfMotivo] = useState('')
+  const [nfAcaoLoading, setNfAcaoLoading] = useState(false)
+  const [nfAcaoError, setNfAcaoError] = useState<string | null>(null)
+
+  const confirmarNfAcao = async () => {
+    if (!nfAcao) return
+    if (nfAcao.tipo === 'inativar' && nfAcao.nf.ativa && nfMotivo.trim().length < 3) {
+      setNfAcaoError('Informe o motivo da inativação (mínimo 3 caracteres)'); return
+    }
+    setNfAcaoLoading(true); setNfAcaoError(null)
+    try {
+      if (nfAcao.tipo === 'excluir') {
+        const res = await fetch(`/api/faturamento/nfs/${nfAcao.nf.id}`, { method: 'DELETE' })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.error) { setNfAcaoError(json.error ?? 'Erro ao excluir'); return }
+      } else {
+        const novaAtiva = !nfAcao.nf.ativa
+        const res = await fetch(`/api/faturamento/nfs/${nfAcao.nf.id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ativa: novaAtiva, motivo_inativacao: novaAtiva ? undefined : nfMotivo.trim() }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.error) { setNfAcaoError(json.error ?? 'Erro ao salvar'); return }
+      }
+      setNfAcao(null); setNfMotivo('')
+      await refreshNfs()
+    } finally { setNfAcaoLoading(false) }
+  }
 
   const valorAtribuido = valorTotal && percentual
     ? (Number(valorTotal) * Number(percentual)) / 100
@@ -332,7 +366,13 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
       {/* ── Aba: Histórico de NFs ── */}
       {aba === 'historico' && (
-        <NFHistoricoTab nfs={nfsLocal} valorEvento={subindice.valor_total} onEditar={abrirEdicao} />
+        <NFHistoricoTab
+          nfs={nfsLocal}
+          valorEvento={subindice.valor_total}
+          onEditar={abrirEdicao}
+          onInativar={canInativar ? (nf) => { setNfAcao({ tipo: 'inativar', nf }); setNfMotivo(''); setNfAcaoError(null) } : undefined}
+          onExcluir={canExcluir ? (nf) => { setNfAcao({ tipo: 'excluir', nf }); setNfAcaoError(null) } : undefined}
+        />
       )}
 
       {nfEditando && (
@@ -343,11 +383,41 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           nf={nfEditando}
         />
       )}
+
+      {/* Confirmação de inativar/excluir NF */}
+      {nfAcao && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
+            <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${nfAcao.tipo === 'excluir' ? 'bg-red-600' : nfAcao.nf.ativa ? 'bg-orange-500' : 'bg-blue-600'}`}>
+              {nfAcao.tipo === 'excluir' ? `Excluir NF · ${nfAcao.nf.numero_nf}` : nfAcao.nf.ativa ? `Inativar NF · ${nfAcao.nf.numero_nf}` : `Reativar NF · ${nfAcao.nf.numero_nf}`}
+            </div>
+            <div className="p-[18px]">
+              {nfAcaoError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{nfAcaoError}</div>}
+              {nfAcao.tipo === 'excluir' ? (
+                <p className="text-[12px] text-gray-600">A NF <strong>{nfAcao.nf.numero_nf}</strong> será excluída permanentemente. Esta ação não pode ser desfeita.</p>
+              ) : nfAcao.nf.ativa ? (
+                <>
+                  <p className="text-[12px] text-gray-600 mb-3">A NF deixará de contabilizar no faturamento. Informe o motivo.</p>
+                  <textarea className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-orange-400/40" rows={2} placeholder="Motivo da inativação (mínimo 3 caracteres)" value={nfMotivo} onChange={(e) => setNfMotivo(e.target.value)} />
+                </>
+              ) : (
+                <p className="text-[12px] text-gray-600">A NF <strong>{nfAcao.nf.numero_nf}</strong> será reativada e voltará a contabilizar no faturamento.</p>
+              )}
+            </div>
+            <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => { setNfAcao(null); setNfMotivo(''); setNfAcaoError(null) }} disabled={nfAcaoLoading}>Voltar</Button>
+              <Button variant={nfAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={confirmarNfAcao} disabled={nfAcaoLoading}>
+                {nfAcaoLoading ? 'Aguarde...' : nfAcao.tipo === 'excluir' ? 'Confirmar exclusão' : nfAcao.nf.ativa ? 'Confirmar inativação' : 'Confirmar reativação'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   )
 }
 
-function NFHistoricoTab({ nfs, valorEvento, onEditar }: { nfs: NFContratoItem[]; valorEvento: number; onEditar?: (nf: NFContratoItem) => void }) {
+function NFHistoricoTab({ nfs, valorEvento, onEditar, onInativar, onExcluir }: { nfs: NFContratoItem[]; valorEvento: number; onEditar?: (nf: NFContratoItem) => void; onInativar?: (nf: NFContratoItem) => void; onExcluir?: (nf: NFContratoItem) => void }) {
   if (nfs.length === 0) {
     return (
       <div className="text-center text-gray-400 py-10 text-[12px]">
@@ -385,7 +455,7 @@ function NFHistoricoTab({ nfs, valorEvento, onEditar }: { nfs: NFContratoItem[];
       {ativas.length > 0 && (
         <>
           <p className="text-[10px] font-semibold text-gray-500 uppercase mb-1.5">Notas fiscais ativas</p>
-          <NFTable nfs={ativas} onEditar={onEditar} />
+          <NFTable nfs={ativas} onEditar={onEditar} onInativar={onInativar} onExcluir={onExcluir} />
         </>
       )}
 
@@ -401,14 +471,15 @@ function NFHistoricoTab({ nfs, valorEvento, onEditar }: { nfs: NFContratoItem[];
       {inativas.length > 0 && (
         <div className="mt-4">
           <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Notas inativas (não entram no faturamento)</p>
-          <NFTable nfs={inativas} inativa onEditar={onEditar} />
+          <NFTable nfs={inativas} inativa onEditar={onEditar} onInativar={onInativar} onExcluir={onExcluir} />
         </div>
       )}
     </div>
   )
 }
 
-function NFTable({ nfs, inativa, onEditar }: { nfs: NFContratoItem[]; inativa?: boolean; onEditar?: (nf: NFContratoItem) => void }) {
+function NFTable({ nfs, inativa, onEditar, onInativar, onExcluir }: { nfs: NFContratoItem[]; inativa?: boolean; onEditar?: (nf: NFContratoItem) => void; onInativar?: (nf: NFContratoItem) => void; onExcluir?: (nf: NFContratoItem) => void }) {
+  const temAcoes = !!(onEditar || onInativar || onExcluir)
   const thCls = 'px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
   const tdCls = `px-3 py-2 text-[11px] whitespace-nowrap border-b border-gray-100 ${inativa ? 'text-gray-400' : 'text-gray-700'}`
 
@@ -426,7 +497,7 @@ function NFTable({ nfs, inativa, onEditar }: { nfs: NFContratoItem[]; inativa?: 
             <th className={thCls}>% Lançado</th>
             <th className={thCls}>Vlr. Atribuído</th>
             {inativa && <th className={thCls}>Motivo</th>}
-            {onEditar && <th className={thCls}>Ações</th>}
+            {temAcoes && <th className={thCls}>Ações</th>}
           </tr>
         </thead>
         <tbody>
@@ -463,9 +534,13 @@ function NFTable({ nfs, inativa, onEditar }: { nfs: NFContratoItem[]; inativa?: 
                   <span className="text-gray-400 italic text-[10px]">{nf.motivo_inativacao ?? '—'}</span>
                 </td>
               )}
-              {onEditar && (
+              {temAcoes && (
                 <td className={tdCls}>
-                  <button onClick={() => onEditar(nf)} className="text-[11px] text-blue-600 hover:underline font-semibold">Editar</button>
+                  <div className="flex items-center gap-2">
+                    {onEditar && <button onClick={() => onEditar(nf)} className="text-[11px] text-blue-600 hover:underline font-semibold">Editar</button>}
+                    {onInativar && <button onClick={() => onInativar(nf)} className="text-[11px] text-amber-600 hover:underline font-semibold">{nf.ativa ? 'Inativar' : 'Reativar'}</button>}
+                    {onExcluir && <button onClick={() => onExcluir(nf)} className="text-[11px] text-red-500 hover:underline font-semibold">Excluir</button>}
+                  </div>
                 </td>
               )}
             </tr>

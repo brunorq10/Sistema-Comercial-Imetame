@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createNotificacao } from '@/lib/notifications'
 import { exigirPermissao, exigirTitularNfContrato } from '@/lib/permissaoApi'
 
 const schema = z.object({
@@ -80,9 +81,41 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     updateData.valor_atribuido = valorAtribuido
   }
 
+  // Fluxo de aprovação: quando o RESPONSÁVEL (não-coordenação) edita os dados
+  // da NF (Meu Painel), a alteração vai para aprovação da coordenação — a NF
+  // sai do faturamento até ser aprovada. Coordenação edita direto.
+  const perfil = session.user.perfil
+  const isCoordenacao = perfil === 'GESTAO_ACORDOS' || perfil === 'ADM_GERAL'
+  const ehEdicaoCampos = d.ativa === undefined  // inativar/reativar não entra nesse fluxo
+  const enviarAprovacao = !isCoordenacao && ehEdicaoCampos
+  if (enviarAprovacao) {
+    updateData.status_aprovacao = 'PENDENTE'
+    updateData.ativa = false
+    updateData.solicitado_por = Number(session.user.id)
+    updateData.revisado_por = null
+    updateData.revisado_em = null
+    updateData.motivo_recusa = null
+  }
+
   const nf = await prisma.notaFiscalContrato.update({ where: { id }, data: updateData })
 
-  return NextResponse.json({ data: { id: nf.id }, error: null })
+  if (enviarAprovacao) {
+    const sub = await prisma.subIndiceFaturamento.findUnique({
+      where: { id: nf.subindice_id },
+      select: { ordem: true, descricao: true, contrato: { select: { id: true, indice: true, cliente: { select: { nome: true } } } } },
+    })
+    const gestores = await prisma.user.findMany({ where: { perfil: 'GESTAO_ACORDOS', ativo: true }, select: { id: true } })
+    for (const g of gestores) {
+      createNotificacao(
+        g.id,
+        'Edição de faturamento para aprovação',
+        `${sub?.contrato?.indice ?? ''}.${sub?.ordem ?? ''} · ${sub?.descricao ?? ''} (${sub?.contrato?.cliente?.nome ?? ''}) — NF ${nf.numero_nf} foi editada por ${session.user.nome ?? 'responsável'} e aguarda aprovação.`,
+        sub?.contrato?.id ? `/acordos/faturamento/${sub.contrato.id}` : undefined,
+      )
+    }
+  }
+
+  return NextResponse.json({ data: { id: nf.id }, pendente: enviarAprovacao, error: null })
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

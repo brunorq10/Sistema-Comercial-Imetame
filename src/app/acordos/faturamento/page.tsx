@@ -334,7 +334,7 @@ export default function FaturamentoPage() {
         if (json.error) { setNfAcaoError(json.error); return }
       }
       setNfAcao(null); setNfMotivoInativ('')
-      fetchNfs()
+      fetchNfs(); fetchData()   // reflete imediatamente na tabela principal
     } finally {
       setNfAcaoLoading(false)
     }
@@ -887,7 +887,7 @@ export default function FaturamentoPage() {
         <EditarNFModal
           open={true}
           onClose={() => setNfEditando(null)}
-          onSuccess={() => { fetchNfs(); if (aba === 'controle') fetchData() }}
+          onSuccess={() => { fetchNfs(); fetchData() }}
           nf={nfEditando}
         />
       )}
