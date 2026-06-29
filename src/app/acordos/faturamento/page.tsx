@@ -17,7 +17,7 @@ import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamen
 import { ComentarioSubindiceModal } from '@/components/forms/ComentarioSubindiceModal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn, formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
@@ -80,15 +80,15 @@ export default function FaturamentoPage() {
   const [opcoesAcordo,   setOpcoesAcordo]   = useState<string[]>([])
   const [opcoesProposta, setOpcoesProposta] = useState<string[]>([])
 
-  // Filtros controle
+  // Filtros controle (Ano único; demais multi-seleção)
   const [ano,          setAno]          = useState(String(anoAtual))
-  const [clienteId,    setClienteId]    = useState('')
-  const [mercado,      setMercado]      = useState('')
-  const [status,       setStatus]       = useState('')
-  const [responsavelId, setResponsavelId] = useState('')
-  const [numOs,        setNumOs]        = useState('')
-  const [numAcordo,    setNumAcordo]    = useState('')
-  const [numProposta,  setNumProposta]  = useState('')
+  const [clienteId,    setClienteId]    = useState<string[]>([])
+  const [mercado,      setMercado]      = useState<string[]>([])
+  const [status,       setStatus]       = useState<string[]>([])
+  const [responsavelId, setResponsavelId] = useState<string[]>([])
+  const [numOs,        setNumOs]        = useState<string[]>([])
+  const [numAcordo,    setNumAcordo]    = useState<string[]>([])
+  const [numProposta,  setNumProposta]  = useState<string[]>([])
 
   // ── Dados NFs ─────────────────────────────────────────────────────────────────
   const [nfs, setNfs] = useState<NFContratoListItem[]>([])
@@ -174,13 +174,13 @@ export default function FaturamentoPage() {
     try {
       const params = new URLSearchParams()
       if (ano) params.set('ano', ano)
-      if (clienteId) params.set('cliente_id', clienteId)
-      if (mercado) params.set('mercado', mercado)
-      if (status) params.set('status', status)
-      if (responsavelId) params.set('responsavel_id', responsavelId)
-      if (numOs) params.set('num_os', numOs)
-      if (numAcordo) params.set('num_acordo', numAcordo)
-      if (numProposta) params.set('num_proposta', numProposta)
+      if (clienteId.length) params.set('cliente_id', clienteId.join(','))
+      if (mercado.length) params.set('mercado', mercado.join(','))
+      if (status.length) params.set('status', status.join(','))
+      if (responsavelId.length) params.set('responsavel_id', responsavelId.join(','))
+      if (numOs.length) params.set('num_os', numOs.join(','))
+      if (numAcordo.length) params.set('num_acordo', numAcordo.join(','))
+      if (numProposta.length) params.set('num_proposta', numProposta.join(','))
       const res = await fetch(`/api/faturamento/contratos?${params.toString()}`)
       const text = await res.text()
       try {
@@ -439,8 +439,8 @@ export default function FaturamentoPage() {
   }
 
   const limparFiltros = () => {
-    setAno(String(anoAtual)); setClienteId(''); setMercado(''); setStatus(''); setResponsavelId('')
-    setNumOs(''); setNumAcordo(''); setNumProposta('')
+    setAno(String(anoAtual)); setClienteId([]); setMercado([]); setStatus([]); setResponsavelId([])
+    setNumOs([]); setNumAcordo([]); setNumProposta([])
   }
   const limparFiltrosNf = () => {
     setNfAno(String(anoAtual)); setNfClienteId(''); setNfAtiva(''); setNfBusca('')
@@ -600,16 +600,16 @@ export default function FaturamentoPage() {
             </div>
             <div className="flex-[2] min-w-[160px]">
               <label className={fLbl}>Cliente</label>
-              <SearchableSelect
-                value={clienteId}
+              <SearchableMultiSelect
+                values={clienteId}
                 onChange={setClienteId}
                 options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Mercado</label>
-              <SearchableSelect
-                value={mercado}
+              <SearchableMultiSelect
+                values={mercado}
                 onChange={setMercado}
                 options={opcoesMercado.map((m) => ({ value: m, label: MERCADO_LABELS[m] ?? m }))}
                 emptyLabel="Todos"
@@ -617,8 +617,8 @@ export default function FaturamentoPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº OS</label>
-              <SearchableSelect
-                value={numOs}
+              <SearchableMultiSelect
+                values={numOs}
                 onChange={setNumOs}
                 options={opcoesOs.map((v) => ({ value: v, label: v }))}
                 emptyLabel="Todas"
@@ -626,16 +626,16 @@ export default function FaturamentoPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº Acordo</label>
-              <SearchableSelect
-                value={numAcordo}
+              <SearchableMultiSelect
+                values={numAcordo}
                 onChange={setNumAcordo}
                 options={opcoesAcordo.map((v) => ({ value: v, label: v }))}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Nº Proposta</label>
-              <SearchableSelect
-                value={numProposta}
+              <SearchableMultiSelect
+                values={numProposta}
                 onChange={setNumProposta}
                 options={opcoesProposta.map((v) => ({ value: v, label: v }))}
                 emptyLabel="Todas"
@@ -643,8 +643,8 @@ export default function FaturamentoPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Status</label>
-              <SearchableSelect
-                value={status}
+              <SearchableMultiSelect
+                values={status}
                 onChange={setStatus}
                 options={[
                   { value: 'A_FATURAR', label: 'A faturar' },
@@ -656,8 +656,8 @@ export default function FaturamentoPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Responsável</label>
-              <SearchableSelect
-                value={responsavelId}
+              <SearchableMultiSelect
+                values={responsavelId}
                 onChange={setResponsavelId}
                 options={responsaveis.map((u) => ({ value: String(u.id), label: u.nome }))}
               />

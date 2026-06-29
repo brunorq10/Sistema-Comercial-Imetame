@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
@@ -121,11 +121,11 @@ export default function MeuPainelAcordosPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [filtroNumOs,          setFiltroNumOs]          = useState('')
-  const [filtroClienteId,      setFiltroClienteId]      = useState('')
-  const [filtroClienteFinalId, setFiltroClienteFinalId] = useState('')
-  const [filtroStatusFat,      setFiltroStatusFat]      = useState('')
-  const [filtroRamo,           setFiltroRamo]           = useState('')
+  const [filtroNumOs,          setFiltroNumOs]          = useState<string[]>([])
+  const [filtroClienteId,      setFiltroClienteId]      = useState<string[]>([])
+  const [filtroClienteFinalId, setFiltroClienteFinalId] = useState<string[]>([])
+  const [filtroStatusFat,      setFiltroStatusFat]      = useState<string[]>([])
+  const [filtroRamo,           setFiltroRamo]           = useState<string[]>([])
 
   const [modalEditar, setModalEditar] = useState<{
     subindice: SubIndiceItem; indiceLabel: string; anoRef: number
@@ -180,11 +180,10 @@ export default function MeuPainelAcordosPage() {
   const osOptions = useMemo(() => {
     const seen = new Set<string>()
     const opts: { value: string; label: string }[] = []
-    contratos.forEach((c) =>
-      c.subindices.forEach((s) => {
-        if (s.num_os && !seen.has(s.num_os)) { seen.add(s.num_os); opts.push({ value: s.num_os, label: s.num_os }) }
-      })
-    )
+    contratos.forEach((c) => {
+      const os = (c as ContratoComAlteracoes).num_os
+      if (os && !seen.has(os)) { seen.add(os); opts.push({ value: os, label: os }) }
+    })
     return opts
   }, [contratos])
 
@@ -220,12 +219,13 @@ export default function MeuPainelAcordosPage() {
 
   const filteredContratos = useMemo(() => {
     return contratos.filter((c) => {
-      if (filtroClienteId      && String(c.cliente.id) !== filtroClienteId) return false
-      if (filtroNumOs          && !c.subindices.some((s) => s.num_os === filtroNumOs)) return false
+      if (filtroClienteId.length      && !filtroClienteId.includes(String(c.cliente.id))) return false
+      const os = (c as ContratoComAlteracoes).num_os
+      if (filtroNumOs.length          && !(os && filtroNumOs.includes(os))) return false
       const cf = (c as ContratoComAlteracoes).cliente_final
-      if (filtroClienteFinalId && String(cf?.id ?? '') !== filtroClienteFinalId) return false
-      if (filtroStatusFat      && !c.subindices.some((s) => s.status_faturamento === filtroStatusFat)) return false
-      if (filtroRamo           && c.cliente.ramo_atuacao !== filtroRamo) return false
+      if (filtroClienteFinalId.length && !filtroClienteFinalId.includes(String(cf?.id ?? ''))) return false
+      if (filtroStatusFat.length      && !c.subindices.some((s) => filtroStatusFat.includes(s.status_faturamento))) return false
+      if (filtroRamo.length           && !(c.cliente.ramo_atuacao && filtroRamo.includes(c.cliente.ramo_atuacao))) return false
       return true
     })
   }, [contratos, filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo])
@@ -322,20 +322,20 @@ export default function MeuPainelAcordosPage() {
           </div>
           <div className="flex-1 min-w-[110px]">
             <label className={fLbl}>Nº OS</label>
-            <SearchableSelect value={filtroNumOs} onChange={setFiltroNumOs} options={osOptions} emptyLabel="Todas" />
+            <SearchableMultiSelect values={filtroNumOs} onChange={setFiltroNumOs} options={osOptions} emptyLabel="Todas" />
           </div>
           <div className="flex-[2] min-w-[130px]">
             <label className={fLbl}>Cliente</label>
-            <SearchableSelect value={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
+            <SearchableMultiSelect values={filtroClienteId} onChange={setFiltroClienteId} options={clienteOptions} />
           </div>
           <div className="flex-1 min-w-[130px]">
             <label className={fLbl}>Cliente Final</label>
-            <SearchableSelect value={filtroClienteFinalId} onChange={setFiltroClienteFinalId} options={clienteFinalOptions} />
+            <SearchableMultiSelect values={filtroClienteFinalId} onChange={setFiltroClienteFinalId} options={clienteFinalOptions} />
           </div>
           <div className="flex-1 min-w-[110px]">
             <label className={fLbl}>Status Fat.</label>
-            <SearchableSelect
-              value={filtroStatusFat}
+            <SearchableMultiSelect
+              values={filtroStatusFat}
               onChange={setFiltroStatusFat}
               options={[
                 { value: 'A_FATURAR', label: 'A faturar' },
@@ -347,11 +347,11 @@ export default function MeuPainelAcordosPage() {
           </div>
           <div className="flex-1 min-w-[130px]">
             <label className={fLbl}>Ramo</label>
-            <SearchableSelect value={filtroRamo} onChange={setFiltroRamo} options={ramoOptions} />
+            <SearchableMultiSelect values={filtroRamo} onChange={setFiltroRamo} options={ramoOptions} />
           </div>
           <div className="flex-shrink-0 flex items-end">
             <button
-              onClick={() => { setFiltroClienteId(''); setFiltroNumOs(''); setFiltroClienteFinalId(''); setFiltroStatusFat(''); setFiltroRamo('') }}
+              onClick={() => { setFiltroClienteId([]); setFiltroNumOs([]); setFiltroClienteFinalId([]); setFiltroStatusFat([]); setFiltroRamo([]) }}
               className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
             >✕</button>
           </div>

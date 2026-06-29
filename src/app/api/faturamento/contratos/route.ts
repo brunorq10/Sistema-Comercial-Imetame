@@ -52,13 +52,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const ano = searchParams.get('ano') ?? undefined
-  const cliente_id = searchParams.get('cliente_id') ?? undefined
-  const status = searchParams.get('status') ?? undefined
-  const responsavel_id = searchParams.get('responsavel_id') ?? undefined
-  const num_os = searchParams.get('num_os') ?? undefined
-  const num_acordo = searchParams.get('num_acordo') ?? undefined
-  const num_proposta = searchParams.get('num_proposta') ?? undefined
-  const mercado = searchParams.get('mercado') ?? undefined
+  // Filtros multi-valor: aceitam lista separada por vírgula (ex.: cliente_id=1,2,3)
+  const multi = (k: string) => { const v = searchParams.get(k); return v ? v.split(',').filter(Boolean) : [] }
+  const clienteIds   = multi('cliente_id').map(Number).filter((n) => !isNaN(n))
+  const statusList   = multi('status')
+  const responsavelIds = multi('responsavel_id').map(Number).filter((n) => !isNaN(n))
+  const numOsList    = multi('num_os')
+  const numAcordoList = multi('num_acordo')
+  const numPropostaList = multi('num_proposta')
+  const mercadoList  = multi('mercado')
 
   try {
     const anoNum = ano ? Number(ano) : undefined
@@ -84,13 +86,13 @@ export async function GET(req: NextRequest) {
       where: {
         cancelled_at: null,
         ...whereAnual,
-        ...(cliente_id && { cliente_id: Number(cliente_id) }),
-        ...(status && { status: status as never }),
-        ...(responsavel_id && { responsavel_id: Number(responsavel_id) }),
-        ...(num_os && { num_os }),
-        ...(num_acordo && { num_acordo }),
-        ...(num_proposta && { num_proposta }),
-        ...(mercado && { cliente: { ramo_atuacao: mercado as never } }),
+        ...(clienteIds.length && { cliente_id: { in: clienteIds } }),
+        ...(statusList.length && { status: { in: statusList as never[] } }),
+        ...(responsavelIds.length && { responsavel_id: { in: responsavelIds } }),
+        ...(numOsList.length && { num_os: { in: numOsList } }),
+        ...(numAcordoList.length && { num_acordo: { in: numAcordoList } }),
+        ...(numPropostaList.length && { num_proposta: { in: numPropostaList } }),
+        ...(mercadoList.length && { cliente: { ramo_atuacao: { in: mercadoList as never[] } } }),
       },
       orderBy: [{ indice: 'asc' }],
       include: {
