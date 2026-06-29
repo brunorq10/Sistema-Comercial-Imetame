@@ -20,8 +20,28 @@ function formatContratoVal(campo: string, val: unknown): string {
   return String(val)
 }
 
+const mesesSchema = {
+  jan: z.number().nonnegative().optional(), fev: z.number().nonnegative().optional(),
+  mar: z.number().nonnegative().optional(), abr: z.number().nonnegative().optional(),
+  mai: z.number().nonnegative().optional(), jun: z.number().nonnegative().optional(),
+  jul: z.number().nonnegative().optional(), ago: z.number().nonnegative().optional(),
+  set: z.number().nonnegative().optional(), out: z.number().nonnegative().optional(),
+  nov: z.number().nonnegative().optional(), dez: z.number().nonnegative().optional(),
+}
+const subindiceUpdateSchema = z.object({
+  id: z.number().int().positive().optional(),  // ausente = novo sub-índice
+  descricao: z.string().min(1),
+  valor_total: z.number().nonnegative(),
+  data_inicio: z.string().optional().nullable(),
+  data_fim: z.string().optional().nullable(),
+  comentarios: z.string().optional().nullable(),
+  ...mesesSchema,
+})
+const MESES_KEYS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
+
 const updateSchema = z.object({
   ano_referencia: z.number().int().min(2000).max(2100).optional(),
+  subindices: z.array(subindiceUpdateSchema).optional(),
   status: z.enum(['A_FATURAR', 'FATURADO', 'PARCIAL', 'CANCELADO']).optional(),
   cliente_id: z.number().int().positive().optional(),
   cliente_final_id: z.number().int().positive().optional().nullable(),
@@ -136,7 +156,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const { cancel_reason, ...rest } = parsed.data
+  const { cancel_reason, subindices: subsBody, ...rest } = parsed.data
 
   // Busca valores atuais para comparar
   const atual = await prisma.contrato.findUnique({ where: { id } })
@@ -184,6 +204,63 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
   if (historico.length > 0) {
     await prisma.historicoContrato.createMany({ data: historico })
+  }
+
+  // ── Sincroniza os sub-índices (eventos de medição) enviados na edição ──────
+  // Atualiza os existentes (por id), cria os novos (sem id) e remove os que
+  // sumiram — exceto se tiverem NFs lançadas (não pode perder faturamento).
+  if (subsBody) {
+    const userId = Number(session.user.id)
+    const existentes = await prisma.subIndiceFaturamento.findMany({
+      where: { contrato_id: id },
+      select: { id: true, ordem: true, _count: { select: { notas_fiscais: true } } },
+    })
+    const idsBody = new Set(subsBody.filter((s) => s.id != null).map((s) => s.id as number))
+    let maxOrdem = existentes.reduce((m, e) => Math.max(m, e.ordem), 0)
+    const naoExcluidos: number[] = []
+
+    const ops = []
+    // Remoções (apenas sub-índices sem NFs)
+    for (const e of existentes) {
+      if (!idsBody.has(e.id)) {
+        if (e._count.notas_fiscais === 0) ops.push(prisma.subIndiceFaturamento.delete({ where: { id: e.id } }))
+        else naoExcluidos.push(e.id)
+      }
+    }
+    // Atualizações e criações
+    for (const s of subsBody) {
+      const meses = Object.fromEntries(MESES_KEYS.map((m) => [m, s[m] ?? null]))
+      const comum = {
+        descricao: s.descricao,
+        valor_total: s.valor_total,
+        data_inicio: s.data_inicio ? new Date(s.data_inicio) : null,
+        data_fim: s.data_fim ? new Date(s.data_fim) : null,
+        comentarios: s.comentarios ?? null,
+        ...meses,
+      }
+      if (s.id != null && existentes.some((e) => e.id === s.id)) {
+        ops.push(prisma.subIndiceFaturamento.update({ where: { id: s.id }, data: comum }))
+      } else {
+        maxOrdem += 1
+        ops.push(prisma.subIndiceFaturamento.create({ data: { contrato_id: id, ordem: maxOrdem, ...comum, created_by: userId } }))
+      }
+    }
+    if (ops.length > 0) await prisma.$transaction(ops)
+
+    // Recarrega o contrato com os sub-índices atualizados para a resposta
+    const atualizado = await prisma.contrato.findUnique({
+      where: { id },
+      include: {
+        cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
+        cliente_final: { select: { id: true, nome: true } },
+        responsavel:   { select: { id: true, nome: true } },
+        subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+      },
+    })
+    const aviso = naoExcluidos.length > 0
+      ? `${naoExcluidos.length} evento(s) não foram excluídos porque possuem NFs lançadas. Inative/exclua as NFs antes de remover o evento.`
+      : undefined
+    return NextResponse.json({ data: serializeContrato(atualizado), warning: aviso, error: null })
   }
 
   return NextResponse.json({ data: serializeContrato(contrato), error: null })

@@ -17,6 +17,7 @@ function fmt(v: number) {
 
 interface SubIndiceYearSection {
   meses: Record<string, string>
+  id?: number   // id do sub-índice existente (cada ano = uma linha no banco)
 }
 
 interface SubIndiceForm {
@@ -149,7 +150,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
           (g) => g.descricao === s.descricao && g.num_os === (s.num_os ?? '') && !g.anos[sAno],
         )
         if (existing) {
-          existing.anos[sAno] = { meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) }
+          existing.anos[sAno] = { id: s.id, meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) }
           if (s.data_inicio && (!existing.data_inicio || s.data_inicio < existing.data_inicio))
             existing.data_inicio = s.data_inicio.substring(0, 10)
           if (s.data_fim && (!existing.data_fim || s.data_fim > existing.data_fim))
@@ -163,7 +164,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             data_inicio: s.data_inicio ? s.data_inicio.substring(0, 10) : '',
             data_fim: s.data_fim ? s.data_fim.substring(0, 10) : '',
             comentarios: s.comentarios ?? '',
-            anos: { [sAno]: { meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) } },
+            anos: { [sAno]: { id: s.id, meses: Object.fromEntries(MESES.map((m) => [m, s[m] != null ? String(s[m]) : ''])) } },
           })
         }
       }
@@ -343,6 +344,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
             const sumMeses = MESES.reduce((acc, m) => acc + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
             const vtAno = sumMeses > 0 ? sumMeses : (isFirst ? vtTotal : 0)
             return {
+              id: section.id,   // existente → atualiza; ausente → cria
               descricao: s.descricao,
               valor_total: vtAno,
               data_inicio: isFirst && s.data_inicio ? s.data_inicio : `${ano}-01-01`,
