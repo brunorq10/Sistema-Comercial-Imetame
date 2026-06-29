@@ -36,9 +36,13 @@ export async function GET(req: Request) {
   const mesProximo  = mesAtual === 12 ? 1  : mesAtual + 1
   const anoMesProx  = mesAtual === 12 ? anoAtual + 1 : anoAtual
 
+  // Filtros multi-valor: lista separada por vírgula (ex.: clienteId=1,2,3)
+  const clienteIds = clienteId ? clienteId.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  const ramos = ramoFiltro ? ramoFiltro.split(',').filter(Boolean) : []
+
   const whereContrato: Prisma.ContratoWhereInput = { cancelled_at: null }
-  if (clienteId)  whereContrato.cliente_id = parseInt(clienteId, 10)
-  if (ramoFiltro) whereContrato.cliente    = { is: { ramo_atuacao: ramoFiltro as RamoAtuacao } }
+  if (clienteIds.length) whereContrato.cliente_id = { in: clienteIds }
+  if (ramos.length)      whereContrato.cliente    = { is: { ramo_atuacao: { in: ramos as RamoAtuacao[] } } }
 
   const [contratos, consolidados, clientes] = await Promise.all([
     // Carrega apenas os campos usados na agregação (evita trazer linhas inteiras)

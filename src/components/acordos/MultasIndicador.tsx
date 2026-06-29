@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPOS_MULTA, TIPO_MULTA_MAP, TIPO_MULTA_LABEL } from '@/lib/multas'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 
 interface MultaItem {
   id: number
@@ -35,10 +36,10 @@ export function MultasIndicador() {
   const [items, setItems] = useState<MultaItem[]>([])
   const [opcoes, setOpcoes] = useState<Opcoes>({ clientes: [], cidades: [], responsaveis: [] })
   const [loading, setLoading] = useState(true)
-  const [clienteId, setClienteId] = useState('')
-  const [cidade, setCidade] = useState('')
-  const [responsavel, setResponsavel] = useState('')
-  const [tipo, setTipo] = useState('')
+  const [clienteId, setClienteId] = useState<string[]>([])
+  const [cidade, setCidade] = useState<string[]>([])
+  const [responsavel, setResponsavel] = useState<string[]>([])
+  const [tipo, setTipo] = useState<string[]>([])
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
   const [expandida, setExpandida] = useState<number | null>(null)
@@ -47,10 +48,10 @@ export function MultasIndicador() {
     let ativo = true
     setLoading(true)
     const p = new URLSearchParams()
-    if (clienteId) p.set('cliente_id', clienteId)
-    if (cidade) p.set('cidade', cidade)
-    if (responsavel) p.set('responsavel', responsavel)
-    if (tipo) p.set('tipo', tipo)
+    if (clienteId.length) p.set('cliente_id', clienteId.join(','))
+    if (cidade.length) p.set('cidade', cidade.join(','))
+    if (responsavel.length) p.set('responsavel', responsavel.join(','))
+    if (tipo.length) p.set('tipo', tipo.join(','))
     if (de) p.set('de', de)
     if (ate) p.set('ate', ate)
     fetch(`/api/faturamento/multas?${p.toString()}`)
@@ -65,7 +66,7 @@ export function MultasIndicador() {
   }, [clienteId, cidade, responsavel, tipo, de, ate])
 
   const total = items.reduce((s, m) => s + m.valor_total, 0)
-  const limpar = () => { setClienteId(''); setCidade(''); setResponsavel(''); setTipo(''); setDe(''); setAte('') }
+  const limpar = () => { setClienteId([]); setCidade([]); setResponsavel([]); setTipo([]); setDe(''); setAte('') }
 
   // Resumo por tipo
   const porTipo = TIPOS_MULTA.map((t) => {
@@ -100,31 +101,19 @@ export function MultasIndicador() {
       <div className="flex flex-wrap gap-2.5 items-end mb-3">
         <div className="min-w-[150px] flex-1">
           <label className={lblCls}>Cliente</label>
-          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={`${selCls} w-full`}>
-            <option value="">Todos</option>
-            {opcoes.clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
+          <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={opcoes.clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
         </div>
         <div className="min-w-[120px]">
           <label className={lblCls}>Cidade</label>
-          <select value={cidade} onChange={(e) => setCidade(e.target.value)} className={`${selCls} w-full`}>
-            <option value="">Todas</option>
-            {opcoes.cidades.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <SearchableMultiSelect values={cidade} onChange={setCidade} options={opcoes.cidades.map((c) => ({ value: c, label: c }))} emptyLabel="Todas" />
         </div>
         <div className="min-w-[140px]">
           <label className={lblCls}>Responsável</label>
-          <select value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={`${selCls} w-full`}>
-            <option value="">Todos</option>
-            {opcoes.responsaveis.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
-          </select>
+          <SearchableMultiSelect values={responsavel} onChange={setResponsavel} options={opcoes.responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
         </div>
         <div className="min-w-[120px]">
           <label className={lblCls}>Tipo</label>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={`${selCls} w-full`}>
-            <option value="">Todos</option>
-            {TIPOS_MULTA.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+          <SearchableMultiSelect values={tipo} onChange={setTipo} options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))} emptyLabel="Todos" />
         </div>
         <div className="min-w-[120px]">
           <label className={lblCls}>Período (de)</label>

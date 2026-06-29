@@ -32,9 +32,13 @@ export async function GET(req: NextRequest) {
   if (status === 'inativas') where.ativa = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contratoWhere: any = {}
-  if (clienteId && !isNaN(Number(clienteId))) contratoWhere.cliente_id = Number(clienteId)
-  if (cidade) contratoWhere.cidade = cidade
-  if (responsavel && !isNaN(Number(responsavel))) contratoWhere.responsavel_id = Number(responsavel)
+  // Filtros multi-valor: lista separada por vírgula
+  const clienteIds = clienteId ? clienteId.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  const cidades = cidade ? cidade.split(',').filter(Boolean) : []
+  const responsaveis = responsavel ? responsavel.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  if (clienteIds.length) contratoWhere.cliente_id = { in: clienteIds }
+  if (cidades.length) contratoWhere.cidade = { in: cidades }
+  if (responsaveis.length) contratoWhere.responsavel_id = { in: responsaveis }
   if (Object.keys(contratoWhere).length) where.contrato = { is: contratoWhere }
   if (de || ate) {
     where.data_ocorrencia = {}

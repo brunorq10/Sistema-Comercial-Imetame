@@ -6,6 +6,7 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 import { MultasIndicador } from '@/components/acordos/MultasIndicador'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -259,16 +260,16 @@ export default function IndicadoresAcordosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [ano, setAno] = useState(String(ANO_ATUAL))
-  const [clienteId, setClienteId] = useState('')
-  const [ramo, setRamo] = useState('')
+  const [clienteId, setClienteId] = useState<string[]>([])
+  const [ramo, setRamo] = useState<string[]>([])
   const [abaInd, setAbaInd] = useState<'geral' | 'responsavel'>('geral')
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null)
     const params = new URLSearchParams()
     if (ano && ano !== String(ANO_ATUAL)) params.set('ano', ano)
-    if (clienteId) params.set('clienteId', clienteId)
-    if (ramo) params.set('ramo', ramo)
+    if (clienteId.length) params.set('clienteId', clienteId.join(','))
+    if (ramo.length) params.set('ramo', ramo.join(','))
     const qs = params.toString()
     fetch(`/api/acordos/dashboard${qs ? '?' + qs : ''}`)
       .then((r) => r.json())
@@ -330,13 +331,13 @@ export default function IndicadoresAcordosPage() {
         </div>
         <div className="min-w-[180px] flex-1">
           <label className={fLbl}>Cliente</label>
-          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className={selectCls}><option value="">Todos</option>{clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
+          <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
         </div>
         <div className="min-w-[150px]">
           <label className={fLbl}>Mercado</label>
-          <select value={ramo} onChange={(e) => setRamo(e.target.value)} className={selectCls}><option value="">Todos</option>{RAMO_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+          <SearchableMultiSelect values={ramo} onChange={setRamo} options={RAMO_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} emptyLabel="Todos" />
         </div>
-        <button onClick={() => { setAno(String(ANO_ATUAL)); setClienteId(''); setRamo('') }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
+        <button onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]) }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
       </div>
 
       {loading && <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>}
