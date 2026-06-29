@@ -102,10 +102,10 @@ export default function FaturamentoPage() {
   const [nfAcaoError, setNfAcaoError]       = useState<string | null>(null)
   const [nfAcaoLoading, setNfAcaoLoading]   = useState(false)
 
-  // Filtros NFs
+  // Filtros NFs (Ano único; Cliente/Status multi)
   const [nfAno, setNfAno] = useState(String(anoAtual))
-  const [nfClienteId, setNfClienteId] = useState('')
-  const [nfAtiva, setNfAtiva] = useState('')
+  const [nfClienteId, setNfClienteId] = useState<string[]>([])
+  const [nfAtiva, setNfAtiva] = useState<string[]>([])
   const [nfBusca, setNfBusca] = useState('')
 
   // ── Dados Multas/Penalidades ───────────────────────────────────────────────
@@ -115,11 +115,11 @@ export default function FaturamentoPage() {
   const [multaAcao, setMultaAcao] = useState<AcaoMulta | null>(null)
   const [multaMotivo, setMultaMotivo] = useState('')
   const [multaAcaoLoading, setMultaAcaoLoading] = useState(false)
-  // Filtros multas
+  // Filtros multas (Tipo/Status multi)
   const [multaDe, setMultaDe] = useState('')
   const [multaAte, setMultaAte] = useState('')
-  const [multaTipo, setMultaTipo] = useState('')
-  const [multaStatus, setMultaStatus] = useState('')
+  const [multaTipo, setMultaTipo] = useState<string[]>([])
+  const [multaStatus, setMultaStatus] = useState<string[]>([])
   const [multaBusca, setMultaBusca] = useState('')
 
   // ── Aprovações ────────────────────────────────────────────────────────────────
@@ -203,8 +203,8 @@ export default function FaturamentoPage() {
     try {
       const params = new URLSearchParams()
       if (nfAno) params.set('ano', nfAno)
-      if (nfClienteId) params.set('cliente_id', nfClienteId)
-      if (nfAtiva !== '') params.set('ativa', nfAtiva)
+      if (nfClienteId.length) params.set('cliente_id', nfClienteId.join(','))
+      if (nfAtiva.length === 1) params.set('ativa', nfAtiva[0])
       if (nfBusca) params.set('busca', nfBusca)
       const res = await fetch(`/api/faturamento/nfs?${params.toString()}`)
       const json = await res.json()
@@ -224,8 +224,8 @@ export default function FaturamentoPage() {
       const params = new URLSearchParams()
       if (multaDe) params.set('de', multaDe)
       if (multaAte) params.set('ate', multaAte)
-      if (multaTipo) params.set('tipo', multaTipo)
-      if (multaStatus) params.set('status', multaStatus)
+      if (multaTipo.length) params.set('tipo', multaTipo.join(','))
+      if (multaStatus.length === 1) params.set('status', multaStatus[0])
       if (multaBusca) params.set('q', multaBusca)
       const res = await fetch(`/api/faturamento/multas?${params.toString()}`)
       const json = await res.json()
@@ -443,7 +443,7 @@ export default function FaturamentoPage() {
     setNumOs([]); setNumAcordo([]); setNumProposta([])
   }
   const limparFiltrosNf = () => {
-    setNfAno(String(anoAtual)); setNfClienteId(''); setNfAtiva(''); setNfBusca('')
+    setNfAno(String(anoAtual)); setNfClienteId([]); setNfAtiva([]); setNfBusca('')
   }
 
   const totalContratos  = contratos.length
@@ -698,15 +698,15 @@ export default function FaturamentoPage() {
             />
           </Field>
           <Field label="Cliente" className="min-w-[160px] flex-1">
-            <SearchableSelect
-              value={nfClienteId}
+            <SearchableMultiSelect
+              values={nfClienteId}
               onChange={setNfClienteId}
               options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
             />
           </Field>
           <Field label="Status" className="min-w-[120px]">
-            <SearchableSelect
-              value={nfAtiva}
+            <SearchableMultiSelect
+              values={nfAtiva}
               onChange={setNfAtiva}
               options={[
                 { value: 'true',  label: 'Ativas' },
@@ -736,16 +736,16 @@ export default function FaturamentoPage() {
             <Input type="date" value={multaAte} onChange={(e) => setMultaAte(e.target.value)} />
           </Field>
           <Field label="Tipo" className="min-w-[130px]">
-            <SearchableSelect
-              value={multaTipo}
+            <SearchableMultiSelect
+              values={multaTipo}
               onChange={setMultaTipo}
               options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))}
               emptyLabel="Todos"
             />
           </Field>
           <Field label="Status" className="min-w-[120px]">
-            <SearchableSelect
-              value={multaStatus}
+            <SearchableMultiSelect
+              values={multaStatus}
               onChange={setMultaStatus}
               options={[{ value: 'ativas', label: 'Ativas' }, { value: 'inativas', label: 'Inativas' }]}
               emptyLabel="Todas"
@@ -755,7 +755,7 @@ export default function FaturamentoPage() {
             <Input placeholder="Descrição, índice, cliente..." value={multaBusca} onChange={(e) => setMultaBusca(e.target.value)} />
           </Field>
           <div className="flex-shrink-0">
-            <button onClick={() => { setMultaDe(''); setMultaAte(''); setMultaTipo(''); setMultaStatus(''); setMultaBusca('') }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
+            <button onClick={() => { setMultaDe(''); setMultaAte(''); setMultaTipo([]); setMultaStatus([]); setMultaBusca('') }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
               ✕ Limpar
             </button>
           </div>

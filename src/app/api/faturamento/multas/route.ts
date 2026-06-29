@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {}
-  if (tipo && TIPOS.includes(tipo)) where.tipo = tipo
+  // tipo aceita lista separada por vírgula (multi-seleção)
+  const tiposSel = tipo.split(',').filter((t) => TIPOS.includes(t))
+  if (tiposSel.length === 1) where.tipo = tiposSel[0]
+  else if (tiposSel.length > 1) where.tipo = { in: tiposSel }
   if (status === 'ativas') where.ativa = true
   if (status === 'inativas') where.ativa = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

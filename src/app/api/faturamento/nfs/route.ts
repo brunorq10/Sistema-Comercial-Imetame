@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (clienteId) {
-    where.subindice = { contrato: { cliente_id: Number(clienteId) } }
+    // Aceita lista separada por vírgula (multi-seleção)
+    const ids = clienteId.split(',').map(Number).filter((n) => !isNaN(n))
+    if (ids.length) where.subindice = { contrato: { cliente_id: { in: ids } } }
   }
 
   const nfs = await prisma.notaFiscalContrato.findMany({
