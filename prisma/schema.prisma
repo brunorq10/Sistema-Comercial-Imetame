@@ -151,6 +151,8 @@ model User {
   alteracoes_criadas          PrevisaoAlteracao[]            @relation("AlteracaoCriador")
   analista_critico_historicos AnalistaCriticoHistorico[]     @relation("AnalistaCriticoUser")
   analista_critico_execucoes  AnalistaCriticoHistorico[]     @relation("AnalistaCriticoExecutor")
+  relatorios_criados          RelatorioSalvo[]               @relation("RelatorioCriador")
+  relatorios_versoes          RelatorioVersao[]              @relation("RelatorioVersaoAutor")
 
   @@map("users")
 }
@@ -1050,4 +1052,38 @@ model PrevisaoAlteracao {
   @@index([responsavel_id])
   @@index([status])
   @@map("previsao_alteracoes")
+}
+
+// ─── Construtor de Relatório: relatórios salvos + versionamento ────────────────
+
+model RelatorioSalvo {
+  id         Int       @id @default(autoincrement())
+  nome       String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  created_by Int
+  deleted_at DateTime? // soft delete (RN-18)
+
+  criador User              @relation("RelatorioCriador", fields: [created_by], references: [id])
+  versoes RelatorioVersao[]
+
+  @@index([created_by])
+  @@index([deleted_at])
+  @@map("relatorios_salvos")
+}
+
+model RelatorioVersao {
+  id           Int      @id @default(autoincrement())
+  relatorio_id Int
+  versao       Int
+  config       Json     // { modulo, linhas, colunas, valores, filtros }
+  created_at   DateTime @default(now())
+  created_by   Int
+
+  relatorio RelatorioSalvo @relation(fields: [relatorio_id], references: [id], onDelete: Cascade)
+  autor     User           @relation("RelatorioVersaoAutor", fields: [created_by], references: [id])
+
+  @@unique([relatorio_id, versao])
+  @@index([relatorio_id])
+  @@map("relatorios_versoes")
 }

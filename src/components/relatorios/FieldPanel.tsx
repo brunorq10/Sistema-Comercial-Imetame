@@ -31,7 +31,7 @@ export function FieldPanel({ campos, busca, onBusca, onDragField }: Props) {
   }, [campos, busca])
 
   return (
-    <div className="w-[220px] flex-shrink-0 border border-gray-200 rounded-md bg-white flex flex-col overflow-hidden">
+    <div className="w-[220px] flex-1 min-h-0 border border-gray-200 rounded-md bg-white flex flex-col overflow-hidden">
       <div className="p-2 border-b border-gray-100">
         <div className="relative">
           <svg className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>

@@ -7,6 +7,13 @@ import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { FieldPanel } from '@/components/relatorios/FieldPanel'
 import { Zones, type ChipDim, type ChipVal, type Gran, type Agg, type Zona } from '@/components/relatorios/Zones'
 import { ResultTable } from '@/components/relatorios/ResultTable'
+import { SavedReports, type RelatorioSalvoItem } from '@/components/relatorios/SavedReports'
+
+interface VersaoItem { versao: number; autor: string; created_at: string; config: SavedConfig }
+interface SavedConfig {
+  linhas?: ChipDim[]; colunas?: ChipDim[]; valores?: ChipVal[]
+  filtros?: { de?: string | null; ate?: string | null; cliente_id?: number[]; responsavel_id?: number[] }
+}
 
 type Modulo = 'comercial' | 'acordos'
 const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)' }
@@ -35,6 +42,15 @@ export default function ConstrutorRelatorioPage() {
   const [alerta, setAlerta] = useState<string | null>(null)
   const [confirmarSemData, setConfirmarSemData] = useState<null | 'executar' | 'exportar'>(null)
   const deRef = useRef<HTMLInputElement>(null)
+
+  // Relatórios salvos (Favoritos) + versionamento
+  const [salvos, setSalvos] = useState<RelatorioSalvoItem[]>([])
+  const [ativo, setAtivo] = useState<{ id: number; nome: string } | null>(null)
+  const [modalSalvar, setModalSalvar] = useState(false)
+  const [nomeSalvar, setNomeSalvar] = useState('')
+  const [salvarComoNovo, setSalvarComoNovo] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [modalVersoes, setModalVersoes] = useState<{ id: number; nome: string; versoes: VersaoItem[] } | null>(null)
 
   const camposMap = useMemo(() => new Map(campos.map((c) => [c.key, c])), [campos])
 
@@ -150,9 +166,91 @@ export default function ConstrutorRelatorioPage() {
     else if (acao === 'exportar') doExport()
   }
 
+  // ── Relatórios salvos ──────────────────────────────────────────────────────
+  const fetchSalvos = useCallback(() => {
+    fetch('/api/relatorios/salvos').then((r) => r.json()).then((j) => { if (j.data) setSalvos(j.data) }).catch(() => {})
+  }, [])
+  useEffect(() => { fetchSalvos() }, [fetchSalvos])
+
+  const aplicarConfig = (cfg: SavedConfig) => {
+    setLinhas(cfg.linhas ?? [])
+    setColunas(cfg.colunas ?? [])
+    setValores(cfg.valores ?? [])
+    setDe(cfg.filtros?.de ?? '')
+    setAte(cfg.filtros?.ate ?? '')
+    setClienteIds((cfg.filtros?.cliente_id ?? []).map(String))
+    setResponsavelIds((cfg.filtros?.responsavel_id ?? []).map(String))
+  }
+
+  const carregarSalvo = async (id: number) => {
+    const res = await fetch(`/api/relatorios/salvos/${id}`)
+    const j = await res.json()
+    if (!res.ok || j.error) { flash(j.error ?? 'Erro ao carregar.'); return }
+    const ultima: VersaoItem | undefined = j.data.versoes[0]
+    if (ultima) aplicarConfig(ultima.config)
+    setAtivo({ id: j.data.id, nome: j.data.nome })
+  }
+
+  const abrirSalvar = () => {
+    if (!configValida) { flash('Monte um relatório válido antes de salvar.'); return }
+    setNomeSalvar(ativo?.nome ?? '')
+    setSalvarComoNovo(!ativo)
+    setModalSalvar(true)
+  }
+
+  const confirmarSalvar = async () => {
+    if (!nomeSalvar.trim()) { flash('Informe um nome.'); return }
+    setSalvando(true)
+    try {
+      const body = { nome: nomeSalvar.trim(), config: buildRequest(), relatorioId: salvarComoNovo ? undefined : ativo?.id }
+      const res = await fetch('/api/relatorios/salvos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const j = await res.json()
+      if (!res.ok || j.error) { flash(j.error ?? 'Erro ao salvar.'); return }
+      setAtivo({ id: j.data.id, nome: nomeSalvar.trim() })
+      setModalSalvar(false)
+      fetchSalvos()
+    } finally { setSalvando(false) }
+  }
+
+  const abrirVersoes = async (id: number) => {
+    const res = await fetch(`/api/relatorios/salvos/${id}`)
+    const j = await res.json()
+    if (!res.ok || j.error) { flash(j.error ?? 'Erro.'); return }
+    setModalVersoes({ id: j.data.id, nome: j.data.nome, versoes: j.data.versoes })
+  }
+
+  const restaurarVersao = (v: VersaoItem) => {
+    aplicarConfig(v.config)
+    if (modalVersoes) setAtivo({ id: modalVersoes.id, nome: modalVersoes.nome })
+    setModalVersoes(null)
+  }
+
+  const renomearSalvo = async (id: number, nomeAtual: string) => {
+    const nome = window.prompt('Novo nome do relatório:', nomeAtual)
+    if (!nome || !nome.trim()) return
+    const res = await fetch(`/api/relatorios/salvos/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome.trim() }) })
+    const j = await res.json()
+    if (!res.ok || j.error) { flash(j.error ?? 'Erro ao renomear.'); return }
+    if (ativo?.id === id) setAtivo({ id, nome: nome.trim() })
+    fetchSalvos()
+  }
+
+  const excluirSalvo = async (id: number, nome: string) => {
+    if (!window.confirm(`Excluir o relatório "${nome}"?`)) return
+    const res = await fetch(`/api/relatorios/salvos/${id}`, { method: 'DELETE' })
+    const j = await res.json()
+    if (!res.ok || j.error) { flash(j.error ?? 'Erro ao excluir.'); return }
+    if (ativo?.id === id) setAtivo(null)
+    fetchSalvos()
+  }
+
   return (
     <div className="flex gap-3 h-full p-3">
-      <FieldPanel campos={campos} busca={busca} onBusca={setBusca} onDragField={() => {}} />
+      <div className="flex flex-col gap-3 flex-shrink-0 h-full">
+        <FieldPanel campos={campos} busca={busca} onBusca={setBusca} onDragField={() => {}} />
+        <SavedReports salvos={salvos} ativoId={ativo?.id ?? null}
+          onLoad={carregarSalvo} onVersoes={abrirVersoes} onRename={renomearSalvo} onDelete={excluirSalvo} />
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col gap-2.5 overflow-y-auto">
         {/* Barra de módulo + ações */}
@@ -161,10 +259,12 @@ export default function ConstrutorRelatorioPage() {
             {modulo
               ? <span className="text-[11px] font-semibold px-2 py-1 rounded text-white" style={{ background: '#0A1F44' }}>Módulo: {MODULO_LABEL[modulo]}</span>
               : <span className="text-[11px] text-gray-400">Arraste campos para começar</span>}
+            {ativo && <span className="text-[11px] text-gray-500">· <span className="font-medium text-gray-700">{ativo.nome}</span></span>}
             {score > 15 && <span className="text-[10px] text-amber-600 font-medium">Complexidade {score} — considere reduzir campos/definir período</span>}
           </div>
           <div className="flex items-center gap-1.5">
             <button onClick={limparTudo} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100">Limpar tudo</button>
+            <button onClick={abrirSalvar} disabled={!configValida} className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 disabled:opacity-50">Salvar</button>
             <button onClick={executar} disabled={!configValida || loading} className="bg-green-primary text-white rounded px-3 py-[5px] text-[11px] font-semibold hover:bg-green-dark disabled:opacity-50">Atualizar</button>
             <button onClick={exportar} disabled={!configValida || loading} className="border border-green-primary text-green-primary rounded px-2.5 py-[5px] text-[11px] font-semibold hover:bg-green-light disabled:opacity-50">Exportar Excel</button>
           </div>
@@ -221,6 +321,52 @@ export default function ConstrutorRelatorioPage() {
           </div>
         )}
       </div>
+
+      {/* Modal salvar */}
+      {modalSalvar && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[420px] max-w-[95%] shadow-2xl p-5">
+            <h3 className="text-[14px] font-bold text-gray-800 mb-3">Salvar relatório</h3>
+            <label className="block text-[11px] font-semibold text-gray-500 mb-1">Nome</label>
+            <input autoFocus value={nomeSalvar} onChange={(e) => setNomeSalvar(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-[12px] mb-3 focus:outline-none focus:border-green-primary" placeholder="Ex.: Funil mensal 2026" />
+            {ativo && (
+              <label className="flex items-center gap-2 text-[11px] text-gray-600 mb-3">
+                <input type="checkbox" checked={salvarComoNovo} onChange={(e) => setSalvarComoNovo(e.target.checked)} />
+                Salvar como novo (não criar versão de &quot;{ativo.nome}&quot;)
+              </label>
+            )}
+            {ativo && !salvarComoNovo && <p className="text-[10px] text-gray-400 mb-3">Será criada uma nova versão de &quot;{ativo.nome}&quot;.</p>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setModalSalvar(false)} className="border border-gray-300 text-gray-600 rounded px-3 py-1.5 text-[12px] hover:bg-gray-100">Cancelar</button>
+              <button onClick={confirmarSalvar} disabled={salvando} className="bg-green-primary text-white rounded px-3 py-1.5 text-[12px] font-semibold hover:bg-green-dark disabled:opacity-50">{salvando ? 'Salvando…' : 'Salvar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal histórico de versões */}
+      {modalVersoes && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[460px] max-w-[95%] shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-[14px] font-bold text-gray-800">Versões · {modalVersoes.nome}</h3>
+              <button onClick={() => setModalVersoes(null)} className="text-gray-400 hover:text-gray-700 text-[16px] leading-none">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {modalVersoes.versoes.map((v) => (
+                <div key={v.versao} className="flex items-center justify-between border border-gray-200 rounded px-3 py-2">
+                  <div>
+                    <span className="text-[12px] font-semibold text-gray-700">v{v.versao}</span>
+                    <span className="text-[10px] text-gray-500 ml-2">{v.autor} · {new Date(v.created_at).toLocaleString('pt-BR')}</span>
+                  </div>
+                  <button onClick={() => restaurarVersao(v)} className="text-[11px] font-semibold text-green-primary hover:underline">Restaurar</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal período em branco */}
       {confirmarSemData && (
