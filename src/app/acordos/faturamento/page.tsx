@@ -772,7 +772,7 @@ export default function FaturamentoPage() {
                 Erro ao carregar: {loadError}
               </div>
             )}
-            {loading ? (
+            {loading && contratos.length === 0 ? (
               <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
             ) : (
               <FaturamentoContratoTable

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -103,6 +103,21 @@ export function FaturamentoContratoTable({
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
 
+  // A linha TOTAIS (sticky top:0) tem altura variável; o cabeçalho de colunas
+  // precisa grudar exatamente abaixo dela. Medimos a altura real para evitar a
+  // faixa vazia (conteúdo aparecendo por baixo) quando ela é menor que o offset fixo.
+  const totalsRef = useRef<HTMLTableRowElement>(null)
+  const [totalsH, setTotalsH] = useState(42)
+  useEffect(() => {
+    const el = totalsRef.current
+    if (!el) return
+    const update = () => setTotalsH(el.getBoundingClientRect().height)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // Ordenação por clique no cabeçalho (asc → desc → sem ordenação)
   const contratosOrd = useMemo(
     () => (sort ? [...contratos].sort((a, b) => compareContratos(a, b, sort)) : contratos),
@@ -133,7 +148,7 @@ export function FaturamentoContratoTable({
   const rowBgSub = (key: string) =>
     selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
-  const TH  = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  const TH  = 'sticky bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
   const thF = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
   const thS = cn(TH, 'z-[10]')
   const thP = cn(TH, 'bg-[#6A1B9A] z-[10]')
@@ -142,7 +157,7 @@ export function FaturamentoContratoTable({
   const sh = (key: string, label: string, opts?: { frozen?: boolean; shadow?: boolean; left?: number }) => (
     <th
       className={cn(opts?.frozen ? thF(opts.shadow) : thS, 'cursor-pointer hover:bg-green-dark')}
-      style={opts?.frozen ? { left: opts.left } : undefined}
+      style={{ top: totalsH, left: opts?.frozen ? opts.left : undefined }}
       onClick={() => setSort((s) => nextSort(s, key))}
       title="Clique para ordenar"
     >
@@ -183,7 +198,7 @@ export function FaturamentoContratoTable({
             const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
             const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
             return (
-              <tr>
+              <tr ref={totalsRef}>
                 <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
                 <td className={tcF()} style={{ left: L.cliente }}></td>
                 <td className={tcF()} style={{ left: L.cliente_final }}></td>
@@ -234,7 +249,7 @@ export function FaturamentoContratoTable({
             {sh('cliente', 'Cliente', { frozen: true, left: L.cliente })}
             {sh('cliente_final', 'Cliente Final', { frozen: true, left: L.cliente_final })}
             {sh('cidade', 'Cidade/UF', { frozen: true, left: L.cidade })}
-            <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
+            <th className={thF(true)} style={{ top: totalsH, left: L.descricao }}>Descrição / Evento</th>
             {sh('classificacao', 'Classificação')}
             {sh('ramo', 'Ramo')}
             {sh('num_os', 'Nº OS')}
@@ -248,10 +263,10 @@ export function FaturamentoContratoTable({
             {sh('valor_faturado', 'Valor Total Faturado')}
             {sh('saldo', 'Saldo a Faturar')}
             {sh('responsavel', 'Responsável')}
-            <th className={thS}>Comentários</th>
-            {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
-            <th className={thP}>Previsão prox. anos</th>
-            <th className={thS}>Ações</th>
+            <th className={thS} style={{ top: totalsH }}>Comentários</th>
+            {MESES_LABELS.map((m) => <th key={m} className={thS} style={{ top: totalsH }}>{m}</th>)}
+            <th className={thP} style={{ top: totalsH }}>Previsão prox. anos</th>
+            <th className={thS} style={{ top: totalsH }}>Ações</th>
           </tr>
         </thead>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
@@ -157,7 +157,6 @@ export default function MeuPainelAcordosPage() {
       if (json.error) { setError(json.error); return }
       const data: ContratoComAlteracoes[] = json.data ?? []
       setContratos(data)
-      setExpandidos(new Set())
     } catch (err) {
       setError(String(err))
     } finally {
@@ -166,6 +165,9 @@ export default function MeuPainelAcordosPage() {
   }, [responsavelId, isGestao])
 
   useEffect(() => { fetchContratos() }, [fetchContratos])
+
+  // Ao trocar de responsável (troca de contexto) recolhe tudo; salvar mantém a expansão
+  useEffect(() => { setExpandidos(new Set()) }, [responsavelId])
 
   const toggleExpand = (id: number) =>
     setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -370,7 +372,7 @@ export default function MeuPainelAcordosPage() {
 
       {/* ── Tabela ────────────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 px-4 pb-4">
-        {loading ? (
+        {loading && contratos.length === 0 ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : filteredContratos.length === 0 ? (
           <div className="text-center py-10 text-gray-400 text-sm">
@@ -466,7 +468,21 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
     [contratos, sort],
   )
 
-  const TH   = 'sticky top-[42px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
+  // Altura real da linha TOTAIS para grudar o cabeçalho de colunas exatamente
+  // abaixo dela (evita faixa vazia com conteúdo aparecendo por baixo no scroll).
+  const totalsRef = useRef<HTMLTableRowElement>(null)
+  const [totalsH, setTotalsH] = useState(42)
+  useEffect(() => {
+    const el = totalsRef.current
+    if (!el) return
+    const update = () => setTotalsH(el.getBoundingClientRect().height)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const TH   = 'sticky bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'
   const thF  = (shadow?: boolean) => cn(TH, 'z-[20]', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
   const thS  = cn(TH, 'z-[10]')
   const thP  = cn(TH, 'bg-[#6A1B9A] z-[10]')
@@ -474,7 +490,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
   const sh = (key: string, label: string, opts?: { frozen?: boolean; shadow?: boolean; left?: number }) => (
     <th
       className={cn(opts?.frozen ? thF(opts.shadow) : thS, 'cursor-pointer hover:bg-green-dark')}
-      style={opts?.frozen ? { left: opts.left } : undefined}
+      style={{ top: totalsH, left: opts?.frozen ? opts.left : undefined }}
       onClick={() => setSort((s) => nextSort(s, key))}
       title="Clique para ordenar"
     >
@@ -517,7 +533,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
             const TC  = 'sticky top-0 z-[30] px-2 py-[4px] bg-[#C8E6C9] text-[11px] whitespace-nowrap border-b-2 border-green-primary'
             const tcF = (shadow?: boolean) => cn(TC, 'z-[40] font-bold', shadow && 'shadow-[3px_0_6px_rgba(0,0,0,0.18)]')
             return (
-              <tr>
+              <tr ref={totalsRef}>
                 <td className={tcF()} style={{ left: L.indice }}>TOTAIS</td>
                 <td className={tcF()} style={{ left: L.cliente }}></td>
                 <td className={tcF()} style={{ left: L.cliente_final }}></td>
@@ -552,7 +568,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
             {sh('cliente', 'Cliente', { frozen: true, left: L.cliente })}
             {sh('cliente_final', 'Cliente Final', { frozen: true, left: L.cliente_final })}
             {sh('cidade', 'Cidade/UF', { frozen: true, left: L.cidade })}
-            <th className={thF(true)} style={{ left: L.descricao }}>Descrição / Evento</th>
+            <th className={thF(true)} style={{ top: totalsH, left: L.descricao }}>Descrição / Evento</th>
             {sh('classificacao', 'Classificação')}
             {sh('ramo', 'Ramo')}
             {sh('num_os', 'Nº OS')}
@@ -566,10 +582,10 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
             {sh('valor_faturado', 'Valor Total Faturado')}
             {sh('saldo', 'Saldo a Faturar')}
             {sh('responsavel', 'Responsável')}
-            <th className={thS}>Comentários</th>
-            {MESES_LABELS.map((m) => <th key={m} className={thS}>{m}</th>)}
-            <th className={thP}>Previsão prox. anos</th>
-            <th className={thS}>Ações</th>
+            <th className={thS} style={{ top: totalsH }}>Comentários</th>
+            {MESES_LABELS.map((m) => <th key={m} className={thS} style={{ top: totalsH }}>{m}</th>)}
+            <th className={thP} style={{ top: totalsH }}>Previsão prox. anos</th>
+            <th className={thS} style={{ top: totalsH }}>Ações</th>
           </tr>
         </thead>
 
