@@ -53,6 +53,10 @@ interface BuildArgs {
   rowTotais: RawRow[]   // agregado só por linhas
   colTotais: RawRow[]   // agregado só por colunas
   grand: RawRow[]       // agregado geral (0 ou 1 linha)
+  // Série completa de datas p/ preencher períodos sem dados (só quando há
+  // exatamente 1 dimensão de data na respectiva zona e período De/Até definido).
+  rowSeedDates?: Date[]
+  colSeedDates?: Date[]
 }
 
 export function buildPivot(a: BuildArgs): PivotResult {
@@ -66,6 +70,20 @@ export function buildPivot(a: BuildArgs): PivotResult {
   const colOrder: string[] = []
   const colDisplay = new Map<string, string[]>()
   const cell = new Map<string, (number | null)[]>() // `${rk}||${ck}` → valores
+
+  // Semente cronológica de datas (períodos sem dados aparecem com valores nulos).
+  if (a.rowSeedDates && nL === 1 && a.linhasMeta[0].eData) {
+    for (const d of a.rowSeedDates) {
+      const rk = keyDim(d, a.linhasMeta[0])
+      if (!rowDisplay.has(rk)) { rowOrder.push(rk); rowDisplay.set(rk, [displayDim(d, a.linhasMeta[0])]) }
+    }
+  }
+  if (a.colSeedDates && nC === 1 && a.colunasMeta[0].eData) {
+    for (const d of a.colSeedDates) {
+      const ck = keyDim(d, a.colunasMeta[0])
+      if (!colDisplay.has(ck)) { colOrder.push(ck); colDisplay.set(ck, [displayDim(d, a.colunasMeta[0])]) }
+    }
+  }
 
   for (const r of a.main) {
     const rParts: string[] = [], rDisp: string[] = []

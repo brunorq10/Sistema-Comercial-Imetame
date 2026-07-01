@@ -4,9 +4,35 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod'
-import { getCampo } from './catalog'
+import { getCampo, type Granularidade } from './catalog'
 import { buildQuery, dataFiltroExpr, runQuery, type ReportRequest, type RawRow } from './query'
 import { buildPivot, type PivotResult } from './pivot'
+
+// Série cronológica de inícios de período (UTC) entre De e Até, na granularidade.
+function serieDatas(deStr: string, ateStr: string, gran: Granularidade): Date[] {
+  const start = new Date(`${deStr}T00:00:00Z`)
+  const end = new Date(`${ateStr}T00:00:00Z`)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return []
+  const trunc = (d: Date): Date => {
+    const y = d.getUTCFullYear(), m = d.getUTCMonth()
+    if (gran === 'ano') return new Date(Date.UTC(y, 0, 1))
+    if (gran === 'trimestre') return new Date(Date.UTC(y, Math.floor(m / 3) * 3, 1))
+    if (gran === 'mes') return new Date(Date.UTC(y, m, 1))
+    return new Date(Date.UTC(y, m, d.getUTCDate()))
+  }
+  const next = (d: Date): Date => {
+    const y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate()
+    if (gran === 'ano') return new Date(Date.UTC(y + 1, 0, 1))
+    if (gran === 'trimestre') return new Date(Date.UTC(y, m + 3, 1))
+    if (gran === 'mes') return new Date(Date.UTC(y, m + 1, 1))
+    return new Date(Date.UTC(y, m, day + 1))
+  }
+  const res: Date[] = []
+  let d = trunc(start)
+  const limite = 1000 // trava de segurança
+  while (d <= end && res.length < limite) { res.push(d); d = next(d) }
+  return res
+}
 
 const granEnum = z.enum(['dia', 'mes', 'trimestre', 'ano'])
 const aggEnum = z.enum(['soma', 'media', 'contagem'])
@@ -66,11 +92,22 @@ export async function gerarPivot(req: ReportRequest, limitGrupos?: number): Prom
     runQuery(buildQuery({ ...req, linhas: [], colunas: [] }, { forcedDate })),
   ])
 
+  // Série completa de datas quando há exatamente 1 dimensão de data na zona
+  // e período De/Até definido (períodos sem dados aparecem no resultado).
+  const semear = (refs: ReportRequest['linhas']): Date[] | undefined => {
+    if (refs.length !== 1 || !req.filtros.de || !req.filtros.ate) return undefined
+    const c = getCampo(refs[0].campo)
+    if (!c || c.tipo !== 'data') return undefined
+    return serieDatas(req.filtros.de, req.filtros.ate, refs[0].granularidade ?? 'mes')
+  }
+
   const pivot = buildPivot({
     linhasMeta: built.linhasMeta,
     colunasMeta: built.colunasMeta,
     valoresMeta: built.valoresMeta,
     main, rowTotais, colTotais, grand,
+    rowSeedDates: semear(req.linhas),
+    colSeedDates: semear(req.colunas),
   })
 
   return { pivot, dataFiltroLabel: built.dataFiltroLabel, semFiltroData: built.semFiltroData, totalLinhas: pivot.rows.length }
