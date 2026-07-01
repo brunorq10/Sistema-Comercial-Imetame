@@ -11,7 +11,7 @@ import { AnaliseSolicitacaoModal } from '@/components/forms/AnaliseSolicitacaoMo
 import { ClassificacaoBadge, InteresseBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { usePermissions } from '@/hooks/usePermissions'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { formatDate } from '@/lib/utils'
 import type { SolicitacaoListItem, FiltrosSolicitacao, StatusSolicitacao, Classificacao, Interesse, Origem } from '@/types'
 
@@ -115,13 +115,13 @@ export default function SolicitacoesPage() {
       const statusEfetivo = tab ?? filtrosAplicados.status ?? undefined
       if (statusEfetivo) params.set('status', statusEfetivo)
       if (filtrosAplicados.ano) params.set('ano', filtrosAplicados.ano)
-      if (filtrosAplicados.cliente_id) params.set('cliente_id', filtrosAplicados.cliente_id)
-      if (filtrosAplicados.classificacao) params.set('classificacao', filtrosAplicados.classificacao)
-      if (filtrosAplicados.interesse) params.set('interesse', filtrosAplicados.interesse)
+      if (filtrosAplicados.cliente_id?.length) params.set('cliente_id', filtrosAplicados.cliente_id.join(','))
+      if (filtrosAplicados.classificacao?.length) params.set('classificacao', filtrosAplicados.classificacao.join(','))
+      if (filtrosAplicados.interesse?.length) params.set('interesse', filtrosAplicados.interesse.join(','))
       if (filtrosAplicados.data_de) params.set('data_de', filtrosAplicados.data_de)
       if (filtrosAplicados.data_ate) params.set('data_ate', filtrosAplicados.data_ate)
-      if (filtrosAplicados.responsavel_id) params.set('responsavel_id', filtrosAplicados.responsavel_id)
-      if (filtrosAplicados.orcamentista_id) params.set('orcamentista_id', filtrosAplicados.orcamentista_id)
+      if (filtrosAplicados.responsavel_id?.length) params.set('responsavel_id', filtrosAplicados.responsavel_id.join(','))
+      if (filtrosAplicados.orcamentista_id?.length) params.set('orcamentista_id', filtrosAplicados.orcamentista_id.join(','))
       params.set('page', String(page))
       params.set('limit', '20')
       const res = await fetch(`/api/solicitacoes?${params.toString()}`)
@@ -286,17 +286,17 @@ export default function SolicitacoesPage() {
             </div>
             <div className="flex-[2] min-w-[160px]">
               <label className={fLbl}>Cliente</label>
-              <SearchableSelect
-                value={filtros.cliente_id ?? ''}
+              <SearchableMultiSelect
+                values={filtros.cliente_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, cliente_id: v }))}
                 options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Classificação</label>
-              <SearchableSelect
-                value={filtros.classificacao ?? ''}
-                onChange={(v) => setFiltros((f) => ({ ...f, classificacao: v as never }))}
+              <SearchableMultiSelect
+                values={filtros.classificacao ?? []}
+                onChange={(v) => setFiltros((f) => ({ ...f, classificacao: v }))}
                 options={[
                   { value: 'OBRAS',       label: 'Obras' },
                   { value: 'PARADAS',     label: 'Paradas' },
@@ -308,9 +308,9 @@ export default function SolicitacoesPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Interesse</label>
-              <SearchableSelect
-                value={filtros.interesse ?? ''}
-                onChange={(v) => setFiltros((f) => ({ ...f, interesse: v as never }))}
+              <SearchableMultiSelect
+                values={filtros.interesse ?? []}
+                onChange={(v) => setFiltros((f) => ({ ...f, interesse: v }))}
                 options={[
                   { value: 'ALTO',  label: 'Alto' },
                   { value: 'MEDIO', label: 'Médio' },
@@ -328,8 +328,8 @@ export default function SolicitacoesPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Responsável</label>
-              <SearchableSelect
-                value={filtros.responsavel_id ?? ''}
+              <SearchableMultiSelect
+                values={filtros.responsavel_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, responsavel_id: v }))}
                 options={responsaveis.map((u) => ({ value: String(u.id), label: u.nome }))}
               />
@@ -351,8 +351,8 @@ export default function SolicitacoesPage() {
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Orçamentista</label>
-              <SearchableSelect
-                value={filtros.orcamentista_id ?? ''}
+              <SearchableMultiSelect
+                values={filtros.orcamentista_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, orcamentista_id: v }))}
                 options={orcamentistas.map((u) => ({ value: String(u.id), label: u.nome }))}
               />

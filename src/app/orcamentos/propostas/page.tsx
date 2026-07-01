@@ -9,7 +9,7 @@ import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
-import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import type { PropostasItem } from '@/types'
 
 const opClassificacao = [
@@ -41,21 +41,21 @@ export default function PropostasPage() {
   const [cidades,       setCidades]       = useState<string[]>([])
   const [escopos,       setEscopos]       = useState<string[]>([])
 
-  // Filtros de edição — multi-select onde aplicável
-  const [numero,          setNumero]          = useState('')
+  // Filtros de edição — todos multi-select
+  const [numero,          setNumero]          = useState<string[]>([])
   const [clienteIds,      setClienteIds]      = useState<string[]>([])
-  const [cidade,          setCidade]          = useState('')
+  const [cidade,          setCidade]          = useState<string[]>([])
   const [classificacoes,  setClassificacoes]  = useState<string[]>([])
   const [orcamentistaIds, setOrcamentistaIds] = useState<string[]>([])
   const [resultados,      setResultados]      = useState<string[]>([])
-  const [escopo,          setEscopo]          = useState('')
+  const [escopo,          setEscopo]          = useState<string[]>([])
 
   type Aplicados = {
-    numero: string; clienteIds: string[]; cidade: string
-    classificacoes: string[]; orcamentistaIds: string[]; resultados: string[]; escopo: string
+    numero: string[]; clienteIds: string[]; cidade: string[]
+    classificacoes: string[]; orcamentistaIds: string[]; resultados: string[]; escopo: string[]
   }
   const [aplicados, setAplicados] = useState<Aplicados>({
-    numero: '', clienteIds: [], cidade: '', classificacoes: [], orcamentistaIds: [], resultados: [], escopo: '',
+    numero: [], clienteIds: [], cidade: [], classificacoes: [], orcamentistaIds: [], resultados: [], escopo: [],
   })
 
   const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
@@ -77,9 +77,9 @@ export default function PropostasPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (aplicados.numero)  params.set('numero', aplicados.numero)
-      if (aplicados.cidade)  params.set('cidade', aplicados.cidade)
-      if (aplicados.escopo)  params.set('escopo', aplicados.escopo)
+      aplicados.numero.forEach(n => params.append('numero', n))
+      aplicados.cidade.forEach(c => params.append('cidade', c))
+      aplicados.escopo.forEach(e => params.append('escopo', e))
       aplicados.clienteIds.forEach(id  => params.append('cliente_id', id))
       aplicados.orcamentistaIds.forEach(id => params.append('orcamentista_id', id))
       aplicados.classificacoes.forEach(c => params.append('classificacao', c))
@@ -104,10 +104,10 @@ export default function PropostasPage() {
   }
 
   const limpar = () => {
-    setNumero(''); setClienteIds([]); setCidade('')
+    setNumero([]); setClienteIds([]); setCidade([])
     setClassificacoes([]); setOrcamentistaIds([])
-    setResultados([]); setEscopo('')
-    setAplicados({ numero: '', clienteIds: [], cidade: '', classificacoes: [], orcamentistaIds: [], resultados: [], escopo: '' })
+    setResultados([]); setEscopo([])
+    setAplicados({ numero: [], clienteIds: [], cidade: [], classificacoes: [], orcamentistaIds: [], resultados: [], escopo: [] })
     setPage(1)
   }
 
@@ -157,7 +157,7 @@ export default function PropostasPage() {
         <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex flex-wrap gap-1.5 items-end">
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Nº Proposta</label>
-            <SearchableSelect value={numero} onChange={setNumero}
+            <SearchableMultiSelect values={numero} onChange={setNumero}
               options={numeros.map(n => ({ value: n, label: n }))} emptyLabel="Todas" />
           </div>
           <div className="flex-[2] min-w-[160px]">
@@ -167,7 +167,7 @@ export default function PropostasPage() {
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Cidade/UF</label>
-            <SearchableSelect value={cidade} onChange={setCidade}
+            <SearchableMultiSelect values={cidade} onChange={setCidade}
               options={cidades.map(c => ({ value: c, label: c }))} emptyLabel="Todas" />
           </div>
           <div className="flex-1 min-w-[120px]">
@@ -187,7 +187,7 @@ export default function PropostasPage() {
           </div>
           <div className="flex-[2] min-w-[160px]">
             <label className={fLbl}>Escopo</label>
-            <SearchableSelect value={escopo} onChange={setEscopo}
+            <SearchableMultiSelect values={escopo} onChange={setEscopo}
               options={escopos.map(e => ({ value: e, label: e }))} placeholder="Digite para filtrar…" />
           </div>
           <div className="flex-shrink-0 flex items-end gap-1">

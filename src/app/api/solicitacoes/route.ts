@@ -74,12 +74,14 @@ export async function GET(req: NextRequest) {
   const skip  = (page - 1) * limit
 
   const ano = searchParams.get('ano') ?? undefined
-  const cliente_id = searchParams.get('cliente_id') ? Number(searchParams.get('cliente_id')) : undefined
-  const classificacao = (searchParams.get('classificacao') as Classificacao) || undefined
-  const interesse = (searchParams.get('interesse') as Interesse) || undefined
+  // Filtros multi-valor: lista separada por vírgula (ex.: cliente_id=1,2,3)
+  const multi = (k: string) => { const v = searchParams.get(k); return v ? v.split(',').filter(Boolean) : [] }
+  const clienteIds = multi('cliente_id').map(Number).filter((n) => !isNaN(n))
+  const classificacoes = multi('classificacao') as Classificacao[]
+  const interesses = multi('interesse') as Interesse[]
+  const responsavelIds = multi('responsavel_id').map(Number).filter((n) => !isNaN(n))
+  const orcamentistaIds = multi('orcamentista_id').map(Number).filter((n) => !isNaN(n))
   const status = (searchParams.get('status') as StatusSolicitacao) || undefined
-  const responsavel_id = searchParams.get('responsavel_id') ? Number(searchParams.get('responsavel_id')) : undefined
-  const orcamentista_id = searchParams.get('orcamentista_id') ? Number(searchParams.get('orcamentista_id')) : undefined
   const data_de = searchParams.get('data_de') ?? undefined
   const data_ate = searchParams.get('data_ate') ?? undefined
 
@@ -99,11 +101,11 @@ export async function GET(req: NextRequest) {
         lt:  new Date(`${anoNum + 1}-01-01`),
       },
     }),
-    ...(cliente_id && { cliente_id }),
-    ...(classificacao && { classificacao }),
-    ...(interesse && { interesse }),
-    ...(responsavel_id && { created_by: responsavel_id }),
-    ...(orcamentista_id && { orcamentista_id }),
+    ...(clienteIds.length && { cliente_id: { in: clienteIds } }),
+    ...(classificacoes.length && { classificacao: { in: classificacoes } }),
+    ...(interesses.length && { interesse: { in: interesses } }),
+    ...(responsavelIds.length && { created_by: { in: responsavelIds } }),
+    ...(orcamentistaIds.length && { orcamentista_id: { in: orcamentistaIds } }),
     ...(!anoNum && (data_de || data_ate)
       ? {
           created_at: {

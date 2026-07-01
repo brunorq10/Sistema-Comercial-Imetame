@@ -72,10 +72,11 @@ export async function GET(req: NextRequest) {
   const orcamentista_ids  = searchParams.getAll('orcamentista_id')
   const resultados        = searchParams.getAll('resultado')
   const ano               = searchParams.get('ano') ?? undefined
-  const numero            = searchParams.get('numero') ?? undefined
-  const escopo            = searchParams.get('escopo') ?? undefined
+  const numeros           = searchParams.getAll('numero')
+  const escopos           = searchParams.getAll('escopo')
   const cliente_ids       = searchParams.getAll('cliente_id')
-  const cidade            = searchParams.get('cidade') ?? undefined
+  // Cidade vem como "Cidade/UF" nas opções; a coluna guarda só a cidade
+  const cidades           = searchParams.getAll('cidade').map((c) => c.split('/')[0].trim()).filter(Boolean)
 
   const wherePropostas = {
     cancelled_at: null,
@@ -88,9 +89,9 @@ export async function GET(req: NextRequest) {
     ...(status && { status: status as never }),
     ...(orcamentista_ids.length > 0 && { orcamentista_id: { in: orcamentista_ids.map(Number) } }),
     ...(cliente_ids.length > 0 && { cliente_id: { in: cliente_ids.map(Number) } }),
-    ...(cidade && { cidade: { contains: cidade.split('/')[0].trim(), mode: 'insensitive' as const } }),
-    ...(numero && { numero: { contains: numero, mode: 'insensitive' as const } }),
-    ...(escopo && { escopo: { contains: escopo, mode: 'insensitive' as const } }),
+    ...(cidades.length > 0 && { cidade: { in: cidades } }),
+    ...(numeros.length > 0 && { numero: { in: numeros } }),
+    ...(escopos.length > 0 && { escopo: { in: escopos } }),
     ...(resultados.length > 0 && { propostas_comerciais: { some: { resultado: { in: resultados } } } }),
     ...(ano && {
       propostas_tecnicas: {

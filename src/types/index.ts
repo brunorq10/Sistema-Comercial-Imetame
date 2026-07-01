@@ -155,14 +155,14 @@ export interface PropostaComercialItem {
 
 export interface FiltrosSolicitacao {
   ano?: string
-  cliente_id?: string
-  classificacao?: Classificacao | ''
-  interesse?: Interesse | ''
+  cliente_id?: string[]
+  classificacao?: string[]
+  interesse?: string[]
   data_de?: string
   data_ate?: string
-  responsavel_id?: string
+  responsavel_id?: string[]
   status?: StatusSolicitacao | ''
-  orcamentista_id?: string
+  orcamentista_id?: string[]
 }
 
 export interface PropostasItem {
