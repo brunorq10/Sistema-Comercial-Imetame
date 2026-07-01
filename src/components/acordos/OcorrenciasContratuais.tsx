@@ -8,6 +8,7 @@ import {
   IMPACTO_OCORRENCIA_LABEL, PERIODOS,
 } from '@/lib/ocorrencias'
 import { NovaOcorrenciaModal } from '@/components/forms/NovaOcorrenciaModal'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 
 interface Anexo { id: number; nome: string; tipo: string; url: string; tamanho: number | null }
 interface Ocorrencia {
@@ -50,8 +51,8 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [periodo, setPeriodo] = useState('all')
-  const [responsavel, setResponsavel] = useState('')
-  const [tipo, setTipo] = useState('')
+  const [responsavel, setResponsavel] = useState<string[]>([])
+  const [tipo, setTipo] = useState<string[]>([])
   const [responsabilidade, setResponsabilidade] = useState('') // chip (vazio = Todos)
   const [items, setItems] = useState<Ocorrencia[]>([])
   const [total, setTotal] = useState(0)
@@ -73,9 +74,9 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
     const p = new URLSearchParams()
     if (debouncedQ) p.set('q', debouncedQ)
     if (periodo !== 'all') p.set('periodo', periodo)
-    if (responsavel) p.set('responsavel', responsavel)
+    if (responsavel.length) p.set('responsavel', responsavel.join(','))
     if (responsabilidade) p.set('responsabilidade', responsabilidade)
-    if (tipo) p.set('tipo', tipo)
+    if (tipo.length) p.set('tipo', tipo.join(','))
     fetch(`/api/acordos/contratos/${contratoId}/ocorrencias?${p.toString()}`)
       .then(r => r.json())
       .then(j => {
@@ -88,7 +89,7 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
   }, [contratoId, debouncedQ, periodo, responsavel, responsabilidade, tipo, reloadKey])
 
   const limparFiltros = () => {
-    setQ(''); setPeriodo('all'); setResponsavel(''); setTipo(''); setResponsabilidade('')
+    setQ(''); setPeriodo('all'); setResponsavel([]); setTipo([]); setResponsabilidade('')
   }
 
   const excluir = async (id: number) => {
@@ -215,10 +216,10 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
       <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
         <Select label="Período" value={periodo} onChange={setPeriodo}
           options={PERIODOS.map(p => ({ value: p.value, label: p.label }))} />
-        <Select label="Responsável" value={responsavel} onChange={setResponsavel}
-          options={[{ value: '', label: 'Todos' }, ...responsaveis.map(r => ({ value: String(r.id), label: r.nome }))]} />
-        <Select label="Tipo de ocorrência" value={tipo} onChange={setTipo}
-          options={[{ value: '', label: 'Todos os tipos' }, ...TIPOS_OCORRENCIA.map(t => ({ value: t.value, label: t.label }))]} />
+        <MultiFiltro label="Responsável" values={responsavel} onChange={setResponsavel}
+          options={responsaveis.map(r => ({ value: String(r.id), label: r.nome }))} emptyLabel="Todos" />
+        <MultiFiltro label="Tipo de ocorrência" values={tipo} onChange={setTipo}
+          options={TIPOS_OCORRENCIA.map(t => ({ value: t.value, label: t.label }))} emptyLabel="Todos os tipos" />
         <button onClick={limparFiltros} className="text-[12px] font-semibold text-green-primary hover:underline md:mb-1.5 self-start md:self-auto">
           Limpar filtros
         </button>
@@ -327,6 +328,17 @@ function Campo({ label, valor }: { label: string; valor: string }) {
     <div>
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{label}</p>
       <p className="text-[12px] text-gray-700">{valor}</p>
+    </div>
+  )
+}
+
+function MultiFiltro({ label, values, onChange, options, emptyLabel }: {
+  label: string; values: string[]; onChange: (v: string[]) => void; options: { value: string; label: string }[]; emptyLabel?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1 md:min-w-[150px]">
+      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
+      <SearchableMultiSelect values={values} onChange={onChange} options={options} emptyLabel={emptyLabel} />
     </div>
   )
 }

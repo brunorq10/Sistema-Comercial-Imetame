@@ -47,11 +47,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const responsabilidade = sp.get('responsabilidade') ?? ''
   const tipo = sp.get('tipo') ?? ''
 
+  // Filtros multi-valor: lista separada por vírgula
+  const tipos = tipo ? tipo.split(',').filter(Boolean) : []
+  const responsaveisIds = responsavel ? responsavel.split(',').map(Number).filter((n) => !isNaN(n)) : []
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { contrato_id: contratoId }
   if (responsabilidade) where.responsabilidade = responsabilidade
-  if (tipo) where.tipo = tipo
-  if (responsavel && !isNaN(Number(responsavel))) where.created_by = Number(responsavel)
+  if (tipos.length) where.tipo = { in: tipos }
+  if (responsaveisIds.length) where.created_by = { in: responsaveisIds }
   const desde = inicioPeriodo(periodo)
   if (desde) where.data = { gte: desde }
 

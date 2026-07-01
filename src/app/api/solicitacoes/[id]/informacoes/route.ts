@@ -65,13 +65,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const limit = Math.min(Math.max(Number(sp.get('limit') ?? 10), 1), 50)
   const offset = Math.max(Number(sp.get('offset') ?? 0), 0)
 
+  // Filtros multi-valor: lista separada por vírgula
+  const tiposSel = tipoFiltro ? tipoFiltro.split(',').filter((t) => (TIPOS as readonly string[]).includes(t)) : []
+  const autoresIds = autor ? autor.split(',').map(Number).filter((n) => !isNaN(n)) : []
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { solicitacao_id: id }
   // Aba "Linha do Tempo" = registros manuais (com tipo). Breadcrumbs
   // automáticos (tipo null) pertencem ao auditlog (aba Histórico do Sistema).
-  if (tipoFiltro && (TIPOS as readonly string[]).includes(tipoFiltro)) where.tipo = tipoFiltro
+  if (tiposSel.length) where.tipo = { in: tiposSel }
   else where.tipo = { not: null }
-  if (autor && !isNaN(Number(autor))) where.created_by = Number(autor)
+  if (autoresIds.length) where.created_by = { in: autoresIds }
   const desde = inicioPeriodo(periodo)
   if (desde) where.data = { gte: desde }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { formatDate } from '@/lib/utils'
 import { TIPOS_INTERACAO, TIPO_INTERACAO_MAP } from '@/lib/interacoes'
 import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
+import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 
 interface Anexo { id: number; nome: string; tipo: string; url: string; tamanho: number | null }
 interface Info {
@@ -58,8 +59,8 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [periodo, setPeriodo] = useState('all')
-  const [autor, setAutor] = useState('')
-  const [tipo, setTipo] = useState('')
+  const [autor, setAutor] = useState<string[]>([])
+  const [tipo, setTipo] = useState<string[]>([])
   const [items, setItems] = useState<Info[]>([])
   const [total, setTotal] = useState(0)
   const [autores, setAutores] = useState<Autor[]>([])
@@ -81,8 +82,8 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
     const p = new URLSearchParams()
     if (debouncedQ) p.set('q', debouncedQ)
     if (periodo !== 'all') p.set('periodo', periodo)
-    if (autor) p.set('autor', autor)
-    if (tipo) p.set('tipo', tipo)
+    if (autor.length) p.set('autor', autor.join(','))
+    if (tipo.length) p.set('tipo', tipo.join(','))
     p.set('limit', '50')
     fetch(`/api/solicitacoes/${solicitacaoId}/informacoes?${p.toString()}`)
       .then(r => r.json())
@@ -95,7 +96,7 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
     return () => { ativo = false }
   }, [solicitacaoId, debouncedQ, periodo, autor, tipo, reloadKey])
 
-  const limparFiltros = () => { setQ(''); setPeriodo('all'); setAutor(''); setTipo('') }
+  const limparFiltros = () => { setQ(''); setPeriodo('all'); setAutor([]); setTipo([]) }
 
   const verDetalhe = async (id: number) => {
     setCarregandoDetalhe(true)
@@ -204,10 +205,10 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
       {/* Filtros */}
       <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
         <Select label="Período" value={periodo} onChange={setPeriodo} options={PERIODOS} />
-        <Select label="Autor" value={autor} onChange={setAutor}
-          options={[{ value: '', label: 'Todos' }, ...autores.map(a => ({ value: String(a.id), label: a.nome }))]} />
-        <Select label="Tipo de informação" value={tipo} onChange={setTipo}
-          options={[{ value: '', label: 'Todos os tipos' }, ...TIPOS_INTERACAO.map(t => ({ value: t.value, label: t.label }))]} />
+        <MultiFiltro label="Autor" values={autor} onChange={setAutor}
+          options={autores.map(a => ({ value: String(a.id), label: a.nome }))} emptyLabel="Todos" />
+        <MultiFiltro label="Tipo de informação" values={tipo} onChange={setTipo}
+          options={TIPOS_INTERACAO.map(t => ({ value: t.value, label: t.label }))} emptyLabel="Todos os tipos" />
         <button onClick={limparFiltros} className="text-[12px] font-semibold text-green-primary hover:underline md:mb-1.5 self-start md:self-auto">
           Limpar filtros
         </button>
@@ -298,6 +299,17 @@ function Select({ label, value, onChange, options }: {
         className="border border-gray-300 rounded-md px-2 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-green-primary">
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+    </div>
+  )
+}
+
+function MultiFiltro({ label, values, onChange, options, emptyLabel }: {
+  label: string; values: string[]; onChange: (v: string[]) => void; options: { value: string; label: string }[]; emptyLabel?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1 md:min-w-[150px]">
+      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
+      <SearchableMultiSelect values={values} onChange={onChange} options={options} emptyLabel={emptyLabel} />
     </div>
   )
 }
