@@ -212,6 +212,23 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
           <IconCadastros active={pathname.startsWith('/cadastros')} />
           <span className={hideInRail}>Cadastros</span>
         </Link>
+
+        {/* Construtor de Relatório — aba separada */}
+        <Link
+          href="/relatorios"
+          onClick={onClose}
+          title="Construtor de Relatório"
+          className={cn(
+            'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
+            railMode && 'lg:justify-center lg:px-0 lg:gap-0',
+            pathname.startsWith('/relatorios')
+              ? 'text-green-primary bg-green-light'
+              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+          )}
+        >
+          <IconRelatorios active={pathname.startsWith('/relatorios')} />
+          <span className={hideInRail}>Construtor de Relatório</span>
+        </Link>
       </nav>
 
       {/* ── Sair ───────────────────────────────────────────────────────── */}
@@ -270,6 +287,15 @@ function IconCadastros({ active }: { active: boolean }) {
       <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
       <path d="M1.5 13C1.5 10.5 3.5 9 6 9C8.5 9 10.5 10.5 10.5 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M10.5 5.5H13.5M12 4V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconRelatorios({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
+      <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M4.5 10V7M7.5 10V5M10.5 10V8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }
