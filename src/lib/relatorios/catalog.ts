@@ -10,7 +10,7 @@
 // Banco: PostgreSQL → agrupamento de datas usa DATE_TRUNC.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Modulo = 'comercial' | 'acordos'
+export type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
 export type Granularidade = 'dia' | 'mes' | 'trimestre' | 'ano'
 export type Agregacao = 'soma' | 'media' | 'contagem'
 export type TipoCampo = 'dim' | 'data' | 'met' | 'calc'
@@ -100,6 +100,17 @@ export const BASES: Record<Modulo, BaseConfig> = {
     clienteCol: 'c.cliente_id',
     responsavelCol: 'c.responsavel_id',
   },
+  ocorrencias: {
+    from: `ocorrencias_contratuais o
+      LEFT JOIN contratos c ON c.id = o.contrato_id
+      LEFT JOIN clientes cli ON cli.id = c.cliente_id
+      LEFT JOIN users resp ON resp.id = c.responsavel_id`,
+    where: 'c.cancelled_at IS NULL',
+    dataPadrao: 'o.data',
+    dataPadraoLabel: 'Data da ocorrência',
+    clienteCol: 'c.cliente_id',
+    responsavelCol: 'c.responsavel_id',
+  },
 }
 
 // Subqueries escalares reutilizadas nas métricas derivadas de Acordos.
@@ -157,6 +168,20 @@ export const CAMPOS: Campo[] = [
   { key: 'aco_qtd_ocorr',      label: 'Qtde de ocorrências',   modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: QTD_OCORRENCIAS, aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'numero' },
   // ACORDOS — calculados
   { key: 'aco_pct_faturado',   label: '% faturado', modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: FATURADO, den: 'c.valor_contrato', percent: true, formato: 'percent' },
+
+  // ══ OCORRÊNCIAS — dimensões ══
+  { key: 'oco_tipo',            label: 'Tipo de ocorrência', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'o.tipo' },
+  { key: 'oco_responsabilidade', label: 'Responsabilidade', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'o.responsabilidade' },
+  { key: 'oco_cliente',        label: 'Cliente',            modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'cli.nome' },
+  { key: 'oco_responsavel',    label: 'Responsável',        modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'resp.nome' },
+  { key: 'oco_contrato',       label: 'Nº Contrato',        modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'c.indice' },
+  { key: 'oco_classificacao',  label: 'Classificação',      modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'c.classificacao::text' },
+  { key: 'oco_estado',         label: 'Estado (UF)',        modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'c.estado' },
+  // OCORRÊNCIAS — data
+  { key: 'oco_data',           label: 'Mês/Ano da ocorrência', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'data', dateCol: 'o.data' },
+  // OCORRÊNCIAS — métricas
+  { key: 'oco_qtd',            label: 'Qtde de ocorrências', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'met', sql: '1', count: true, aggs: ['contagem'], aggPadrao: 'contagem', formato: 'numero' },
+  { key: 'oco_dias_notif',     label: 'Dias até notificação', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'met', sql: 'EXTRACT(EPOCH FROM (o.data_notificacao_cliente - o.data)) / 86400.0', aggs: ['media', 'soma'], aggPadrao: 'media', formato: 'decimal' },
 ]
 
 const CAMPO_MAP = new Map(CAMPOS.map((c) => [c.key, c]))

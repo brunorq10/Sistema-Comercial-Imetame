@@ -12,7 +12,7 @@ const granEnum = z.enum(['dia', 'mes', 'trimestre', 'ano'])
 const aggEnum = z.enum(['soma', 'media', 'contagem'])
 
 export const reportRequestSchema = z.object({
-  modulo: z.enum(['comercial', 'acordos']),
+  modulo: z.enum(['comercial', 'acordos', 'ocorrencias']),
   linhas: z.array(z.object({ campo: z.string(), granularidade: granEnum.optional() })).default([]),
   colunas: z.array(z.object({ campo: z.string(), granularidade: granEnum.optional() })).default([]),
   valores: z.array(z.object({ campo: z.string(), agregacao: aggEnum.optional() })).default([]),

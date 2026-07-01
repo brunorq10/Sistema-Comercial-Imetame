@@ -15,9 +15,9 @@ interface SavedConfig {
   filtros?: { de?: string | null; ate?: string | null; cliente_id?: number[]; responsavel_id?: number[] }
 }
 
-type Modulo = 'comercial' | 'acordos'
-const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)' }
-const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato' }
+type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
+const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)', ocorrencias: 'Ocorrências' }
+const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência' }
 interface Opcao { id: number; nome: string }
 
 export default function ConstrutorRelatorioPage() {
