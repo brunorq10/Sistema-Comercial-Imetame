@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import type { CampoPublico } from '@/lib/relatorios/catalog'
 
-const GRUPO_COR: Record<string, string> = { Comercial: '#0A1F44', Acordos: '#185FA5', 'Ocorrências': '#993C1D', 'Controle de HH': '#854F0B' }
+const GRUPO_COR: Record<string, string> = { Comercial: '#0A1F44', Acordos: '#185FA5' }
 
 function TipoBadge({ tipo }: { tipo: CampoPublico['tipo'] }) {
   if (tipo === 'met') return <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: '#EAF3DE', color: '#27500A' }}>MÉT</span>

@@ -15,9 +15,9 @@ interface SavedConfig {
   filtros?: { de?: string | null; ate?: string | null; cliente_id?: number[]; responsavel_id?: number[] }
 }
 
-type Modulo = 'comercial' | 'acordos' | 'ocorrencias' | 'hh'
-const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)', ocorrencias: 'Ocorrências', hh: 'Controle de HH' }
-const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência', hh: 'Mês/Ano (HH)' }
+type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
+const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos', ocorrencias: 'Ocorrências' }
+const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência' }
 interface Opcao { id: number; nome: string }
 
 // Período padrão rolante: 12 meses anteriores à data atual → hoje.
@@ -81,7 +81,16 @@ export default function ConstrutorRelatorioPage() {
     const dimZona = zona === 'linhas' || zona === 'colunas'
     if (dimZona && !(campo.tipo === 'dim' || campo.tipo === 'data')) { flash(`"${campo.label}" é um valor — vá para a zona Valores.`); return }
     if (zona === 'valores' && !(campo.tipo === 'met' || campo.tipo === 'calc')) { flash(`"${campo.label}" é uma dimensão — use Linhas ou Colunas.`); return }
-    if (modulo && campo.modulo !== modulo) { flash(`Este relatório é do módulo ${MODULO_LABEL[modulo]}. Remova os campos atuais para trocar de módulo.`); return }
+    if (modulo && campo.modulo !== modulo) {
+      const envolveOcorrencia = modulo === 'ocorrencias' || campo.modulo === 'ocorrencias'
+      const envolveContrato = modulo === 'acordos' || campo.modulo === 'acordos'
+      if (envolveOcorrencia && envolveContrato) {
+        flash('Ocorrências têm grão próprio (uma linha por ocorrência) e não podem ser combinadas com métricas de contrato no mesmo relatório — os totais ficariam incorretos. Use os campos de ocorrência juntos (ex.: Tipos de Ocorrência × Contagem de ocorrências).')
+      } else {
+        flash(`Este relatório é do módulo ${MODULO_LABEL[modulo]}. Remova os campos atuais para trocar de módulo.`)
+      }
+      return
+    }
 
     if (zona === 'linhas') { if (linhas.some((c) => c.campo === key)) return; setLinhas((p) => [...p, { campo: key, granularidade: campo.tipo === 'data' ? 'mes' : undefined }]) }
     else if (zona === 'colunas') { if (colunas.some((c) => c.campo === key)) return; setColunas((p) => [...p, { campo: key, granularidade: campo.tipo === 'data' ? 'mes' : undefined }]) }

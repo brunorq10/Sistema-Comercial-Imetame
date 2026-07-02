@@ -10,7 +10,7 @@ describe('buildQuery', () => {
     modulo: 'comercial',
     linhas: [{ campo: 'com_data_solic', granularidade: 'mes' }],
     colunas: [{ campo: 'com_resultado' }],
-    valores: [{ campo: 'com_valor', agregacao: 'soma' }, { campo: 'com_rs_hh' }],
+    valores: [{ campo: 'com_valor_total', agregacao: 'soma' }, { campo: 'com_rs_hh' }],
     filtros: { de: '2025-01-01', ate: '2025-12-31' },
   }
 
@@ -52,62 +52,43 @@ describe('buildQuery', () => {
   })
 })
 
-// ── HH (Obras): UNION previsto/planejado + realizado ─────────────────────────
-describe('buildQuery — módulo HH', () => {
-  const req: ReportRequest = {
-    modulo: 'hh',
-    linhas: [{ campo: 'hh_data', granularidade: 'mes' }],
-    colunas: [],
-    valores: [{ campo: 'hh_previsto' }, { campo: 'hh_realizado' }, { campo: 'hh_desvio' }],
-    filtros: {},
-  }
-  it('usa UNION ALL das fontes de HH e make_date para a data', () => {
-    const sql = buildQuery(req).sql
-    expect(sql).toContain('UNION ALL')
-    expect(sql).toContain('make_date(hh.ano, hh.mes, 1)')
-  })
-  it('pega a última versão do lançamento (MAX(versao))', () => {
-    expect(buildQuery(req).sql).toContain('MAX(versao)')
-  })
-  it('desvio = (realizado - planejado) / NULLIF(SUM(planejado),0), sem média de médias', () => {
-    const sql = buildQuery(req).sql
-    expect(sql).toContain('NULLIF(SUM(hh.hh_planejado), 0)')
-    expect(sql).toContain('SUM((hh.hh_realizado - hh.hh_planejado))')
-  })
-})
-
-// ── Inter-módulos: proposta de origem na base Acordos ────────────────────────
-describe('buildQuery — Acordos × proposta de origem', () => {
+// ── Acordos: métricas de HH e ocorrências como subconsultas escalares ────────
+describe('buildQuery — Acordos (HH/NF/multas por contrato)', () => {
   const req: ReportRequest = {
     modulo: 'acordos',
     linhas: [{ campo: 'aco_cliente' }],
     colunas: [],
-    valores: [{ campo: 'aco_faturado' }, { campo: 'aco_valor_proposta' }, { campo: 'aco_fat_vs_prop' }],
+    valores: [{ campo: 'aco_faturado' }, { campo: 'aco_hh_real' }, { campo: 'aco_pct_r_prev' }, { campo: 'aco_nf_qtd' }],
     filtros: {},
   }
-  it('junta a proposta de origem via solicitacao_id (LATERAL) no grão do contrato', () => {
+  it('HH usa a última versão do lançamento (subconsulta escalar por contrato)', () => {
     const sql = buildQuery(req).sql
-    expect(sql).toContain('pc.solicitacao_id = c.solicitacao_id')
-    expect(sql).toContain('pcorig.valor_total')
+    expect(sql).toContain('MAX(versao) FROM hh_lancamentos WHERE contrato_id = c.id')
   })
-  it('% faturado sobre proposta usa NULLIF no denominador', () => {
-    expect(buildQuery(req).sql).toContain('NULLIF(SUM(pcorig.valor_total), 0)')
+  it('%R/Prev = SUM(HH_REAL)/NULLIF(SUM(HH_PREV)) — sem média de médias', () => {
+    const sql = buildQuery(req).sql
+    expect(sql).toContain('hr.hh_realizado')
+    expect(sql).toMatch(/\* 100\.0 \/ NULLIF\(SUM\(/)
+    expect(sql).not.toMatch(/AVG\([^)]*\/[^)]*\)/)
+  })
+  it('NFs Lançadas (Qtde) é COUNT por contrato (subconsulta), somado no grupo', () => {
+    expect(buildQuery(req).sql).toContain('SELECT COUNT(*)')
   })
 })
 
 // ── validarRequest: regras semânticas ────────────────────────────────────────
 describe('validarRequest', () => {
   it('aceita configuração válida', () => {
-    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_cliente' }], colunas: [], valores: [{ campo: 'com_valor' }], filtros: {} })).toBeNull()
+    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_cliente' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBeNull()
   })
   it('rejeita métrica em Linhas', () => {
-    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_valor' }], colunas: [], valores: [{ campo: 'com_valor' }], filtros: {} })).toBeTruthy()
+    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_valor_total' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBeTruthy()
   })
   it('rejeita dimensão em Valores', () => {
     expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_cliente' }], colunas: [], valores: [{ campo: 'com_cliente' }], filtros: {} })).toBeTruthy()
   })
   it('rejeita mistura de módulos', () => {
-    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'com_valor' }], filtros: {} })).toBeTruthy()
+    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBeTruthy()
   })
 })
 
