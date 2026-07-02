@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { guardRelatorios } from '@/lib/relatorios/guard'
-import { reportRequestSchema, validarRequest, gerarPivot } from '@/lib/relatorios/service'
+import { reportRequestSchema, validarRequest, gerarPivot, erroAmigavel } from '@/lib/relatorios/service'
 import type { ReportRequest } from '@/lib/relatorios/query'
 
 // Preview: no máximo 50 grupos. Chamado com debounce pelo frontend.
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: { ...r, preview: true }, error: null })
   } catch (err) {
     logger.error('[POST /api/relatorios/preview]', err)
-    return NextResponse.json({ data: null, error: 'Erro ao gerar o preview do relatório.' }, { status: 500 })
+    const { status, msg } = erroAmigavel(err)
+    return NextResponse.json({ data: null, error: msg }, { status })
   }
 }

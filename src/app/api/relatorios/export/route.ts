@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { logger } from '@/lib/logger'
 import { guardRelatorios } from '@/lib/relatorios/guard'
-import { reportRequestSchema, validarRequest, gerarPivot } from '@/lib/relatorios/service'
+import { reportRequestSchema, validarRequest, gerarPivot, erroAmigavel } from '@/lib/relatorios/service'
 import type { ReportRequest } from '@/lib/relatorios/query'
 
 const MODULO_LABEL: Record<string, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)' }
@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     logger.error('[POST /api/relatorios/export]', err)
-    return NextResponse.json({ data: null, error: 'Erro ao gerar o Excel.' }, { status: 500 })
+    const { status, msg } = erroAmigavel(err)
+    return NextResponse.json({ data: null, error: msg }, { status })
   }
 }

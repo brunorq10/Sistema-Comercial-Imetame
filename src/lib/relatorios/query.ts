@@ -144,7 +144,13 @@ export function buildQuery(req: ReportRequest, opts?: { limit?: number; forcedDa
 // Linha "longa" retornada pela agregação: d0..dN (dimensões) + m0..mK (métricas).
 export type RawRow = Record<string, string | number | Date | null>
 
+// Cada query roda numa transação com statement_timeout local — um relatório
+// muito pesado falha sozinho (código 57014) em vez de segurar conexão do banco.
+const RELATORIO_TIMEOUT_MS = 15000
+
 export async function runQuery(built: BuiltQuery): Promise<RawRow[]> {
-  const rows = await prisma.$queryRawUnsafe<RawRow[]>(built.sql, ...built.params)
-  return rows
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${RELATORIO_TIMEOUT_MS}`)
+    return tx.$queryRawUnsafe<RawRow[]>(built.sql, ...built.params)
+  })
 }

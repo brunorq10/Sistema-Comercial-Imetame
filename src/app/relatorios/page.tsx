@@ -20,6 +20,14 @@ const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 
 const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência' }
 interface Opcao { id: number; nome: string }
 
+// Período padrão rolante: 12 meses anteriores à data atual → hoje.
+function rolling12(): { de: string; ate: string } {
+  const hoje = new Date()
+  const inicio = new Date(hoje); inicio.setFullYear(inicio.getFullYear() - 1)
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  return { de: iso(inicio), ate: iso(hoje) }
+}
+
 export default function ConstrutorRelatorioPage() {
   const [campos, setCampos] = useState<CampoPublico[]>([])
   const [clientes, setClientes] = useState<Opcao[]>([])
@@ -30,8 +38,8 @@ export default function ConstrutorRelatorioPage() {
   const [colunas, setColunas] = useState<ChipDim[]>([])
   const [valores, setValores] = useState<ChipVal[]>([])
 
-  const [de, setDe] = useState('')
-  const [ate, setAte] = useState('')
+  const [de, setDe] = useState(() => rolling12().de)
+  const [ate, setAte] = useState(() => rolling12().ate)
   const [clienteIds, setClienteIds] = useState<string[]>([])
   const [responsavelIds, setResponsavelIds] = useState<string[]>([])
 
@@ -176,8 +184,8 @@ export default function ConstrutorRelatorioPage() {
     setLinhas(cfg.linhas ?? [])
     setColunas(cfg.colunas ?? [])
     setValores(cfg.valores ?? [])
-    setDe(cfg.filtros?.de ?? '')
-    setAte(cfg.filtros?.ate ?? '')
+    // Datas seguem o padrão rolante de 12 meses (não restaura o período salvo) —
+    // relatório salvo sempre reflete os últimos 12 meses até o usuário mudar.
     setClienteIds((cfg.filtros?.cliente_id ?? []).map(String))
     setResponsavelIds((cfg.filtros?.responsavel_id ?? []).map(String))
   }

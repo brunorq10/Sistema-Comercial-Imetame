@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { guardRelatorios } from '@/lib/relatorios/guard'
-import { reportRequestSchema, validarRequest, gerarPivot } from '@/lib/relatorios/service'
+import { reportRequestSchema, validarRequest, gerarPivot, erroAmigavel } from '@/lib/relatorios/service'
 import type { ReportRequest } from '@/lib/relatorios/query'
 
 // Execução completa: sem limite de linhas. Chamado só no clique "Atualizar".
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: { ...r, preview: false }, error: null })
   } catch (err) {
     logger.error('[POST /api/relatorios/executar]', err)
-    return NextResponse.json({ data: null, error: 'Erro ao executar o relatório.' }, { status: 500 })
+    const { status, msg } = erroAmigavel(err)
+    return NextResponse.json({ data: null, error: msg }, { status })
   }
 }

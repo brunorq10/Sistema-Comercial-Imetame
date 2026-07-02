@@ -72,6 +72,15 @@ export function validarRequest(req: ReportRequest): string | null {
   return null
 }
 
+// Traduz erros do motor em resposta amigável (destaca o caso de timeout).
+export function erroAmigavel(err: unknown): { status: number; msg: string } {
+  const s = String((err as { message?: string })?.message ?? err)
+  if (/statement timeout|57014|canceling statement/i.test(s)) {
+    return { status: 400, msg: 'Relatório muito pesado — refine os filtros (período menor ou menos campos) e tente novamente.' }
+  }
+  return { status: 500, msg: 'Erro ao gerar o relatório.' }
+}
+
 export interface GerarResultado {
   pivot: PivotResult
   dataFiltroLabel: string
