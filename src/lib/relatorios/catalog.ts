@@ -10,7 +10,7 @@
 // Banco: PostgreSQL → agrupamento de datas usa DATE_TRUNC.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
+export type Modulo = 'comercial' | 'acordos' | 'ocorrencias' | 'hh'
 export type Granularidade = 'dia' | 'mes' | 'trimestre' | 'ano'
 export type Agregacao = 'soma' | 'media' | 'contagem'
 export type TipoCampo = 'dim' | 'data' | 'met' | 'calc'
@@ -91,9 +91,19 @@ export const BASES: Record<Modulo, BaseConfig> = {
     responsavelCol: 's.orcamentista_id',
   },
   acordos: {
+    // Inclui a proposta de ORIGEM (via solicitação) — grão do contrato, uma
+    // proposta por contrato, sem duplicação. Permite cruzar faturado × proposta.
     from: `contratos c
       LEFT JOIN clientes cli ON cli.id = c.cliente_id
-      LEFT JOIN users resp ON resp.id = c.responsavel_id`,
+      LEFT JOIN users resp ON resp.id = c.responsavel_id
+      LEFT JOIN LATERAL (
+        SELECT pc.valor_total FROM propostas_comerciais pc
+        WHERE pc.solicitacao_id = c.solicitacao_id ORDER BY pc.versao DESC LIMIT 1
+      ) pcorig ON true
+      LEFT JOIN LATERAL (
+        SELECT pt.hh_total FROM propostas_tecnicas pt
+        WHERE pt.solicitacao_id = c.solicitacao_id ORDER BY pt.versao DESC LIMIT 1
+      ) ptorig ON true`,
     where: 'c.cancelled_at IS NULL',
     dataPadrao: 'c.data_inicio',
     dataPadraoLabel: 'Data de início do contrato',
@@ -108,6 +118,31 @@ export const BASES: Record<Modulo, BaseConfig> = {
     where: 'c.cancelled_at IS NULL',
     dataPadrao: 'o.data',
     dataPadraoLabel: 'Data da ocorrência',
+    clienteCol: 'c.cliente_id',
+    responsavelCol: 'c.responsavel_id',
+  },
+  // HH (Obras): UNION de previsto/planejado (última versão do lançamento) +
+  // realizado, no grão (contrato, ano, mês). SUM não duplica pois cada fonte
+  // preenche só as suas colunas. Paradas/Fabricações têm modelos próprios e
+  // NÃO entram aqui (documentado).
+  hh: {
+    from: `(
+        SELECT hl.contrato_id AS contrato_id, hm.ano AS ano, hm.mes AS mes,
+               COALESCE(hm.hh_previsto, 0) AS hh_previsto, COALESCE(hm.hh_planejado, 0) AS hh_planejado, 0 AS hh_realizado
+        FROM hh_lancamento_mes hm
+        JOIN hh_lancamentos hl ON hl.id = hm.lancamento_id
+        JOIN (SELECT contrato_id, MAX(versao) AS v FROM hh_lancamentos GROUP BY contrato_id) ult
+          ON ult.contrato_id = hl.contrato_id AND ult.v = hl.versao
+        UNION ALL
+        SELECT hr.contrato_id, hr.ano, hr.mes, 0, 0, COALESCE(hr.hh_realizado, 0)
+        FROM hh_realizado hr
+      ) hh
+      JOIN contratos c ON c.id = hh.contrato_id
+      LEFT JOIN clientes cli ON cli.id = c.cliente_id
+      LEFT JOIN users resp ON resp.id = c.responsavel_id`,
+    where: 'c.cancelled_at IS NULL AND c.hh_cancelado_at IS NULL',
+    dataPadrao: 'make_date(hh.ano, hh.mes, 1)',
+    dataPadraoLabel: 'Mês/Ano (HH)',
     clienteCol: 'c.cliente_id',
     responsavelCol: 'c.responsavel_id',
   },
@@ -166,8 +201,12 @@ export const CAMPOS: Campo[] = [
   { key: 'aco_saldo',          label: 'Saldo a faturar (R$)',  modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: `(COALESCE(c.valor_contrato, 0) - ${FATURADO})`, aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'moeda' },
   { key: 'aco_multas',         label: 'Total de multas (R$)',  modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: MULTAS, aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'moeda' },
   { key: 'aco_qtd_ocorr',      label: 'Qtde de ocorrências',   modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: QTD_OCORRENCIAS, aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'numero' },
+  // ACORDOS — proposta de origem (inter-módulos, grão do contrato)
+  { key: 'aco_valor_proposta', label: 'Valor da proposta de origem (R$)', modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: 'pcorig.valor_total', aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'moeda' },
+  { key: 'aco_hh_proposta',    label: 'HH previsto (proposta)', modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: 'ptorig.hh_total', aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'numero' },
   // ACORDOS — calculados
   { key: 'aco_pct_faturado',   label: '% faturado', modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: FATURADO, den: 'c.valor_contrato', percent: true, formato: 'percent' },
+  { key: 'aco_fat_vs_prop',    label: '% faturado sobre a proposta', modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: FATURADO, den: 'pcorig.valor_total', percent: true, formato: 'percent' },
 
   // ══ OCORRÊNCIAS — dimensões ══
   { key: 'oco_tipo',            label: 'Tipo de ocorrência', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'dim', sql: 'o.tipo' },
@@ -182,6 +221,22 @@ export const CAMPOS: Campo[] = [
   // OCORRÊNCIAS — métricas
   { key: 'oco_qtd',            label: 'Qtde de ocorrências', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'met', sql: '1', count: true, aggs: ['contagem'], aggPadrao: 'contagem', formato: 'numero' },
   { key: 'oco_dias_notif',     label: 'Dias até notificação', modulo: 'ocorrencias', grupo: 'Ocorrências', tipo: 'met', sql: 'EXTRACT(EPOCH FROM (o.data_notificacao_cliente - o.data)) / 86400.0', aggs: ['media', 'soma'], aggPadrao: 'media', formato: 'decimal' },
+
+  // ══ CONTROLE DE HH (Obras) — dimensões ══
+  { key: 'hh_tipo',            label: 'Tipo de HH',      modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'c.classificacao::text' },
+  { key: 'hh_cliente',         label: 'Cliente',         modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'cli.nome' },
+  { key: 'hh_responsavel',     label: 'Responsável',     modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'resp.nome' },
+  { key: 'hh_contrato',        label: 'Nº Contrato',     modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'c.indice' },
+  { key: 'hh_estado',          label: 'Estado (UF)',     modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'c.estado' },
+  { key: 'hh_ano',             label: 'Ano (HH)',        modulo: 'hh', grupo: 'Controle de HH', tipo: 'dim', sql: 'hh.ano::text' },
+  // HH — data
+  { key: 'hh_data',            label: 'Mês/Ano (HH)',    modulo: 'hh', grupo: 'Controle de HH', tipo: 'data', dateCol: 'make_date(hh.ano, hh.mes, 1)' },
+  // HH — métricas
+  { key: 'hh_previsto',        label: 'HH previsto',     modulo: 'hh', grupo: 'Controle de HH', tipo: 'met', sql: 'hh.hh_previsto', aggs: ['soma'], aggPadrao: 'soma', formato: 'numero' },
+  { key: 'hh_planejado',       label: 'HH planejado',    modulo: 'hh', grupo: 'Controle de HH', tipo: 'met', sql: 'hh.hh_planejado', aggs: ['soma'], aggPadrao: 'soma', formato: 'numero' },
+  { key: 'hh_realizado',       label: 'HH realizado',    modulo: 'hh', grupo: 'Controle de HH', tipo: 'met', sql: 'hh.hh_realizado', aggs: ['soma'], aggPadrao: 'soma', formato: 'numero' },
+  // HH — calculado
+  { key: 'hh_desvio',          label: 'Desvio de HH (%)', modulo: 'hh', grupo: 'Controle de HH', tipo: 'calc', num: '(hh.hh_realizado - hh.hh_planejado)', den: 'hh.hh_planejado', percent: true, formato: 'percent' },
 ]
 
 const CAMPO_MAP = new Map(CAMPOS.map((c) => [c.key, c]))

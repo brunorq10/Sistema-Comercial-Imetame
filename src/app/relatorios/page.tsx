@@ -15,9 +15,9 @@ interface SavedConfig {
   filtros?: { de?: string | null; ate?: string | null; cliente_id?: number[]; responsavel_id?: number[] }
 }
 
-type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
-const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)', ocorrencias: 'Ocorrências' }
-const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência' }
+type Modulo = 'comercial' | 'acordos' | 'ocorrencias' | 'hh'
+const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos (Faturamento)', ocorrencias: 'Ocorrências', hh: 'Controle de HH' }
+const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência', hh: 'Mês/Ano (HH)' }
 interface Opcao { id: number; nome: string }
 
 // Período padrão rolante: 12 meses anteriores à data atual → hoje.

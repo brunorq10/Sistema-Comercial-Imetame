@@ -52,6 +52,49 @@ describe('buildQuery', () => {
   })
 })
 
+// ── HH (Obras): UNION previsto/planejado + realizado ─────────────────────────
+describe('buildQuery — módulo HH', () => {
+  const req: ReportRequest = {
+    modulo: 'hh',
+    linhas: [{ campo: 'hh_data', granularidade: 'mes' }],
+    colunas: [],
+    valores: [{ campo: 'hh_previsto' }, { campo: 'hh_realizado' }, { campo: 'hh_desvio' }],
+    filtros: {},
+  }
+  it('usa UNION ALL das fontes de HH e make_date para a data', () => {
+    const sql = buildQuery(req).sql
+    expect(sql).toContain('UNION ALL')
+    expect(sql).toContain('make_date(hh.ano, hh.mes, 1)')
+  })
+  it('pega a última versão do lançamento (MAX(versao))', () => {
+    expect(buildQuery(req).sql).toContain('MAX(versao)')
+  })
+  it('desvio = (realizado - planejado) / NULLIF(SUM(planejado),0), sem média de médias', () => {
+    const sql = buildQuery(req).sql
+    expect(sql).toContain('NULLIF(SUM(hh.hh_planejado), 0)')
+    expect(sql).toContain('SUM((hh.hh_realizado - hh.hh_planejado))')
+  })
+})
+
+// ── Inter-módulos: proposta de origem na base Acordos ────────────────────────
+describe('buildQuery — Acordos × proposta de origem', () => {
+  const req: ReportRequest = {
+    modulo: 'acordos',
+    linhas: [{ campo: 'aco_cliente' }],
+    colunas: [],
+    valores: [{ campo: 'aco_faturado' }, { campo: 'aco_valor_proposta' }, { campo: 'aco_fat_vs_prop' }],
+    filtros: {},
+  }
+  it('junta a proposta de origem via solicitacao_id (LATERAL) no grão do contrato', () => {
+    const sql = buildQuery(req).sql
+    expect(sql).toContain('pc.solicitacao_id = c.solicitacao_id')
+    expect(sql).toContain('pcorig.valor_total')
+  })
+  it('% faturado sobre proposta usa NULLIF no denominador', () => {
+    expect(buildQuery(req).sql).toContain('NULLIF(SUM(pcorig.valor_total), 0)')
+  })
+})
+
 // ── validarRequest: regras semânticas ────────────────────────────────────────
 describe('validarRequest', () => {
   it('aceita configuração válida', () => {
