@@ -34,14 +34,7 @@ export default auth((req) => {
     }
   }
 
-  // Construtor de Relatório: ferramenta gerencial (gestão + ADM + analista crítico).
-  if (pathname.startsWith('/relatorios')) {
-    const podeRel = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' ||
-      perfil === 'GESTAO_COMERCIAL' || perfil === 'GESTAO_ACORDOS' || isAnalista
-    if (perfil && !podeRel) {
-      return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
-    }
-  }
+  // Construtor de Relatório: liberado para todos os usuários autenticados.
 
   return NextResponse.next()
 })

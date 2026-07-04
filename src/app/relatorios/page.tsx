@@ -13,12 +13,23 @@ interface VersaoItem { versao: number; autor: string; created_at: string; config
 interface SavedConfig {
   linhas?: ChipDim[]; colunas?: ChipDim[]; valores?: ChipVal[]
   filtros?: { de?: string | null; ate?: string | null; cliente_id?: number[]; responsavel_id?: number[] }
+  incluirVazios?: boolean
 }
 
 type Modulo = 'comercial' | 'acordos' | 'ocorrencias'
 const MODULO_LABEL: Record<Modulo, string> = { comercial: 'Comercial', acordos: 'Acordos', ocorrencias: 'Ocorrências' }
 const DATA_PADRAO: Record<Modulo, string> = { comercial: 'Data da solicitação', acordos: 'Data de início do contrato', ocorrencias: 'Data da ocorrência' }
 interface Opcao { id: number; nome: string }
+
+// Move um item de `from` para inserir antes de `targetIndex` (>= length = fim).
+function moverArray<T>(arr: T[], from: number, targetIndex: number): T[] {
+  if (from < 0 || from >= arr.length) return arr
+  const a = [...arr]
+  const [item] = a.splice(from, 1)
+  const to = targetIndex >= arr.length ? a.length : (from < targetIndex ? targetIndex - 1 : targetIndex)
+  a.splice(to, 0, item)
+  return a
+}
 
 // Período padrão rolante: 12 meses anteriores à data atual → hoje.
 function rolling12(): { de: string; ate: string } {
@@ -42,6 +53,7 @@ export default function ConstrutorRelatorioPage() {
   const [ate, setAte] = useState(() => rolling12().ate)
   const [clienteIds, setClienteIds] = useState<string[]>([])
   const [responsavelIds, setResponsavelIds] = useState<string[]>([])
+  const [incluirVazios, setIncluirVazios] = useState(false)
 
   const [pivot, setPivot] = useState<PivotResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -113,6 +125,11 @@ export default function ConstrutorRelatorioPage() {
     zona === 'linhas' ? setLinhas(upd) : setColunas(upd)
   }
   const setAgg = (idx: number, agg: Agg) => setValores((p) => p.map((c, i) => (i === idx ? { ...c, agregacao: agg } : c)))
+  const reordenar = (zona: Zona, from: number, targetIndex: number) => {
+    if (zona === 'linhas') setLinhas((p) => moverArray(p, from, targetIndex))
+    else if (zona === 'colunas') setColunas((p) => moverArray(p, from, targetIndex))
+    else setValores((p) => moverArray(p, from, targetIndex))
+  }
 
   const limparTudo = () => { setLinhas([]); setColunas([]); setValores([]); setPivot(null); setErro(null) }
   const limparFiltros = () => { setDe(''); setAte(''); setClienteIds([]); setResponsavelIds([]) }
@@ -142,7 +159,8 @@ export default function ConstrutorRelatorioPage() {
       de: de || null, ate: ate || null, campoDataRef: null,
       cliente_id: clienteIds.map(Number), responsavel_id: responsavelIds.map(Number),
     },
-  }), [modulo, linhas, colunas, valores, de, ate, clienteIds, responsavelIds])
+    incluirVazios,
+  }), [modulo, linhas, colunas, valores, de, ate, clienteIds, responsavelIds, incluirVazios])
 
   const rodar = useCallback(async (endpoint: 'preview' | 'executar') => {
     if (!configValida) { setPivot(null); return }
@@ -162,7 +180,7 @@ export default function ConstrutorRelatorioPage() {
     const t = setTimeout(() => { rodar('preview') }, 800)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linhas, colunas, valores, de, ate, clienteIds, responsavelIds])
+  }, [linhas, colunas, valores, de, ate, clienteIds, responsavelIds, incluirVazios])
 
   const executar = () => {
     if (score > 25) { flash('Relatório muito complexo. Remova alguns campos ou defina o período.'); return }
@@ -207,6 +225,7 @@ export default function ConstrutorRelatorioPage() {
     // relatório salvo sempre reflete os últimos 12 meses até o usuário mudar.
     setClienteIds((cfg.filtros?.cliente_id ?? []).map(String))
     setResponsavelIds((cfg.filtros?.responsavel_id ?? []).map(String))
+    setIncluirVazios(cfg.incluirVazios ?? false)
   }
 
   const carregarSalvo = async (id: number) => {
@@ -300,7 +319,7 @@ export default function ConstrutorRelatorioPage() {
         {alerta && <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded">{alerta}</div>}
 
         <Zones camposMap={camposMap} linhas={linhas} colunas={colunas} valores={valores}
-          onDrop={addField} onRemove={remove} onGran={setGran} onAgg={setAgg} />
+          onDrop={addField} onRemove={remove} onGran={setGran} onAgg={setAgg} onReorder={reordenar} />
 
         {/* Filtros */}
         <div className="bg-white border border-gray-200 rounded-md px-3 py-2.5 flex flex-wrap gap-2.5 items-end">
@@ -321,6 +340,10 @@ export default function ConstrutorRelatorioPage() {
             <SearchableMultiSelect values={responsavelIds} onChange={setResponsavelIds} options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
           </div>
           <button onClick={limparFiltros} className="text-[11px] font-semibold text-green-primary hover:underline mb-1.5">Limpar filtros</button>
+          <label className="flex items-center gap-1.5 text-[11px] text-gray-600 mb-1.5 cursor-pointer select-none" title="Se desmarcado, linhas em que todos os valores são vazios/zero não aparecem">
+            <input type="checkbox" checked={incluirVazios} onChange={(e) => setIncluirVazios(e.target.checked)} />
+            Incluir itens sem valores?
+          </label>
           <div className="w-full text-[10px] text-gray-400">Aplicado sobre: <span className="font-medium text-gray-600">{dataRefLabel}</span></div>
         </div>
 

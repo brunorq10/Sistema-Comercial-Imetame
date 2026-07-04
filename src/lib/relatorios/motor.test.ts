@@ -185,10 +185,26 @@ describe('buildPivot — calculado com denominador nulo/zero', () => {
     main: [{ d0: 'ACME', m0: 42.5 }, { d0: 'SemContrato', m0: null }],
     rowTotais: [], colTotais: [],
     grand: [{ m0: null }],
+    incluirVazios: true,
   })
   it('mantém null (frontend exibe —), nunca NaN', () => {
     expect(p.rows[1].values).toEqual([null])
     expect(p.totalRow).toEqual([null])
+  })
+})
+
+describe('buildPivot — itens sem valores', () => {
+  const args = {
+    linhasMeta: [dim('com_cliente', 'Cliente')],
+    colunasMeta: [], valoresMeta: [val('v', 'Valor', 'moeda')],
+    main: [{ d0: 'ACME', m0: 100 }, { d0: 'Vazio', m0: null }, { d0: 'Zero', m0: 0 }],
+    rowTotais: [], colTotais: [], grand: [{ m0: 100 }],
+  }
+  it('por padrão omite linhas totalmente nulas/zero', () => {
+    expect(buildPivot(args).rows.map((r) => r.dims[0])).toEqual(['ACME'])
+  })
+  it('inclui todas quando incluirVazios = true', () => {
+    expect(buildPivot({ ...args, incluirVazios: true }).rows.map((r) => r.dims[0])).toEqual(['ACME', 'Vazio', 'Zero'])
   })
 })
 
@@ -202,6 +218,7 @@ describe('buildPivot — série de datas preenche períodos sem dados', () => {
     rowTotais: [], colTotais: [],
     grand: [{ m0: 99 }],
     rowSeedDates: [jan, fev, mar],
+    incluirVazios: true, // série completa (períodos vazios) exige o toggle
   })
   it('inclui os 3 meses em ordem cronológica', () => {
     expect(p.rows.map((r) => r.dims[0])).toEqual(['Jan/2025', 'Fev/2025', 'Mar/2025'])

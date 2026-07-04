@@ -49,6 +49,7 @@ export const reportRequestSchema = z.object({
     cliente_id: z.array(z.number()).optional(),
     responsavel_id: z.array(z.number()).optional(),
   }).default({}),
+  incluirVazios: z.boolean().optional().default(false),
 })
 
 // Regras semânticas: campo existe, zona correta e combinação de módulos válida
@@ -123,6 +124,7 @@ export async function gerarPivot(req: ReportRequest, limitGrupos?: number): Prom
     main, rowTotais, colTotais, grand,
     rowSeedDates: semear(req.linhas),
     colSeedDates: semear(req.colunas),
+    incluirVazios: req.incluirVazios ?? false,
   })
 
   return { pivot, dataFiltroLabel: built.dataFiltroLabel, semFiltroData: built.semFiltroData, totalLinhas: pivot.rows.length }

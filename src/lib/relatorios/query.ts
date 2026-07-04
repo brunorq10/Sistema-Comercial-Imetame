@@ -41,6 +41,7 @@ export interface ReportRequest {
   colunas: CampoRef[]
   valores: ValorRef[]
   filtros: Filtros
+  incluirVazios?: boolean
 }
 
 const TRUNC: Record<Granularidade, string> = {

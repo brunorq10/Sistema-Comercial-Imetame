@@ -57,6 +57,9 @@ interface BuildArgs {
   // exatamente 1 dimensão de data na respectiva zona e período De/Até definido).
   rowSeedDates?: Date[]
   colSeedDates?: Date[]
+  // Quando false (padrão), linhas em que TODOS os valores são nulos/zero são
+  // omitidas do resultado.
+  incluirVazios?: boolean
 }
 
 export function buildPivot(a: BuildArgs): PivotResult {
@@ -146,6 +149,11 @@ export function buildPivot(a: BuildArgs): PivotResult {
     return { dims: rowDisplay.get(rk)!, values }
   })
 
+  // Por padrão, omite linhas em que TODOS os valores são nulos/zero.
+  const rowsFiltradas = a.incluirVazios
+    ? rows
+    : rows.filter((r) => !r.values.every((v) => v === null || v === 0))
+
   // Linha Total (rodapé)
   const totalRow: (number | null)[] = []
   if (nC > 0) {
@@ -164,7 +172,7 @@ export function buildPivot(a: BuildArgs): PivotResult {
     valoresMeta: a.valoresMeta,
     topHeader,
     leaves,
-    rows,
+    rows: rowsFiltradas,
     totalRow,
   }
 }
