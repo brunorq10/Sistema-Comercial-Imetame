@@ -171,6 +171,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (rest.data_inicio !== undefined) data.data_inicio = rest.data_inicio ? new Date(rest.data_inicio) : null
   if (rest.data_fim !== undefined) data.data_fim = rest.data_fim ? new Date(rest.data_fim) : null
 
+  // Mantém o vínculo com a solicitação de origem em sincronia com o Nº Proposta
+  // (elo dos relatórios cruzados Comercial × Acordos), exceto se o chamador já
+  // enviou solicitacao_id explicitamente.
+  if (rest.num_proposta !== undefined && rest.solicitacao_id === undefined) {
+    const sol = rest.num_proposta
+      ? await prisma.solicitacao.findFirst({ where: { numero: rest.num_proposta.trim(), cancelled_at: null }, select: { id: true } })
+      : null
+    data.solicitacao_id = sol?.id ?? null
+  }
+
   const contrato = await prisma.contrato.update({
     where: { id },
     data,

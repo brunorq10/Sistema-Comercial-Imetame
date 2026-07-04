@@ -157,6 +157,17 @@ export async function POST(req: NextRequest) {
   const count = await prisma.contrato.count()
   const indice = `CT-${String(count + 1).padStart(3, '0')}`
 
+  // Vincula a solicitação de origem quando o Nº Proposta corresponde ao número
+  // de uma solicitação — é o elo usado nos relatórios cruzados Comercial × Acordos.
+  let solicitacaoId: number | null = null
+  if (parsed.data.num_proposta) {
+    const sol = await prisma.solicitacao.findFirst({
+      where: { numero: parsed.data.num_proposta.trim(), cancelled_at: null },
+      select: { id: true },
+    })
+    solicitacaoId = sol?.id ?? null
+  }
+
   const contrato = await prisma.contrato.create({
     data: {
       indice,
@@ -169,6 +180,7 @@ export async function POST(req: NextRequest) {
       num_os: parsed.data.num_os ?? null,
       num_acordo: parsed.data.num_acordo ?? null,
       num_proposta: parsed.data.num_proposta ?? null,
+      solicitacao_id: solicitacaoId,
       responsavel_id: parsed.data.responsavel_id ?? null,
       data_inicio: parsed.data.data_inicio ? new Date(parsed.data.data_inicio) : null,
       data_fim: parsed.data.data_fim ? new Date(parsed.data.data_fim) : null,

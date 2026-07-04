@@ -22,14 +22,15 @@ function toDate(v: unknown): Date | null {
 function displayDim(value: unknown, meta: DimMeta): string {
   if (meta.eData) {
     const d = toDate(value)
-    if (!d) return '(sem data)'
+    if (!d) return ''
     const g = meta.granularidade ?? 'mes'
     if (g === 'dia') return d.toLocaleDateString('pt-BR')
     if (g === 'ano') return String(d.getUTCFullYear())
     if (g === 'trimestre') return `T${Math.floor(d.getUTCMonth() / 3) + 1}/${d.getUTCFullYear()}`
     return `${MESES[d.getUTCMonth()]}/${d.getUTCFullYear()}`
   }
-  if (value === null || value === undefined || value === '') return '(vazio)'
+  // Sem informação → célula vazia (não escreve texto).
+  if (value === null || value === undefined || value === '') return ''
   return String(value)
 }
 
