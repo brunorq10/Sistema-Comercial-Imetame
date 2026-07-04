@@ -84,6 +84,8 @@ const updateSchema = z.object({
   orcamentista_id: z.number().int().positive().nullable().optional(),
   visita_tecnica: z.boolean().optional(),
   data_visita: z.string().nullable().optional(),
+  is_portal: z.boolean().optional(),
+  portal_hora: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   motivo_recusa: z.string().nullable().optional(),
 })
 
@@ -178,6 +180,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       ...(data.data_visita !== undefined && {
         data_visita: data.data_visita ? new Date(data.data_visita) : null,
       }),
+      ...(data.is_portal !== undefined && { is_portal: data.is_portal }),
+      ...(data.is_portal === false
+        ? { portal_hora: null }
+        : data.portal_hora !== undefined && { portal_hora: data.portal_hora }),
       ...(data.motivo_recusa !== undefined && { motivo_recusa: data.motivo_recusa }),
     },
     include: { orcamentista: { select: { id: true, nome: true, email: true } } },

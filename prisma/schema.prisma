@@ -231,6 +231,9 @@ model Solicitacao {
   orcamentista_id Int?
   visita_tecnica    Boolean           @default(false)
   data_visita       DateTime?
+  // Portal: solicitação vinda de portal do cliente, com hora de encerramento (HH:MM)
+  is_portal         Boolean           @default(false)
+  portal_hora       String?           @db.VarChar(5)
   motivo_recusa     String?
   motivo_reprovacao            MotivoReprovacao?
   obs_reprovacao               String?

@@ -144,6 +144,8 @@ export async function GET(req: NextRequest) {
         prazo_comercial: true,
         prazo_comercial_indeterminado: true,
         visita_tecnica: true,
+        is_portal: true,
+        portal_hora: true,
         as_sold: true,
         cancelled_at: true,
         suspended_at: true,
@@ -211,6 +213,8 @@ const createSchema = z.object({
   orcamentista_id: z.number().int().positive().optional(),
   visita_tecnica: z.boolean().optional(),
   data_visita: z.string().optional(),
+  is_portal: z.boolean().optional(),
+  portal_hora: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -274,6 +278,8 @@ export async function POST(req: NextRequest) {
       orcamentista_id: data.orcamentista_id,
       visita_tecnica: data.visita_tecnica ?? false,
       data_visita: data.data_visita ? new Date(data.data_visita) : undefined,
+      is_portal: data.is_portal ?? false,
+      portal_hora: data.is_portal ? data.portal_hora : null,
       created_by: Number(session.user.id),
     },
     include: {

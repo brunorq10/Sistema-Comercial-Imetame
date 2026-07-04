@@ -99,6 +99,8 @@ export async function GET(req: NextRequest) {
       prazo_comercial: s.prazo_comercial?.toISOString() ?? null,
       visita_tecnica: s.visita_tecnica,
       data_visita: s.data_visita?.toISOString() ?? null,
+      is_portal: s.is_portal,
+      portal_hora: s.portal_hora,
 
       versao_atual: revisaoEsperada,
       tecnica_enviada: tecnicaEnviada,

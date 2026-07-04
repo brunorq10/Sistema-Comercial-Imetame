@@ -24,6 +24,8 @@ export interface PainelItem {
   prazo_comercial: string | null
   visita_tecnica: boolean
   data_visita: string | null
+  is_portal: boolean
+  portal_hora: string | null
   versao_atual: number
   tecnica_enviada: boolean
   tecnica_nao_aplicavel: boolean
@@ -97,6 +99,10 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
             ? <Badge variant="red">⚠ Atrasada</Badge>
             : <Badge variant="green">No prazo</Badge>
           }
+          {/* Sinalização de Portal */}
+          {item.is_portal && (
+            <Badge variant="blue">🌐 Portal{item.portal_hora ? ` — encerra ${item.portal_hora}` : ''}</Badge>
+          )}
         </div>
         {/* Indicadores de envio — mantidos sem alteração */}
         <div className="flex gap-1.5 flex-wrap justify-end">

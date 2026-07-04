@@ -104,6 +104,8 @@ export interface SolicitacaoListItem {
   prazo_comercial: string | null
   prazo_comercial_indeterminado: boolean
   visita_tecnica: boolean
+  is_portal: boolean
+  portal_hora: string | null
   versao_atual: number
   as_sold: boolean
   cancelled_at: string | null

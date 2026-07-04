@@ -26,6 +26,8 @@ const schema = z.object({
   prazo_comercial:   z.string().min(1, 'Informe a data da proposta comercial'),
   visita_tecnica:    z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
   data_visita:       z.string().optional(),
+  is_portal:         z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
+  portal_hora:       z.string().optional(),
   // campos opcionais (edição)
   classificacao:     z.string().optional(),
   interesse:         z.string().optional(),
@@ -36,6 +38,9 @@ const schema = z.object({
 }).refine(
   (d) => d.visita_tecnica !== 'SIM' || (d.data_visita && d.data_visita.length > 0),
   { message: 'Informe a data da visita', path: ['data_visita'] },
+).refine(
+  (d) => d.is_portal !== 'SIM' || (!!d.portal_hora && /^\d{2}:\d{2}$/.test(d.portal_hora)),
+  { message: 'Informe a hora de encerramento do portal', path: ['portal_hora'] },
 )
 
 type FormValues = z.infer<typeof schema>
@@ -84,6 +89,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const visitaTecnica    = watch('visita_tecnica')
+  const isPortal         = watch('is_portal')
   const clienteFinalId   = watch('cliente_final_id')
   const cidadeSelecionada = watch('cidade')
 
@@ -140,6 +146,8 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         prazo_comercial:    formatDateInput(editando.prazo_comercial),
         visita_tecnica:     editando.visita_tecnica ? 'SIM' : 'NAO',
         data_visita:        formatDateInput(editando.data_visita),
+        is_portal:          editando.is_portal ? 'SIM' : 'NAO',
+        portal_hora:        editando.portal_hora ?? '',
         classificacao:      editando.classificacao ?? '',
         interesse:          editando.interesse ?? '',
         orcamentista_id:    editando.orcamentista ? String(editando.orcamentista.id) : '',
@@ -167,6 +175,8 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         prazo_comercial:    values.prazo_comercial,
         visita_tecnica:     values.visita_tecnica === 'SIM',
         data_visita:        values.visita_tecnica === 'SIM' ? values.data_visita : undefined,
+        is_portal:          values.is_portal === 'SIM',
+        portal_hora:        values.is_portal === 'SIM' ? values.portal_hora : undefined,
         classificacao:      values.classificacao || undefined,
         interesse:          values.interesse || undefined,
         comprador:          values.comprador || undefined,
@@ -315,6 +325,23 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         {visitaTecnica === 'SIM' && (
           <Field label="Data da Visita *" error={errors.data_visita?.message}>
             <Input type="date" {...register('data_visita')} />
+          </Field>
+        )}
+      </div>
+
+      {/* ── Portal ──────────────────────────────────────────────────────────── */}
+      <ModalSection>Portal</ModalSection>
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
+        <Field label="É portal? *" error={errors.is_portal?.message}>
+          <Select {...register('is_portal')}>
+            <option value="">Selecione...</option>
+            <option value="SIM">Sim</option>
+            <option value="NAO">Não</option>
+          </Select>
+        </Field>
+        {isPortal === 'SIM' && (
+          <Field label="Hora de encerramento do portal *" error={errors.portal_hora?.message}>
+            <Input type="time" {...register('portal_hora')} />
           </Field>
         )}
       </div>
