@@ -10,6 +10,7 @@ import { RegistrarFabricacaoModal } from '@/components/forms/RegistrarFabricacao
 import { RegistrarParadaModal } from '@/components/forms/RegistrarParadaModal'
 import { RegistrarObraModal } from '@/components/forms/RegistrarObraModal'
 import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
+import { RevisoesPendentes } from '@/components/painel/RevisoesPendentes'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 
@@ -143,6 +144,9 @@ export default function PainelOrcamentosPage() {
       <p className="text-[11px] text-gray-400 mb-3">
         Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.
       </p>
+
+      {/* Revisões aguardando avaliação do orçamentista */}
+      <RevisoesPendentes onChanged={fetchData} />
 
       {/* Indicadores filtráveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">

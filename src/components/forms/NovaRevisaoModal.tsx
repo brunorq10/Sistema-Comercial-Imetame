@@ -175,6 +175,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao criar revisão'); return }
+      if (json.message) window.alert(json.message)
       onSuccess()
       onClose()
     } finally {

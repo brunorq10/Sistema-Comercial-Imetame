@@ -153,6 +153,8 @@ model User {
   analista_critico_execucoes  AnalistaCriticoHistorico[]     @relation("AnalistaCriticoExecutor")
   relatorios_criados          RelatorioSalvo[]               @relation("RelatorioCriador")
   relatorios_versoes          RelatorioVersao[]              @relation("RelatorioVersaoAutor")
+  revisoes_criadas            RevisaoPendente[]              @relation("RevisaoPendenteCriador")
+  revisoes_avaliadas          RevisaoPendente[]              @relation("RevisaoPendenteAvaliador")
 
   @@map("users")
 }
@@ -259,6 +261,7 @@ model Solicitacao {
   contratos            Contrato[]
   solicitacoes_info    SolicitacaoInfo[]
   historico            HistoricoSolicitacao[]
+  revisoes_pendentes   RevisaoPendente[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -1055,6 +1058,30 @@ model PrevisaoAlteracao {
   @@index([responsavel_id])
   @@index([status])
   @@map("previsao_alteracoes")
+}
+
+// ─── Revisões pendentes de avaliação do orçamentista ──────────────────────────
+// Uma nova revisão só é aplicada à solicitação depois que o orçamentista
+// confirmar que é de fato uma revisão; caso contrário é devolvida com
+// justificativa. O payload guarda os dados informados na abertura.
+model RevisaoPendente {
+  id             Int       @id @default(autoincrement())
+  solicitacao_id Int
+  payload        Json
+  status         String    @default("PENDENTE") // PENDENTE | APROVADA | RECUSADA
+  justificativa  String?   // preenchida pelo orçamentista na devolução
+  avaliado_por   Int?
+  avaliado_em    DateTime?
+  created_at     DateTime  @default(now())
+  created_by     Int
+
+  solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
+  criador     User        @relation("RevisaoPendenteCriador", fields: [created_by], references: [id])
+  avaliador   User?       @relation("RevisaoPendenteAvaliador", fields: [avaliado_por], references: [id])
+
+  @@index([solicitacao_id])
+  @@index([status])
+  @@map("revisoes_pendentes")
 }
 
 // ─── Construtor de Relatório: relatórios salvos + versionamento ────────────────
