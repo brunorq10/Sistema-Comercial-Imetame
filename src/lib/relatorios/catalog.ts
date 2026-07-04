@@ -67,7 +67,48 @@ export interface BaseConfig {
   responsavelCol: string
 }
 
-export const BASES: Record<Modulo, BaseConfig> = {
+// Chave de base: os módulos + "combinada" (Comercial × Acordos no grão do contrato).
+export type BaseKey = Modulo | 'combinada'
+
+// Join de Paradas (config + HH real total calculado como no /api/acordos/hh):
+// base_real = SUM(hh_real) de todos os dias; pico_real = MAX(efetivo_real) na etapa
+// PARADA; hh_real_total = base_real + adicionais (mob/desmob/integ/folga × 8.8).
+const PRD_JOIN = `LEFT JOIN parada_hh_config phc ON phc.contrato_id = c.id
+      LEFT JOIN LATERAL (
+        SELECT br.base_real,
+          br.base_real + (
+            CASE WHEN phc.mob_ativo    AND phc.mob_dias_real    IS NOT NULL THEN br.pico_real * phc.mob_dias_real    * 8.8 ELSE 0 END
+          + CASE WHEN phc.desmob_ativo AND phc.desmob_dias_real IS NOT NULL THEN br.pico_real * phc.desmob_dias_real * 8.8 ELSE 0 END
+          + CASE WHEN phc.integ_ativo  AND phc.integ_dias_real  IS NOT NULL THEN br.pico_real * phc.integ_dias_real  * 8.8 ELSE 0 END
+          + CASE WHEN phc.folga_ativo  AND phc.folga_pessoas_real IS NOT NULL AND phc.folga_dias_real IS NOT NULL THEN phc.folga_pessoas_real * phc.folga_dias_real * 8.8 ELSE 0 END
+          ) AS hh_real_total
+        FROM (
+          SELECT COALESCE((SELECT SUM(d.hh_real) FROM parada_hh_dia d WHERE d.config_id = phc.id), 0) AS base_real,
+                 COALESCE((SELECT MAX(d.efetivo_real) FROM parada_hh_dia d WHERE d.config_id = phc.id AND d.etapa = 'PARADA'), 0) AS pico_real
+        ) br
+      ) prd ON true`
+
+// Joins da parte COMERCIAL (proposta de origem) usados na base combinada.
+const COM_PROP_JOIN = `LEFT JOIN solicitacoes s ON s.id = c.solicitacao_id
+      LEFT JOIN users orc ON orc.id = s.orcamentista_id
+      LEFT JOIN LATERAL (
+        SELECT pc.valor_total, pc.valor_montagem_mecanica, pc.valor_fabricacao, pc.valor_terceiros, pc.resultado, pc.motivo_perda
+        FROM propostas_comerciais pc WHERE pc.solicitacao_id = s.id ORDER BY pc.versao DESC LIMIT 1
+      ) pc ON true
+      LEFT JOIN LATERAL (
+        SELECT pt.hh_direto, pt.hh_indireto, pt.hh_total, pt.efetivo_pico, pt.dias_parada, pt.turno,
+               pt.peso_montagem, pt.peso_equipamentos, pt.peso_tubulacoes, pt.peso_suportes, pt.peso_estruturas
+        FROM propostas_tecnicas pt WHERE pt.solicitacao_id = s.id ORDER BY pt.versao DESC LIMIT 1
+      ) pt ON true`
+
+const ACO_FROM = `contratos c
+      LEFT JOIN clientes cli ON cli.id = c.cliente_id
+      LEFT JOIN clientes clf ON clf.id = c.cliente_final_id
+      LEFT JOIN users resp ON resp.id = c.responsavel_id
+      LEFT JOIN solicitacoes sol ON sol.id = c.solicitacao_id
+      ${PRD_JOIN}`
+
+export const BASES: Record<BaseKey, BaseConfig> = {
   comercial: {
     from: `solicitacoes s
       LEFT JOIN clientes cli ON cli.id = s.cliente_id
@@ -96,11 +137,20 @@ export const BASES: Record<Modulo, BaseConfig> = {
     // Grão do CONTRATO (uma linha por contrato). Métricas de faturamento, NFs,
     // multas, HH e ocorrências entram como SUBCONSULTAS ESCALARES (ver constantes
     // abaixo) — assim não há explosão por 1:N e os totais ficam corretos.
-    from: `contratos c
-      LEFT JOIN clientes cli ON cli.id = c.cliente_id
-      LEFT JOIN clientes clf ON clf.id = c.cliente_final_id
-      LEFT JOIN users resp ON resp.id = c.responsavel_id
-      LEFT JOIN solicitacoes sol ON sol.id = c.solicitacao_id`,
+    from: ACO_FROM,
+    where: 'c.cancelled_at IS NULL',
+    dataPadrao: 'c.data_inicio',
+    dataPadraoLabel: 'Data de início do contrato',
+    clienteCol: 'c.cliente_id',
+    responsavelCol: 'c.responsavel_id',
+  },
+  // Combinada: Comercial × Acordos no grão do CONTRATO. Traz a proposta de
+  // origem (via c.solicitacao_id). Os valores de proposta são do contrato de
+  // origem — se uma solicitação gerou vários contratos, o valor da proposta se
+  // repete por contrato (grão do contrato). cli/clf = cliente do contrato.
+  combinada: {
+    from: `${ACO_FROM}
+      ${COM_PROP_JOIN}`,
     where: 'c.cancelled_at IS NULL',
     dataPadrao: 'c.data_inicio',
     dataPadraoLabel: 'Data de início do contrato',
@@ -143,6 +193,19 @@ const HH_PLAN = `(SELECT COALESCE(SUM(hm.hh_planejado), 0) FROM hh_lancamento_me
 const HH_REAL = `(SELECT COALESCE(SUM(hr.hh_realizado), 0) FROM hh_realizado hr WHERE hr.contrato_id = c.id)`
 // Peso total (t) da proposta técnica (soma das categorias + montagem).
 const PESO_TOTAL = `(COALESCE(pt.peso_montagem,0) + COALESCE(pt.peso_equipamentos,0) + COALESCE(pt.peso_tubulacoes,0) + COALESCE(pt.peso_suportes,0) + COALESCE(pt.peso_estruturas,0))`
+
+// Classificação UCR (Paradas): faturado / HH real total, classificado pelas
+// faixas do parada_hh_config — mesma regra do /api/acordos/hh. NULL fora de Paradas.
+const UCR_RS_HH = `(${FATURADO} / NULLIF(prd.hh_real_total, 0))`
+const UCR_SQL = `CASE
+    WHEN phc.id IS NULL OR prd.hh_real_total <= 0 THEN NULL
+    WHEN ${UCR_RS_HH} <= phc.ucr_nao_suficiente THEN 'Não Suficiente'
+    WHEN ${UCR_RS_HH} <= phc.ucr_a_evoluir THEN 'A Evoluir'
+    WHEN ${UCR_RS_HH} <= phc.ucr_bom THEN 'Bom'
+    WHEN ${UCR_RS_HH} <= phc.ucr_otimo THEN 'Ótimo'
+    ELSE 'Esplêndido' END`
+// Serviço Extra — ASE (Sim/Não): há valor de ASE previsto no config da Parada.
+const ASE_SQL = `CASE WHEN COALESCE(phc.fin_prev_ase, 0) > 0 THEN 'Sim' ELSE 'Não' END`
 
 // ── Catálogo de campos ───────────────────────────────────────────────────────
 
@@ -199,6 +262,8 @@ export const CAMPOS: Campo[] = [
   { key: 'aco_dt_inicio',      label: 'Dt. Início',          modulo: 'acordos', grupo: 'Acordos', tipo: 'data', dateCol: 'c.data_inicio' },
   { key: 'aco_dt_fim',         label: 'Dt. Fim',             modulo: 'acordos', grupo: 'Acordos', tipo: 'data', dateCol: 'c.data_fim' },
   { key: 'aco_responsavel',    label: 'Responsável',         modulo: 'acordos', grupo: 'Acordos', tipo: 'dim', sql: 'resp.nome' },
+  { key: 'aco_ucr',            label: 'Classificação UCR',   modulo: 'acordos', grupo: 'Acordos', tipo: 'dim', sql: UCR_SQL },
+  { key: 'aco_ase',            label: 'Serviço Extra — ASE', modulo: 'acordos', grupo: 'Acordos', tipo: 'dim', sql: ASE_SQL },
   // Métricas (colunas + subconsultas escalares por contrato)
   { key: 'aco_valor_contrato', label: 'Valor Total Contratado (R$)', modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: 'c.valor_contrato', aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'moeda' },
   { key: 'aco_faturado',       label: 'Valor Total Faturado (R$)',   modulo: 'acordos', grupo: 'Acordos', tipo: 'met', sql: FATURADO, aggs: ['soma', 'media'], aggPadrao: 'soma', formato: 'moeda' },
@@ -217,6 +282,7 @@ export const CAMPOS: Campo[] = [
   { key: 'aco_pct_r_plan',     label: '%R/Plan (Real vs Planejado)', modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: HH_REAL, den: HH_PLAN, percent: true, formato: 'percent' },
   { key: 'aco_rs_hh_orc',      label: 'R$/HH Orç.',                  modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: 'c.valor_contrato', den: HH_PREV, formato: 'moeda' },
   { key: 'aco_rs_hh_prev',     label: 'R$/HH Prev.',                 modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: 'c.valor_contrato', den: HH_PLAN, formato: 'moeda' },
+  { key: 'aco_rs_hh_real',     label: 'R$/HH Real',                  modulo: 'acordos', grupo: 'Acordos', tipo: 'calc', num: FATURADO, den: HH_REAL, formato: 'moeda' },
 
   // ── Ocorrências (grão próprio; exibidas sob o grupo Acordos) ──
   { key: 'oco_tipo',            label: 'Tipos de Ocorrência', modulo: 'ocorrencias', grupo: 'Acordos', tipo: 'dim', sql: 'o.tipo' },

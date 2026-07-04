@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildQuery, type ReportRequest } from './query'
+import { buildQuery, resolverBase, type ReportRequest } from './query'
 import { buildPivot } from './pivot'
 import { validarRequest } from './service'
 import type { DimMeta, ValMeta } from './shared'
@@ -76,6 +76,38 @@ describe('buildQuery — Acordos (HH/NF/multas por contrato)', () => {
   })
 })
 
+// ── Cross-módulo (Comercial × Acordos) + UCR / ASE / R$/HH Real ──────────────
+describe('resolverBase e base combinada', () => {
+  it('Comercial + Acordos → base combinada', () => {
+    expect(resolverBase({ modulo: 'acordos', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBe('combinada')
+  })
+  it('só Acordos → base acordos', () => {
+    expect(resolverBase({ modulo: 'acordos', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'aco_faturado' }], filtros: {} })).toBe('acordos')
+  })
+  it('combinada junta a proposta via c.solicitacao_id', () => {
+    const sql = buildQuery({ modulo: 'acordos', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'aco_faturado' }, { campo: 'com_valor_total' }], filtros: {} }).sql
+    expect(sql).toContain('s.id = c.solicitacao_id')
+    expect(sql).toContain('pc.valor_total')
+  })
+})
+
+describe('UCR / ASE / R$/HH Real', () => {
+  const sqlDim = (campo: string) => buildQuery({ modulo: 'acordos', linhas: [{ campo }], colunas: [], valores: [{ campo: 'aco_faturado' }], filtros: {} }).sql
+  it('UCR classifica pelas faixas do parada_hh_config', () => {
+    const sql = sqlDim('aco_ucr')
+    expect(sql).toContain('ucr_nao_suficiente')
+    expect(sql).toContain("'Esplêndido'")
+  })
+  it('ASE = Sim/Não conforme fin_prev_ase', () => {
+    expect(sqlDim('aco_ase')).toContain('fin_prev_ase')
+  })
+  it('R$/HH Real = faturado / NULLIF(SUM(HH realizado))', () => {
+    const sql = buildQuery({ modulo: 'acordos', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'aco_rs_hh_real' }], filtros: {} }).sql
+    expect(sql).toContain('hr.hh_realizado')
+    expect(sql).toContain('NULLIF(SUM(')
+  })
+})
+
 // ── validarRequest: regras semânticas ────────────────────────────────────────
 describe('validarRequest', () => {
   it('aceita configuração válida', () => {
@@ -87,8 +119,11 @@ describe('validarRequest', () => {
   it('rejeita dimensão em Valores', () => {
     expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'com_cliente' }], colunas: [], valores: [{ campo: 'com_cliente' }], filtros: {} })).toBeTruthy()
   })
-  it('rejeita mistura de módulos', () => {
-    expect(validarRequest({ modulo: 'comercial', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBeTruthy()
+  it('aceita cruzamento Comercial + Acordos', () => {
+    expect(validarRequest({ modulo: 'acordos', linhas: [{ campo: 'aco_cliente' }], colunas: [], valores: [{ campo: 'com_valor_total' }], filtros: {} })).toBeNull()
+  })
+  it('rejeita Ocorrências combinadas com outro módulo', () => {
+    expect(validarRequest({ modulo: 'acordos', linhas: [{ campo: 'oco_tipo' }], colunas: [], valores: [{ campo: 'aco_faturado' }], filtros: {} })).toBeTruthy()
   })
 })
 

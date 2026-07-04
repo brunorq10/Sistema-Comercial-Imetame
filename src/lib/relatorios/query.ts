@@ -8,11 +8,23 @@
 
 import { prisma } from '@/lib/prisma'
 import {
-  BASES, getCampo, type Agregacao, type Granularidade, type Modulo, type Campo,
+  BASES, getCampo, type Agregacao, type BaseKey, type Granularidade, type Modulo, type Campo,
 } from './catalog'
 import type { DimMeta, ValMeta } from './shared'
 
 export type { DimMeta, ValMeta } from './shared'
+
+// A base efetiva é derivada dos módulos dos campos presentes (não de um único
+// req.modulo): Comercial + Acordos → base "combinada"; um só módulo → esse módulo.
+export function resolverBase(req: ReportRequest): BaseKey {
+  const mods = new Set<Modulo>()
+  for (const r of [...req.linhas, ...req.colunas, ...req.valores]) {
+    const c = getCampo(r.campo)
+    if (c) mods.add(c.modulo)
+  }
+  if (mods.has('comercial') && mods.has('acordos')) return 'combinada'
+  return Array.from(mods)[0] ?? 'comercial'
+}
 
 export interface CampoRef { campo: string; granularidade?: Granularidade }
 export interface ValorRef { campo: string; agregacao?: Agregacao }
@@ -65,7 +77,7 @@ function campoFormato(c: Campo): string {
 
 // Coluna de data (bruta) sobre a qual o filtro De/Até é aplicado.
 export function dataFiltroExpr(req: ReportRequest): { expr: string; label: string } {
-  const base = BASES[req.modulo]
+  const base = BASES[resolverBase(req)]
   const dims = [...req.linhas, ...req.colunas]
   // Campo de data explicitamente escolhido como referência
   if (req.filtros.campoDataRef) {
@@ -93,8 +105,8 @@ export interface BuiltQuery {
   semFiltroData: boolean
 }
 
-export function buildQuery(req: ReportRequest, opts?: { limit?: number; forcedDate?: { expr: string; label: string } }): BuiltQuery {
-  const base = BASES[req.modulo]
+export function buildQuery(req: ReportRequest, opts?: { limit?: number; forcedDate?: { expr: string; label: string }; forcedBase?: BaseKey }): BuiltQuery {
+  const base = BASES[opts?.forcedBase ?? resolverBase(req)]
   const params: unknown[] = []
   const p = (v: unknown) => { params.push(v); return `$${params.length}` }
 

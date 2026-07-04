@@ -73,6 +73,15 @@ export default function ConstrutorRelatorioPage() {
     return first ? (camposMap.get(first.campo)?.modulo ?? null) : null
   }, [linhas, colunas, valores, camposMap])
 
+  const modulos = useMemo(() => {
+    const s = new Set<Modulo>()
+    for (const c of [...linhas, ...colunas, ...valores]) { const m = camposMap.get(c.campo)?.modulo; if (m) s.add(m) }
+    return s
+  }, [linhas, colunas, valores, camposMap])
+  const moduloLabel = modulos.size > 1
+    ? Array.from(modulos).map((m) => MODULO_LABEL[m]).join(' + ')
+    : modulo ? MODULO_LABEL[modulo] : ''
+
   const flash = (msg: string) => { setAlerta(msg); setTimeout(() => setAlerta(null), 3500) }
 
   const addField = useCallback((zona: Zona, key: string) => {
@@ -81,14 +90,11 @@ export default function ConstrutorRelatorioPage() {
     const dimZona = zona === 'linhas' || zona === 'colunas'
     if (dimZona && !(campo.tipo === 'dim' || campo.tipo === 'data')) { flash(`"${campo.label}" é um valor — vá para a zona Valores.`); return }
     if (zona === 'valores' && !(campo.tipo === 'met' || campo.tipo === 'calc')) { flash(`"${campo.label}" é uma dimensão — use Linhas ou Colunas.`); return }
-    if (modulo && campo.modulo !== modulo) {
-      const envolveOcorrencia = modulo === 'ocorrencias' || campo.modulo === 'ocorrencias'
-      const envolveContrato = modulo === 'acordos' || campo.modulo === 'acordos'
-      if (envolveOcorrencia && envolveContrato) {
-        flash('Ocorrências têm grão próprio (uma linha por ocorrência) e não podem ser combinadas com métricas de contrato no mesmo relatório — os totais ficariam incorretos. Use os campos de ocorrência juntos (ex.: Tipos de Ocorrência × Contagem de ocorrências).')
-      } else {
-        flash(`Este relatório é do módulo ${MODULO_LABEL[modulo]}. Remova os campos atuais para trocar de módulo.`)
-      }
+    // Comercial + Acordos podem cruzar. Ocorrências têm grão próprio e não misturam.
+    const modsApos = new Set<Modulo>([...linhas, ...colunas, ...valores].map((c) => camposMap.get(c.campo)?.modulo).filter((m): m is Modulo => !!m))
+    modsApos.add(campo.modulo)
+    if (modsApos.has('ocorrencias') && modsApos.size > 1) {
+      flash('Ocorrências têm grão próprio (uma linha por ocorrência) e não podem ser combinadas com Comercial/Acordos no mesmo relatório — os totais ficariam incorretos. Use os campos de ocorrência juntos (ex.: Tipos de Ocorrência × Contagem de ocorrências).')
       return
     }
 
@@ -115,15 +121,19 @@ export default function ConstrutorRelatorioPage() {
 
   const dataRefLabel = useMemo(() => {
     const df = [...linhas, ...colunas].map((c) => camposMap.get(c.campo)).find((c) => c?.tipo === 'data')
-    return df ? df.label : modulo ? DATA_PADRAO[modulo] : '—'
-  }, [linhas, colunas, camposMap, modulo])
+    if (df) return df.label
+    // Combinada usa a data do contrato; senão a data padrão do módulo.
+    if (modulos.has('acordos')) return DATA_PADRAO.acordos
+    return modulo ? DATA_PADRAO[modulo] : '—'
+  }, [linhas, colunas, camposMap, modulo, modulos])
 
   // Score de complexidade (frontend, antes de executar)
   const score = useMemo(() => {
     let p = linhas.length * 1 + colunas.length * 2 + valores.length * 1
+    if (modulos.size > 1) p += (modulos.size - 1) * 3
     if (!de || !ate) p += 5
     return p
-  }, [linhas, colunas, valores, de, ate])
+  }, [linhas, colunas, valores, de, ate, modulos])
 
   const buildRequest = useCallback(() => ({
     modulo,
@@ -274,7 +284,7 @@ export default function ConstrutorRelatorioPage() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             {modulo
-              ? <span className="text-[11px] font-semibold px-2 py-1 rounded text-white" style={{ background: '#0A1F44' }}>Módulo: {MODULO_LABEL[modulo]}</span>
+              ? <span className="text-[11px] font-semibold px-2 py-1 rounded text-white" style={{ background: '#0A1F44' }}>{modulos.size > 1 ? 'Inter-módulos: ' : 'Módulo: '}{moduloLabel}</span>
               : <span className="text-[11px] text-gray-400">Arraste campos para começar</span>}
             {ativo && <span className="text-[11px] text-gray-500">· <span className="font-medium text-gray-700">{ativo.nome}</span></span>}
             {score > 15 && <span className="text-[10px] text-amber-600 font-medium">Complexidade {score} — considere reduzir campos/definir período</span>}

@@ -5,7 +5,7 @@
 
 import { z } from 'zod'
 import { getCampo, type Granularidade } from './catalog'
-import { buildQuery, dataFiltroExpr, runQuery, type ReportRequest, type RawRow } from './query'
+import { buildQuery, dataFiltroExpr, resolverBase, runQuery, type ReportRequest, type RawRow } from './query'
 import { buildPivot, type PivotResult } from './pivot'
 
 // Série cronológica de inícios de período (UTC) entre De e Até, na granularidade.
@@ -51,15 +51,20 @@ export const reportRequestSchema = z.object({
   }).default({}),
 })
 
-// Regras semânticas: campo existe, pertence ao módulo e está na zona correta.
+// Regras semânticas: campo existe, zona correta e combinação de módulos válida
+// (Comercial + Acordos podem cruzar; Ocorrências têm grão próprio e não misturam).
 export function validarRequest(req: ReportRequest): string | null {
   if (!req.valores.length) return 'Adicione ao menos um campo na zona Valores.'
   if (!req.linhas.length && !req.colunas.length) return 'Adicione ao menos um campo em Linhas ou Colunas.'
 
+  const mods = new Set<string>()
   for (const r of [...req.linhas, ...req.colunas, ...req.valores]) {
     const c = getCampo(r.campo)
     if (!c) return `Campo desconhecido: ${r.campo}`
-    if (c.modulo !== req.modulo) return `O campo "${c.label}" não pertence ao módulo selecionado.`
+    mods.add(c.modulo)
+  }
+  if (mods.has('ocorrencias') && mods.size > 1) {
+    return 'Ocorrências têm grão próprio e não podem ser combinadas com Comercial/Acordos no mesmo relatório (os totais ficariam incorretos).'
   }
   for (const r of [...req.linhas, ...req.colunas]) {
     const c = getCampo(r.campo)!
@@ -90,15 +95,16 @@ export interface GerarResultado {
 
 export async function gerarPivot(req: ReportRequest, limitGrupos?: number): Promise<GerarResultado> {
   const forcedDate = dataFiltroExpr(req)  // mesmo campo de data em todas as subqueries
-  const built = buildQuery(req, { limit: limitGrupos, forcedDate })
+  const forcedBase = resolverBase(req)    // mesma base (ex.: combinada) em todas as subqueries
+  const built = buildQuery(req, { limit: limitGrupos, forcedDate, forcedBase })
   const nL = req.linhas.length, nC = req.colunas.length
 
   const vazio: Promise<RawRow[]> = Promise.resolve([])
   const [main, rowTotais, colTotais, grand] = await Promise.all([
     runQuery(built),
-    nC > 0 && nL > 0 ? runQuery(buildQuery({ ...req, colunas: [] }, { forcedDate })) : vazio,
-    nC > 0 ? runQuery(buildQuery({ ...req, linhas: req.colunas, colunas: [] }, { forcedDate })) : vazio,
-    runQuery(buildQuery({ ...req, linhas: [], colunas: [] }, { forcedDate })),
+    nC > 0 && nL > 0 ? runQuery(buildQuery({ ...req, colunas: [] }, { forcedDate, forcedBase })) : vazio,
+    nC > 0 ? runQuery(buildQuery({ ...req, linhas: req.colunas, colunas: [] }, { forcedDate, forcedBase })) : vazio,
+    runQuery(buildQuery({ ...req, linhas: [], colunas: [] }, { forcedDate, forcedBase })),
   ])
 
   // Série completa de datas quando há exatamente 1 dimensão de data na zona
