@@ -27,8 +27,9 @@ export async function GET(req: NextRequest) {
     include: {
       cliente: { select: { id: true, nome: true } },
       subindices: {
+        where: { deleted_at: null },
         orderBy: { ordem: 'asc' },
-        include: { notas_fiscais: { where: { ativa: true } } },
+        include: { notas_fiscais: { where: { ativa: true, deleted_at: null } } },
       },
     },
     orderBy: { indice: 'asc' },

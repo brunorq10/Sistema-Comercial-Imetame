@@ -19,7 +19,7 @@ export async function GET() {
       cliente_final: { select: { id: true, nome: true } },
       responsavel:   { select: { id: true, nome: true } },
       parada_hh_config: { include: { dias: true } },
-      subindices:    { include: { notas_fiscais: { where: { ativa: true } } } },
+      subindices:    { where: { deleted_at: null }, include: { notas_fiscais: { where: { ativa: true, deleted_at: null } } } },
     },
   })
 

@@ -55,7 +55,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { infoId: 
   const ehSupervisao = pode(usuario, 'orc.info.excluir')
   if (!ehAutor && !ehSupervisao) return respostaSemPermissao()
 
-  await prisma.solicitacaoInfo.delete({ where: { id: infoId } })
+  // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
+  await prisma.solicitacaoInfo.update({
+    where: { id: infoId },
+    data: { deleted_at: new Date(), deleted_by: usuario.id },
+  })
 
   return NextResponse.json({ data: { ok: true }, error: null })
 }

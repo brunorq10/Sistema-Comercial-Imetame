@@ -65,6 +65,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: { multaId:
 
   { const { erro } = await exigirPermissao('acordos.nf.excluir'); if (erro) return erro }
 
-  await prisma.multaPenalidade.delete({ where: { id } })
+  // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
+  await prisma.multaPenalidade.update({
+    where: { id },
+    data: { deleted_at: new Date(), deleted_by: Number(session.user.id) },
+  })
   return NextResponse.json({ data: { ok: true }, error: null })
 }

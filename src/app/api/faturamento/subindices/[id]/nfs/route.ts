@@ -42,7 +42,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
 
   // Validate total % for this NF across all active records globally
   const totalExistente = await prisma.notaFiscalContrato.aggregate({
-    where: { numero_nf: parsed.data.numero_nf, ativa: true },
+    where: { numero_nf: parsed.data.numero_nf, ativa: true, deleted_at: null },
     _sum: { percentual: true },
   })
   const totalAlocado = Number(totalExistente._sum.percentual ?? 0)
@@ -102,7 +102,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
     select: { valor_total: true },
   })
   const totalFaturado = await prisma.notaFiscalContrato.aggregate({
-    where: { subindice_id: subindiceId, ativa: true },
+    where: { subindice_id: subindiceId, ativa: true, deleted_at: null },
     _sum: { valor_atribuido: true },
   })
   const fatAcumulado = Number(totalFaturado._sum.valor_atribuido ?? 0)

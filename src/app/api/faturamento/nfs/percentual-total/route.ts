@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!numero_nf) return NextResponse.json({ data: null, error: 'numero_nf obrigatório' }, { status: 400 })
 
   const result = await prisma.notaFiscalContrato.aggregate({
-    where: { numero_nf, ativa: true },
+    where: { numero_nf, ativa: true, deleted_at: null },
     _sum: { percentual: true },
   })
 

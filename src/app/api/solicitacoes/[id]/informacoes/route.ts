@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const autoresIds = autor ? autor.split(',').map(Number).filter((n) => !isNaN(n)) : []
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { solicitacao_id: id }
+  const where: any = { solicitacao_id: id, deleted_at: null }
   // Aba "Linha do Tempo" = registros manuais (com tipo). Breadcrumbs
   // automáticos (tipo null) pertencem ao auditlog (aba Histórico do Sistema).
   if (tiposSel.length) where.tipo = { in: tiposSel }
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     gerarCodigo(id),
     // Autores de TODAS as informações (com tipo) da solicitação — para o select
     prisma.solicitacaoInfo.findMany({
-      where: { solicitacao_id: id, tipo: { not: null } },
+      where: { solicitacao_id: id, tipo: { not: null }, deleted_at: null },
       distinct: ['created_by'],
       select: { created_by: true, criador: { select: { nome: true } } },
       orderBy: { criador: { nome: 'asc' } },

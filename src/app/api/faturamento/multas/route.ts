@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const responsavel = sp.get('responsavel') ?? ''
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {}
+  const where: any = { deleted_at: null }
   // tipo aceita lista separada por vírgula (multi-seleção)
   const tiposSel = tipo.split(',').filter((t) => TIPOS.includes(t))
   if (tiposSel.length === 1) where.tipo = tiposSel[0]
@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
     }),
     // Opções dos filtros (contratos que possuem multas)
     prisma.multaPenalidade.findMany({
+      where: { deleted_at: null },
       distinct: ['contrato_id'],
       select: { contrato: { select: { cliente_id: true, cidade: true, cliente: { select: { nome: true } }, responsavel: { select: { id: true, nome: true } } } } },
     }),

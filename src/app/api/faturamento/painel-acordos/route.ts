@@ -49,9 +49,10 @@ export async function GET(req: NextRequest) {
         cliente_final: { select: { id: true, nome: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
+          where: { deleted_at: null },
           orderBy: { ordem: 'asc' },
           include: {
-            notas_fiscais: true,
+            notas_fiscais: { where: { deleted_at: null } },
             alteracoes: {
               where: { status: 'PENDENTE' },
               orderBy: { created_at: 'desc' },

@@ -229,6 +229,23 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
           <IconRelatorios active={pathname.startsWith('/relatorios')} />
           <span className={hideInRail}>Construtor de Relatório</span>
         </Link>
+
+        {/* Lixeira — itens excluídos (retenção de 15 dias) */}
+        <Link
+          href="/lixeira"
+          onClick={onClose}
+          title="Lixeira"
+          className={cn(
+            'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
+            railMode && 'lg:justify-center lg:px-0 lg:gap-0',
+            pathname.startsWith('/lixeira')
+              ? 'text-green-primary bg-green-light'
+              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+          )}
+        >
+          <IconLixeira active={pathname.startsWith('/lixeira')} />
+          <span className={hideInRail}>Lixeira</span>
+        </Link>
       </nav>
 
       {/* ── Sair ───────────────────────────────────────────────────────── */}
@@ -296,6 +313,15 @@ function IconRelatorios({ active }: { active: boolean }) {
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
       <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
       <path d="M4.5 10V7M7.5 10V5M10.5 10V8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconLixeira({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
+      <path d="M2.5 4H12.5M5.5 4V2.8C5.5 2.4 5.9 2 6.3 2H8.7C9.1 2 9.5 2.4 9.5 2.8V4M4 4L4.6 12.2C4.65 12.65 5 13 5.5 13H9.5C10 13 10.35 12.65 10.4 12.2L11 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.2 6.5V10.5M8.8 6.5V10.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   )
 }

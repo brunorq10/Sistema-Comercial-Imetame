@@ -12,7 +12,9 @@ const TIPO_VALUES = TIPOS_OCORRENCIA.map((t) => t.value) as [string, ...string[]
 const RESP_VALUES = RESPONSABILIDADES.map((r) => r.value) as [string, ...string[]]
 const IMPACTO_VALUES = IMPACTOS_OCORRENCIA.map((i) => i.value) as [string, ...string[]]
 
-// Próximo código sequencial por contrato (OC-0001, OC-0002, ...)
+// Próximo código sequencial por contrato (OC-0001, OC-0002, ...).
+// Considera TAMBÉM itens na lixeira: códigos não podem ser reutilizados
+// (unique [contrato_id, codigo] segue ocupado pelo soft-delete).
 async function gerarCodigo(contratoId: number): Promise<string> {
   const ultima = await prisma.ocorrenciaContratual.findFirst({
     where: { contrato_id: contratoId },
@@ -52,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const responsaveisIds = responsavel ? responsavel.split(',').map(Number).filter((n) => !isNaN(n)) : []
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { contrato_id: contratoId }
+  const where: any = { contrato_id: contratoId, deleted_at: null }
   if (responsabilidade) where.responsabilidade = responsabilidade
   if (tipos.length) where.tipo = { in: tipos }
   if (responsaveisIds.length) where.created_by = { in: responsaveisIds }
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }),
     // Responsáveis (autores) de TODAS as ocorrências do contrato — para o select
     prisma.ocorrenciaContratual.findMany({
-      where: { contrato_id: contratoId },
+      where: { contrato_id: contratoId, deleted_at: null },
       distinct: ['created_by'],
       select: { created_by: true, criador: { select: { nome: true } } },
       orderBy: { criador: { nome: 'asc' } },

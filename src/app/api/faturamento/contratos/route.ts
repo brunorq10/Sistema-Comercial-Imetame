@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
         {
           subindices: {
             some: {
+              deleted_at: null,
               data_inicio: {
                 gte: new Date(`${anoNum}-01-01`),
                 lt: new Date(`${anoNum + 1}-01-01`),
@@ -100,8 +101,9 @@ export async function GET(req: NextRequest) {
         cliente_final: { select: { id: true, nome: true } },
         responsavel:   { select: { id: true, nome: true } },
         subindices: {
+          where: { deleted_at: null },
           orderBy: { ordem: 'asc' },
-          include: { notas_fiscais: true },
+          include: { notas_fiscais: { where: { deleted_at: null } } },
         },
       },
     })
@@ -113,7 +115,7 @@ export async function GET(req: NextRequest) {
     const nfTotals = allNFNumbers.length > 0
       ? await prisma.notaFiscalContrato.groupBy({
           by: ['numero_nf'],
-          where: { numero_nf: { in: allNFNumbers } },
+          where: { numero_nf: { in: allNFNumbers }, deleted_at: null },
           _sum: { percentual: true },
         })
       : []
@@ -210,7 +212,7 @@ export async function POST(req: NextRequest) {
       cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
       cliente_final: { select: { id: true, nome: true } },
       responsavel:   { select: { id: true, nome: true } },
-      subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+      subindices: { where: { deleted_at: null }, orderBy: { ordem: 'asc' }, include: { notas_fiscais: { where: { deleted_at: null } } } },
     },
   })
 

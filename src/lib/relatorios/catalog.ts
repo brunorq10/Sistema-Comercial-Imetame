@@ -162,7 +162,7 @@ export const BASES: Record<BaseKey, BaseConfig> = {
       LEFT JOIN contratos c ON c.id = o.contrato_id
       LEFT JOIN clientes cli ON cli.id = c.cliente_id
       LEFT JOIN users resp ON resp.id = c.responsavel_id`,
-    where: 'c.cancelled_at IS NULL',
+    where: 'c.cancelled_at IS NULL AND o.deleted_at IS NULL',
     dataPadrao: 'o.data',
     dataPadraoLabel: 'Data da ocorrência',
     clienteCol: 'c.cliente_id',
@@ -173,16 +173,16 @@ export const BASES: Record<BaseKey, BaseConfig> = {
 // Subqueries escalares por CONTRATO (grão do contrato → SUM não duplica).
 const FATURADO = `(SELECT COALESCE(SUM(nf.valor_atribuido), 0)
   FROM notas_fiscais_contratos nf JOIN subindices_faturamento si ON si.id = nf.subindice_id
-  WHERE si.contrato_id = c.id AND nf.ativa = true AND nf.status_aprovacao = 'APROVADO')`
-const MULTAS_VAL = `(SELECT COALESCE(SUM(m.valor_total), 0) FROM multas_penalidades m WHERE m.contrato_id = c.id AND m.ativa = true)`
-const MULTAS_QTD = `(SELECT COUNT(*) FROM multas_penalidades m WHERE m.contrato_id = c.id AND m.ativa = true)`
+  WHERE si.contrato_id = c.id AND nf.ativa = true AND nf.status_aprovacao = 'APROVADO' AND nf.deleted_at IS NULL AND si.deleted_at IS NULL)`
+const MULTAS_VAL = `(SELECT COALESCE(SUM(m.valor_total), 0) FROM multas_penalidades m WHERE m.contrato_id = c.id AND m.ativa = true AND m.deleted_at IS NULL)`
+const MULTAS_QTD = `(SELECT COUNT(*) FROM multas_penalidades m WHERE m.contrato_id = c.id AND m.ativa = true AND m.deleted_at IS NULL)`
 const NF_VAL = `(SELECT COALESCE(SUM(nf.valor_atribuido), 0)
   FROM notas_fiscais_contratos nf JOIN subindices_faturamento si ON si.id = nf.subindice_id
-  WHERE si.contrato_id = c.id AND nf.ativa = true)`
+  WHERE si.contrato_id = c.id AND nf.ativa = true AND nf.deleted_at IS NULL AND si.deleted_at IS NULL)`
 const NF_QTD = `(SELECT COUNT(*)
   FROM notas_fiscais_contratos nf JOIN subindices_faturamento si ON si.id = nf.subindice_id
-  WHERE si.contrato_id = c.id AND nf.ativa = true)`
-const QTD_OCORRENCIAS = `(SELECT COUNT(*) FROM ocorrencias_contratuais o WHERE o.contrato_id = c.id)`
+  WHERE si.contrato_id = c.id AND nf.ativa = true AND nf.deleted_at IS NULL AND si.deleted_at IS NULL)`
+const QTD_OCORRENCIAS = `(SELECT COUNT(*) FROM ocorrencias_contratuais o WHERE o.contrato_id = c.id AND o.deleted_at IS NULL)`
 // HH por contrato: previsto/planejado da última versão do lançamento; realizado somado.
 const HH_PREV = `(SELECT COALESCE(SUM(hm.hh_previsto), 0) FROM hh_lancamento_mes hm
   JOIN hh_lancamentos hl ON hl.id = hm.lancamento_id

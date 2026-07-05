@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
                 },
               },
               notas_fiscais: {
-                where: { ativa: true },
+                where: { ativa: true, deleted_at: null },
               },
             },
           },

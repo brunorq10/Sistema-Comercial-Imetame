@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const busca = searchParams.get('busca')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: Record<string, any> = {}
+  const where: Record<string, any> = { deleted_at: null }
 
   if (ativa !== null && ativa !== '') {
     where.ativa = ativa === 'true'
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   const nfTotals = nfNumbers.length > 0
     ? await prisma.notaFiscalContrato.groupBy({
         by: ['numero_nf'],
-        where: { numero_nf: { in: nfNumbers } },
+        where: { numero_nf: { in: nfNumbers }, deleted_at: null },
         _sum: { percentual: true },
       })
     : []

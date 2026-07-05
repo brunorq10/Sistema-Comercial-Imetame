@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const numeroNf = d.numero_nf ?? nfAtual.numero_nf
   if (d.percentual !== undefined || d.numero_nf !== undefined) {
     const totalOutros = await prisma.notaFiscalContrato.aggregate({
-      where: { numero_nf: numeroNf, ativa: true, id: { not: id } },
+      where: { numero_nf: numeroNf, ativa: true, deleted_at: null, id: { not: id } },
       _sum: { percentual: true },
     })
     const totalAlocadoOutros = Number(totalOutros._sum.percentual ?? 0)
@@ -126,7 +126,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  await prisma.notaFiscalContrato.delete({ where: { id } })
+  // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
+  await prisma.notaFiscalContrato.update({
+    where: { id },
+    data: { deleted_at: new Date(), deleted_by: Number(session.user.id) },
+  })
 
   return NextResponse.json({ data: { id }, error: null })
 }

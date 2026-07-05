@@ -53,11 +53,12 @@ export async function GET(req: Request) {
         cliente: { select: { id: true, nome: true, ramo_atuacao: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
+          where: { deleted_at: null },
           select: {
             valor_total: true, data_inicio: true,
             jan: true, fev: true, mar: true, abr: true, mai: true, jun: true,
             jul: true, ago: true, set: true, out: true, nov: true, dez: true,
-            notas_fiscais: { where: { ativa: true }, select: { data_emissao: true, valor_atribuido: true } },
+            notas_fiscais: { where: { ativa: true, deleted_at: null }, select: { data_emissao: true, valor_atribuido: true } },
           },
         },
       },

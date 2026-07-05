@@ -26,7 +26,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const ehSupervisao = pode(usuario, 'acordos.ocorrencia.excluir')
   if (!ehAutor && !ehSupervisao) return respostaSemPermissao()
 
-  await prisma.ocorrenciaContratual.delete({ where: { id: ocId } })
+  // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
+  await prisma.ocorrenciaContratual.update({
+    where: { id: ocId },
+    data: { deleted_at: new Date(), deleted_by: usuario.id },
+  })
 
   return NextResponse.json({ data: { ok: true }, error: null })
 }

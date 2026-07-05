@@ -46,7 +46,7 @@ export const PATCH = withApi(async (req: NextRequest, { params }: { params: { id
   // (NFs pendentes não reservam %; por isso a checagem acontece também aqui)
   if (aprovado) {
     const agg = await prisma.notaFiscalContrato.aggregate({
-      where: { numero_nf: nf.numero_nf, ativa: true, id: { not: id } },
+      where: { numero_nf: nf.numero_nf, ativa: true, deleted_at: null, id: { not: id } },
       _sum: { percentual: true },
     })
     const jaAlocado = Number(agg._sum.percentual ?? 0)

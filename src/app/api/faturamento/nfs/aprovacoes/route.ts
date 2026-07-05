@@ -25,6 +25,7 @@ export const GET = withApi(async (req: NextRequest) => {
 
   const nfs = await prisma.notaFiscalContrato.findMany({
     where: {
+      deleted_at: null,
       ...where,
       ...(isCoord ? {} : { solicitado_por: userId }),
     },

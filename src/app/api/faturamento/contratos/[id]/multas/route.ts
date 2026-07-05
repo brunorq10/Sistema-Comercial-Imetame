@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (isNaN(contratoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
   const multas = await prisma.multaPenalidade.findMany({
-    where: { contrato_id: contratoId },
+    where: { contrato_id: contratoId, deleted_at: null },
     orderBy: [{ data_ocorrencia: 'desc' }, { created_at: 'desc' }],
     include: { criador: { select: { nome: true } } },
   })

@@ -109,8 +109,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       cliente_final: { select: { id: true, nome: true } },
       responsavel:   { select: { id: true, nome: true } },
       subindices: {
+        where: { deleted_at: null },
         orderBy: { ordem: 'asc' },
-        include: { notas_fiscais: true },
+        include: { notas_fiscais: { where: { deleted_at: null } } },
       },
     },
   })
@@ -132,7 +133,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const nfTotals = allNFNumbers.length > 0
     ? await prisma.notaFiscalContrato.groupBy({
         by: ['numero_nf'],
-        where: { numero_nf: { in: allNFNumbers } },
+        where: { numero_nf: { in: allNFNumbers }, deleted_at: null },
         _sum: { percentual: true },
       })
     : []
@@ -188,7 +189,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
       cliente_final: { select: { id: true, nome: true } },
       responsavel:   { select: { id: true, nome: true } },
-      subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+      subindices: { where: { deleted_at: null }, orderBy: { ordem: 'asc' }, include: { notas_fiscais: { where: { deleted_at: null } } } },
     },
   })
 
@@ -222,7 +223,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (subsBody) {
     const userId = Number(session.user.id)
     const existentes = await prisma.subIndiceFaturamento.findMany({
-      where: { contrato_id: id },
+      where: { contrato_id: id, deleted_at: null },
       select: { id: true, ordem: true, _count: { select: { notas_fiscais: true } } },
     })
     const idsBody = new Set(subsBody.filter((s) => s.id != null).map((s) => s.id as number))
@@ -230,11 +231,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const naoExcluidos: number[] = []
 
     const ops = []
-    // Remoções (apenas sub-índices sem NFs)
+    // Remoções (apenas sub-índices sem NFs) — Lixeira: soft-delete recuperável
     for (const e of existentes) {
       if (!idsBody.has(e.id)) {
-        if (e._count.notas_fiscais === 0) ops.push(prisma.subIndiceFaturamento.delete({ where: { id: e.id } }))
-        else naoExcluidos.push(e.id)
+        if (e._count.notas_fiscais === 0) {
+          ops.push(prisma.subIndiceFaturamento.update({
+            where: { id: e.id },
+            data: { deleted_at: new Date(), deleted_by: userId },
+          }))
+        } else naoExcluidos.push(e.id)
       }
     }
     // Atualizações e criações
@@ -264,7 +269,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
         cliente_final: { select: { id: true, nome: true } },
         responsavel:   { select: { id: true, nome: true } },
-        subindices: { orderBy: { ordem: 'asc' }, include: { notas_fiscais: true } },
+        subindices: { where: { deleted_at: null }, orderBy: { ordem: 'asc' }, include: { notas_fiscais: { where: { deleted_at: null } } } },
       },
     })
     const aviso = naoExcluidos.length > 0

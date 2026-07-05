@@ -449,6 +449,9 @@ model SolicitacaoInfo {
   // impacto: descontinuado (mantido só por histórico, não exibido)
   impacto        String[]
   versao         Int?
+  // Lixeira: exclusão vira soft-delete recuperável por 15 dias
+  deleted_at     DateTime?
+  deleted_by     Int?
   created_at     DateTime @default(now())
   created_by     Int
 
@@ -457,6 +460,7 @@ model SolicitacaoInfo {
   anexos      SolicitacaoInfoAnexo[]
 
   @@index([solicitacao_id])
+  @@index([deleted_at])
   @@map("solicitacoes_info")
 }
 
@@ -829,6 +833,9 @@ model OcorrenciaContratual {
   impacto                String[] // PRAZO | CUSTO | CRONOGRAMA | MARCO_CONTRATUAL | OUTROS
   descricao              String
   data_notificacao_cliente DateTime?
+  // Lixeira: exclusão vira soft-delete recuperável por 15 dias
+  deleted_at             DateTime?
+  deleted_by             Int?
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
   created_by             Int
@@ -840,6 +847,7 @@ model OcorrenciaContratual {
   @@unique([contrato_id, codigo])
   @@index([contrato_id])
   @@index([data])
+  @@index([deleted_at])
   @@map("ocorrencias_contratuais")
 }
 
@@ -855,6 +863,9 @@ model MultaPenalidade {
   valor_total              Decimal  @db.Decimal(15, 2)
   ativa                    Boolean  @default(true)
   motivo_inativacao        String?
+  // Lixeira: exclusão vira soft-delete recuperável por 15 dias
+  deleted_at               DateTime?
+  deleted_by               Int?
   created_at               DateTime @default(now())
   updated_at               DateTime @updatedAt
   created_by               Int
@@ -864,6 +875,7 @@ model MultaPenalidade {
 
   @@index([contrato_id])
   @@index([data_ocorrencia])
+  @@index([deleted_at])
   @@map("multas_penalidades")
 }
 
@@ -906,6 +918,9 @@ model SubIndiceFaturamento {
   out         Decimal?          @db.Decimal(15, 2)
   nov         Decimal?          @db.Decimal(15, 2)
   dez         Decimal?          @db.Decimal(15, 2)
+  // Lixeira: exclusão vira soft-delete recuperável por 15 dias
+  deleted_at  DateTime?
+  deleted_by  Int?
   created_at  DateTime          @default(now())
   updated_at  DateTime          @updatedAt
   created_by  Int
@@ -919,6 +934,7 @@ model SubIndiceFaturamento {
   alteracoes           PrevisaoAlteracao[]
 
   @@index([contrato_id])
+  @@index([deleted_at])
   @@map("subindices_faturamento")
 }
 
@@ -956,6 +972,9 @@ model NotaFiscalContrato {
   revisado_por      Int?
   revisado_em       DateTime?
   motivo_recusa     String?
+  // Lixeira: exclusão vira soft-delete recuperável por 15 dias
+  deleted_at        DateTime?
+  deleted_by        Int?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   created_by        Int
@@ -966,6 +985,7 @@ model NotaFiscalContrato {
   @@index([subindice_id])
   @@index([numero_nf, ativa])
   @@index([status_aprovacao])
+  @@index([deleted_at])
   @@map("notas_fiscais_contratos")
 }
 

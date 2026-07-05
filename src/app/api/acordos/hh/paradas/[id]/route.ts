@@ -70,8 +70,9 @@ export async function GET(
         include: { dias: { orderBy: [{ etapa: 'asc' }, { data: 'asc' }] } },
       },
       subindices: {
+        where: { deleted_at: null },
         include: {
-          notas_fiscais: { where: { ativa: true } },
+          notas_fiscais: { where: { ativa: true, deleted_at: null } },
         },
       },
     },
