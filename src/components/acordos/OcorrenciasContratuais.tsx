@@ -238,9 +238,7 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
           options={responsaveis.map(r => ({ value: String(r.id), label: r.nome }))} emptyLabel="Todos" />
         <MultiFiltro label="Tipo de ocorrência" values={tipo} onChange={setTipo}
           options={TIPOS_OCORRENCIA.map(t => ({ value: t.value, label: t.label }))} emptyLabel="Todos os tipos" />
-        <button onClick={limparFiltros} className="text-[12px] font-semibold text-green-primary hover:underline md:mb-1.5 self-start md:self-auto">
-          Limpar filtros
-        </button>
+        <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors self-start md:self-auto">✕ Limpar</button>
       </div>
 
       {/* Chips de responsabilidade */}

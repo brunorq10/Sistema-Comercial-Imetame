@@ -361,12 +361,8 @@ export default function SolicitacoesPage() {
               />
             </div>
             <div className="flex gap-1 items-end flex-shrink-0">
-              <button onClick={handleAplicarFiltros} className="bg-green-primary text-white border-none rounded px-2.5 py-[5px] text-[11px] font-semibold cursor-pointer hover:bg-green-dark transition-colors whitespace-nowrap">
-                Filtrar
-              </button>
-              <button onClick={handleLimparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
-                ✕
-              </button>
+              <Button size="sm" onClick={handleAplicarFiltros}>Filtrar</Button>
+              <button onClick={handleLimparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">✕ Limpar</button>
             </div>
           </div>
 

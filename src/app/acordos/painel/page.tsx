@@ -355,7 +355,7 @@ export default function MeuPainelAcordosPage() {
             <button
               onClick={() => { setFiltroClienteId([]); setFiltroNumOs([]); setFiltroClienteFinalId([]); setFiltroStatusFat([]); setFiltroRamo([]) }}
               className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 transition-colors"
-            >✕</button>
+            >✕ Limpar</button>
           </div>
         </div>
 

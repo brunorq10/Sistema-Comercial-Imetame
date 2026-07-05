@@ -227,9 +227,7 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
           options={autores.map(a => ({ value: String(a.id), label: a.nome }))} emptyLabel="Todos" />
         <MultiFiltro label="Tipo de informação" values={tipo} onChange={setTipo}
           options={TIPOS_INTERACAO.map(t => ({ value: t.value, label: t.label }))} emptyLabel="Todos os tipos" />
-        <button onClick={limparFiltros} className="text-[12px] font-semibold text-green-primary hover:underline md:mb-1.5 self-start md:self-auto">
-          Limpar filtros
-        </button>
+        <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors self-start md:self-auto">✕ Limpar</button>
       </div>
 
       {/* Tabela */}

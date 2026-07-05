@@ -53,7 +53,7 @@ export function HhFilters({ opts, filters, onChange }: {
       ))}
       {hasAny && (
         <button onClick={() => filterDefs.forEach(f => onChange(f.key, []))}
-          className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 flex-shrink-0">✕</button>
+          className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] hover:bg-gray-100 flex-shrink-0">✕ Limpar</button>
       )}
     </div>
   )

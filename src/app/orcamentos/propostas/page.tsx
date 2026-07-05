@@ -192,10 +192,7 @@ export default function PropostasPage() {
               options={escopos.map(e => ({ value: e, label: e }))} placeholder="Digite para filtrar…" />
           </div>
           <div className="flex-shrink-0 flex items-end gap-1">
-            <button onClick={handleFiltrar}
-              className="bg-green-primary text-white border-none rounded px-2.5 py-[5px] text-[11px] font-semibold cursor-pointer hover:bg-green-dark transition-colors whitespace-nowrap">
-              Filtrar
-            </button>
+            <Button size="sm" onClick={handleFiltrar}>Filtrar</Button>
             <button onClick={limpar}
               className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
               ✕

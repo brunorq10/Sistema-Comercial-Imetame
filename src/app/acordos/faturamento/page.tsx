@@ -663,9 +663,7 @@ export default function FaturamentoPage() {
               />
             </div>
             <div className="flex-shrink-0 flex items-end">
-              <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">
-                ✕
-              </button>
+              <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">✕ Limpar</button>
             </div>
           </div>
 

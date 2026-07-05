@@ -349,7 +349,7 @@ export default function ConstrutorRelatorioPage() {
             <label className="block text-[9px] font-semibold text-gray-500 uppercase mb-0.5">Responsável</label>
             <SearchableMultiSelect values={responsavelIds} onChange={setResponsavelIds} options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
           </div>
-          <button onClick={limparFiltros} className="text-[11px] font-semibold text-green-primary hover:underline mb-1.5">Limpar filtros</button>
+          <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors mb-1.5">✕ Limpar</button>
           <label className="flex items-center gap-1.5 text-[11px] text-gray-600 mb-1.5 cursor-pointer select-none" title="Se desmarcado, linhas em que todos os valores são vazios/zero não aparecem">
             <input type="checkbox" checked={incluirVazios} onChange={(e) => setIncluirVazios(e.target.checked)} />
             Incluir itens sem valores?
