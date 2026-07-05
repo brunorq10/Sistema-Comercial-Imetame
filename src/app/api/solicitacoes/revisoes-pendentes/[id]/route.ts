@@ -35,10 +35,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ data: null, error: 'Revisão pendente não encontrada ou já avaliada' }, { status: 404 })
   }
 
-  // Apenas o orçamentista designado (ou ADM Geral) pode avaliar
-  const isAdm = session.user.perfil === 'ADM_GERAL'
-  if (pendente.solicitacao.orcamentista_id !== userId && !isAdm) {
-    return NextResponse.json({ data: null, error: 'Apenas o orçamentista designado pode avaliar esta revisão' }, { status: 403 })
+  // Podem avaliar: o orçamentista designado, o Analista Crítico e o ADM Geral
+  const podeAvaliar = pendente.solicitacao.orcamentista_id === userId ||
+    !!session.user.is_analista_critico || session.user.perfil === 'ADM_GERAL'
+  if (!podeAvaliar) {
+    return NextResponse.json({ data: null, error: 'Apenas o orçamentista designado ou o Analista Crítico podem avaliar esta revisão' }, { status: 403 })
   }
 
   if (acao === 'RECUSAR') {

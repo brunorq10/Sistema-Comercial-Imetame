@@ -2,14 +2,19 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET — revisões aguardando avaliação do orçamentista logado (Meu Painel).
+// GET — revisões aguardando avaliação (Meu Painel).
+// Orçamentista vê as das suas solicitações; Analista Crítico e ADM Geral veem todas.
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
   const userId = Number(session.user.id)
+  const veTodas = !!session.user.is_analista_critico || session.user.perfil === 'ADM_GERAL'
 
   const pendentes = await prisma.revisaoPendente.findMany({
-    where: { status: 'PENDENTE', solicitacao: { orcamentista_id: userId, cancelled_at: null } },
+    where: {
+      status: 'PENDENTE',
+      solicitacao: { cancelled_at: null, ...(veTodas ? {} : { orcamentista_id: userId }) },
+    },
     orderBy: { created_at: 'asc' },
     select: {
       id: true,
