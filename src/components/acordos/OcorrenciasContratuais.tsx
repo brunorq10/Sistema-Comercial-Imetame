@@ -9,6 +9,7 @@ import {
 } from '@/lib/ocorrencias'
 import { NovaOcorrenciaModal } from '@/components/forms/NovaOcorrenciaModal'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface Anexo { id: number; nome: string; tipo: string; url: string; tamanho: number | null }
 interface Ocorrencia {
@@ -92,14 +93,30 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
     setQ(''); setPeriodo('all'); setResponsavel([]); setTipo([]); setResponsabilidade('')
   }
 
+  const [dlgExcluir, setDlgExcluir] = useState<number | null>(null)
+  const [dlgErro, setDlgErro] = useState<string | null>(null)
+
   const excluir = async (id: number) => {
-    if (!confirm('Excluir esta ocorrência? Esta ação não pode ser desfeita.')) return
     const res = await fetch(`/api/acordos/contratos/${contratoId}/ocorrencias/${id}`, { method: 'DELETE' })
     const json = await res.json().catch(() => ({}))
-    if (!res.ok || json.error) { alert(json.error ?? 'Erro ao excluir'); return }
+    if (!res.ok || json.error) { setDlgErro(json.error ?? 'Erro ao excluir'); return }
+    setDlgExcluir(null); setDlgErro(null)
     setSelected(null)
     setReloadKey(k => k + 1)
   }
+
+  const dialogoExcluir = (
+    <ConfirmDialog
+      open={dlgExcluir !== null}
+      title="Excluir ocorrência"
+      variant="danger"
+      message="A ocorrência será movida para a Lixeira e poderá ser restaurada em até 15 dias."
+      confirmLabel="Excluir"
+      error={dlgErro}
+      onConfirm={() => dlgExcluir !== null && excluir(dlgExcluir)}
+      onClose={() => { setDlgExcluir(null); setDlgErro(null) }}
+    />
+  )
 
 
   // ── Detalhe (substitui a tabela) ──────────────────────────────────────────
@@ -113,11 +130,12 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
             <IconBack className="w-4 h-4" /> Voltar
           </button>
           {podeExcluir && (
-            <button onClick={() => excluir(selected.id)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700">
+            <button onClick={() => setDlgExcluir(selected.id)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-700">
               <IconTrash className="w-3.5 h-3.5" /> Excluir
             </button>
           )}
         </div>
+        {dialogoExcluir}
 
         <div className="flex items-center gap-2 flex-wrap mb-3">
           <span className="text-[15px] font-bold text-green-primary">{selected.codigo}</span>

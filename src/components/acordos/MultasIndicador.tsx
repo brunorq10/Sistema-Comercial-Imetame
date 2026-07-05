@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPOS_MULTA, TIPO_MULTA_MAP, TIPO_MULTA_LABEL } from '@/lib/multas'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { Button } from '@/components/ui/Button'
 
 interface MultaItem {
   id: number
@@ -124,7 +125,7 @@ export function MultasIndicador() {
           <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={`${selCls} w-full`} />
         </div>
         <button onClick={limpar} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[6px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
-        <button onClick={exportarExcel} disabled={items.length === 0} className="bg-green-primary hover:bg-green-dark text-white rounded px-3 py-[6px] text-[11px] font-semibold transition-colors disabled:opacity-50">⭳ Exportar Excel</button>
+        <Button size="sm" variant="outline" onClick={exportarExcel} disabled={items.length === 0}>Exportar Excel</Button>
       </div>
 
       {/* Cards de resumo por tipo + total */}

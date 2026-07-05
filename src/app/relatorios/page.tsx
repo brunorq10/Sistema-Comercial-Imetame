@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CampoPublico } from '@/lib/relatorios/catalog'
 import type { PivotResult } from '@/lib/relatorios/shared'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { FieldPanel } from '@/components/relatorios/FieldPanel'
 import { Zones, type ChipDim, type ChipVal, type Gran, type Agg, type Zona } from '@/components/relatorios/Zones'
 import { ResultTable } from '@/components/relatorios/ResultTable'
@@ -271,20 +273,26 @@ export default function ConstrutorRelatorioPage() {
     setModalVersoes(null)
   }
 
-  const renomearSalvo = async (id: number, nomeAtual: string) => {
-    const nome = window.prompt('Novo nome do relatório:', nomeAtual)
-    if (!nome || !nome.trim()) return
-    const res = await fetch(`/api/relatorios/salvos/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome.trim() }) })
+  const [dlgRenomear, setDlgRenomear] = useState<{ id: number; nome: string } | null>(null)
+  const [dlgExcluir, setDlgExcluir] = useState<{ id: number; nome: string } | null>(null)
+
+  const renomearSalvo = async (novoNome: string) => {
+    if (!dlgRenomear || !novoNome) return
+    const { id } = dlgRenomear
+    const res = await fetch(`/api/relatorios/salvos/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novoNome }) })
     const j = await res.json()
+    setDlgRenomear(null)
     if (!res.ok || j.error) { flash(j.error ?? 'Erro ao renomear.'); return }
-    if (ativo?.id === id) setAtivo({ id, nome: nome.trim() })
+    if (ativo?.id === id) setAtivo({ id, nome: novoNome })
     fetchSalvos()
   }
 
-  const excluirSalvo = async (id: number, nome: string) => {
-    if (!window.confirm(`Excluir o relatório "${nome}"?`)) return
+  const excluirSalvo = async () => {
+    if (!dlgExcluir) return
+    const { id } = dlgExcluir
     const res = await fetch(`/api/relatorios/salvos/${id}`, { method: 'DELETE' })
     const j = await res.json()
+    setDlgExcluir(null)
     if (!res.ok || j.error) { flash(j.error ?? 'Erro ao excluir.'); return }
     if (ativo?.id === id) setAtivo(null)
     fetchSalvos()
@@ -295,7 +303,9 @@ export default function ConstrutorRelatorioPage() {
       <div className="flex flex-col gap-3 flex-shrink-0 h-full">
         <FieldPanel campos={campos} busca={busca} onBusca={setBusca} onDragField={() => {}} />
         <SavedReports salvos={salvos} ativoId={ativo?.id ?? null}
-          onLoad={carregarSalvo} onVersoes={abrirVersoes} onRename={renomearSalvo} onDelete={excluirSalvo} />
+          onLoad={carregarSalvo} onVersoes={abrirVersoes}
+          onRename={(id, nomeAtual) => setDlgRenomear({ id, nome: nomeAtual })}
+          onDelete={(id, nome) => setDlgExcluir({ id, nome })} />
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col gap-2.5 overflow-y-auto">
@@ -309,10 +319,10 @@ export default function ConstrutorRelatorioPage() {
             {score > 15 && <span className="text-[10px] text-amber-600 font-medium">Complexidade {score} — considere reduzir campos/definir período</span>}
           </div>
           <div className="flex items-center gap-1.5">
-            <button onClick={limparTudo} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100">Limpar tudo</button>
-            <button onClick={abrirSalvar} disabled={!configValida} className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 disabled:opacity-50">Salvar</button>
-            <button onClick={executar} disabled={!configValida || loading} className="bg-green-primary text-white rounded px-3 py-[5px] text-[11px] font-semibold hover:bg-green-dark disabled:opacity-50">Atualizar</button>
-            <button onClick={exportar} disabled={!configValida || loading} className="border border-green-primary text-green-primary rounded px-2.5 py-[5px] text-[11px] font-semibold hover:bg-green-light disabled:opacity-50">Exportar Excel</button>
+            <Button size="sm" variant="ghost" onClick={limparTudo}>Limpar tudo</Button>
+            <Button size="sm" variant="outline" onClick={abrirSalvar} disabled={!configValida}>Salvar</Button>
+            <Button size="sm" variant="outline" onClick={exportar} disabled={!configValida || loading}>Exportar Excel</Button>
+            <Button size="sm" onClick={executar} disabled={!configValida || loading}>Atualizar</Button>
           </div>
         </div>
 
@@ -417,6 +427,26 @@ export default function ConstrutorRelatorioPage() {
           </div>
         </div>
       )}
+
+      {/* Diálogos padrão: renomear / excluir favorito */}
+      <ConfirmDialog
+        open={!!dlgRenomear}
+        title="Renomear relatório"
+        variant="info"
+        input={{ label: 'Novo nome', initial: dlgRenomear?.nome, required: true }}
+        confirmLabel="Renomear"
+        onConfirm={renomearSalvo}
+        onClose={() => setDlgRenomear(null)}
+      />
+      <ConfirmDialog
+        open={!!dlgExcluir}
+        title="Excluir relatório"
+        variant="danger"
+        message={dlgExcluir ? <>O relatório <strong>{dlgExcluir.nome}</strong> será excluído.</> : null}
+        confirmLabel="Excluir"
+        onConfirm={excluirSalvo}
+        onClose={() => setDlgExcluir(null)}
+      />
 
       {/* Modal período em branco */}
       {confirmarSemData && (

@@ -10,6 +10,8 @@ import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import type { PropostasItem } from '@/types'
 
 const opClassificacao = [
@@ -140,18 +142,17 @@ export default function PropostasPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[15px] font-bold">Propostas</h2>
-          <div className="flex items-center gap-2">
-            {!loading && items.length > 0 && (
-              <button onClick={exportarExcel}
-                className="border border-gray-300 text-gray-600 rounded px-2.5 py-[5px] text-[11px] font-medium hover:bg-gray-50 transition-colors">
-                Exportar Excel
-              </button>
-            )}
-            <span className="text-[11px] text-gray-400">{items.length} proposta{items.length !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
+        <PageHeader
+          title="Propostas"
+          actions={
+            <>
+              <span className="text-[11px] text-gray-400">{items.length} proposta{items.length !== 1 ? 's' : ''}</span>
+              {!loading && items.length > 0 && (
+                <Button size="sm" variant="outline" onClick={exportarExcel}>Exportar Excel</Button>
+              )}
+            </>
+          }
+        />
 
         {/* Filtros */}
         <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 flex flex-wrap gap-1.5 items-end">

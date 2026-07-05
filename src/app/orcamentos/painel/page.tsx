@@ -11,6 +11,7 @@ import { RegistrarParadaModal } from '@/components/forms/RegistrarParadaModal'
 import { RegistrarObraModal } from '@/components/forms/RegistrarObraModal'
 import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
 import { RevisoesPendentes } from '@/components/painel/RevisoesPendentes'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 
@@ -138,12 +139,10 @@ export default function PainelOrcamentosPage() {
 
   return (
     <div className="p-4 h-full overflow-y-auto">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[15px] font-bold">Meu Painel — Orçamentos</h2>
-      </div>
-      <p className="text-[11px] text-gray-400 mb-3">
-        Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.
-      </p>
+      <PageHeader
+        title="Meu Painel — Orçamentos"
+        subtitle='Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.'
+      />
 
       {/* Revisões aguardando avaliação do orçamentista */}
       <RevisoesPendentes onChanged={fetchData} />

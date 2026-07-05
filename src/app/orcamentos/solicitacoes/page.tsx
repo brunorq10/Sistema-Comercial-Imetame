@@ -12,6 +12,7 @@ import { ClassificacaoBadge, InteresseBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { formatDate } from '@/lib/utils'
 import type { SolicitacaoListItem, FiltrosSolicitacao, StatusSolicitacao, Classificacao, Interesse, Origem } from '@/types'
 
@@ -237,17 +238,19 @@ export default function SolicitacoesPage() {
       )}
 
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h2 className="text-[15px] font-bold">Solicitações de Orçamento</h2>
-        <div className="flex gap-2 items-center">
-          {!loading && items.length > 0 && view === 'solicitacoes' && (
-            <Button variant="outline" onClick={exportarExcel}>Exportar Excel</Button>
-          )}
-          {perms.canCreateSolicitacao && view === 'solicitacoes' && (
-            <Button onClick={handleNova}>+ Nova solicitação</Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Solicitações de Orçamento"
+        actions={
+          <>
+            {!loading && items.length > 0 && view === 'solicitacoes' && (
+              <Button size="sm" variant="outline" onClick={exportarExcel}>Exportar Excel</Button>
+            )}
+            {perms.canCreateSolicitacao && view === 'solicitacoes' && (
+              <Button size="sm" onClick={handleNova}>+ Nova solicitação</Button>
+            )}
+          </>
+        }
+      />
 
       {/* Abas de view */}
       <div className="flex gap-0 border-b border-gray-200 mb-4">

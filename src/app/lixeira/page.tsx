@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 
 interface ItemLixeira {
   tipo: string
@@ -23,6 +25,7 @@ export default function LixeiraPage() {
   const [retencao, setRetencao] = useState(15)
   const [loading, setLoading] = useState(true)
   const [restaurando, setRestaurando] = useState<string | null>(null)
+  const [confirmando, setConfirmando] = useState<ItemLixeira | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -42,7 +45,6 @@ export default function LixeiraPage() {
   const filtrados = filtroTipo ? itens.filter((i) => i.tipoLabel === filtroTipo) : itens
 
   const restaurar = async (item: ItemLixeira) => {
-    if (!window.confirm(`Restaurar "${item.titulo}"? O item voltará a aparecer normalmente no sistema.`)) return
     const key = `${item.tipo}-${item.id}`
     setRestaurando(key); setErro(null); setOk(null)
     try {
@@ -54,6 +56,7 @@ export default function LixeiraPage() {
       const j = await res.json()
       if (!res.ok || j.error) { setErro(j.error ?? 'Erro ao restaurar'); return }
       setOk(`"${item.titulo}" restaurado com sucesso.`)
+      setConfirmando(null)
       fetchItens()
     } finally {
       setRestaurando(null)
@@ -62,22 +65,22 @@ export default function LixeiraPage() {
 
   return (
     <div className="p-4 h-full overflow-y-auto">
-      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-        <h2 className="text-[15px] font-bold">Lixeira</h2>
-        <div className="flex items-center gap-2">
-          {tipos.length > 1 && (
-            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-green-primary">
-              <option value="">Todos os tipos</option>
-              {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          )}
-          <span className="text-[11px] text-gray-400">{filtrados.length} item(ns)</span>
-        </div>
-      </div>
-      <p className="text-[11px] text-gray-400 mb-3">
-        Itens excluídos ficam aqui por {retencao} dias e podem ser restaurados. Após o prazo, são apagados definitivamente.
-      </p>
+      <PageHeader
+        title="Lixeira"
+        subtitle={`Itens excluídos ficam aqui por ${retencao} dias e podem ser restaurados. Após o prazo, são apagados definitivamente.`}
+        actions={
+          <>
+            {tipos.length > 1 && (
+              <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-green-primary">
+                <option value="">Todos os tipos</option>
+                {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
+            <span className="text-[11px] text-gray-400">{filtrados.length} item(ns)</span>
+          </>
+        }
+      />
 
       {erro && <div className="bg-red-50 border border-red-200 text-red-700 text-[11px] px-3 py-2 rounded mb-2">{erro}</div>}
       {ok && <div className="bg-green-light border border-green-primary/30 text-green-dark text-[11px] px-3 py-2 rounded mb-2">{ok}</div>}
@@ -107,7 +110,7 @@ export default function LixeiraPage() {
                     <span className={dias <= 3 ? 'text-red-500 font-semibold' : ''}>expira em {dias} dia(s)</span>
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => restaurar(item)} disabled={restaurando === key}>
+                <Button size="sm" variant="outline" onClick={() => setConfirmando(item)} disabled={restaurando === key}>
                   {restaurando === key ? 'Restaurando…' : '↩ Restaurar'}
                 </Button>
               </div>
@@ -115,6 +118,17 @@ export default function LixeiraPage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmando}
+        title="Restaurar item"
+        variant="success"
+        message={confirmando ? <>O item <strong>{confirmando.titulo}</strong> voltará a aparecer normalmente no sistema.</> : null}
+        confirmLabel="Restaurar"
+        loading={!!restaurando}
+        onConfirm={() => confirmando && restaurar(confirmando)}
+        onClose={() => setConfirmando(null)}
+      />
     </div>
   )
 }

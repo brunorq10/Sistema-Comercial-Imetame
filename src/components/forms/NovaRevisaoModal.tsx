@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { formatDateInput } from '@/lib/utils'
@@ -73,6 +74,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
   const [error, setError] = useState<string | null>(null)
   const [clientes, setClientes] = useState<ClienteOpt[]>([])
   const [orcamentistas, setOrcamentistas] = useState<Orcamentista[]>([])
+  const [avisoSucesso, setAvisoSucesso] = useState<string | null>(null)
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -175,7 +177,7 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao criar revisão'); return }
-      if (json.message) window.alert(json.message)
+      if (json.message) { setAvisoSucesso(json.message); return }
       onSuccess()
       onClose()
     } finally {
@@ -184,6 +186,22 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
   }
 
   if (!solicitacao) return null
+
+  // Aviso padrão pós-envio: a revisão vai para avaliação do orçamentista
+  if (avisoSucesso) {
+    return (
+      <ConfirmDialog
+        open
+        title="Revisão enviada para avaliação"
+        variant="success"
+        message={avisoSucesso}
+        confirmLabel="Entendi"
+        cancelLabel={null}
+        onConfirm={() => { setAvisoSucesso(null); onSuccess(); onClose() }}
+        onClose={() => { setAvisoSucesso(null); onSuccess(); onClose() }}
+      />
+    )
+  }
 
   const nextLabel = asSold
     ? 'As Sold.'
