@@ -103,9 +103,15 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
     const seg = clienteFinal.segmento ?? clienteFinal.ramo_atuacao ?? ''
     const mapped = seg === 'MINERACAO' ? 'OUTROS' : seg
     if (mapped) setValue('segmento', mapped)
+    // Só limpa cidade/estado se a cidade atual NÃO pertencer ao cliente final
+    // (preserva o prefill vindo da última revisão)
+    const cidadesValidas = clienteFinal.filiais.length > 0
+      ? clienteFinal.filiais.map((f) => f.cidade)
+      : [clienteFinal.cidade].filter((c): c is string => !!c)
+    if (cidadeSelecionada && cidadesValidas.includes(cidadeSelecionada)) return
     setValue('cidade', '')
     setValue('estado', '')
-  }, [clienteFinalId, clienteFinal, setValue])
+  }, [clienteFinalId, clienteFinal, cidadeSelecionada, setValue])
 
   useEffect(() => {
     if (!open) {
@@ -131,6 +137,9 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
         prazo_comercial:    formatDateInput(solicitacao.prazo_comercial),
         visita_tecnica:     solicitacao.visita_tecnica ? 'SIM' : 'NAO',
         data_visita:        formatDateInput(solicitacao.data_visita),
+        comprador:          solicitacao.comprador ?? '',
+        telefone_comprador: solicitacao.telefone_comprador ?? '',
+        email_comprador:    solicitacao.email_comprador ?? '',
         classificacao:      solicitacao.classificacao ?? '',
         interesse:          solicitacao.interesse ?? '',
         orcamentista_id:    solicitacao.orcamentista ? String(solicitacao.orcamentista.id) : '',

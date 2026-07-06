@@ -14,19 +14,15 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const responsavelIdParam = searchParams.get('responsavel_id')
   const todos = searchParams.get('todos') === '1'
-  const perfil = session.user.perfil
-  const isGestao = perfil === 'GESTAO_ACORDOS'
   const userId = Number(session.user.id)
 
-  // Determina qual responsavel_id filtrar
+  // VISUALIZAÇÃO é livre para qualquer usuário autenticado (inclusive de outros
+  // módulos, ex.: Comercial vendo Acordos). A EDIÇÃO permanece protegida nas
+  // rotas de escrita (permissão + titularidade).
   let responsavelId: number | undefined
-  if (todos && isGestao) {
+  if (todos) {
     responsavelId = undefined // busca todos
   } else if (responsavelIdParam) {
-    // GESTAO_ACORDOS pode ver qualquer um; outros só podem ver a si mesmos
-    if (!isGestao && Number(responsavelIdParam) !== userId) {
-      return NextResponse.json({ data: null, error: 'Sem permissão para ver contratos de outro responsável' }, { status: 403 })
-    }
     responsavelId = Number(responsavelIdParam)
   } else {
     // Default: o próprio usuário

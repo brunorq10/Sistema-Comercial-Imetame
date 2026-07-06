@@ -141,17 +141,18 @@ export default function MeuPainelAcordosPage() {
       .then((j) => { if (j.data?.responsaveis) setResponsaveis(j.data.responsaveis) })
   }, [])
 
+  // Perfil ACORDOS abre no próprio painel; demais perfis (visualização livre)
+  // abrem em "Todos os responsáveis".
   useEffect(() => {
-    if (userId && !isGestao) setResponsavelId(String(userId))
-  }, [userId, isGestao])
+    if (userId && perfil === 'ACORDOS') setResponsavelId(String(userId))
+  }, [userId, perfil])
 
   const fetchContratos = useCallback(async () => {
-    if (!responsavelId && !isGestao) return
     setLoading(true); setError(null)
     try {
       const params = new URLSearchParams()
       if (responsavelId) params.set('responsavel_id', responsavelId)
-      else if (isGestao) params.set('todos', '1')
+      else params.set('todos', '1')
       const res = await fetch(`/api/faturamento/painel-acordos?${params.toString()}`)
       const json = await res.json()
       if (json.error) { setError(json.error); return }
@@ -162,7 +163,7 @@ export default function MeuPainelAcordosPage() {
     } finally {
       setLoading(false)
     }
-  }, [responsavelId, isGestao])
+  }, [responsavelId])
 
   useEffect(() => { fetchContratos() }, [fetchContratos])
 
@@ -319,7 +320,7 @@ export default function MeuPainelAcordosPage() {
               value={responsavelId}
               onChange={setResponsavelId}
               options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))}
-              emptyLabel={isGestao ? 'Todos os responsáveis' : 'Selecione um responsável'}
+              emptyLabel="Todos os responsáveis"
             />
           </div>
           <div className="flex-1 min-w-[110px]">
@@ -376,8 +377,8 @@ export default function MeuPainelAcordosPage() {
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : filteredContratos.length === 0 ? (
           <div className="text-center py-10 text-gray-400 text-sm">
-            {isGestao && !responsavelId
-              ? 'Selecione um responsável ou aguarde o carregamento de todos os contratos.'
+            {!responsavelId
+              ? 'Nenhum contrato encontrado.'
               : 'Nenhum contrato vinculado a este responsável.'}
           </div>
         ) : (

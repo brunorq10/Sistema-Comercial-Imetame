@@ -26,6 +26,7 @@ export interface PainelItem {
   data_visita: string | null
   is_portal: boolean
   portal_hora: string | null
+  portal_fechamento: string | null
   versao_atual: number
   tecnica_enviada: boolean
   tecnica_nao_aplicavel: boolean
@@ -99,9 +100,14 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
             ? <Badge variant="red">⚠ Atrasada</Badge>
             : <Badge variant="green">No prazo</Badge>
           }
-          {/* Sinalização de Portal */}
+          {/* Sinalização de Portal — data e hora de fechamento */}
           {item.is_portal && (
-            <Badge variant="blue">🌐 Portal{item.portal_hora ? ` — encerra ${item.portal_hora}` : ''}</Badge>
+            <Badge variant="blue">
+              🌐 Portal
+              {item.portal_fechamento
+                ? ` — fecha ${new Date(item.portal_fechamento).toLocaleDateString('pt-BR')} às ${new Date(item.portal_fechamento).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : item.portal_hora ? ` — fecha às ${item.portal_hora}` : ''}
+            </Badge>
           )}
         </div>
         {/* Indicadores de envio — mantidos sem alteração */}

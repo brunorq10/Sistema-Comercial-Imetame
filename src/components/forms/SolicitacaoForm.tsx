@@ -27,7 +27,7 @@ const schema = z.object({
   visita_tecnica:    z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
   data_visita:       z.string().optional(),
   is_portal:         z.enum(['SIM', 'NAO'], { required_error: 'Selecione uma opção' }),
-  portal_hora:       z.string().optional(),
+  portal_fechamento: z.string().optional(),
   // campos opcionais (edição)
   classificacao:     z.string().optional(),
   interesse:         z.string().optional(),
@@ -39,8 +39,8 @@ const schema = z.object({
   (d) => d.visita_tecnica !== 'SIM' || (d.data_visita && d.data_visita.length > 0),
   { message: 'Informe a data da visita', path: ['data_visita'] },
 ).refine(
-  (d) => d.is_portal !== 'SIM' || (!!d.portal_hora && /^\d{2}:\d{2}$/.test(d.portal_hora)),
-  { message: 'Informe a hora de encerramento do portal', path: ['portal_hora'] },
+  (d) => d.is_portal !== 'SIM' || (!!d.portal_fechamento && d.portal_fechamento.length >= 16),
+  { message: 'Informe a data e hora de fechamento do portal', path: ['portal_fechamento'] },
 )
 
 type FormValues = z.infer<typeof schema>
@@ -117,10 +117,15 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     // MINERACAO não existe em Segmento → mapear para OUTROS
     const mapped = seg === 'MINERACAO' ? 'OUTROS' : seg
     if (mapped) setValue('segmento', mapped)
-    // Limpa cidade ao trocar cliente final
+    // Só limpa cidade/estado se a cidade atual NÃO pertencer ao cliente final
+    // (preserva o prefill na edição/revisão)
+    const cidadesValidas = clienteFinal.filiais.length > 0
+      ? clienteFinal.filiais.map((f) => f.cidade)
+      : [clienteFinal.cidade].filter((c): c is string => !!c)
+    if (cidadeSelecionada && cidadesValidas.includes(cidadeSelecionada)) return
     setValue('cidade', '')
     setValue('estado', '')
-  }, [clienteFinalId, clienteFinal, setValue])
+  }, [clienteFinalId, clienteFinal, cidadeSelecionada, setValue])
 
   useEffect(() => {
     if (!open) return
@@ -147,7 +152,10 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         visita_tecnica:     editando.visita_tecnica ? 'SIM' : 'NAO',
         data_visita:        formatDateInput(editando.data_visita),
         is_portal:          editando.is_portal ? 'SIM' : 'NAO',
-        portal_hora:        editando.portal_hora ?? '',
+        portal_fechamento:  editando.portal_fechamento ? editando.portal_fechamento.slice(0, 16) : '',
+        comprador:          editando.comprador ?? '',
+        telefone_comprador: editando.telefone_comprador ?? '',
+        email_comprador:    editando.email_comprador ?? '',
         classificacao:      editando.classificacao ?? '',
         interesse:          editando.interesse ?? '',
         orcamentista_id:    editando.orcamentista ? String(editando.orcamentista.id) : '',
@@ -176,7 +184,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
         visita_tecnica:     values.visita_tecnica === 'SIM',
         data_visita:        values.visita_tecnica === 'SIM' ? values.data_visita : undefined,
         is_portal:          values.is_portal === 'SIM',
-        portal_hora:        values.is_portal === 'SIM' ? values.portal_hora : undefined,
+        portal_fechamento:  values.is_portal === 'SIM' ? values.portal_fechamento : undefined,
         classificacao:      values.classificacao || undefined,
         interesse:          values.interesse || undefined,
         comprador:          values.comprador || undefined,
@@ -340,8 +348,8 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
           </Select>
         </Field>
         {isPortal === 'SIM' && (
-          <Field label="Hora de encerramento do portal *" error={errors.portal_hora?.message}>
-            <Input type="time" {...register('portal_hora')} />
+          <Field label="Data e hora de fechamento do portal *" error={errors.portal_fechamento?.message}>
+            <Input type="datetime-local" {...register('portal_fechamento')} />
           </Field>
         )}
       </div>

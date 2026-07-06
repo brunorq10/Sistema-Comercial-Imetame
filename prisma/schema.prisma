@@ -233,9 +233,10 @@ model Solicitacao {
   orcamentista_id Int?
   visita_tecnica    Boolean           @default(false)
   data_visita       DateTime?
-  // Portal: solicitação vinda de portal do cliente, com hora de encerramento (HH:MM)
+  // Portal: solicitação vinda de portal do cliente, com data+hora de fechamento
   is_portal         Boolean           @default(false)
-  portal_hora       String?           @db.VarChar(5)
+  portal_hora       String?           @db.VarChar(5) // legado (só hora) — usar portal_fechamento
+  portal_fechamento DateTime?
   motivo_recusa     String?
   motivo_reprovacao            MotivoReprovacao?
   obs_reprovacao               String?
@@ -248,6 +249,9 @@ model Solicitacao {
   cancel_reason   String?
   suspended_at    DateTime?
   suspend_reason  String?
+  // Cancelamento da PROPOSTA (aba Propostas) — reversível, não afeta a solicitação
+  proposta_cancelada_at    DateTime?
+  proposta_cancel_reason   String?
   data_atribuicao DateTime?
 
   cliente        Cliente  @relation("SolicitacaoCliente", fields: [cliente_id], references: [id])

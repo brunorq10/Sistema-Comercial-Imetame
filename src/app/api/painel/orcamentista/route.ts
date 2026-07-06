@@ -101,6 +101,7 @@ export async function GET(req: NextRequest) {
       data_visita: s.data_visita?.toISOString() ?? null,
       is_portal: s.is_portal,
       portal_hora: s.portal_hora,
+      portal_fechamento: s.portal_fechamento?.toISOString() ?? null,
 
       versao_atual: revisaoEsperada,
       tecnica_enviada: tecnicaEnviada,

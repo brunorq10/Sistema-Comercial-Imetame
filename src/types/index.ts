@@ -106,6 +106,10 @@ export interface SolicitacaoListItem {
   visita_tecnica: boolean
   is_portal: boolean
   portal_hora: string | null
+  portal_fechamento: string | null
+  comprador: string | null
+  telefone_comprador: string | null
+  email_comprador: string | null
   versao_atual: number
   as_sold: boolean
   cancelled_at: string | null
@@ -180,6 +184,9 @@ export interface PropostasItem {
   classificacao: Classificacao | null
   interesse: Interesse | null
   status: StatusSolicitacao
+  proposta_cancelada_at: string | null
+  proposta_cancel_reason: string | null
+  suspensa: boolean
   orcamentista: { id: number; nome: string } | null
   prazo_tecnica: string | null
   prazo_comercial: string | null

@@ -84,16 +84,23 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
                 ? (fabricacaoItem?.valor_total ?? null)
                 : item.valor_total
               const valorTotalNum = valorTotalRaw != null ? Number(valorTotalRaw) : null
+              const desativada = !!item.proposta_cancelada_at || item.suspensa
               return (
                 <tr
                   key={item.id}
-                  className="border-b border-gray-100 cursor-default"
+                  className={cn('border-b border-gray-100 cursor-default', desativada && 'opacity-50')}
                   style={{ background: bg }}
                   onMouseEnter={() => setHoveredId(item.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
                   <td className="px-3 py-[6px] whitespace-nowrap">
                     <span className="font-bold text-green-dark">{item.numero}</span>
+                    {item.proposta_cancelada_at && (
+                      <span className="ml-1.5 inline-block text-[9px] font-bold uppercase rounded-full px-1.5 py-0.5 bg-gray-200 text-gray-500" title={item.proposta_cancel_reason ?? undefined}>Cancelada</span>
+                    )}
+                    {!item.proposta_cancelada_at && item.suspensa && (
+                      <span className="ml-1.5 inline-block text-[9px] font-bold uppercase rounded-full px-1.5 py-0.5 bg-amber-100 text-amber-700">Suspensa</span>
+                    )}
                   </td>
                   <td className="px-3 py-[6px] whitespace-nowrap">
                     {latestVersao !== null ? (

@@ -146,6 +146,11 @@ export async function GET(req: NextRequest) {
         visita_tecnica: true,
         is_portal: true,
         portal_hora: true,
+        portal_fechamento: true,
+        revisao_esperada: true,
+        comprador: true,
+        telefone_comprador: true,
+        email_comprador: true,
         as_sold: true,
         cancelled_at: true,
         suspended_at: true,
@@ -180,7 +185,8 @@ export async function GET(req: NextRequest) {
       cancelled_at: s.cancelled_at?.toISOString() ?? null,
       suspended_at: s.suspended_at?.toISOString() ?? null,
       data_atribuicao: s.data_atribuicao?.toISOString() ?? null,
-      versao_atual: propostas_tecnicas[0]?.versao ?? 1,
+      // Revisão vigente = maior entre a aprovada (revisao_esperada) e a última técnica enviada
+      versao_atual: Math.max(s.revisao_esperada ?? 1, propostas_tecnicas[0]?.versao ?? 1),
       tem_proposta_enviada: temPropostaEnviada,
     }
   })
@@ -214,7 +220,7 @@ const createSchema = z.object({
   visita_tecnica: z.boolean().optional(),
   data_visita: z.string().optional(),
   is_portal: z.boolean().optional(),
-  portal_hora: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  portal_fechamento: z.string().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -283,7 +289,7 @@ export async function POST(req: NextRequest) {
       visita_tecnica: data.visita_tecnica ?? false,
       data_visita: data.data_visita ? new Date(data.data_visita) : undefined,
       is_portal: data.is_portal ?? false,
-      portal_hora: data.is_portal ? data.portal_hora : null,
+      portal_fechamento: data.is_portal && data.portal_fechamento ? new Date(data.portal_fechamento) : null,
       created_by: Number(session.user.id),
     },
     include: {
