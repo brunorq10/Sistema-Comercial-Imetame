@@ -19,16 +19,6 @@ import type { SolicitacaoListItem, FiltrosSolicitacao, StatusSolicitacao, Classi
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type View = 'solicitacoes' | 'analise'
 
-const STATUS_TABS: { label: string; status: StatusSolicitacao | null }[] = [
-  { label: 'Todas', status: null },
-  { label: 'Ag. análise', status: 'AGUARDANDO_ANALISE' },
-  { label: 'Em elaboração', status: 'EM_ELABORACAO' },
-  { label: 'Prop. enviada', status: 'PROPOSTA_ENVIADA' },
-  { label: 'Contrato ganho', status: 'CONTRATO_GANHO' },
-  { label: 'Recusadas', status: 'RECUSADA' },
-  { label: 'Suspensas', status: 'SUSPENSA' },
-  { label: 'Canceladas', status: 'CANCELADA' },
-]
 
 interface SolicitacaoPendente {
   id: number
@@ -343,12 +333,12 @@ export default function SolicitacoesPage() {
                 value={filtros.status ?? ''}
                 onChange={(v) => setFiltros((f) => ({ ...f, status: v as never }))}
                 options={[
-                  { value: 'AGUARDANDO_ANALISE', label: 'Ag. análise' },
+                  { value: 'AGUARDANDO_ANALISE', label: 'Em análise' },
                   { value: 'EM_ELABORACAO',      label: 'Em elaboração' },
                   { value: 'PROPOSTA_ENVIADA',   label: 'Prop. enviada' },
                   { value: 'CONTRATO_GANHO',     label: 'Contrato ganho' },
                   { value: 'RECUSADA',           label: 'Recusada' },
-                  { value: 'CANCELADA',          label: 'Cancelada' },
+                  { value: 'SUSPENSA',           label: 'Suspensa' },
                 ]}
               />
             </div>
@@ -364,33 +354,6 @@ export default function SolicitacoesPage() {
               <Button size="sm" onClick={handleAplicarFiltros}>Filtrar</Button>
               <button onClick={handleLimparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">✕ Limpar</button>
             </div>
-          </div>
-
-          {Object.values(filtrosAplicados).some(Boolean) && (
-            <p className="text-[10px] text-gray-500 mb-2.5 px-2.5 py-1 bg-green-light rounded border-l-[3px] border-green-primary">
-              Exibindo <strong>{items.length}</strong> de <strong>{total}</strong> solicitações
-            </p>
-          )}
-
-          <div className="flex gap-0 mb-3 border-b-2 border-gray-200 overflow-x-auto">
-            {STATUS_TABS.map((t) => {
-              const active = tab === t.status
-              const count = t.status === null ? total : items.filter((i) => {
-                if (t.status === 'CANCELADA') return !!i.cancelled_at
-                return i.status === t.status && !i.cancelled_at
-              }).length
-              return (
-                <button
-                  key={t.label}
-                  onClick={() => { setTab(t.status); setFiltros(f => ({ ...f, status: t.status ?? '' })); setFiltrosAplicados(fa => ({ ...fa, status: t.status ?? '' })); setPage(1) }}
-                  className={`px-3.5 py-2 text-xs font-semibold whitespace-nowrap border-b-2 -mb-0.5 transition-colors ${
-                    active ? 'text-green-primary border-green-primary' : 'text-gray-500 border-transparent hover:text-gray-700'
-                  }`}
-                >
-                  {t.label} ({count})
-                </button>
-              )
-            })}
           </div>
 
         </>

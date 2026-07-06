@@ -336,42 +336,31 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     )
   }
 
-  // RN-12: Não cancelar quando proposta está com status Ganhou ou Perdeu
-  const propostasAtivas = await prisma.propostaComercial.findFirst({
-    where: { solicitacao_id: id, resultado: { in: ['GANHOU', 'PERDEU'] } },
-  })
-  if (propostasAtivas) {
-    return NextResponse.json(
-      { data: null, error: 'Não é possível cancelar — proposta com resultado Ganhou ou Perdeu' },
-      { status: 409 },
-    )
-  }
-
-  // RN-13: Encerra propostas pendentes e cancela solicitação atomicamente
-  const updated = await prisma.$transaction(async (tx) => {
-    await tx.propostaComercial.updateMany({
-      where: { solicitacao_id: id, resultado: 'AGUARDANDO' },
-      data: { resultado: 'PERDEU', motivo_perda: 'OUTRO' },
-    })
-    return tx.solicitacao.update({
-      where: { id },
-      data: {
-        cancelled_at: new Date(),
-        cancel_reason,
-        status: 'CANCELADA',
-        status_analise: 'REPROVADA',
-      },
-    })
+  // Cancelamento sem proposta enviada = REMOÇÃO da solicitação do sistema.
+  // Regra de numeração: o número gerado é sempre MAX(numero)+1 (ver POST);
+  // assim, se existirem solicitações com numeração posterior, o número da
+  // excluída nunca é reutilizado; se ela for a última, o número volta a
+  // ficar disponível para a próxima emissão.
+  await prisma.$transaction(async (tx) => {
+    // Desvincula contratos que apontem para esta solicitação (defensivo)
+    await tx.contrato.updateMany({ where: { solicitacao_id: id }, data: { solicitacao_id: null } })
+    // Remove dependências sem cascade no schema
+    await tx.solicitacaoInfo.deleteMany({ where: { solicitacao_id: id } })
+    await tx.propostaComercial.deleteMany({ where: { solicitacao_id: id } })
+    await tx.propostaTecnica.deleteMany({ where: { solicitacao_id: id } })
+    await tx.propostaFabricacao.deleteMany({ where: { solicitacao_id: id } })
+    // historico e revisões pendentes têm onDelete: Cascade
+    await tx.solicitacao.delete({ where: { id } })
   })
 
   if (existing.orcamentista) {
     createNotificacao(
       existing.orcamentista.id,
       `Solicitação cancelada — ${existing.numero}`,
-      `A solicitação ${existing.numero} foi cancelada. Propostas pendentes foram encerradas automaticamente.`,
+      `A solicitação ${existing.numero} foi cancelada e removida do sistema. Justificativa: ${cancel_reason}`,
       '/orcamentos/painel',
     )
   }
 
-  return NextResponse.json({ data: updated, error: null })
+  return NextResponse.json({ data: { id, removida: true }, error: null })
 }

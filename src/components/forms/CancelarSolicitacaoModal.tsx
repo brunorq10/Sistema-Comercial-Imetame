@@ -98,7 +98,7 @@ export function CancelarSolicitacaoModal({ open, onClose, onSuccess, solicitacao
           desabilitado={temProposta}
           onClick={() => !temProposta && setAcao('cancelar')}
           titulo="Cancelar"
-          descricao="Encerra a solicitação. Disponível apenas enquanto nenhuma proposta foi enviada ao cliente."
+          descricao="Remove a solicitação do sistema. Disponível apenas enquanto nenhuma proposta foi enviada ao cliente. O número só será reutilizado se não existir solicitação com numeração posterior."
         />
         <OpcaoAcao
           ativo={acao === 'suspender'}

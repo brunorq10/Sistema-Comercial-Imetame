@@ -247,11 +247,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const last = await prisma.solicitacao.findFirst({
-    orderBy: { id: 'desc' },
-    select: { id: true },
-  })
-  const numero = gerarNumeroSolicitacao((last?.id ?? 0) + 1)
+  // Numeração: sempre MAX(numero existente) + 1. Com a remoção por cancelamento,
+  // isso garante que um número excluído só é reutilizado se não houver nenhuma
+  // solicitação com numeração posterior (mantém a sequência correta).
+  const numeros = await prisma.solicitacao.findMany({ select: { numero: true } })
+  const maxNum = numeros.reduce((max, s) => {
+    const m = /^SOL-(\d+)$/.exec(s.numero)
+    return m ? Math.max(max, parseInt(m[1], 10)) : max
+  }, 0)
+  const numero = gerarNumeroSolicitacao(maxNum + 1)
 
   const solicitacao = await prisma.solicitacao.create({
     data: {

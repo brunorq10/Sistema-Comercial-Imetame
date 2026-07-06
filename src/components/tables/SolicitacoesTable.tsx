@@ -106,6 +106,17 @@ export function SolicitacoesTable({
         header: 'Status',
         cell: (info) => {
           const row = info.row.original
+          // Suspensa/Cancelada prevalecem sobre o status da análise
+          if (row.status === 'SUSPENSA') {
+            return (
+              <span className="inline-block text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-amber-100 text-amber-700" title={row.suspend_reason ?? undefined}>
+                Suspensa
+              </span>
+            )
+          }
+          if (row.cancelled_at) {
+            return <span className="inline-block text-[10px] font-bold uppercase rounded-full px-2 py-0.5 bg-gray-200 text-gray-500">Cancelada</span>
+          }
           return (
             <div>
               <StatusAnaliseBadge status={info.getValue()} />
