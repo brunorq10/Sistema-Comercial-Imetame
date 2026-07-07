@@ -275,7 +275,9 @@ export function FaturamentoContratoTable({
             const expanded = expandidos.has(contrato.id)
             const anoRef   = anoFiltro ?? contrato.ano_referencia
             const ctKey    = `ct-${contrato.id}`
-            const sumMismatch = !anoFiltro && contrato.valor_contrato != null &&
+            // Inconsistência: soma de TODOS os eventos (independente do ano
+            // filtrado) difere do valor total do contrato — sempre sinalizada.
+            const sumMismatch = contrato.valor_contrato != null &&
               Math.abs(contrato.subindices.reduce((a, s) => a + s.valor_total, 0) - contrato.valor_contrato) > 0.01
             const isDraft = contrato.rascunho === true
             const ctBg     = rowBgContract(ctKey, sumMismatch, isDraft)
