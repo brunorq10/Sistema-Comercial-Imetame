@@ -21,6 +21,7 @@ interface Props {
   onEdit: (item: SolicitacaoListItem) => void
   onCancel: (item: SolicitacaoListItem) => void
   onNovaRevisao?: (item: SolicitacaoListItem) => void
+  onRelatorioOS?: (item: SolicitacaoListItem) => void
   onReenviar?: (item: SolicitacaoListItem) => void
   onReativar?: (item: SolicitacaoListItem) => void
   onEditarReprovacao?: (id: number) => void
@@ -36,6 +37,7 @@ export function SolicitacoesTable({
   onEdit,
   onCancel,
   onNovaRevisao,
+  onRelatorioOS,
   onReenviar,
   onReativar,
   onEditarReprovacao,
@@ -146,6 +148,16 @@ export function SolicitacoesTable({
           const isReprovada = item.status_analise === 'REPROVADA'
           return (
             <div className="flex gap-1">
+              {item.tem_relatorio_os && onRelatorioOS && (
+                <Button
+                  variant="info"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); onRelatorioOS(item) }}
+                  title="Relatório de abertura de OS"
+                >
+                  OS
+                </Button>
+              )}
               {canRevisao && !isInativa && !item.as_sold && (
                 <Button
                   variant="warning"
@@ -202,7 +214,7 @@ export function SolicitacoesTable({
         size: 120,
       }),
     ],
-    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onReenviar, onReativar, onEditarReprovacao],
+    [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onRelatorioOS, onReenviar, onReativar, onEditarReprovacao],
   )
 
   const table = useReactTable({

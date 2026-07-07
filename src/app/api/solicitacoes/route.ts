@@ -164,19 +164,21 @@ export async function GET(req: NextRequest) {
         propostas_tecnicas: { select: { versao: true, data_envio: true }, orderBy: { versao: 'desc' } },
         propostas_comerciais: { where: { data_envio: { not: null } }, select: { id: true }, take: 1 },
         propostas_fabricacao: { where: { data_envio: { not: null } }, select: { id: true }, take: 1 },
+        relatorio_os: { select: { id: true } },
       },
     }),
     prisma.solicitacao.count({ where }),
   ])
 
   const data = items.map((s) => {
-    const { propostas_tecnicas, propostas_comerciais, propostas_fabricacao, ...rest } = s
+    const { propostas_tecnicas, propostas_comerciais, propostas_fabricacao, relatorio_os, ...rest } = s
     const temPropostaEnviada =
       propostas_tecnicas.some((t) => t.data_envio != null) ||
       propostas_comerciais.length > 0 ||
       propostas_fabricacao.length > 0
     return {
       ...rest,
+      tem_relatorio_os: !!relatorio_os,
       created_at: s.created_at.toISOString(),
       prazo_tecnica: s.prazo_tecnica?.toISOString() ?? null,
       prazo_comercial: s.prazo_comercial?.toISOString() ?? null,

@@ -117,6 +117,7 @@ export interface SolicitacaoListItem {
   suspend_reason: string | null
   data_atribuicao: string | null
   tem_proposta_enviada: boolean
+  tem_relatorio_os: boolean
   motivo_reprovacao: MotivoReprovacao | null
   obs_reprovacao: string | null
 }

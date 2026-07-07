@@ -7,6 +7,7 @@ import { SolicitacoesTable } from '@/components/tables/SolicitacoesTable'
 import { SolicitacaoForm } from '@/components/forms/SolicitacaoForm'
 import { CancelarSolicitacaoModal } from '@/components/forms/CancelarSolicitacaoModal'
 import { NovaRevisaoModal } from '@/components/forms/NovaRevisaoModal'
+import { RelatorioOSModal } from '@/components/forms/RelatorioOSModal'
 import { AnaliseSolicitacaoModal } from '@/components/forms/AnaliseSolicitacaoModal'
 import { ClassificacaoBadge, InteresseBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -79,6 +80,7 @@ export default function SolicitacoesPage() {
   const [reativandoId, setReativandoId] = useState<number | null>(null)
   const [confirmReenviar, setConfirmReenviar] = useState<SolicitacaoListItem | null>(null)
   const [confirmReativar, setConfirmReativar] = useState<SolicitacaoListItem | null>(null)
+  const [modalOS, setModalOS] = useState<SolicitacaoListItem | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
 
   // ── Estado: Análise ───────────────────────────────────────────────────────
@@ -374,6 +376,7 @@ export default function SolicitacoesPage() {
                   onEdit={handleEdit}
                   onCancel={handleCancel}
                   onNovaRevisao={handleNovaRevisao}
+                  onRelatorioOS={(item) => setModalOS(item)}
                   onReenviar={perms.canCreateSolicitacao ? handleReenviar : undefined}
                   onReativar={perms.canCreateSolicitacao ? handleReativar : undefined}
                   onEditarReprovacao={perms.isAnalistaCritico ? handleEditarReprovacao : undefined}
@@ -488,6 +491,17 @@ export default function SolicitacoesPage() {
         solicitacao={revisando}
         canAtribuir={perms.canAtribuirOrcamentista}
       />
+
+      {/* Relatório de abertura de OS — consulta (somente leitura) */}
+      {modalOS && (
+        <RelatorioOSModal
+          open
+          readOnly
+          onClose={() => setModalOS(null)}
+          solicitacaoId={modalOS.id}
+          numero={modalOS.numero}
+        />
+      )}
 
       {/* Modal confirmação — reenviar */}
       {confirmReenviar && (
