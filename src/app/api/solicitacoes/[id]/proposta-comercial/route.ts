@@ -32,6 +32,7 @@ const schemaPost = z.object({
 const schemaPatch = z.object({
   resultado: z.enum(['AGUARDANDO', 'GANHOU', 'PERDEU']),
   motivo_perda: z.enum(['PRECO', 'PRAZO', 'ESCOPO', 'CONCORRENCIA', 'CLIENTE_DESISTIU', 'OUTRO']).optional(),
+  justificativa: z.string().trim().optional(),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -71,6 +72,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const resultado_anterior = latestComercial.resultado
+  // Re-alteração de resultado já definido (Ganhou/Perdeu → outro) exige justificativa,
+  // registrada no histórico de alterações.
+  const reAlteracao = (resultado_anterior === 'GANHOU' || resultado_anterior === 'PERDEU') &&
+    resultado_anterior !== parsed.data.resultado
+  if (reAlteracao && (!parsed.data.justificativa || parsed.data.justificativa.length < 5)) {
+    return NextResponse.json(
+      { data: null, error: 'Justificativa obrigatória para alterar um resultado já definido (mín. 5 caracteres)' },
+      { status: 400 },
+    )
+  }
   const result = await prisma.$transaction(async (tx) => {
     const comercial = await tx.propostaComercial.update({
       where: { id: latestComercial.id },
@@ -93,12 +104,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const RESULTADO_LABELS: Record<string, string> = { AGUARDANDO: 'Aguardando', GANHOU: 'Ganhou', PERDEU: 'Perdeu' }
     const rev = `Rev${String(latestComercial.versao).padStart(2, '0')}`
     const userId = Number(session.user.id)
-    const msg = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
+    const just = reAlteracao && parsed.data.justificativa ? ` — Justificativa: ${parsed.data.justificativa}` : ''
+    const msg = (parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
       ? `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]} (${parsed.data.motivo_perda})`
-      : `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]}`
-    const valorPara = parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
+      : `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]}`) + just
+    const valorPara = (parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
       ? `${RESULTADO_LABELS[parsed.data.resultado]} — Motivo: ${parsed.data.motivo_perda}`
-      : RESULTADO_LABELS[parsed.data.resultado]
+      : RESULTADO_LABELS[parsed.data.resultado]) + just
 
     await Promise.all([
       prisma.solicitacaoInfo.create({

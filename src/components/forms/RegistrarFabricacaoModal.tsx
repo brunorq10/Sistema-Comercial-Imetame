@@ -10,6 +10,7 @@ interface Equipamento {
   descricao: string
   peso_ton: string
   valor_total: string
+  hh_previsto: string
   observacoes: string
 }
 
@@ -17,6 +18,7 @@ const equipamentoVazio = (): Equipamento => ({
   descricao: '',
   peso_ton: '',
   valor_total: '',
+  hh_previsto: '',
   observacoes: '',
 })
 
@@ -63,11 +65,13 @@ export function RegistrarFabricacaoModal({
   const rows = equipamentos.map((e) => ({
     peso: Number(e.peso_ton) || 0,
     valor: Number(e.valor_total) || 0,
+    hh: Number(e.hh_previsto) || 0,
   }))
 
   // Subtotal
   const pesoTotalEquip = rows.reduce((a, r) => a + r.peso, 0)
   const valorTotalEquip = rows.reduce((a, r) => a + r.valor, 0)
+  const hhTotalEquip = rows.reduce((a, r) => a + r.hh, 0)
 
   // Testes
   const numTestes = possuiTestes ? (Number(valorTestes) || 0) : 0
@@ -104,6 +108,7 @@ export function RegistrarFabricacaoModal({
           descricao: e.descricao.trim(),
           peso_ton: Number(e.peso_ton),
           valor_total: Number(e.valor_total),
+          ...(Number(e.hh_previsto) > 0 ? { hh_previsto: Math.round(Number(e.hh_previsto)) } : {}),
           ...(e.observacoes.trim() ? { observacoes: e.observacoes.trim() } : {}),
         })),
         possui_testes: possuiTestes,
@@ -180,7 +185,7 @@ export function RegistrarFabricacaoModal({
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5 mb-2">
+              <div className="grid grid-cols-4 gap-2.5 mb-2">
                 <Field label="Descrição" className="col-span-1">
                   <Input
                     placeholder="Ex: Vaso de pressão V-101"
@@ -198,6 +203,15 @@ export function RegistrarFabricacaoModal({
                   <CurrencyInput
                     value={eq.valor_total}
                     onChange={(v) => updateEquipamento(idx, 'valor_total', v)}
+                  />
+                </Field>
+                <Field label="HH previsto">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={eq.hh_previsto}
+                    onChange={(e) => updateEquipamento(idx, 'hh_previsto', e.target.value)}
                   />
                 </Field>
               </div>
@@ -233,18 +247,38 @@ export function RegistrarFabricacaoModal({
       {equipamentos.length > 0 && (pesoTotalEquip > 0 || valorTotalEquip > 0) && (
         <>
           <ModalSection>2. Subtotal — Equipamentos</ModalSection>
-          <div className="grid grid-cols-3 gap-2.5 mb-4">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5 mb-4">
             <div>
               <p className="text-[9px] text-gray-400 uppercase font-bold">Peso Total (ton)</p>
               <p className="text-[13px] font-bold text-gray-700">{formatTon(pesoTotalEquip)} ton</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase font-bold">Valor Equipamentos</p>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">Valor Total</p>
               <p className="text-[13px] font-bold text-gray-700">{formatCurrency(valorTotalEquip)}</p>
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 uppercase font-bold">R$/kg médio</p>
-              <p className="text-[13px] font-bold text-auto-value">{rskg(valorTotalEquip, pesoTotalEquip)}</p>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">HH Total</p>
+              <p className="text-[13px] font-bold text-gray-700">{hhTotalEquip > 0 ? hhTotalEquip.toLocaleString('pt-BR') : '—'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">HH/ton</p>
+              <p className="text-[13px] font-bold text-auto-value">
+                {hhTotalEquip > 0 && pesoTotalEquip > 0
+                  ? (hhTotalEquip / pesoTotalEquip).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">R$/HH</p>
+              <p className="text-[13px] font-bold text-auto-value">
+                {hhTotalEquip > 0 && valorTotalEquip > 0 ? formatCurrency(valorTotalEquip / hhTotalEquip) : '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] text-gray-400 uppercase font-bold">R$/ton</p>
+              <p className="text-[13px] font-bold text-auto-value">
+                {pesoTotalEquip > 0 && valorTotalEquip > 0 ? formatCurrency(valorTotalEquip / pesoTotalEquip) : '—'}
+              </p>
             </div>
           </div>
         </>

@@ -429,6 +429,7 @@ model EquipamentoFabricacao {
   descricao              String
   peso_ton               Decimal            @db.Decimal(10, 3)
   valor_total            Decimal            @db.Decimal(15, 2)
+  hh_previsto            Int?
   observacoes            String?
   created_at             DateTime           @default(now())
 

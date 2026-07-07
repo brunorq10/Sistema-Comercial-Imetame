@@ -396,13 +396,25 @@ export function EditarPropostaModal({
     } finally { setLoadingCom(false) }
   }
 
+  // Resultado já definido (Ganhou/Perdeu) sendo alterado → exige justificativa
+  const resultadoOriginal = item.propostas_comerciais[0]?.resultado ?? 'AGUARDANDO'
+  const reAlteracaoRes = (resultadoOriginal === 'GANHOU' || resultadoOriginal === 'PERDEU') && resultado !== resultadoOriginal
+  const [justificativaRes, setJustificativaRes] = useState('')
+
   const saveResultado = async () => {
     if (resultado === 'PERDEU' && !motivoPerda) { setErrorRes('Motivo de perda é obrigatório'); return }
+    if (reAlteracaoRes && justificativaRes.trim().length < 5) {
+      setErrorRes('Justificativa obrigatória para alterar um resultado já definido (mín. 5 caracteres)'); return
+    }
     setLoadingRes(true); setErrorRes(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-comercial`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resultado, motivo_perda: resultado === 'PERDEU' ? motivoPerda : undefined }),
+        body: JSON.stringify({
+          resultado,
+          motivo_perda: resultado === 'PERDEU' ? motivoPerda : undefined,
+          justificativa: reAlteracaoRes ? justificativaRes.trim() : undefined,
+        }),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorRes(json.error ?? 'Erro ao salvar'); return }
@@ -436,13 +448,23 @@ export function EditarPropostaModal({
     } finally { setLoadingFab(false) }
   }
 
+  const resultadoFabOriginal = item.propostas_fabricacao[0]?.resultado ?? 'AGUARDANDO'
+  const reAlteracaoResFab = (resultadoFabOriginal === 'GANHOU' || resultadoFabOriginal === 'PERDEU') && resultadoFab !== resultadoFabOriginal
+
   const saveResultadoFab = async () => {
     if (resultadoFab === 'PERDEU' && !motivoPerdaFab) { setErrorResFab('Motivo de perda é obrigatório'); return }
+    if (reAlteracaoResFab && justificativaRes.trim().length < 5) {
+      setErrorResFab('Justificativa obrigatória para alterar um resultado já definido (mín. 5 caracteres)'); return
+    }
     setLoadingResFab(true); setErrorResFab(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-fabricacao`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resultado: resultadoFab, motivo_perda: resultadoFab === 'PERDEU' ? motivoPerdaFab : undefined }),
+        body: JSON.stringify({
+          resultado: resultadoFab,
+          motivo_perda: resultadoFab === 'PERDEU' ? motivoPerdaFab : undefined,
+          justificativa: reAlteracaoResFab ? justificativaRes.trim() : undefined,
+        }),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorResFab(json.error ?? 'Erro ao salvar'); return }
@@ -606,6 +628,13 @@ export function EditarPropostaModal({
             </Field>
           )}
         </div>
+        {reAlteracaoResFab && (
+          <Field label="Justificativa da alteração de resultado *" className="mb-3">
+            <textarea rows={2} value={justificativaRes} onChange={e => setJustificativaRes(e.target.value)}
+              placeholder="O resultado já estava definido — explique o motivo da mudança (mín. 5 caracteres). Ficará registrado no histórico."
+              className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" />
+          </Field>
+        )}
         <div className="flex justify-end mb-4">
           <Button onClick={saveResultadoFab} disabled={loadingResFab}>{loadingResFab ? 'Salvando...' : 'Salvar Resultado'}</Button>
         </div>
@@ -901,6 +930,13 @@ export function EditarPropostaModal({
               </Field>
             )}
           </div>
+          {reAlteracaoRes && (
+            <Field label="Justificativa da alteração de resultado *" className="mb-4">
+              <textarea rows={2} value={justificativaRes} onChange={e => setJustificativaRes(e.target.value)}
+                placeholder="O resultado já estava definido — explique o motivo da mudança (mín. 5 caracteres). Ficará registrado no histórico."
+                className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" />
+            </Field>
+          )}
           <div className="flex justify-end">
             <Button onClick={saveResultado} disabled={loadingRes}>{loadingRes ? 'Salvando...' : 'Salvar Resultado'}</Button>
           </div>
