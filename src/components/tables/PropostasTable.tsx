@@ -8,6 +8,7 @@ import { RESULTADO_LABELS } from '@/types'
 import type { PropostasItem } from '@/types'
 
 interface Props {
+  onRelatorioOS?: (item: PropostasItem) => void
   data: PropostasItem[]
   onEditar: (item: PropostasItem) => void
   onHistorico: (item: PropostasItem) => void
@@ -35,7 +36,7 @@ function ResultadoCell({ resultado }: { resultado: string | null }) {
   return <span className={cn('text-[10px]', cls)}>{RESULTADO_LABELS[resultado] ?? resultado}</span>
 }
 
-export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, canEditar }: Props) {
+export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, onRelatorioOS, canEditar }: Props) {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   if (data.length === 0) {
@@ -149,6 +150,13 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
                       {canEditar && (
                         <Button variant="outline" size="sm" onClick={() => onEditar(item)} title="Editar">
                           ✎
+                        </Button>
+                      )}
+                      {resultado === 'GANHOU' && onRelatorioOS && (
+                        <Button variant={item.tem_relatorio_os ? 'info' : 'warning'} size="sm"
+                          onClick={() => onRelatorioOS(item)}
+                          title={item.tem_relatorio_os ? 'Relatório de OS (preenchido) — ver/editar' : 'Relatório de OS — preencher'}>
+                          OS
                         </Button>
                       )}
                     </div>

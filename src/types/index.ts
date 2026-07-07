@@ -187,6 +187,7 @@ export interface PropostasItem {
   proposta_cancelada_at: string | null
   proposta_cancel_reason: string | null
   suspensa: boolean
+  tem_relatorio_os: boolean
   orcamentista: { id: number; nome: string } | null
   prazo_tecnica: string | null
   prazo_comercial: string | null

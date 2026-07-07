@@ -77,6 +77,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (parsed.data.resultado === 'GANHOU') {
       await tx.solicitacao.update({ where: { id }, data: { status: 'CONTRATO_GANHO' } })
     }
+    // Mudou o resultado depois de gravado o Relatorio de OS -> limpa (deve ser refeito)
+    if (resultado_anterior !== parsed.data.resultado) {
+      await tx.relatorioOS.deleteMany({ where: { solicitacao_id: id } })
+    }
     return fab
   })
 

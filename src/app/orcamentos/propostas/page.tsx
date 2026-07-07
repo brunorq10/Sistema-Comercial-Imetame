@@ -8,6 +8,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { RelatorioOSModal } from '@/components/forms/RelatorioOSModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { Button } from '@/components/ui/Button'
@@ -62,6 +63,7 @@ export default function PropostasPage() {
 
   const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
   const [modalHistAlteracoes, setModalHistAlteracoes] = useState<PropostasItem | null>(null)
+  const [modalOS, setModalOS] = useState<PropostasItem | null>(null)
 
   useEffect(() => {
     fetch('/api/propostas?modo=filtros').then(r => r.json()).then(j => {
@@ -212,6 +214,7 @@ export default function PropostasPage() {
                 onEditar={setModalEditar}
                 onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico`)}
                 onHistoricoAlteracoes={setModalHistAlteracoes}
+                onRelatorioOS={setModalOS}
                 canEditar={canEditar}
               />
             </div>
@@ -229,6 +232,16 @@ export default function PropostasPage() {
           canRegistrarTecnica={canRegistrarTecnica}
           canRegistrarComercial={canRegistrarComercial}
           canCancelar={canCancelSolicitacao}
+        />
+      )}
+
+      {modalOS && (
+        <RelatorioOSModal
+          open
+          onClose={() => setModalOS(null)}
+          onSuccess={fetchData}
+          solicitacaoId={modalOS.id}
+          numero={modalOS.numero}
         />
       )}
 

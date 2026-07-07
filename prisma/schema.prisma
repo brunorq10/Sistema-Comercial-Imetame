@@ -154,6 +154,7 @@ model User {
   relatorios_criados          RelatorioSalvo[]               @relation("RelatorioCriador")
   relatorios_versoes          RelatorioVersao[]              @relation("RelatorioVersaoAutor")
   revisoes_criadas            RevisaoPendente[]              @relation("RevisaoPendenteCriador")
+  relatorios_os_criados       RelatorioOS[]                  @relation("RelatorioOSCriador")
   revisoes_avaliadas          RevisaoPendente[]              @relation("RevisaoPendenteAvaliador")
 
   @@map("users")
@@ -185,6 +186,7 @@ model Cliente {
   contratos               Contrato[]    @relation("ContratoCliente")
   contratos_como_final    Contrato[]    @relation("ContratoClienteFinal")
   filiais                 Filial[]
+  relatorios_os_faturamento RelatorioOS[] @relation("RelatorioOSClienteFat")
 
   @@map("clientes")
 }
@@ -266,6 +268,7 @@ model Solicitacao {
   solicitacoes_info    SolicitacaoInfo[]
   historico            HistoricoSolicitacao[]
   revisoes_pendentes   RevisaoPendente[]
+  relatorio_os         RelatorioOS?
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -1083,6 +1086,44 @@ model PrevisaoAlteracao {
   @@index([responsavel_id])
   @@index([status])
   @@map("previsao_alteracoes")
+}
+
+// ─── Relatório de abertura de OS (preenchido quando a proposta é GANHA) ───────
+// Limpo automaticamente se o resultado da proposta for alterado depois.
+model RelatorioOS {
+  id                     Int      @id @default(autoincrement())
+  solicitacao_id         Int      @unique
+  classificacao          String
+  cliente_faturamento_id Int
+  cliente_final          String?
+  numero_solicitacao     String
+  data_inicio            DateTime
+  data_fim               DateTime
+  responsavel_imetame    String
+  local_realizacao       String
+  gestor_cliente         String
+  valor_estimado         Decimal  @db.Decimal(15, 2)
+  escopo                 String
+  unidade_medida         String   // KG | TON | PC | CJ
+  quantidade             Decimal  @db.Decimal(12, 2)
+  ncm                    String?
+  pintura                Boolean
+  retorno                Boolean
+  memorial_calculo       Boolean
+  material               String?  // IMETAME | TERCEIROS | AMBOS
+  art                    Boolean
+  databook               Boolean
+  material_apoio         Boolean
+  comentario             String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  created_by             Int
+
+  solicitacao         Solicitacao @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
+  cliente_faturamento Cliente     @relation("RelatorioOSClienteFat", fields: [cliente_faturamento_id], references: [id])
+  criador             User        @relation("RelatorioOSCriador", fields: [created_by], references: [id])
+
+  @@map("relatorios_os")
 }
 
 // ─── Revisões pendentes de avaliação do orçamentista ──────────────────────────
