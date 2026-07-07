@@ -7,6 +7,8 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ContratoItem, SubIndiceItem, NFContratoItem } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
+import { Button } from '@/components/ui/Button'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
 import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
 import { MultasContratoSection } from '@/components/acordos/MultasContratoSection'
@@ -184,27 +186,24 @@ export default function ContratoVisaoGeralPage() {
     <div className="h-full overflow-y-auto">
     <div className="p-6 max-w-7xl mx-auto space-y-6">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs text-gray-400 mb-1">
-            <button onClick={() => router.push(backTo)} className="hover:underline">
-              {backLabel}
-            </button>
-            {' › '}{contrato.indice}
-          </p>
-          <h1 className="text-2xl font-bold text-gray-900">{contrato.indice} — {contrato.cliente.nome}</h1>
-          {contrato.descricao && <p className="text-sm text-gray-500 mt-0.5">{contrato.descricao}</p>}
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusInfo.cls}`}>{statusInfo.label}</span>
-          <button
-            onClick={() => router.push(backTo)}
-            className="border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-1.5"
-          >
-            ← Voltar
+      {/* Header padrão */}
+      <div>
+        <p className="text-[10px] text-gray-400 mb-1">
+          <button onClick={() => router.push(backTo)} className="hover:underline">
+            {backLabel}
           </button>
-        </div>
+          {' › '}{contrato.indice}
+        </p>
+        <PageHeader
+          title={`${contrato.indice} — ${contrato.cliente.nome}`}
+          subtitle={contrato.descricao ?? undefined}
+          actions={
+            <>
+              <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${statusInfo.cls}`}>{statusInfo.label}</span>
+              <Button size="sm" variant="outline" onClick={() => router.push(backTo)}>← Voltar</Button>
+            </>
+          }
+        />
       </div>
 
       {/* Resumo financeiro */}

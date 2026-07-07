@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 import * as XLSX from 'xlsx'
 import {
   Chart as ChartJS,
@@ -778,13 +779,9 @@ function HeaderBar({ raw, onBack, onExport }: { raw: HistoricoData; onBack: () =
         <div className="w-px h-8 bg-gray-100 mx-4 shrink-0" />
         <div className="shrink-0"><InfoChip label="Data base" value={raw.data_base ? formatDate(raw.data_base) : '—'} /></div>
       </div>
-      <div className="flex flex-col items-end gap-1.5 shrink-0">
-        <button onClick={onBack} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
-          ← Voltar às Propostas
-        </button>
-        <button onClick={onExport} className="flex items-center gap-1 border border-gray-300 text-gray-600 rounded-md px-3 py-1.5 text-[11px] font-medium hover:bg-gray-50 transition-colors">
-          ↓ Exportar
-        </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button size="sm" variant="outline" onClick={onExport}>Exportar Excel</Button>
+        <Button size="sm" variant="outline" onClick={onBack}>← Voltar</Button>
       </div>
     </div>
   )
