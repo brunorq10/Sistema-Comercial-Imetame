@@ -1,5 +1,6 @@
 'use client'
 
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useMemo, useState } from 'react'
 import {
   useReactTable,
@@ -132,36 +133,16 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
       cell: ({ row }) => {
         const nf = row.original
         return (
-          <div className="flex gap-1">
-            {canEditar && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onEditar(nf) }}
-                className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"
-                title="Editar NF"
-              >✎</button>
-            )}
-            {canEditar && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onInativar(nf) }}
-                className={`border rounded px-1.5 py-0.5 text-[10px] ${
-                  nf.ativa
-                    ? 'border-orange-400 text-orange-500 hover:bg-orange-50'
-                    : 'border-blue-400 text-blue-500 hover:bg-blue-50'
-                }`}
-                title={nf.ativa ? 'Inativar NF' : 'Reativar NF'}
-              >{nf.ativa ? '⊘' : '↺'}</button>
-            )}
-            {canEditar && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onExcluir(nf) }}
-                className="border border-red-400 text-red-400 rounded px-1.5 py-0.5 text-[10px] hover:bg-red-50"
-                title="Excluir NF"
-              >🗑</button>
-            )}
+          <div className="text-center" onClick={(e) => e.stopPropagation()}>
+            <AcoesMenu items={[
+              { label: 'Editar NF', icon: '✎', destaque: true, visivel: canEditar, onClick: () => onEditar(nf) },
+              { label: nf.ativa ? 'Inativar NF' : 'Reativar NF', icon: nf.ativa ? '⊘' : '↺', visivel: canEditar, onClick: () => onInativar(nf) },
+              { label: 'Excluir NF', icon: '🗑', destrutiva: true, visivel: canEditar, onClick: () => onExcluir(nf) },
+            ]} />
           </div>
         )
       },
-      size: 90,
+      size: 64,
     }),
   ], [canEditar, onEditar, onInativar, onExcluir])
 

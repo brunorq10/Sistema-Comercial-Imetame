@@ -1,5 +1,6 @@
 'use client'
 
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPO_MULTA_MAP } from '@/lib/multas'
 
@@ -74,18 +75,12 @@ export function MultasRegistroTable({ multas, onEditar, onInativar, onExcluir, c
                     ? <span className="text-[9px] font-semibold text-green-700 bg-green-50 rounded-full px-1.5 py-0.5">Ativa</span>
                     : <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5" title={m.motivo_inativacao ?? ''}>Inativa</span>}
                 </td>
-                <td className={td}>
-                  <div className="flex items-center gap-2">
-                    {canEditar && (
-                      <button onClick={() => onEditar(m)} className="text-[11px] text-blue-600 hover:underline font-semibold">Editar</button>
-                    )}
-                    {canEditar && (
-                      <button onClick={() => onInativar(m)} className="text-[11px] text-amber-600 hover:underline font-semibold">{m.ativa ? 'Inativar' : 'Reativar'}</button>
-                    )}
-                    {canExcluir && (
-                      <button onClick={() => onExcluir(m)} className="text-[11px] text-red-500 hover:underline font-semibold">Excluir</button>
-                    )}
-                  </div>
+                <td className={` text-center w-[64px]`}>
+                  <AcoesMenu items={[
+                    { label: 'Editar multa', icon: '✎', destaque: true, visivel: canEditar, onClick: () => onEditar(m) },
+                    { label: m.ativa ? 'Inativar' : 'Reativar', icon: m.ativa ? '⊘' : '↺', visivel: canEditar, onClick: () => onInativar(m) },
+                    { label: 'Excluir', icon: '🗑', destrutiva: true, visivel: canExcluir, onClick: () => onExcluir(m) },
+                  ]} />
                 </td>
               </tr>
             )

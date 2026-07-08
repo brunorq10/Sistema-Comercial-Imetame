@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { LancarNFContratoModal } from '@/components/forms/LancarNFContratoModal'
@@ -23,7 +24,7 @@ const W = {
   dtInicio: 90, dtFim: 90, statusFat: 90,
   vlrTotal: 155, vlrFat: 150, saldo: 145,
   responsavel: 130, comentarios: 140,
-  mes: 130, prevAnos: 130, acoes: 120,
+  mes: 130, prevAnos: 130, acoes: 64,
 }
 const L = {
   indice: 0,
@@ -461,6 +462,7 @@ interface PainelTableProps {
 }
 
 function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHistorico, onLancarFaturamento }: PainelTableProps) {
+  const router = useRouter()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
@@ -685,15 +687,11 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                     ? <span className="text-[#6A1B9A] font-bold">{formatCurrency(contrato.prev_anos_seguintes)}</span>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className={mBase} style={{ background: ctBg }} onClick={(e) => e.stopPropagation()}>
-                  <div className="flex gap-1">
-                    <Link href={`/acordos/faturamento/${contrato.id}?from=painel`}
-                      className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
-                      title="Visão geral">👁</Link>
-                    <button onClick={() => onHistorico('contrato', contrato.id, contrato.indice)}
-                      className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                      title="Histórico">📋</button>
-                  </div>
+                <td className={mBase} style={{ background: ctBg, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                  <AcoesMenu items={[
+                    { label: 'Visão geral', icon: '👁', destaque: true, onClick: () => router.push(`/acordos/faturamento/${contrato.id}?from=painel`) },
+                    { label: 'Ver histórico', icon: '🕘', onClick: () => onHistorico('contrato', contrato.id, contrato.indice) },
+                  ]} />
                 </td>
               </tr>,
 
@@ -786,28 +784,12 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                         ? <span className="text-[#6A1B9A]">{formatCurrency(sub.prev_anos_seguintes)}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className={sBase} style={{ background: subBg }} onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => onEditar(sub, indiceLabel, contrato.ano_referencia)}
-                          className={cn(
-                            'rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap',
-                            canEdit
-                              ? 'bg-green-primary text-white hover:bg-green-dark'
-                              : 'border border-gray-300 text-gray-500 hover:bg-gray-50',
-                          )}
-                        >
-                          {canEdit ? 'Editar prev.' : 'Ver prev.'}
-                        </button>
-                        {canEdit && contrato.status !== 'CANCELADO' && (
-                          <button onClick={() => onLancarFaturamento(contrato, sub)}
-                            className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
-                            title="Movimentações Financeiras">$</button>
-                        )}
-                        <button onClick={() => onHistorico('subindice', sub.id, indiceLabel)}
-                          className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                          title="Histórico">📋</button>
-                      </div>
+                    <td className={sBase} style={{ background: subBg, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <AcoesMenu items={[
+                        { label: canEdit ? 'Editar previsão' : 'Ver previsão', icon: '✎', destaque: true, onClick: () => onEditar(sub, indiceLabel, contrato.ano_referencia) },
+                        { label: 'Movimentações Financeiras', icon: '$', visivel: canEdit && contrato.status !== 'CANCELADO', onClick: () => onLancarFaturamento(contrato, sub) },
+                        { label: 'Ver histórico', icon: '🕘', onClick: () => onHistorico('subindice', sub.id, indiceLabel) },
+                      ]} />
                     </td>
                   </tr>
                 )

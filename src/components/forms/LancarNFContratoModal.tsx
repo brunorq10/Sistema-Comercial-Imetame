@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { MultaForm } from '@/components/forms/MultaForm'
 import { EditarNFModal } from '@/components/forms/EditarNFModal'
 import { usePermissions } from '@/hooks/usePermissions'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import type { SubIndiceItem, ContratoItem, NFContratoItem, NFContratoListItem } from '@/types'
 
 interface Props {
@@ -535,12 +536,12 @@ function NFTable({ nfs, inativa, onEditar, onInativar, onExcluir }: { nfs: NFCon
                 </td>
               )}
               {temAcoes && (
-                <td className={tdCls}>
-                  <div className="flex items-center gap-2">
-                    {onEditar && <button onClick={() => onEditar(nf)} className="text-[11px] text-blue-600 hover:underline font-semibold">Editar</button>}
-                    {onInativar && <button onClick={() => onInativar(nf)} className="text-[11px] text-amber-600 hover:underline font-semibold">{nf.ativa ? 'Inativar' : 'Reativar'}</button>}
-                    {onExcluir && <button onClick={() => onExcluir(nf)} className="text-[11px] text-red-500 hover:underline font-semibold">Excluir</button>}
-                  </div>
+                <td className={`${tdCls} text-center w-[64px]`}>
+                  <AcoesMenu items={[
+                    { label: 'Editar NF', icon: '✎', destaque: true, visivel: !!onEditar, onClick: () => onEditar?.(nf) },
+                    { label: nf.ativa ? 'Inativar NF' : 'Reativar NF', icon: nf.ativa ? '⊘' : '↺', visivel: !!onInativar, onClick: () => onInativar?.(nf) },
+                    { label: 'Excluir NF', icon: '🗑', destrutiva: true, visivel: !!onExcluir, onClick: () => onExcluir?.(nf) },
+                  ]} />
                 </td>
               )}
             </tr>
