@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { compareContratos, nextSort, sortIndicator, type SortState } from '@/lib/sortContratos'
@@ -43,7 +44,7 @@ const W = {
   dtInicio: 90, dtFim: 90, statusFat: 90,
   vlrTotal: 155, vlrFat: 150, saldo: 145,
   responsavel: 130, comentarios: 140,
-  mes: 130, prevAnos: 130, acoes: 130,
+  mes: 130, prevAnos: 130, acoes: 64,
 }
 // Offsets de congelamento horizontal (desktop). No mobile usamos EMPTY_L
 // (tudo undefined) para que as colunas não fiquem fixas e a tabela role inteira.
@@ -98,6 +99,7 @@ export function FaturamentoContratoTable({
   onExcluirSubindice, onHistoricoSubindice, onHistoricoContrato, onComentario,
   canEditar, canLancarNF,
 }: Props) {
+  const router = useRouter()
   const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredKey,  setHoveredKey]  = useState<string | null>(null)
@@ -385,24 +387,14 @@ export function FaturamentoContratoTable({
                     ? <span className="text-[#6A1B9A] font-bold">{formatCurrency(contrato.prev_anos_seguintes)}</span>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className={mBase} style={{ background: ctBg }}>
-                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Link href={`/acordos/faturamento/${contrato.id}`}
-                      className="border border-blue-400 text-blue-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-blue-50"
-                      title="Visão geral">👁</Link>
-                    {canEditar && contrato.status !== 'CANCELADO' && (
-                      <button onClick={() => onEditarContrato(contrato)}
-                        className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"
-                        title="Editar">✎</button>
-                    )}
-                    <button onClick={() => onHistoricoContrato(contrato)}
-                      className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                      title="Histórico">📋</button>
-                    {canEditar && contrato.status !== 'CANCELADO' && (
-                      <button onClick={() => onCancelarContrato(contrato)}
-                        className="border border-red-400 text-red-400 rounded px-1.5 py-0.5 text-[10px] hover:bg-red-50"
-                        title="Cancelar">🗑</button>
-                    )}
+                <td className={mBase} style={{ background: ctBg, textAlign: 'center' }}>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AcoesMenu items={[
+                      { label: 'Ver detalhes', icon: '👁', destaque: true, onClick: () => router.push(`/acordos/faturamento/${contrato.id}`) },
+                      { label: 'Editar contrato', icon: '✎', visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onEditarContrato(contrato) },
+                      { label: 'Ver histórico', icon: '🕘', onClick: () => onHistoricoContrato(contrato) },
+                      { label: 'Cancelar contrato', icon: '🗑', destrutiva: true, visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onCancelarContrato(contrato) },
+                    ]} />
                   </div>
                 </td>
               </tr>,
@@ -504,26 +496,14 @@ export function FaturamentoContratoTable({
                         ? <span className="text-[#6A1B9A]">{formatCurrency(sub.prev_anos_seguintes)}</span>
                         : <span className="text-gray-300">—</span>}
                     </td>
-                    <td className={sBase} style={{ background: subBg }}>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        {canLancarNF && contrato.status !== 'CANCELADO' && (
-                          <button onClick={() => onLancarNF(contrato, sub)}
-                            className="bg-[#1565C0] text-white rounded px-1.5 py-0.5 text-[10px] hover:bg-[#0D47A1]"
-                            title="Movimentações Financeiras">$</button>
-                        )}
-                        {canEditar && contrato.status !== 'CANCELADO' && (
-                          <button onClick={() => onEditarSubindice(contrato, sub)}
-                            className="border border-green-primary text-green-primary rounded px-1.5 py-0.5 text-[10px] hover:bg-green-light"
-                            title="Editar">✎</button>
-                        )}
-                        <button onClick={() => onHistoricoSubindice(sub)}
-                          className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                          title="Histórico">📋</button>
-                        {canEditar && contrato.status !== 'CANCELADO' && (
-                          <button onClick={() => onExcluirSubindice(sub)}
-                            className="border border-red-400 text-red-400 rounded px-1.5 py-0.5 text-[10px] hover:bg-red-50"
-                            title="Excluir">🗑</button>
-                        )}
+                    <td className={sBase} style={{ background: subBg, textAlign: 'center' }}>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <AcoesMenu items={[
+                          { label: 'Movimentações Financeiras', icon: '$', destaque: true, visivel: canLancarNF && contrato.status !== 'CANCELADO', onClick: () => onLancarNF(contrato, sub) },
+                          { label: 'Editar evento', icon: '✎', visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onEditarSubindice(contrato, sub) },
+                          { label: 'Ver histórico', icon: '🕘', onClick: () => onHistoricoSubindice(sub) },
+                          { label: 'Excluir evento', icon: '🗑', destrutiva: true, visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onExcluirSubindice(sub) },
+                        ]} />
                       </div>
                     </td>
                   </tr>

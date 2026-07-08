@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { LancamentoHhModal } from '@/components/acordos/LancamentoHhModal'
 import { FabricacoesView } from '@/components/acordos/FabricacoesView'
 import { ParadasResumoView } from '@/components/acordos/ParadasResumoView'
-import { AcaoButton as ABtn, ACAO_ICONS } from '@/components/acordos/AcaoButton'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
@@ -881,20 +881,20 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                     </>
                   )}
                   {/* Ações */}
-                  <td className="px-2 py-2 text-center w-[100px]">
+                  <td className="px-2 py-2 text-center w-[64px]">
                     {classificacao === 'PARADAS' ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">{ACAO_ICONS.editar}</ABtn>
-                        <ABtn onClick={() => router.push(`/acordos/hh/paradas/${c.id}`)} title="Controle de HH" color="gray">{ACAO_ICONS.lancar}</ABtn>
-                        <ABtn onClick={() => { setDeleteId(c.id); setDeleteMotivo('') }} title="Remover do acompanhamento" color="red">{ACAO_ICONS.excluir}</ABtn>
-                      </div>
+                      <AcoesMenu items={[
+                        { label: 'Controle de HH', icon: '+', destaque: true, onClick: () => router.push(`/acordos/hh/paradas/${c.id}`) },
+                        { label: 'Editar dados cadastrais', icon: '✎', onClick: () => setModalEditar(c) },
+                        { label: 'Remover do acompanhamento', icon: '🗑', destrutiva: true, onClick: () => { setDeleteId(c.id); setDeleteMotivo('') } },
+                      ]} />
                     ) : (
-                      <div className="flex items-center justify-center gap-1">
-                        <ABtn onClick={() => setModalVisualizar(c)} title="Visualizar lançamentos" color="blue">{ACAO_ICONS.visualizar}</ABtn>
-                        <ABtn onClick={() => setModalEditar(c)} title="Editar dados cadastrais" color="green">{ACAO_ICONS.editar}</ABtn>
-                        <ABtn onClick={() => setModalLancamento(c)} title="Lançar HH" color="gray">{ACAO_ICONS.lancar}</ABtn>
-                        <ABtn onClick={() => { setDeleteId(c.id); setDeleteMotivo('') }} title="Remover do acompanhamento" color="red">{ACAO_ICONS.excluir}</ABtn>
-                      </div>
+                      <AcoesMenu items={[
+                        { label: 'Lançar HH', icon: '+', destaque: true, onClick: () => setModalLancamento(c) },
+                        { label: 'Visualizar lançamentos', icon: '👁', onClick: () => setModalVisualizar(c) },
+                        { label: 'Editar dados cadastrais', icon: '✎', onClick: () => setModalEditar(c) },
+                        { label: 'Remover do acompanhamento', icon: '🗑', destrutiva: true, onClick: () => { setDeleteId(c.id); setDeleteMotivo('') } },
+                      ]} />
                     )}
                   </td>
                 </tr>

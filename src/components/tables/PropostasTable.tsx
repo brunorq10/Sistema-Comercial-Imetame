@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { formatRev, formatDate, formatCurrency, cn } from '@/lib/utils'
-import { Button } from '@/components/ui/Button'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { ClassificacaoBadge } from '@/components/ui/Badge'
 import { RESULTADO_LABELS } from '@/types'
 import type { PropostasItem } from '@/types'
@@ -135,31 +135,18 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-3 py-[6px]"><ResultadoCell resultado={resultado} /></td>
-                  <td className="px-3 py-[6px]">
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => onHistorico(item)} title="Histórico de revisões">
-                        ↺
-                      </Button>
-                      <button
-                        onClick={() => onHistoricoAlteracoes(item)}
-                        className="border border-gray-300 text-gray-500 rounded px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
-                        title="Histórico de Alterações"
-                      >
-                        📋
-                      </button>
-                      {canEditar && (
-                        <Button variant="outline" size="sm" onClick={() => onEditar(item)} title="Editar">
-                          ✎
-                        </Button>
-                      )}
-                      {resultado === 'GANHOU' && onRelatorioOS && (
-                        <Button variant={item.tem_relatorio_os ? 'info' : 'warning'} size="sm"
-                          onClick={() => onRelatorioOS(item)}
-                          title={item.tem_relatorio_os ? 'Relatório de OS (preenchido) — ver/editar' : 'Relatório de OS — preencher'}>
-                          OS
-                        </Button>
-                      )}
-                    </div>
+                  <td className="px-3 py-[6px] text-center" style={{ width: 64 }}>
+                    <AcoesMenu items={[
+                      { label: 'Editar proposta', icon: '✎', destaque: true, visivel: canEditar, onClick: () => onEditar(item) },
+                      { label: 'Histórico de revisões', icon: '↺', onClick: () => onHistorico(item) },
+                      { label: 'Histórico de alterações', icon: '🕘', onClick: () => onHistoricoAlteracoes(item) },
+                      {
+                        label: item.tem_relatorio_os ? 'Relatório de OS' : 'Preencher Relatório de OS',
+                        icon: '📄',
+                        visivel: resultado === 'GANHOU' && !!onRelatorioOS,
+                        onClick: () => onRelatorioOS?.(item),
+                      },
+                    ]} />
                   </td>
                 </tr>
               )

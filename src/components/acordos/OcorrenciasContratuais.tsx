@@ -10,6 +10,7 @@ import {
 import { NovaOcorrenciaModal } from '@/components/forms/NovaOcorrenciaModal'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 
 interface Anexo { id: number; nome: string; tipo: string; url: string; tamanho: number | null }
 interface Ocorrencia {
@@ -311,10 +312,15 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
                         <span className="inline-flex items-center gap-1"><IconClip className="w-3.5 h-3.5" />{o.anexos.length}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => setSelected(o)} className="inline-flex items-center gap-1 text-green-primary font-semibold hover:underline">
-                        <IconEye className="w-3.5 h-3.5" /> Ver
-                      </button>
+                    <td className="px-3 py-2 text-center w-[64px]">
+                      <AcoesMenu items={[
+                        { label: 'Ver detalhes', icon: '👁', destaque: true, onClick: () => setSelected(o) },
+                        {
+                          label: 'Excluir', icon: '🗑', destrutiva: true,
+                          visivel: canSupervise || (userId != null && o.created_by === userId),
+                          onClick: () => setDlgExcluir(o.id),
+                        },
+                      ]} />
                     </td>
                   </tr>
                 )
@@ -335,6 +341,7 @@ export function OcorrenciasContratuais({ contratoId, numero, subtitulo, canCreat
           proximoCodigo={proximoCodigo}
         />
       )}
+      {dialogoExcluir}
     </div>
   )
 }

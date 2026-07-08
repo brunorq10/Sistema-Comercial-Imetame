@@ -9,7 +9,7 @@ import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, IntegerInput, CurrencyInput } from '@/components/ui/Input'
 import { cn, formatDate } from '@/lib/utils'
-import { AcaoButton, ACAO_ICONS } from '@/components/acordos/AcaoButton'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
@@ -271,13 +271,13 @@ function ContratosFab({ contratos, onEditar, onLancar, onHistorico, onExcluir }:
                 <td className="px-2 py-1.5 text-right text-[#185FA5]">{pPrev > 0 ? fmtPeso(pPrev) : '—'}</td>
                 <td className="px-2 py-1.5 text-right text-green-dark">{pReal > 0 ? fmtPeso(pReal) : '—'}</td>
                 <td className="px-2 py-1.5 text-right font-semibold text-[#1565C0]">{fmtPct(pctAvanco(pPrev, pReal))}</td>
-                <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                  <div className="flex items-center gap-1 justify-center">
-                    <AcaoButton onClick={() => onEditar(c)} title="Editar itens" color="green">{ACAO_ICONS.editar}</AcaoButton>
-                    <AcaoButton onClick={() => onLancar(c)} title="Lançar realizado" color="gray">{ACAO_ICONS.lancar}</AcaoButton>
-                    <AcaoButton onClick={() => onHistorico(c)} title="Histórico de alterações" color="gray">{ACAO_ICONS.historico}</AcaoButton>
-                    <AcaoButton onClick={() => onExcluir(c)} title="Excluir lançamentos" color="red">{ACAO_ICONS.excluir}</AcaoButton>
-                  </div>
+                <td className="px-2 py-1.5 text-center whitespace-nowrap w-[64px]">
+                  <AcoesMenu items={[
+                    { label: 'Lançar realizado', icon: '+', destaque: true, onClick: () => onLancar(c) },
+                    { label: 'Editar itens', icon: '✎', onClick: () => onEditar(c) },
+                    { label: 'Histórico de alterações', icon: '🕘', onClick: () => onHistorico(c) },
+                    { label: 'Excluir lançamentos', icon: '🗑', destrutiva: true, onClick: () => onExcluir(c) },
+                  ]} />
                 </td>
               </tr>
             )

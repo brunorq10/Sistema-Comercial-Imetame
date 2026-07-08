@@ -10,7 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { StatusAnaliseBadge, ClassificacaoBadge, InteresseBadge, VersaoBadge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { formatDate } from '@/lib/utils'
 import { SolicitacaoDetalheInline, type DetalheInline } from '@/components/painel/SolicitacaoDetalheInline'
 import { MOTIVO_REPROVACAO_LABELS } from '@/types'
@@ -147,71 +147,19 @@ export function SolicitacoesTable({
           const isInativa = isCancelada || isSuspensa
           const isReprovada = item.status_analise === 'REPROVADA'
           return (
-            <div className="flex gap-1">
-              {item.tem_relatorio_os && onRelatorioOS && (
-                <Button
-                  variant="info"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onRelatorioOS(item) }}
-                  title="Relatório de abertura de OS"
-                >
-                  OS
-                </Button>
-              )}
-              {canRevisao && !isInativa && !item.as_sold && (
-                <Button
-                  variant="warning"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onNovaRevisao?.(item) }}
-                  title="Nova revisão"
-                >
-                  ↻
-                </Button>
-              )}
-              {isReprovada && !isInativa && onReenviar && (
-                <Button
-                  variant="warning"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onReenviar(item) }}
-                  title="Reenviar para análise"
-                >
-                  ↩
-                </Button>
-              )}
-              {isCancelada && onReativar && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onReativar(item) }}
-                  title="Reativar solicitação"
-                >
-                  ↺
-                </Button>
-              )}
-              {canEdit && !isInativa && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onEdit(item) }}
-                  title="Editar"
-                >
-                  ✎
-                </Button>
-              )}
-              {canCancel && !isInativa && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onCancel(item) }}
-                  title="Cancelar/Suspender"
-                >
-                  ✕
-                </Button>
-              )}
+            <div className="text-center" onClick={(e) => e.stopPropagation()}>
+              <AcoesMenu items={[
+                { label: 'Editar', icon: '✎', destaque: true, visivel: canEdit && !isInativa, onClick: () => onEdit(item) },
+                { label: 'Nova revisão', icon: '↻', visivel: canRevisao && !isInativa && !item.as_sold && !!onNovaRevisao, onClick: () => onNovaRevisao?.(item) },
+                { label: 'Relatório de OS', icon: '📄', visivel: item.tem_relatorio_os && !!onRelatorioOS, onClick: () => onRelatorioOS?.(item) },
+                { label: 'Reenviar para análise', icon: '↩', visivel: isReprovada && !isInativa && !!onReenviar, onClick: () => onReenviar?.(item) },
+                { label: 'Reativar solicitação', icon: '↺', visivel: isCancelada && !!onReativar, onClick: () => onReativar?.(item) },
+                { label: 'Cancelar / Suspender', icon: '✕', destrutiva: true, visivel: canCancel && !isInativa, onClick: () => onCancel(item) },
+              ]} />
             </div>
           )
         },
-        size: 120,
+        size: 64,
       }),
     ],
     [canEdit, canCancel, canRevisao, onEdit, onCancel, onNovaRevisao, onRelatorioOS, onReenviar, onReativar, onEditarReprovacao],
