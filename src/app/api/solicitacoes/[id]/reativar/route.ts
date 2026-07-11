@@ -21,9 +21,40 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   if (!sol) {
     return NextResponse.json({ data: null, error: 'Solicitação não encontrada' }, { status: 404 })
   }
+
+  // ── SUSPENSA → reativa restaurando o status conforme o andamento das propostas ──
+  if (sol.status === 'SUSPENSA') {
+    const [ganhouComercial, ganhouFabricacao, enviada] = await Promise.all([
+      prisma.propostaComercial.findFirst({ where: { solicitacao_id: id, resultado: 'GANHOU' }, select: { id: true } }),
+      prisma.propostaFabricacao.findFirst({ where: { solicitacao_id: id, resultado: 'GANHOU' }, select: { id: true } }),
+      prisma.propostaComercial.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } }, select: { id: true } })
+        .then(async (r) => r
+          ?? await prisma.propostaTecnica.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } }, select: { id: true } })
+          ?? await prisma.propostaFabricacao.findFirst({ where: { solicitacao_id: id, data_envio: { not: null } }, select: { id: true } })),
+    ])
+    const novoStatus = (ganhouComercial || ganhouFabricacao)
+      ? 'CONTRATO_GANHO'
+      : enviada ? 'PROPOSTA_ENVIADA' : 'EM_ELABORACAO'
+
+    await prisma.solicitacao.update({
+      where: { id },
+      data: { status: novoStatus, suspended_at: null, suspend_reason: null },
+    })
+
+    if (sol.orcamentista_id) {
+      await createNotificacao(
+        sol.orcamentista_id,
+        `Solicitação reativada — ${sol.numero}`,
+        `A solicitação ${sol.numero} — ${sol.cliente.nome} foi reativada e voltou ao seu painel.`,
+        '/orcamentos/painel',
+      )
+    }
+    return NextResponse.json({ data: null, error: null })
+  }
+
   if (!sol.cancelled_at) {
     return NextResponse.json(
-      { data: null, error: 'Apenas solicitações canceladas podem ser reativadas' },
+      { data: null, error: 'Apenas solicitações canceladas ou suspensas podem ser reativadas' },
       { status: 409 },
     )
   }

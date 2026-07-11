@@ -11,6 +11,8 @@ export async function GET() {
   const contratos = await prisma.contrato.findMany({
     where: { cancelled_at: null },
     select: {
+      ano_referencia: true,
+      status:         true,
       num_os:       true,
       num_acordo:   true,
       num_proposta: true,
@@ -38,6 +40,18 @@ export async function GET() {
     if (c.cliente.ramo_atuacao) mercadoSet.add(c.cliente.ramo_atuacao)
   }
 
+  // Tuplas por contrato para os filtros em cascata do cliente
+  const linhas = contratos.map((c) => ({
+    ano:            String(c.ano_referencia),
+    cliente_id:     String(c.cliente.id),
+    mercado:        c.cliente.ramo_atuacao ?? null,
+    num_os:         c.num_os ?? null,
+    num_acordo:     c.num_acordo ?? null,
+    num_proposta:   c.num_proposta ?? null,
+    status:         c.status,
+    responsavel_id: c.responsavel ? String(c.responsavel.id) : null,
+  }))
+
   return NextResponse.json({
     data: {
       clientes:     Array.from(clientesMap.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
@@ -46,6 +60,7 @@ export async function GET() {
       num_acordos:  Array.from(acordoSet).sort(),
       num_propostas: Array.from(propostaSet).sort(),
       mercados:     Array.from(mercadoSet).sort(),
+      linhas,
     },
     error: null,
   })

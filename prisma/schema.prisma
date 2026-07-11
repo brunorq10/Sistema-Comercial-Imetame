@@ -768,6 +768,9 @@ model Contrato {
   cancelled_at   DateTime?
   cancel_reason  String?
   rascunho       Boolean               @default(false)
+  // Lixeira: exclusão do Controle de Faturamento vira soft-delete restaurável por 15 dias
+  deleted_at     DateTime?
+  deleted_by     Int?
   // Soft-cancel do acompanhamento de HH (Obras/Paradas) — RN-18 (não exclui, cancela com motivo)
   hh_cancelado_at   DateTime?
   hh_cancel_motivo  String?

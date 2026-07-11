@@ -13,6 +13,7 @@ interface Props {
   onEditar: (item: PropostasItem) => void
   onHistorico: (item: PropostasItem) => void
   onHistoricoAlteracoes: (item: PropostasItem) => void
+  onReativar?: (item: PropostasItem) => void
   canEditar: boolean
 }
 
@@ -36,7 +37,7 @@ function ResultadoCell({ resultado }: { resultado: string | null }) {
   return <span className={cn('text-[10px]', cls)}>{RESULTADO_LABELS[resultado] ?? resultado}</span>
 }
 
-export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, onRelatorioOS, canEditar }: Props) {
+export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, onRelatorioOS, onReativar, canEditar }: Props) {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   if (data.length === 0) {
@@ -138,6 +139,7 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
                   <td className="px-3 py-[6px] text-center" style={{ width: 64 }}>
                     <AcoesMenu items={[
                       { label: 'Editar proposta', icon: '✎', destaque: true, visivel: canEditar, onClick: () => onEditar(item) },
+                      { label: 'Reativar proposta', icon: '↺', visivel: desativada && !!onReativar, onClick: () => onReativar?.(item) },
                       { label: 'Histórico de revisões', icon: '↺', onClick: () => onHistorico(item) },
                       { label: 'Histórico de alterações', icon: '🕘', onClick: () => onHistoricoAlteracoes(item) },
                       {

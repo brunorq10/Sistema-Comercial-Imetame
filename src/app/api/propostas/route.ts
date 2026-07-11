@@ -13,12 +13,15 @@ async function getFiltros() {
       ],
     },
     select: {
-      numero:       true,
-      cidade:       true,
-      estado:       true,
-      escopo:       true,
-      cliente:      { select: { id: true, nome: true } },
-      orcamentista: { select: { id: true, nome: true } },
+      numero:        true,
+      cidade:        true,
+      estado:        true,
+      escopo:        true,
+      classificacao: true,
+      cliente:       { select: { id: true, nome: true } },
+      orcamentista:  { select: { id: true, nome: true } },
+      propostas_comerciais: { orderBy: { versao: 'desc' }, take: 1, select: { resultado: true } },
+      propostas_fabricacao: { orderBy: { versao: 'desc' }, take: 1, select: { resultado: true } },
     },
   })
 
@@ -42,6 +45,23 @@ async function getFiltros() {
   const sort = (m: Map<number, string>) =>
     Array.from(m.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
 
+  // Tuplas por solicitação para os filtros em cascata do cliente
+  const linhas = rows.map((s) => {
+    const isFab = s.classificacao === 'FABRICACOES' || s.classificacao === 'OLEO_GAS'
+    const resultado = isFab
+      ? (s.propostas_fabricacao[0]?.resultado ?? null)
+      : (s.propostas_comerciais[0]?.resultado ?? null)
+    return {
+      numero:          s.numero,
+      cliente_id:      String(s.cliente.id),
+      cidade:          s.cidade ? (s.estado ? `${s.cidade}/${s.estado}` : s.cidade) : null,
+      classificacao:   s.classificacao ?? null,
+      orcamentista_id: s.orcamentista ? String(s.orcamentista.id) : null,
+      resultado:       resultado ?? null,
+      escopo:          s.escopo ?? null,
+    }
+  })
+
   return NextResponse.json({
     data: {
       clientes:      sort(clientesMap),
@@ -49,6 +69,7 @@ async function getFiltros() {
       numeros:       Array.from(numerosSet).sort(),
       cidades:       Array.from(cidadesSet).sort(),
       escopos:       Array.from(escoposSet).sort(),
+      linhas,
     },
     error: null,
   })

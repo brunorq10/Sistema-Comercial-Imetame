@@ -174,40 +174,67 @@ export default function MeuPainelAcordosPage() {
   const toggleExpand = (id: number) =>
     setExpandidos((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
+  // Filtros em cascata: cada contrato é testado contra todos os filtros, exceto
+  // o do próprio campo cujas opções estão sendo calculadas.
+  const matchContrato = useCallback((c: ContratoComAlteracoes, exceto?: string) => {
+    if (exceto !== 'cliente' && filtroClienteId.length && !filtroClienteId.includes(String(c.cliente.id))) return false
+    const os = c.num_os
+    if (exceto !== 'os' && filtroNumOs.length && !(os && filtroNumOs.includes(os))) return false
+    const cf = c.cliente_final
+    if (exceto !== 'clienteFinal' && filtroClienteFinalId.length && !filtroClienteFinalId.includes(String(cf?.id ?? ''))) return false
+    if (exceto !== 'status' && filtroStatusFat.length && !c.subindices.some((s) => filtroStatusFat.includes(s.status_faturamento))) return false
+    if (exceto !== 'ramo' && filtroRamo.length && !(c.cliente.ramo_atuacao && filtroRamo.includes(c.cliente.ramo_atuacao))) return false
+    return true
+  }, [filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo])
+
   const clienteOptions = useMemo(() => {
     const seen = new Set<string>()
     return contratos
+      .filter((c) => matchContrato(c, 'cliente'))
       .filter((c) => { const k = String(c.cliente.id); if (seen.has(k)) return false; seen.add(k); return true })
       .map((c) => ({ value: String(c.cliente.id), label: c.cliente.nome }))
-  }, [contratos])
+  }, [contratos, matchContrato])
 
   const osOptions = useMemo(() => {
     const seen = new Set<string>()
     const opts: { value: string; label: string }[] = []
-    contratos.forEach((c) => {
-      const os = (c as ContratoComAlteracoes).num_os
+    contratos.filter((c) => matchContrato(c, 'os')).forEach((c) => {
+      const os = c.num_os
       if (os && !seen.has(os)) { seen.add(os); opts.push({ value: os, label: os }) }
     })
     return opts
-  }, [contratos])
+  }, [contratos, matchContrato])
 
   const clienteFinalOptions = useMemo(() => {
     const seen = new Set<string>()
     const opts: { value: string; label: string }[] = []
-    contratos.forEach((c) => {
-      const cf = (c as ContratoComAlteracoes).cliente_final
+    contratos.filter((c) => matchContrato(c, 'clienteFinal')).forEach((c) => {
+      const cf = c.cliente_final
       if (cf) {
         const k = String(cf.id)
         if (!seen.has(k)) { seen.add(k); opts.push({ value: k, label: cf.nome }) }
       }
     })
     return opts
-  }, [contratos])
+  }, [contratos, matchContrato])
+
+  const statusFatOptions = useMemo(() => {
+    const presentes = new Set<string>(filtroStatusFat)
+    contratos.filter((c) => matchContrato(c, 'status')).forEach((c) => {
+      c.subindices.forEach((s) => presentes.add(s.status_faturamento))
+    })
+    return [
+      { value: 'A_FATURAR', label: 'A faturar' },
+      { value: 'FATURADO',  label: 'Faturado' },
+      { value: 'PARCIAL',   label: 'Parcial' },
+      { value: 'CANCELADO', label: 'Cancelado' },
+    ].filter((o) => presentes.has(o.value))
+  }, [contratos, matchContrato, filtroStatusFat])
 
   const ramoOptions = useMemo(() => {
     const seen = new Set<string>()
     const opts: { value: string; label: string }[] = []
-    contratos.forEach((c) => {
+    contratos.filter((c) => matchContrato(c, 'ramo')).forEach((c) => {
       const r = c.cliente.ramo_atuacao
       if (r && !seen.has(r)) {
         seen.add(r)
@@ -219,20 +246,11 @@ export default function MeuPainelAcordosPage() {
       }
     })
     return opts
-  }, [contratos])
+  }, [contratos, matchContrato])
 
-  const filteredContratos = useMemo(() => {
-    return contratos.filter((c) => {
-      if (filtroClienteId.length      && !filtroClienteId.includes(String(c.cliente.id))) return false
-      const os = (c as ContratoComAlteracoes).num_os
-      if (filtroNumOs.length          && !(os && filtroNumOs.includes(os))) return false
-      const cf = (c as ContratoComAlteracoes).cliente_final
-      if (filtroClienteFinalId.length && !filtroClienteFinalId.includes(String(cf?.id ?? ''))) return false
-      if (filtroStatusFat.length      && !c.subindices.some((s) => filtroStatusFat.includes(s.status_faturamento))) return false
-      if (filtroRamo.length           && !(c.cliente.ramo_atuacao && filtroRamo.includes(c.cliente.ramo_atuacao))) return false
-      return true
-    })
-  }, [contratos, filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo])
+  const filteredContratos = useMemo(
+    () => contratos.filter((c) => matchContrato(c)),
+    [contratos, matchContrato])
 
   const indicators = useMemo(() => {
     const allSubs = filteredContratos.flatMap((c) => c.subindices)
@@ -341,12 +359,7 @@ export default function MeuPainelAcordosPage() {
             <SearchableMultiSelect
               values={filtroStatusFat}
               onChange={setFiltroStatusFat}
-              options={[
-                { value: 'A_FATURAR', label: 'A faturar' },
-                { value: 'FATURADO',  label: 'Faturado' },
-                { value: 'PARCIAL',   label: 'Parcial' },
-                { value: 'CANCELADO', label: 'Cancelado' },
-              ]}
+              options={statusFatOptions}
             />
           </div>
           <div className="flex-1 min-w-[130px]">

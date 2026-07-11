@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { FaturamentoContratoTable } from '@/components/tables/FaturamentoContratoTable'
@@ -20,7 +20,16 @@ import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn, formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
+import { filtrarOpcoes, type LinhaCascata } from '@/lib/cascata'
 import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
+
+const MERCADO_LABELS: Record<string, string> = {
+  PAPEL_CELULOSE: 'Papel e Celulose',
+  SIDERURGIA:     'Siderurgia',
+  MINERACAO:      'Mineração',
+  OLEO_GAS:       'Óleo e Gás',
+  OUTROS:         'Outros',
+}
 
 type AcaoNF = { tipo: 'inativar' | 'excluir'; nf: NFContratoListItem }
 type AcaoMulta = { tipo: 'inativar' | 'excluir'; multa: MultaListItem }
@@ -89,6 +98,42 @@ export default function FaturamentoPage() {
   const [numOs,        setNumOs]        = useState<string[]>([])
   const [numAcordo,    setNumAcordo]    = useState<string[]>([])
   const [numProposta,  setNumProposta]  = useState<string[]>([])
+  const [linhasFiltro, setLinhasFiltro] = useState<LinhaCascata[]>([])
+
+  // Filtros em cascata: opções de cada filtro refletem as seleções dos demais.
+  // Nota: o filtro de Ano do controle também casa contratos multi-ano pelos
+  // sub-índices (whereAnual), então o ano NÃO restringe as demais opções aqui.
+  const selecoesCascata = useMemo(() => ({
+    cliente_id: clienteId, mercado, num_os: numOs, num_acordo: numAcordo,
+    num_proposta: numProposta, status, responsavel_id: responsavelId,
+  }), [clienteId, mercado, numOs, numAcordo, numProposta, status, responsavelId])
+
+  const opCliente = useMemo(() =>
+    filtrarOpcoes(clientes.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoesCascata, 'cliente_id'),
+    [clientes, linhasFiltro, selecoesCascata])
+  const opMercado = useMemo(() =>
+    filtrarOpcoes(opcoesMercado.map((m) => ({ value: m, label: MERCADO_LABELS[m] ?? m })), linhasFiltro, selecoesCascata, 'mercado'),
+    [opcoesMercado, linhasFiltro, selecoesCascata])
+  const opOs = useMemo(() =>
+    filtrarOpcoes(opcoesOs.map((v) => ({ value: v, label: v })), linhasFiltro, selecoesCascata, 'num_os'),
+    [opcoesOs, linhasFiltro, selecoesCascata])
+  const opAcordo = useMemo(() =>
+    filtrarOpcoes(opcoesAcordo.map((v) => ({ value: v, label: v })), linhasFiltro, selecoesCascata, 'num_acordo'),
+    [opcoesAcordo, linhasFiltro, selecoesCascata])
+  const opProposta = useMemo(() =>
+    filtrarOpcoes(opcoesProposta.map((v) => ({ value: v, label: v })), linhasFiltro, selecoesCascata, 'num_proposta'),
+    [opcoesProposta, linhasFiltro, selecoesCascata])
+  const opStatusFat = useMemo(() =>
+    filtrarOpcoes([
+      { value: 'A_FATURAR', label: 'A faturar' },
+      { value: 'PARCIAL',   label: 'Parcial' },
+      { value: 'FATURADO',  label: 'Faturado' },
+      { value: 'CANCELADO', label: 'Cancelado' },
+    ], linhasFiltro, selecoesCascata, 'status'),
+    [linhasFiltro, selecoesCascata])
+  const opResponsavel = useMemo(() =>
+    filtrarOpcoes(responsaveis.map((u) => ({ value: String(u.id), label: u.nome })), linhasFiltro, selecoesCascata, 'responsavel_id'),
+    [responsaveis, linhasFiltro, selecoesCascata])
 
   // ── Dados NFs ─────────────────────────────────────────────────────────────────
   const [nfs, setNfs] = useState<NFContratoListItem[]>([])
@@ -164,6 +209,7 @@ export default function FaturamentoPage() {
         setOpcoesOs(j.data.num_os ?? [])
         setOpcoesAcordo(j.data.num_acordos ?? [])
         setOpcoesProposta(j.data.num_propostas ?? [])
+        setLinhasFiltro(j.data.linhas ?? [])
       }
     })
   }, [])
@@ -430,14 +476,6 @@ export default function FaturamentoPage() {
     }
   }
 
-  const MERCADO_LABELS: Record<string, string> = {
-    PAPEL_CELULOSE: 'Papel e Celulose',
-    SIDERURGIA:     'Siderurgia',
-    MINERACAO:      'Mineração',
-    OLEO_GAS:       'Óleo e Gás',
-    OUTROS:         'Outros',
-  }
-
   const limparFiltros = () => {
     setAno(String(anoAtual)); setClienteId([]); setMercado([]); setStatus([]); setResponsavelId([])
     setNumOs([]); setNumAcordo([]); setNumProposta([])
@@ -603,7 +641,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={clienteId}
                 onChange={setClienteId}
-                options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
+                options={opCliente}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -611,7 +649,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={mercado}
                 onChange={setMercado}
-                options={opcoesMercado.map((m) => ({ value: m, label: MERCADO_LABELS[m] ?? m }))}
+                options={opMercado}
                 emptyLabel="Todos"
               />
             </div>
@@ -620,7 +658,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={numOs}
                 onChange={setNumOs}
-                options={opcoesOs.map((v) => ({ value: v, label: v }))}
+                options={opOs}
                 emptyLabel="Todas"
               />
             </div>
@@ -629,7 +667,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={numAcordo}
                 onChange={setNumAcordo}
-                options={opcoesAcordo.map((v) => ({ value: v, label: v }))}
+                options={opAcordo}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -637,7 +675,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={numProposta}
                 onChange={setNumProposta}
-                options={opcoesProposta.map((v) => ({ value: v, label: v }))}
+                options={opProposta}
                 emptyLabel="Todas"
               />
             </div>
@@ -646,12 +684,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={status}
                 onChange={setStatus}
-                options={[
-                  { value: 'A_FATURAR', label: 'A faturar' },
-                  { value: 'PARCIAL',   label: 'Parcial' },
-                  { value: 'FATURADO',  label: 'Faturado' },
-                  { value: 'CANCELADO', label: 'Cancelado' },
-                ]}
+                options={opStatusFat}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -659,7 +692,7 @@ export default function FaturamentoPage() {
               <SearchableMultiSelect
                 values={responsavelId}
                 onChange={setResponsavelId}
-                options={responsaveis.map((u) => ({ value: String(u.id), label: u.nome }))}
+                options={opResponsavel}
               />
             </div>
             <div className="flex-shrink-0 flex items-end">

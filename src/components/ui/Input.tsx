@@ -16,8 +16,10 @@ interface LabeledFieldProps {
 export function Field({ label, error, children, className }: LabeledFieldProps) {
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em]">
-        {label}
+      {/* flex-1 + items-end: em grids, células da mesma linha alinham o controle
+          pela base mesmo quando um label quebra em duas linhas */}
+      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] flex-1 flex items-end">
+        <span>{label}</span>
       </label>
       {children}
       {error && <span className="text-[10px] text-red-600">{error}</span>}

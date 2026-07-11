@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Pagination } from '@/components/ui/Pagination'
 import { SolicitacoesTable } from '@/components/tables/SolicitacoesTable'
@@ -15,6 +15,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { formatDate } from '@/lib/utils'
+import { filtrarOpcoes, type LinhaCascata } from '@/lib/cascata'
 import type { SolicitacaoListItem, FiltrosSolicitacao, StatusSolicitacao, Classificacao, Interesse, Origem } from '@/types'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ export default function SolicitacoesPage() {
   const [clientes,      setClientes]      = useState<{ id: number; nome: string }[]>([])
   const [responsaveis,  setResponsaveis]  = useState<{ id: number; nome: string }[]>([])
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
+  const [linhasFiltro,  setLinhasFiltro]  = useState<LinhaCascata[]>([])
   const [modalForm, setModalForm] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
   const [modalNovaRevisao, setModalNovaRevisao] = useState(false)
@@ -96,9 +98,61 @@ export default function SolicitacoesPage() {
         setClientes(j.data.clientes ?? [])
         setResponsaveis(j.data.responsaveis ?? [])
         setOrcamentistas(j.data.orcamentistas ?? [])
+        setLinhasFiltro(j.data.linhas ?? [])
       }
     })
   }, [])
+
+  // Filtros em cascata: opções de cada filtro refletem as seleções dos demais
+  const selecoes = useMemo(() => ({
+    ano:             filtros.ano ? [filtros.ano] : [],
+    cliente_id:      filtros.cliente_id ?? [],
+    classificacao:   filtros.classificacao ?? [],
+    interesse:       filtros.interesse ?? [],
+    status:          filtros.status ? [filtros.status] : [],
+    responsavel_id:  filtros.responsavel_id ?? [],
+    orcamentista_id: filtros.orcamentista_id ?? [],
+  }), [filtros])
+
+  const opAno = useMemo(() =>
+    filtrarOpcoes(
+      Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => ({ value: String(y), label: String(y) })),
+      linhasFiltro, selecoes, 'ano'),
+    [linhasFiltro, selecoes])
+  const opCliente = useMemo(() =>
+    filtrarOpcoes(clientes.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoes, 'cliente_id'),
+    [clientes, linhasFiltro, selecoes])
+  const opClassif = useMemo(() =>
+    filtrarOpcoes([
+      { value: 'OBRAS',       label: 'Obras' },
+      { value: 'PARADAS',     label: 'Paradas' },
+      { value: 'OLEO_GAS',    label: 'Óleo e Gás' },
+      { value: 'FABRICACOES', label: 'Fabricações' },
+    ], linhasFiltro, selecoes, 'classificacao'),
+    [linhasFiltro, selecoes])
+  const opInteresse = useMemo(() =>
+    filtrarOpcoes([
+      { value: 'ALTO',  label: 'Alto' },
+      { value: 'MEDIO', label: 'Médio' },
+      { value: 'BAIXO', label: 'Baixo' },
+    ], linhasFiltro, selecoes, 'interesse'),
+    [linhasFiltro, selecoes])
+  const opResponsavel = useMemo(() =>
+    filtrarOpcoes(responsaveis.map((u) => ({ value: String(u.id), label: u.nome })), linhasFiltro, selecoes, 'responsavel_id'),
+    [responsaveis, linhasFiltro, selecoes])
+  const opStatus = useMemo(() =>
+    filtrarOpcoes([
+      { value: 'AGUARDANDO_ANALISE', label: 'Em análise' },
+      { value: 'EM_ELABORACAO',      label: 'Em elaboração' },
+      { value: 'PROPOSTA_ENVIADA',   label: 'Prop. enviada' },
+      { value: 'CONTRATO_GANHO',     label: 'Contrato ganho' },
+      { value: 'RECUSADA',           label: 'Recusada' },
+      { value: 'SUSPENSA',           label: 'Suspensa' },
+    ], linhasFiltro, selecoes, 'status'),
+    [linhasFiltro, selecoes])
+  const opOrcamentista = useMemo(() =>
+    filtrarOpcoes(orcamentistas.map((u) => ({ value: String(u.id), label: u.nome })), linhasFiltro, selecoes, 'orcamentista_id'),
+    [orcamentistas, linhasFiltro, selecoes])
 
   // ── Fetch solicitações ────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -276,7 +330,7 @@ export default function SolicitacoesPage() {
               <SearchableSelect
                 value={filtros.ano ?? ''}
                 onChange={(v) => setFiltros((f) => ({ ...f, ano: v }))}
-                options={Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((y) => ({ value: String(y), label: String(y) }))}
+                options={opAno}
               />
             </div>
             <div className="flex-[2] min-w-[160px]">
@@ -284,7 +338,7 @@ export default function SolicitacoesPage() {
               <SearchableMultiSelect
                 values={filtros.cliente_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, cliente_id: v }))}
-                options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))}
+                options={opCliente}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -292,12 +346,7 @@ export default function SolicitacoesPage() {
               <SearchableMultiSelect
                 values={filtros.classificacao ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, classificacao: v }))}
-                options={[
-                  { value: 'OBRAS',       label: 'Obras' },
-                  { value: 'PARADAS',     label: 'Paradas' },
-                  { value: 'OLEO_GAS',    label: 'Óleo e Gás' },
-                  { value: 'FABRICACOES', label: 'Fabricações' },
-                ]}
+                options={opClassif}
                 emptyLabel="Todas"
               />
             </div>
@@ -306,11 +355,7 @@ export default function SolicitacoesPage() {
               <SearchableMultiSelect
                 values={filtros.interesse ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, interesse: v }))}
-                options={[
-                  { value: 'ALTO',  label: 'Alto' },
-                  { value: 'MEDIO', label: 'Médio' },
-                  { value: 'BAIXO', label: 'Baixo' },
-                ]}
+                options={opInteresse}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -326,7 +371,7 @@ export default function SolicitacoesPage() {
               <SearchableMultiSelect
                 values={filtros.responsavel_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, responsavel_id: v }))}
-                options={responsaveis.map((u) => ({ value: String(u.id), label: u.nome }))}
+                options={opResponsavel}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -334,14 +379,7 @@ export default function SolicitacoesPage() {
               <SearchableSelect
                 value={filtros.status ?? ''}
                 onChange={(v) => setFiltros((f) => ({ ...f, status: v as never }))}
-                options={[
-                  { value: 'AGUARDANDO_ANALISE', label: 'Em análise' },
-                  { value: 'EM_ELABORACAO',      label: 'Em elaboração' },
-                  { value: 'PROPOSTA_ENVIADA',   label: 'Prop. enviada' },
-                  { value: 'CONTRATO_GANHO',     label: 'Contrato ganho' },
-                  { value: 'RECUSADA',           label: 'Recusada' },
-                  { value: 'SUSPENSA',           label: 'Suspensa' },
-                ]}
+                options={opStatus}
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -349,7 +387,7 @@ export default function SolicitacoesPage() {
               <SearchableMultiSelect
                 values={filtros.orcamentista_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, orcamentista_id: v }))}
-                options={orcamentistas.map((u) => ({ value: String(u.id), label: u.nome }))}
+                options={opOrcamentista}
               />
             </div>
             <div className="flex gap-1 items-end flex-shrink-0">

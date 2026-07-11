@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma'
 
 export const LIXEIRA_RETENCAO_DIAS = 15
 
-export type TipoLixeira = 'nf' | 'subindice' | 'multa' | 'ocorrencia' | 'informacao'
+export type TipoLixeira = 'nf' | 'subindice' | 'multa' | 'ocorrencia' | 'informacao' | 'contrato' | 'hh'
 
 export const TIPO_LABELS: Record<TipoLixeira, string> = {
   nf: 'NF de contrato',
@@ -16,6 +16,8 @@ export const TIPO_LABELS: Record<TipoLixeira, string> = {
   multa: 'Multa/Penalidade',
   ocorrencia: 'Ocorrência contratual',
   informacao: 'Informação da solicitação',
+  contrato: 'Contrato de faturamento',
+  hh: 'Acompanhamento de HH',
 }
 
 export function cutoffLixeira(): Date {
@@ -23,6 +25,9 @@ export function cutoffLixeira(): Date {
 }
 
 // Expurgo definitivo dos itens vencidos (best-effort; erros não bloqueiam).
+// Contratos de faturamento e acompanhamentos de HH NÃO são expurgados (RN-18 —
+// os registros permanecem no banco); após o prazo apenas saem da lixeira e
+// deixam de ser restauráveis por lá.
 export async function purgarVencidos(): Promise<void> {
   const cutoff = cutoffLixeira()
   const cond = { deleted_at: { not: null, lt: cutoff } }

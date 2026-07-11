@@ -14,6 +14,10 @@ import type { Classificacao, Interesse, Origem, Segmento, StatusSolicitacao } fr
 async function getFiltros() {
   const rows = await prisma.solicitacao.findMany({
     select: {
+      created_at:    true,
+      classificacao: true,
+      interesse:     true,
+      status:        true,
       cliente:      { select: { id: true, nome: true } },
       orcamentista: { select: { id: true, nome: true } },
       criador:      { select: { id: true, nome: true } },
@@ -33,11 +37,23 @@ async function getFiltros() {
   const sort = (m: Map<number, string>) =>
     Array.from(m.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome))
 
+  // Tuplas por solicitação para os filtros em cascata do cliente
+  const linhas = rows.map((s) => ({
+    ano:             String(s.created_at.getFullYear()),
+    cliente_id:      String(s.cliente.id),
+    classificacao:   s.classificacao ?? null,
+    interesse:       s.interesse ?? null,
+    status:          s.status,
+    responsavel_id:  s.criador ? String(s.criador.id) : null,
+    orcamentista_id: s.orcamentista ? String(s.orcamentista.id) : null,
+  }))
+
   return NextResponse.json({
     data: {
       clientes:      sort(clientesMap),
       orcamentistas: sort(orcamentistasMap),
       responsaveis:  sort(responsaveisMap),
+      linhas,
     },
     error: null,
   })

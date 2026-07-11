@@ -300,9 +300,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     )
   }
 
+  // Lixeira: marca como excluído (restaurável por 15 dias); cancelled_at mantém
+  // o item fora das listagens existentes (que filtram cancelled_at: null).
   await prisma.contrato.update({
     where: { id },
-    data: { cancelled_at: new Date(), cancel_reason: 'Excluído pelo usuário', status: 'CANCELADO' },
+    data: {
+      cancelled_at: new Date(), cancel_reason: 'Excluído pelo usuário', status: 'CANCELADO',
+      deleted_at: new Date(), deleted_by: Number(session.user.id),
+    },
   })
 
   return NextResponse.json({ data: null, error: null })

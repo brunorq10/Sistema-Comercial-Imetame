@@ -29,7 +29,7 @@ export async function GET() {
   const cutoff = cutoffLixeira()
   const cond = { deleted_at: { not: null, gte: cutoff } }
 
-  const [nfs, subs, multas, ocorrencias, infos, users] = await Promise.all([
+  const [nfs, subs, multas, ocorrencias, infos, contratos, hhRemovidos, users] = await Promise.all([
     prisma.notaFiscalContrato.findMany({
       where: cond,
       select: { id: true, numero_nf: true, valor_atribuido: true, deleted_at: true, deleted_by: true,
@@ -54,6 +54,16 @@ export async function GET() {
       where: cond,
       select: { id: true, codigo: true, comentario: true, deleted_at: true, deleted_by: true,
         solicitacao: { select: { numero: true, cliente: { select: { nome: true } } } } },
+    }),
+    prisma.contrato.findMany({
+      where: cond,
+      select: { id: true, indice: true, ano_referencia: true, deleted_at: true, deleted_by: true,
+        cliente: { select: { nome: true } } },
+    }),
+    prisma.contrato.findMany({
+      where: { hh_cancelado_at: { not: null, gte: cutoff } },
+      select: { id: true, indice: true, hh_cancelado_at: true, hh_cancelado_por: true, hh_cancel_motivo: true,
+        cliente: { select: { nome: true } } },
     }),
     prisma.user.findMany({ select: { id: true, nome: true } }),
   ])
@@ -92,13 +102,25 @@ export async function GET() {
       contexto: `${i.solicitacao.numero} · ${i.solicitacao.cliente.nome}`,
       deleted_at: i.deleted_at!.toISOString(), deleted_by_nome: nome(i.deleted_by), expira_em: expira(i.deleted_at!),
     })),
+    ...contratos.map((c) => ({
+      tipo: 'contrato' as const, tipoLabel: TIPO_LABELS.contrato, id: c.id,
+      titulo: `Contrato ${c.indice}`,
+      contexto: `${c.cliente.nome} · Ano ${c.ano_referencia}`,
+      deleted_at: c.deleted_at!.toISOString(), deleted_by_nome: nome(c.deleted_by), expira_em: expira(c.deleted_at!),
+    })),
+    ...hhRemovidos.map((c) => ({
+      tipo: 'hh' as const, tipoLabel: TIPO_LABELS.hh, id: c.id,
+      titulo: `HH — Contrato ${c.indice}`,
+      contexto: `${c.cliente.nome}${c.hh_cancel_motivo ? ` — ${c.hh_cancel_motivo.slice(0, 60)}` : ''}`,
+      deleted_at: c.hh_cancelado_at!.toISOString(), deleted_by_nome: nome(c.hh_cancelado_por), expira_em: expira(c.hh_cancelado_at!),
+    })),
   ].sort((a, b) => b.deleted_at.localeCompare(a.deleted_at))
 
   return NextResponse.json({ data: { itens, retencaoDias: LIXEIRA_RETENCAO_DIAS }, error: null })
 }
 
 const restoreSchema = z.object({
-  tipo: z.enum(['nf', 'subindice', 'multa', 'ocorrencia', 'informacao']),
+  tipo: z.enum(['nf', 'subindice', 'multa', 'ocorrencia', 'informacao', 'contrato', 'hh']),
   id: z.number().int().positive(),
 })
 
@@ -146,6 +168,28 @@ export async function POST(req: NextRequest) {
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
       const neg = await restaurar(item.deleted_by); if (neg) return neg
       await prisma.ocorrenciaContratual.update({ where: { id }, data })
+    } else if (tipo === 'contrato') {
+      const item = await prisma.contrato.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
+      if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const neg = await restaurar(item.deleted_by); if (neg) return neg
+      // Restaura também o cancelamento aplicado na exclusão e volta ao status base
+      await prisma.contrato.update({
+        where: { id },
+        data: { ...data, cancelled_at: null, cancel_reason: null, status: 'A_FATURAR' },
+      })
+    } else if (tipo === 'hh') {
+      const item = await prisma.contrato.findFirst({ where: { id, hh_cancelado_at: { not: null } }, select: { hh_cancelado_por: true } })
+      if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const neg = await restaurar(item.hh_cancelado_por); if (neg) return neg
+      await prisma.$transaction([
+        prisma.contrato.update({
+          where: { id },
+          data: { hh_cancelado_at: null, hh_cancel_motivo: null, hh_cancelado_por: null },
+        }),
+        prisma.hhAcompanhamentoHistorico.create({
+          data: { contrato_id: id, acao: 'REATIVADO', motivo: 'Restaurado da lixeira', created_by: userId },
+        }),
+      ])
     } else {
       const item = await prisma.solicitacaoInfo.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })

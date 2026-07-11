@@ -38,7 +38,7 @@ const TERCEIROS_ESPECIALIDADES = [
 ] as const
 
 type TerceiroKey = typeof TERCEIROS_ESPECIALIDADES[number]['state']
-type Tab = 'tecnica' | 'comercial' | 'resultado' | 'cancelar'
+type Tab = 'tecnica' | 'comercial' | 'resultado' | 'suspender'
 
 interface EquipItem { id: number; descricao: string; pesoTon: string; valorTotal: string; obs: string }
 const mkEquip = (id: number): EquipItem => ({ id, descricao: '', pesoTon: '', valorTotal: '', obs: '' })
@@ -55,49 +55,54 @@ function SimNaoToggle({ value, onChange }: { value: boolean; onChange: (v: boole
   )
 }
 
-function CancelSection({ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onCancelar, canCancelar, cancelada, onReativar }: {
+function SuspendSection({ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onSuspender, canCancelar, suspensa, cancelada, onReativar }: {
   confirmCancel: boolean; setConfirmCancel: (v: boolean) => void
   cancelReason: string; setCancelReason: (v: string) => void
   errorCancel: string | null; loadingCancel: boolean
-  onCancelar: () => void; canCancelar: boolean
-  cancelada?: boolean; onReativar?: () => void
+  onSuspender: () => void; canCancelar: boolean
+  suspensa?: boolean; cancelada?: boolean; onReativar?: () => void
 }) {
   if (!canCancelar) return null
-  // Proposta cancelada → oferece a reativação
-  if (cancelada) {
+  // Proposta suspensa/cancelada → oferece a reativação
+  if (suspensa || cancelada) {
     return (
       <div className="mt-4 border border-gray-200 rounded-lg px-4 py-3 flex items-center justify-between bg-gray-50">
-        <span className="text-xs text-gray-600">Esta proposta está <strong>cancelada</strong>.</span>
+        <span className="text-xs text-gray-600">
+          {suspensa
+            ? <>Esta proposta está <strong>suspensa</strong>. Ao reativar, a solicitação volta ao andamento normal.</>
+            : <>Esta proposta está <strong>cancelada</strong>.</>}
+        </span>
+        {errorCancel && <span className="text-xs text-red-600 mx-3">{errorCancel}</span>}
         <button onClick={onReativar} disabled={loadingCancel}
-          className="bg-green-primary hover:bg-green-dark text-white text-xs font-semibold px-4 py-1.5 rounded-md disabled:opacity-60 transition-colors">
+          className="bg-green-primary hover:bg-green-dark text-white text-xs font-semibold px-4 py-1.5 rounded-md disabled:opacity-60 transition-colors whitespace-nowrap">
           {loadingCancel ? 'Reativando…' : '↩ Reativar Proposta'}
         </button>
       </div>
     )
   }
   return (
-    <div className="mt-4 border border-red-200 rounded-lg overflow-hidden">
+    <div className="mt-4 border border-amber-300 rounded-lg overflow-hidden">
       {!confirmCancel ? (
         <button onClick={() => setConfirmCancel(true)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors bg-white">
-          <div className="flex items-center gap-2"><span className="text-[10px]">⚠</span><span>Cancelar Proposta</span></div>
-          <span className="text-[11px] text-red-400 font-normal">Reversível — pode ser reativada depois</span>
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-amber-600 hover:bg-amber-50 transition-colors bg-white">
+          <div className="flex items-center gap-2"><span className="text-[10px]">⚠</span><span>Suspender Proposta</span></div>
+          <span className="text-[11px] text-amber-500 font-normal">Reversível — pode ser reativada depois</span>
         </button>
       ) : (
-        <div className="px-4 py-3 bg-red-50">
-          <p className="text-xs font-semibold text-red-700 mb-1">Cancelar esta proposta?</p>
-          <p className="text-[11px] text-red-500 mb-3">Ela permanece na tabela com status <strong>Cancelada</strong> e pode ser reativada. A solicitação não é afetada.</p>
+        <div className="px-4 py-3 bg-amber-50">
+          <p className="text-xs font-semibold text-amber-700 mb-1">Suspender esta proposta?</p>
+          <p className="text-[11px] text-amber-600 mb-3">A solicitação é suspensa junto e sai do painel do orçamentista. A proposta permanece na tabela com status <strong>Suspensa</strong> e pode ser reativada a qualquer momento.</p>
           {errorCancel && <div className="bg-red-100 border border-red-300 text-red-700 text-xs px-3 py-2 rounded mb-3">{errorCancel}</div>}
           <Field label="Justificativa *" className="mb-3">
-            <textarea rows={2} placeholder="Descreva o motivo do cancelamento (mín. 5 caracteres)..."
+            <textarea rows={2} placeholder="Descreva o motivo da suspensão (mín. 5 caracteres)..."
               value={cancelReason} onChange={e => setCancelReason(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-400/40 resize-none" />
+              className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" />
           </Field>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setConfirmCancel(false)} className="text-xs text-gray-500 hover:underline px-3 py-1.5">Voltar</button>
-            <button onClick={onCancelar} disabled={loadingCancel}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-1.5 rounded-md disabled:opacity-60 transition-colors">
-              {loadingCancel ? 'Cancelando...' : 'Confirmar Cancelamento'}
+            <button onClick={onSuspender} disabled={loadingCancel}
+              className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-4 py-1.5 rounded-md disabled:opacity-60 transition-colors">
+              {loadingCancel ? 'Suspendendo...' : 'Confirmar Suspensão'}
             </button>
           </div>
         </div>
@@ -472,17 +477,17 @@ export function EditarPropostaModal({
     } finally { setLoadingResFab(false) }
   }
 
-  // Cancela a PROPOSTA (reversível) — não mexe na solicitação
-  const handleCancelar = async () => {
+  // Suspende a SOLICITAÇÃO (reversível) — a proposta reflete o status Suspensa
+  const handleSuspender = async () => {
     if (cancelReason.trim().length < 5) { setErrorCancel('Justificativa obrigatória (mín. 5 caracteres)'); return }
     setLoadingCancel(true); setErrorCancel(null)
     try {
-      const res = await fetch(`/api/propostas/${item.id}/cancelar`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'cancelar', motivo: cancelReason.trim() }),
+      const res = await fetch(`/api/solicitacoes/${item.id}`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'suspender', cancel_reason: cancelReason.trim() }),
       })
       const json = await res.json()
-      if (!res.ok || json.error) { setErrorCancel(json.error ?? 'Erro ao cancelar'); return }
+      if (!res.ok || json.error) { setErrorCancel(json.error ?? 'Erro ao suspender'); return }
       onSuccess(); onClose()
     } finally { setLoadingCancel(false) }
   }
@@ -490,10 +495,13 @@ export function EditarPropostaModal({
   const handleReativar = async () => {
     setLoadingCancel(true); setErrorCancel(null)
     try {
-      const res = await fetch(`/api/propostas/${item.id}/cancelar`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acao: 'reativar' }),
-      })
+      // Suspensa → reativa a solicitação; cancelada (legado) → limpa o cancelamento da proposta
+      const res = item.suspensa && !item.proposta_cancelada_at
+        ? await fetch(`/api/solicitacoes/${item.id}/reativar`, { method: 'POST' })
+        : await fetch(`/api/propostas/${item.id}/cancelar`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao: 'reativar' }),
+          })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorCancel(json.error ?? 'Erro ao reativar'); return }
       onSuccess(); onClose()
@@ -638,7 +646,7 @@ export function EditarPropostaModal({
         <div className="flex justify-end mb-4">
           <Button onClick={saveResultadoFab} disabled={loadingResFab}>{loadingResFab ? 'Salvando...' : 'Salvar Resultado'}</Button>
         </div>
-        <CancelSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onCancelar: handleCancelar, canCancelar, cancelada: !!item.proposta_cancelada_at, onReativar: handleReativar }} />
+        <SuspendSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onSuspender: handleSuspender, canCancelar, suspensa: item.suspensa, cancelada: !!item.proposta_cancelada_at, onReativar: handleReativar }} />
       </Modal>
     )
   }
@@ -648,7 +656,7 @@ export function EditarPropostaModal({
     { key: 'tecnica'   as Tab, label: 'Proposta Técnica',  show: canRegistrarTecnica },
     { key: 'comercial' as Tab, label: 'Proposta Comercial', show: canRegistrarComercial },
     { key: 'resultado' as Tab, label: 'Resultado',          show: true },
-    { key: 'cancelar'  as Tab, label: 'Cancelar',           show: canCancelar },
+    { key: 'suspender' as Tab, label: 'Suspender',          show: canCancelar },
   ] as { key: Tab; label: string; show: boolean }[]).filter(t => t.show)
 
   return (
@@ -943,9 +951,9 @@ export function EditarPropostaModal({
         </div>
       )}
 
-      {/* ── Cancelar ─────────────────────────────────────────────────────────── */}
-      {tab === 'cancelar' && (
-        <CancelSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onCancelar: handleCancelar, canCancelar, cancelada: !!item.proposta_cancelada_at, onReativar: handleReativar }} />
+      {/* ── Suspender ────────────────────────────────────────────────────────── */}
+      {tab === 'suspender' && (
+        <SuspendSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onSuspender: handleSuspender, canCancelar, suspensa: item.suspensa, cancelada: !!item.proposta_cancelada_at, onReativar: handleReativar }} />
       )}
     </Modal>
   )

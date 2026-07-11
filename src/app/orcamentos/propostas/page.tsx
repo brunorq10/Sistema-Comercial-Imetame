@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
@@ -13,6 +13,8 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { filtrarOpcoes, type LinhaCascata } from '@/lib/cascata'
 import type { PropostasItem } from '@/types'
 
 const opClassificacao = [
@@ -43,6 +45,7 @@ export default function PropostasPage() {
   const [numeros,       setNumeros]       = useState<string[]>([])
   const [cidades,       setCidades]       = useState<string[]>([])
   const [escopos,       setEscopos]       = useState<string[]>([])
+  const [linhasFiltro,  setLinhasFiltro]  = useState<LinhaCascata[]>([])
 
   // Filtros de edição — todos multi-select
   const [numero,          setNumero]          = useState<string[]>([])
@@ -64,6 +67,9 @@ export default function PropostasPage() {
   const [modalEditar, setModalEditar] = useState<PropostasItem | null>(null)
   const [modalHistAlteracoes, setModalHistAlteracoes] = useState<PropostasItem | null>(null)
   const [modalOS, setModalOS] = useState<PropostasItem | null>(null)
+  const [confirmReativar, setConfirmReativar] = useState<PropostasItem | null>(null)
+  const [reativarLoading, setReativarLoading] = useState(false)
+  const [reativarError, setReativarError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/propostas?modo=filtros').then(r => r.json()).then(j => {
@@ -73,9 +79,38 @@ export default function PropostasPage() {
         setNumeros(j.data.numeros ?? [])
         setCidades(j.data.cidades ?? [])
         setEscopos(j.data.escopos ?? [])
+        setLinhasFiltro(j.data.linhas ?? [])
       }
     })
   }, [])
+
+  // Filtros em cascata: opções de cada filtro refletem as seleções dos demais
+  const selecoes = useMemo(() => ({
+    numero, cliente_id: clienteIds, cidade, classificacao: classificacoes,
+    orcamentista_id: orcamentistaIds, resultado: resultados, escopo,
+  }), [numero, clienteIds, cidade, classificacoes, orcamentistaIds, resultados, escopo])
+
+  const opNumero = useMemo(() =>
+    filtrarOpcoes(numeros.map(n => ({ value: n, label: n })), linhasFiltro, selecoes, 'numero'),
+    [numeros, linhasFiltro, selecoes])
+  const opCliente = useMemo(() =>
+    filtrarOpcoes(clientes.map(c => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoes, 'cliente_id'),
+    [clientes, linhasFiltro, selecoes])
+  const opCidade = useMemo(() =>
+    filtrarOpcoes(cidades.map(c => ({ value: c, label: c })), linhasFiltro, selecoes, 'cidade'),
+    [cidades, linhasFiltro, selecoes])
+  const opClassif = useMemo(() =>
+    filtrarOpcoes(opClassificacao, linhasFiltro, selecoes, 'classificacao'),
+    [linhasFiltro, selecoes])
+  const opOrcamentista = useMemo(() =>
+    filtrarOpcoes(orcamentistas.map(o => ({ value: String(o.id), label: o.nome })), linhasFiltro, selecoes, 'orcamentista_id'),
+    [orcamentistas, linhasFiltro, selecoes])
+  const opRes = useMemo(() =>
+    filtrarOpcoes(opResultado, linhasFiltro, selecoes, 'resultado'),
+    [linhasFiltro, selecoes])
+  const opEscopo = useMemo(() =>
+    filtrarOpcoes(escopos.map(e => ({ value: e, label: e })), linhasFiltro, selecoes, 'escopo'),
+    [escopos, linhasFiltro, selecoes])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -113,6 +148,23 @@ export default function PropostasPage() {
     setResultados([]); setEscopo([])
     setAplicados({ numero: [], clienteIds: [], cidade: [], classificacoes: [], orcamentistaIds: [], resultados: [], escopo: [] })
     setPage(1)
+  }
+
+  // Reativa a proposta: suspensa → reativa a solicitação; cancelada (legado) → limpa o cancelamento
+  const executarReativacao = async (item: PropostasItem) => {
+    setReativarLoading(true); setReativarError(null)
+    try {
+      const res = item.suspensa && !item.proposta_cancelada_at
+        ? await fetch(`/api/solicitacoes/${item.id}/reativar`, { method: 'POST' })
+        : await fetch(`/api/propostas/${item.id}/cancelar`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acao: 'reativar' }),
+          })
+      const json = await res.json()
+      if (!res.ok || json.error) { setReativarError(json.error ?? 'Erro ao reativar proposta'); return }
+      setConfirmReativar(null)
+      fetchData()
+    } finally { setReativarLoading(false) }
   }
 
   const exportarExcel = () => {
@@ -161,37 +213,37 @@ export default function PropostasPage() {
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Nº Proposta</label>
             <SearchableMultiSelect values={numero} onChange={setNumero}
-              options={numeros.map(n => ({ value: n, label: n }))} emptyLabel="Todas" />
+              options={opNumero} emptyLabel="Todas" />
           </div>
           <div className="flex-[2] min-w-[160px]">
             <label className={fLbl}>Cliente</label>
             <SearchableMultiSelect values={clienteIds} onChange={setClienteIds}
-              options={clientes.map(c => ({ value: String(c.id), label: c.nome }))} />
+              options={opCliente} />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Cidade/UF</label>
             <SearchableMultiSelect values={cidade} onChange={setCidade}
-              options={cidades.map(c => ({ value: c, label: c }))} emptyLabel="Todas" />
+              options={opCidade} emptyLabel="Todas" />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Classificação</label>
             <SearchableMultiSelect values={classificacoes} onChange={setClassificacoes}
-              options={opClassificacao} emptyLabel="Todas" />
+              options={opClassif} emptyLabel="Todas" />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Orçamentista</label>
             <SearchableMultiSelect values={orcamentistaIds} onChange={setOrcamentistaIds}
-              options={orcamentistas.map(o => ({ value: String(o.id), label: o.nome }))} />
+              options={opOrcamentista} />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className={fLbl}>Resultado</label>
             <SearchableMultiSelect values={resultados} onChange={setResultados}
-              options={opResultado} />
+              options={opRes} />
           </div>
           <div className="flex-[2] min-w-[160px]">
             <label className={fLbl}>Escopo</label>
             <SearchableMultiSelect values={escopo} onChange={setEscopo}
-              options={escopos.map(e => ({ value: e, label: e }))} placeholder="Digite para filtrar…" />
+              options={opEscopo} placeholder="Digite para filtrar…" />
           </div>
           <div className="flex-shrink-0 flex items-end gap-1">
             <Button size="sm" onClick={handleFiltrar}>Filtrar</Button>
@@ -215,6 +267,7 @@ export default function PropostasPage() {
                 onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico`)}
                 onHistoricoAlteracoes={setModalHistAlteracoes}
                 onRelatorioOS={setModalOS}
+                onReativar={canCancelSolicitacao ? (item) => { setReativarError(null); setConfirmReativar(item) } : undefined}
                 canEditar={canEditar}
               />
             </div>
@@ -242,6 +295,22 @@ export default function PropostasPage() {
           onSuccess={fetchData}
           solicitacaoId={modalOS.id}
           numero={modalOS.numero}
+        />
+      )}
+
+      {confirmReativar && (
+        <ConfirmDialog
+          open
+          title={`Reativar proposta · ${confirmReativar.numero}`}
+          message={confirmReativar.suspensa && !confirmReativar.proposta_cancelada_at
+            ? <>A proposta <strong>{confirmReativar.numero}</strong> está suspensa. Ao reativar, a solicitação volta ao andamento normal e a proposta deixa de aparecer como suspensa. Confirmar?</>
+            : <>A proposta <strong>{confirmReativar.numero}</strong> está cancelada. Ao reativar, ela volta a valer normalmente. Confirmar?</>}
+          variant="success"
+          confirmLabel="Reativar"
+          loading={reativarLoading}
+          error={reativarError}
+          onConfirm={() => executarReativacao(confirmReativar)}
+          onClose={() => setConfirmReativar(null)}
         />
       )}
 
