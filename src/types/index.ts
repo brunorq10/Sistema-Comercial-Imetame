@@ -163,6 +163,7 @@ export interface PropostaComercialItem {
 export interface FiltrosSolicitacao {
   ano?: string
   cliente_id?: string[]
+  cidade?: string[]
   classificacao?: string[]
   interesse?: string[]
   data_de?: string

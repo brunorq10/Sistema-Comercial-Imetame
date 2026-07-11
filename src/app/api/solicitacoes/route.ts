@@ -18,6 +18,8 @@ async function getFiltros() {
       classificacao: true,
       interesse:     true,
       status:        true,
+      cidade:        true,
+      estado:        true,
       cliente:      { select: { id: true, nome: true } },
       orcamentista: { select: { id: true, nome: true } },
       criador:      { select: { id: true, nome: true } },
@@ -27,11 +29,17 @@ async function getFiltros() {
   const clientesMap      = new Map<number, string>()
   const orcamentistasMap = new Map<number, string>()
   const responsaveisMap  = new Map<number, string>()
+  const cidadesSet       = new Set<string>()
+
+  const cidadeLabel = (s: { cidade: string | null; estado: string | null }) =>
+    s.cidade ? (s.estado ? `${s.cidade}/${s.estado}` : s.cidade) : null
 
   for (const s of rows) {
     clientesMap.set(s.cliente.id, s.cliente.nome)
     if (s.orcamentista) orcamentistasMap.set(s.orcamentista.id, s.orcamentista.nome)
     if (s.criador)      responsaveisMap.set(s.criador.id, s.criador.nome)
+    const cid = cidadeLabel(s)
+    if (cid) cidadesSet.add(cid)
   }
 
   const sort = (m: Map<number, string>) =>
@@ -41,6 +49,7 @@ async function getFiltros() {
   const linhas = rows.map((s) => ({
     ano:             String(s.created_at.getFullYear()),
     cliente_id:      String(s.cliente.id),
+    cidade:          cidadeLabel(s),
     classificacao:   s.classificacao ?? null,
     interesse:       s.interesse ?? null,
     status:          s.status,
@@ -53,6 +62,7 @@ async function getFiltros() {
       clientes:      sort(clientesMap),
       orcamentistas: sort(orcamentistasMap),
       responsaveis:  sort(responsaveisMap),
+      cidades:       Array.from(cidadesSet).sort(),
       linhas,
     },
     error: null,
@@ -93,6 +103,8 @@ export async function GET(req: NextRequest) {
   // Filtros multi-valor: lista separada por vírgula (ex.: cliente_id=1,2,3)
   const multi = (k: string) => { const v = searchParams.get(k); return v ? v.split(',').filter(Boolean) : [] }
   const clienteIds = multi('cliente_id').map(Number).filter((n) => !isNaN(n))
+  // Cidade vem como "Cidade/UF" nas opções; a coluna guarda só a cidade
+  const cidades = multi('cidade').map((c) => c.split('/')[0].trim()).filter(Boolean)
   const classificacoes = multi('classificacao') as Classificacao[]
   const interesses = multi('interesse') as Interesse[]
   const responsavelIds = multi('responsavel_id').map(Number).filter((n) => !isNaN(n))
@@ -118,6 +130,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     ...(clienteIds.length && { cliente_id: { in: clienteIds } }),
+    ...(cidades.length && { cidade: { in: cidades } }),
     ...(classificacoes.length && { classificacao: { in: classificacoes } }),
     ...(interesses.length && { interesse: { in: interesses } }),
     ...(responsavelIds.length && { created_by: { in: responsavelIds } }),

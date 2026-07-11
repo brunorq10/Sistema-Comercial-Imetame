@@ -71,6 +71,7 @@ export default function SolicitacoesPage() {
   const [clientes,      setClientes]      = useState<{ id: number; nome: string }[]>([])
   const [responsaveis,  setResponsaveis]  = useState<{ id: number; nome: string }[]>([])
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
+  const [cidades,       setCidades]       = useState<string[]>([])
   const [linhasFiltro,  setLinhasFiltro]  = useState<LinhaCascata[]>([])
   const [modalForm, setModalForm] = useState(false)
   const [modalCancelar, setModalCancelar] = useState(false)
@@ -98,6 +99,7 @@ export default function SolicitacoesPage() {
         setClientes(j.data.clientes ?? [])
         setResponsaveis(j.data.responsaveis ?? [])
         setOrcamentistas(j.data.orcamentistas ?? [])
+        setCidades(j.data.cidades ?? [])
         setLinhasFiltro(j.data.linhas ?? [])
       }
     })
@@ -107,6 +109,7 @@ export default function SolicitacoesPage() {
   const selecoes = useMemo(() => ({
     ano:             filtros.ano ? [filtros.ano] : [],
     cliente_id:      filtros.cliente_id ?? [],
+    cidade:          filtros.cidade ?? [],
     classificacao:   filtros.classificacao ?? [],
     interesse:       filtros.interesse ?? [],
     status:          filtros.status ? [filtros.status] : [],
@@ -122,6 +125,9 @@ export default function SolicitacoesPage() {
   const opCliente = useMemo(() =>
     filtrarOpcoes(clientes.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoes, 'cliente_id'),
     [clientes, linhasFiltro, selecoes])
+  const opCidade = useMemo(() =>
+    filtrarOpcoes(cidades.map((c) => ({ value: c, label: c })), linhasFiltro, selecoes, 'cidade'),
+    [cidades, linhasFiltro, selecoes])
   const opClassif = useMemo(() =>
     filtrarOpcoes([
       { value: 'OBRAS',       label: 'Obras' },
@@ -163,6 +169,7 @@ export default function SolicitacoesPage() {
       if (statusEfetivo) params.set('status', statusEfetivo)
       if (filtrosAplicados.ano) params.set('ano', filtrosAplicados.ano)
       if (filtrosAplicados.cliente_id?.length) params.set('cliente_id', filtrosAplicados.cliente_id.join(','))
+      if (filtrosAplicados.cidade?.length) params.set('cidade', filtrosAplicados.cidade.join(','))
       if (filtrosAplicados.classificacao?.length) params.set('classificacao', filtrosAplicados.classificacao.join(','))
       if (filtrosAplicados.interesse?.length) params.set('interesse', filtrosAplicados.interesse.join(','))
       if (filtrosAplicados.data_de) params.set('data_de', filtrosAplicados.data_de)
@@ -339,6 +346,15 @@ export default function SolicitacoesPage() {
                 values={filtros.cliente_id ?? []}
                 onChange={(v) => setFiltros((f) => ({ ...f, cliente_id: v }))}
                 options={opCliente}
+              />
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className={fLbl}>Cidade/UF</label>
+              <SearchableMultiSelect
+                values={filtros.cidade ?? []}
+                onChange={(v) => setFiltros((f) => ({ ...f, cidade: v }))}
+                options={opCidade}
+                emptyLabel="Todas"
               />
             </div>
             <div className="flex-1 min-w-[120px]">
@@ -574,7 +590,8 @@ export default function SolicitacoesPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
             <h3 className="text-[14px] font-bold mb-1">Reativar solicitação</h3>
             <p className="text-[12px] text-gray-600 mb-4">
-              A solicitação <strong>{confirmReativar.numero}</strong> será reativada e voltará ao status anterior ao cancelamento. Confirmar?
+              A solicitação <strong>{confirmReativar.numero}</strong> será reativada e voltará ao andamento normal
+              {confirmReativar.status === 'SUSPENSA' ? ' (a suspensão será removida)' : ' (status anterior ao cancelamento)'}. Confirmar?
             </p>
             <div className="flex gap-2 justify-end">
               <button

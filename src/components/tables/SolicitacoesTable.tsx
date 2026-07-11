@@ -153,7 +153,7 @@ export function SolicitacoesTable({
                 { label: 'Nova revisão', icon: '↻', visivel: canRevisao && !isInativa && !item.as_sold && !!onNovaRevisao, onClick: () => onNovaRevisao?.(item) },
                 { label: 'Relatório de OS', icon: '📄', visivel: item.tem_relatorio_os && !!onRelatorioOS, onClick: () => onRelatorioOS?.(item) },
                 { label: 'Reenviar para análise', icon: '↩', visivel: isReprovada && !isInativa && !!onReenviar, onClick: () => onReenviar?.(item) },
-                { label: 'Reativar solicitação', icon: '↺', visivel: isCancelada && !!onReativar, onClick: () => onReativar?.(item) },
+                { label: 'Reativar solicitação', icon: '↺', visivel: (isCancelada || isSuspensa) && !!onReativar, onClick: () => onReativar?.(item) },
                 { label: 'Cancelar / Suspender', icon: '✕', destrutiva: true, visivel: canCancel && !isInativa, onClick: () => onCancel(item) },
               ]} />
             </div>

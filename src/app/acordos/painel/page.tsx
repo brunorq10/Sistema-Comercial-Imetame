@@ -514,8 +514,14 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
     </th>
   )
 
-  const rowBgContract = (key: string) =>
-    selectedKey === key ? '#E0E0E0' : hoveredKey === key ? '#C8E6C9' : '#EAF4EA'
+  // Mesma regra do Controle de Faturamento: soma dos eventos difere do valor
+  // total do contrato → linha vermelha
+  const rowBgContract = (key: string, mismatch?: boolean) => {
+    if (selectedKey === key) return '#E0E0E0'
+    if (hoveredKey === key) return mismatch ? '#FFCDD2' : '#C8E6C9'
+    if (mismatch) return '#FFF0F0'
+    return '#EAF4EA'
+  }
   const rowBgSub = (key: string) =>
     selectedKey === key ? '#EEEEEE' : hoveredKey === key ? '#F0F4F0' : '#ffffff'
 
@@ -609,7 +615,10 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
           {contratosOrd.map((contrato) => {
             const expanded = expandidos.has(contrato.id)
             const ctKey    = `ct-${contrato.id}`
-            const ctBg     = rowBgContract(ctKey)
+            // Inconsistência: soma de TODOS os eventos difere do valor total do contrato
+            const sumMismatch = contrato.valor_contrato != null &&
+              Math.abs(contrato.subindices.reduce((a, s) => a + s.valor_total, 0) - contrato.valor_contrato) > 0.01
+            const ctBg     = rowBgContract(ctKey, sumMismatch)
 
             const ctVlrFat = contrato.subindices.reduce((a, s) => a + nfFaturadoAnual(s.notas_fiscais), 0)
             const ctVlrTotal = contrato.valor_contrato ?? 0
@@ -634,6 +643,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                     className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary">
                     <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
                     {contrato.indice}
+                    {sumMismatch && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do contrato">⚠</span>}
                   </button>
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
