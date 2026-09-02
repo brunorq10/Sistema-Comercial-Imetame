@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { regiaoPorEstado, classificarUcr, UCR_CAMPOS, type UcrFaixaValores, type UcrRegiao } from '@/lib/ucr'
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 const HH_DIA = 8.8
 
 async function getParadas(disponivel: boolean) {
+  const faixasRows = await prisma.ucrFaixaRegiao.findMany()
+  const faixasPorRegiao = Object.fromEntries(
+    faixasRows.map((f) => [f.regiao, Object.fromEntries(UCR_CAMPOS.map((c) => [c, Number(f[c])])) as UcrFaixaValores]),
+  ) as Partial<Record<UcrRegiao, UcrFaixaValores>>
+
   const contratos = await prisma.contrato.findMany({
     where: { cancelled_at: null, hh_cancelado_at: null, classificacao: 'PARADAS' },
     orderBy: { indice: 'asc' },
@@ -69,16 +75,8 @@ async function getParadas(disponivel: boolean) {
       const finPrevRsHH  = hhTotalReal  > 0 ? finPrevTotal  / hhTotalReal  : null
       const finRealRsHH  = hhTotalReal  > 0 ? valorFaturado / hhTotalReal  : null
 
-      const ns = Number(cfg.ucr_nao_suficiente), ae = Number(cfg.ucr_a_evoluir)
-      const bm = Number(cfg.ucr_bom),             ot = Number(cfg.ucr_otimo)
-      const classifyUcr = (v: number | null): string | null => {
-        if (v == null) return null
-        if (v <= ns) return 'Não Suficiente'
-        if (v <= ae) return 'A Evoluir'
-        if (v <= bm) return 'Bom'
-        if (v <= ot) return 'Ótimo'
-        return 'Esplêndido'
-      }
+      // Faixa de UCR aplicada automaticamente pela região (Estado) do contrato
+      const faixaContrato = faixasPorRegiao[regiaoPorEstado(c.estado)] ?? null
 
       paradaStats = {
         hh_previsto:       hhTotalPrev > 0 ? hhTotalPrev : null,
@@ -87,7 +85,7 @@ async function getParadas(disponivel: boolean) {
         fin_orcado_rs_hh:  finOrcRsHH,
         fin_prev_rs_hh:    finPrevRsHH,
         fin_real_rs_hh:    finRealRsHH,
-        classificacao_ucr: classifyUcr(finRealRsHH),
+        classificacao_ucr: classificarUcr(finRealRsHH, faixaContrato),
       }
     }
 

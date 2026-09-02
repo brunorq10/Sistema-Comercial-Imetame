@@ -101,12 +101,18 @@ const COM_PROP_JOIN = `LEFT JOIN solicitacoes s ON s.id = c.solicitacao_id
         FROM propostas_tecnicas pt WHERE pt.solicitacao_id = s.id ORDER BY pt.versao DESC LIMIT 1
       ) pt ON true`
 
+// Faixa de UCR aplicada ao contrato pela região do Estado (mesma regra de
+// regiaoPorEstado em src/lib/ucr.ts) — usada em UCR_SQL.
+const UFR_JOIN = `LEFT JOIN ucr_faixas_regiao ufr ON ufr.regiao::text = CASE c.estado
+        WHEN 'ES' THEN 'ES' WHEN 'MG' THEN 'MG' WHEN 'BA' THEN 'BAHIA' WHEN 'SP' THEN 'SP' ELSE 'OUTROS' END`
+
 const ACO_FROM = `contratos c
       LEFT JOIN clientes cli ON cli.id = c.cliente_id
       LEFT JOIN clientes clf ON clf.id = c.cliente_final_id
       LEFT JOIN users resp ON resp.id = c.responsavel_id
       LEFT JOIN solicitacoes sol ON sol.id = c.solicitacao_id
-      ${PRD_JOIN}`
+      ${PRD_JOIN}
+      ${UFR_JOIN}`
 
 export const BASES: Record<BaseKey, BaseConfig> = {
   comercial: {
@@ -195,14 +201,15 @@ const HH_REAL = `(SELECT COALESCE(SUM(hr.hh_realizado), 0) FROM hh_realizado hr 
 const PESO_TOTAL = `(COALESCE(pt.peso_montagem,0) + COALESCE(pt.peso_equipamentos,0) + COALESCE(pt.peso_tubulacoes,0) + COALESCE(pt.peso_suportes,0) + COALESCE(pt.peso_estruturas,0))`
 
 // Classificação UCR (Paradas): faturado / HH real total, classificado pelas
-// faixas do parada_hh_config — mesma regra do /api/acordos/hh. NULL fora de Paradas.
+// faixas de ucr_faixas_regiao (cadastro central por região — ver src/lib/ucr.ts)
+// aplicadas pela região do Estado do contrato via UFR_JOIN. NULL fora de Paradas.
 const UCR_RS_HH = `(${FATURADO} / NULLIF(prd.hh_real_total, 0))`
 const UCR_SQL = `CASE
-    WHEN phc.id IS NULL OR prd.hh_real_total <= 0 THEN NULL
-    WHEN ${UCR_RS_HH} <= phc.ucr_nao_suficiente THEN 'Não Suficiente'
-    WHEN ${UCR_RS_HH} <= phc.ucr_a_evoluir THEN 'A Evoluir'
-    WHEN ${UCR_RS_HH} <= phc.ucr_bom THEN 'Bom'
-    WHEN ${UCR_RS_HH} <= phc.ucr_otimo THEN 'Ótimo'
+    WHEN phc.id IS NULL OR prd.hh_real_total <= 0 OR ufr.id IS NULL THEN NULL
+    WHEN ${UCR_RS_HH} <= ufr.ucr_nao_suficiente THEN 'Não Suficiente'
+    WHEN ${UCR_RS_HH} <= ufr.ucr_a_evoluir THEN 'A Evoluir'
+    WHEN ${UCR_RS_HH} <= ufr.ucr_bom THEN 'Bom'
+    WHEN ${UCR_RS_HH} <= ufr.ucr_otimo THEN 'Ótimo'
     ELSE 'Esplêndido' END`
 // Serviço Extra — ASE (Sim/Não): há valor de ASE previsto no config da Parada.
 const ASE_SQL = `CASE WHEN COALESCE(phc.fin_prev_ase, 0) > 0 THEN 'Sim' ELSE 'Não' END`

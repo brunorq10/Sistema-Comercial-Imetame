@@ -93,7 +93,7 @@ describe('resolverBase e base combinada', () => {
 
 describe('UCR / ASE / R$/HH Real', () => {
   const sqlDim = (campo: string) => buildQuery({ modulo: 'acordos', linhas: [{ campo }], colunas: [], valores: [{ campo: 'aco_faturado' }], filtros: {} }).sql
-  it('UCR classifica pelas faixas do parada_hh_config', () => {
+  it('UCR classifica pelas faixas de ucr_faixas_regiao (região do Estado)', () => {
     const sql = sqlDim('aco_ucr')
     expect(sql).toContain('ucr_nao_suficiente')
     expect(sql).toContain("'Esplêndido'")

@@ -89,6 +89,8 @@ export const CATALOGO = {
   'acordos.paradas.controlehh.editar':{ todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   'acordos.paradas.remover':          { perfis: ['GESTAO_ACORDOS'] },
   'acordos.paradas.novo':             { perfis: ['GESTAO_ACORDOS'] },
+  // Faixas de UCR (cadastro central por região) — só gestão edita; demais só visualizam
+  'acordos.paradas.ucr.editar':       { perfis: ['GESTAO_ACORDOS'] },
   // HH — Fabricações
   'acordos.fab.itens.editar':         { perfis: ['GESTAO_ACORDOS'] },
   'acordos.fab.excluir':              { perfis: ['GESTAO_ACORDOS'] },

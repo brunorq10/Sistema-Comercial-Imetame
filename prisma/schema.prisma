@@ -137,6 +137,8 @@ model User {
   fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
   fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
   hh_acomp_historico          HhAcompanhamentoHistorico[] @relation("HhAcompHistCriador")
+  ucr_faixas_atualizadas      UcrFaixaRegiao[]       @relation("UcrFaixaAtualizador")
+  ucr_faixas_historico        UcrFaixaHistorico[]    @relation("UcrFaixaHistCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -618,6 +620,53 @@ model FabricacaoItemHistorico {
   @@map("fabricacao_item_historico")
 }
 
+// UCR — Faixas de classificação de R$/HH cadastradas por região (não mais por
+// contrato). Aplicadas automaticamente ao contrato de Parada pelo campo
+// `estado` (ver regiaoPorEstado em src/lib/ucr.ts).
+enum UcrRegiao {
+  ES
+  MG
+  BAHIA
+  SP
+  OUTROS
+}
+
+model UcrFaixaRegiao {
+  id                 Int       @id @default(autoincrement())
+  regiao             UcrRegiao @unique
+
+  ucr_nao_suficiente Decimal   @db.Decimal(10, 2)
+  ucr_a_evoluir      Decimal   @db.Decimal(10, 2)
+  ucr_bom            Decimal   @db.Decimal(10, 2)
+  ucr_otimo          Decimal   @db.Decimal(10, 2)
+  ucr_esplendido     Decimal   @db.Decimal(10, 2)
+
+  updated_at         DateTime  @updatedAt
+  updated_by         Int?
+
+  usuario            User?     @relation("UcrFaixaAtualizador", fields: [updated_by], references: [id])
+  historico          UcrFaixaHistorico[]
+
+  @@map("ucr_faixas_regiao")
+}
+
+// Histórico De/Para de cada alteração de faixa — mesmo formato de FabricacaoItemHistorico.
+model UcrFaixaHistorico {
+  id         Int       @id @default(autoincrement())
+  regiao     UcrRegiao
+  campo      String
+  valor_de   Decimal?  @db.Decimal(10, 2)
+  valor_para Decimal   @db.Decimal(10, 2)
+  created_at DateTime  @default(now())
+  created_by Int
+
+  faixa   UcrFaixaRegiao @relation(fields: [regiao], references: [regiao])
+  usuario User           @relation("UcrFaixaHistCriador", fields: [created_by], references: [id])
+
+  @@index([regiao])
+  @@map("ucr_faixas_historico")
+}
+
 model ParadaHhConfig {
   id                     Int      @id @default(autoincrement())
   contrato_id            Int      @unique
@@ -653,12 +702,8 @@ model ParadaHhConfig {
   fin_prev_valor_servico Decimal? @db.Decimal(15, 2)
   fin_prev_ase           Decimal? @db.Decimal(15, 2)
 
-  // UCR — limites em R$/HH por faixa (preenchidos no cadastro)
-  ucr_nao_suficiente     Decimal  @default(161.98) @db.Decimal(10, 2)
-  ucr_a_evoluir          Decimal  @default(162.00) @db.Decimal(10, 2)
-  ucr_bom                Decimal  @default(180.00) @db.Decimal(10, 2)
-  ucr_otimo              Decimal  @default(234.00) @db.Decimal(10, 2)
-  ucr_esplendido         Decimal  @default(270.00) @db.Decimal(10, 2)
+  // UCR: faixas não são mais por contrato — ver UcrFaixaRegiao (cadastro
+  // central por Estado, aplicado automaticamente pelo campo `estado` do contrato).
 
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt

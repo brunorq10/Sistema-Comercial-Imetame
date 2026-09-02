@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, MapPin, User, Building2, Briefcase } from 'lucide-react'
 import { CurrencyInput } from '@/components/ui/Input'
+import { regiaoPorEstado, classificarUcr, UCR_FAIXAS, UCR_REGIOES, type UcrFaixaValores } from '@/lib/ucr'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,7 @@ interface ContratoInfo {
   cliente: string
   cliente_final: string | null
   cidade: string | null
+  estado: string | null
   escopo: string | null
   responsavel: string
   valor_orcado: number
@@ -70,8 +72,6 @@ interface ConfigState {
 
   fin_prev_valor_servico: string
   fin_prev_ase: string
-
-  ucr_nao_suficiente: string; ucr_a_evoluir: string; ucr_bom: string; ucr_otimo: string; ucr_esplendido: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -141,7 +141,6 @@ function defaultConfig(): ConfigState {
     integ_ativo: false, integ_dias_prev: '', integ_dias_real: '',
     folga_ativo: false, folga_dias_prev: '', folga_dias_real: '', folga_pessoas_prev: '', folga_pessoas_real: '',
     fin_prev_valor_servico: '', fin_prev_ase: '',
-    ucr_nao_suficiente: '161.98', ucr_a_evoluir: '162.00', ucr_bom: '180.00', ucr_otimo: '234.00', ucr_esplendido: '270.00',
   }
 }
 
@@ -160,11 +159,6 @@ function configFromApi(c: Record<string, unknown>): ConfigState {
     folga_pessoas_prev: s(c.folga_pessoas_prev), folga_pessoas_real: s(c.folga_pessoas_real),
     fin_prev_valor_servico: s(c.fin_prev_valor_servico),
     fin_prev_ase: s(c.fin_prev_ase),
-    ucr_nao_suficiente: s(c.ucr_nao_suficiente) || '161.98',
-    ucr_a_evoluir: s(c.ucr_a_evoluir) || '162.00',
-    ucr_bom: s(c.ucr_bom) || '180.00',
-    ucr_otimo: s(c.ucr_otimo) || '234.00',
-    ucr_esplendido: s(c.ucr_esplendido) || '270.00',
   }
 }
 
@@ -226,6 +220,23 @@ export default function ParadaHhPage() {
   const [contrato, setContrato] = useState<ContratoInfo | null>(null)
   const [cfg, setCfg] = useState<ConfigState>(defaultConfig())
   const [dias, setDias] = useState<Map<string, DiaState>>(new Map())
+  const [faixasUcr, setFaixasUcr] = useState<Record<string, UcrFaixaValores>>({})
+
+  useEffect(() => {
+    fetch('/api/acordos/hh/paradas/ucr-faixas')
+      .then((r) => r.json())
+      .then((j) => {
+        const map: Record<string, UcrFaixaValores> = {}
+        for (const f of (j.data?.faixas ?? [])) {
+          map[f.regiao] = Object.fromEntries(UCR_FAIXAS.map((c) => [c.campo, f[c.campo]])) as UcrFaixaValores
+        }
+        setFaixasUcr(map)
+      })
+      .catch(() => {})
+  }, [])
+
+  const regiaoDoContrato = regiaoPorEstado(contrato?.estado)
+  const faixaAtual = faixasUcr[regiaoDoContrato] ?? null
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -351,15 +362,8 @@ export default function ParadaHhPage() {
   const hhTotalReal = totPrep.sumHhReal + totParada.sumHhReal + totAcomp.sumHhReal + adicTotalReal
   const desvioAcum  = hhTotalReal - hhTotalPrev
 
-  // ── UCR — classificação por R$/HH ─────────────────────────────────────────
-  function classifyRsHH(rsHH: number | null): string | null {
-    if (rsHH == null || isNaN(rsHH)) return null
-    if (rsHH <= n(cfg.ucr_nao_suficiente)) return 'Não Suficiente'
-    if (rsHH <= n(cfg.ucr_a_evoluir))      return 'A Evoluir'
-    if (rsHH <= n(cfg.ucr_bom))            return 'Bom'
-    if (rsHH <= n(cfg.ucr_otimo))          return 'Ótimo'
-    return 'Esplêndido'
-  }
+  // ── UCR — classificação por R$/HH (faixa da região do contrato, via Estado) ──
+  const classifyRsHH = (rsHH: number | null): string | null => classificarUcr(rsHH, faixaAtual)
 
   // ── Análise Financeira ─────────────────────────────────────────────────────
   const finOrcadoValor  = contrato?.valor_orcado ?? 0
@@ -393,11 +397,6 @@ export default function ParadaHhPage() {
         folga_pessoas_real: cfg.folga_pessoas_real ? parseInt(cfg.folga_pessoas_real) : null,
         fin_prev_valor_servico: cfg.fin_prev_valor_servico ? n(cfg.fin_prev_valor_servico) : null,
         fin_prev_ase: cfg.fin_prev_ase ? n(cfg.fin_prev_ase) : null,
-        ucr_nao_suficiente: n(cfg.ucr_nao_suficiente),
-        ucr_a_evoluir: n(cfg.ucr_a_evoluir),
-        ucr_bom: n(cfg.ucr_bom),
-        ucr_otimo: n(cfg.ucr_otimo),
-        ucr_esplendido: n(cfg.ucr_esplendido),
         dias: Array.from(dias.entries()).map(([key, val]) => {
           const [etapa, data] = key.split('__')
           return {
@@ -426,17 +425,8 @@ export default function ParadaHhPage() {
     )
   }
 
-  const UCR_ROWS = [
-    { label: 'Não Suficiente', cor: '#D4554F', bg: '#F7D4D2', cfgKey: 'ucr_nao_suficiente' as const },
-    { label: 'A Evoluir',      cor: '#BE9B1E', bg: '#FAF0C4', cfgKey: 'ucr_a_evoluir'      as const },
-    { label: 'Bom',            cor: '#5FA06D', bg: '#D9EBDB', cfgKey: 'ucr_bom'            as const },
-    { label: 'Ótimo',          cor: '#5E9BD2', bg: '#D7E8F6', cfgKey: 'ucr_otimo'          as const },
-    { label: 'Esplêndido',     cor: '#8779C8', bg: '#E1DDF4', cfgKey: 'ucr_esplendido'     as const },
-  ]
-
   function getUcrStyle(label: string | null) {
-    const row = UCR_ROWS.find((r) => r.label === label)
-    return row ?? null
+    return UCR_FAIXAS.find((r) => r.label === label) ?? null
   }
 
   return (
@@ -790,40 +780,47 @@ export default function ParadaHhPage() {
           </div>
         </div>
 
-        {/* ── UCR — leitura apenas (configurado no cadastro do contrato) ───── */}
+        {/* ── UCR — leitura apenas (cadastrado em Faixas de UCR, por região) ── */}
         <div className="rounded-lg border bg-white shadow-sm">
           <div className="border-b bg-green-700 px-4 py-2 rounded-t-lg flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">UCR — Uso Consciente do Recurso</h3>
-            <span className="text-[11px] text-green-200 font-normal">Faixas configuradas no cadastro do contrato</span>
+            <span className="text-[11px] text-green-200 font-normal">
+              Faixa aplicada: {UCR_REGIOES.find((r) => r.regiao === regiaoDoContrato)?.label ?? regiaoDoContrato}
+              {contrato?.estado ? ` (UF: ${contrato.estado})` : ''}
+            </span>
           </div>
-          <div className="flex flex-wrap gap-3 p-4">
-            {UCR_ROWS.map((row, i) => {
-              const curr = n(cfg[row.cfgKey])
-              const prevVal = i > 0 ? n(cfg[UCR_ROWS[i - 1].cfgKey]) : null
-              const faixaLabel = i === 0
-                ? `≤ ${fmtR$(curr)}`
-                : i === UCR_ROWS.length - 1
-                  ? `> ${fmtR$(prevVal!)}`
-                  : `${fmtR$(prevVal!)} – ${fmtR$(curr)}`
-              const isAtiva =
-                classifyRsHH(finOrcadoRsHH) === row.label ||
-                classifyRsHH(finPrevRsHH)   === row.label ||
-                classifyRsHH(finRealRsHH)   === row.label
-              return (
-                <div key={row.label}
-                  className="flex-1 min-w-[120px] rounded-lg border-2 px-3 py-2 text-center"
-                  style={{
-                    borderColor: isAtiva ? row.cor : '#E5E7EB',
-                    background: isAtiva ? row.bg : '#FAFAFA',
-                  }}>
-                  <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: row.cor }}>
-                    {row.label}
+          {!faixaAtual ? (
+            <p className="text-center text-gray-400 py-6 text-xs">Carregando faixas de UCR...</p>
+          ) : (
+            <div className="flex flex-wrap gap-3 p-4">
+              {UCR_FAIXAS.map((row, i) => {
+                const curr = faixaAtual[row.campo]
+                const prevVal = i > 0 ? faixaAtual[UCR_FAIXAS[i - 1].campo] : null
+                const faixaLabel = i === 0
+                  ? `≤ ${fmtR$(curr)}`
+                  : i === UCR_FAIXAS.length - 1
+                    ? `> ${fmtR$(prevVal!)}`
+                    : `${fmtR$(prevVal!)} – ${fmtR$(curr)}`
+                const isAtiva =
+                  classifyRsHH(finOrcadoRsHH) === row.label ||
+                  classifyRsHH(finPrevRsHH)   === row.label ||
+                  classifyRsHH(finRealRsHH)   === row.label
+                return (
+                  <div key={row.label}
+                    className="flex-1 min-w-[120px] rounded-lg border-2 px-3 py-2 text-center"
+                    style={{
+                      borderColor: isAtiva ? row.cor : '#E5E7EB',
+                      background: isAtiva ? row.bg : '#FAFAFA',
+                    }}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: row.cor }}>
+                      {row.label}
+                    </div>
+                    <div className="mt-0.5 text-xs font-semibold text-gray-700">{faixaLabel}</div>
                   </div>
-                  <div className="mt-0.5 text-xs font-semibold text-gray-700">{faixaLabel}</div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
       </div>

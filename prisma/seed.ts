@@ -321,6 +321,19 @@ async function main() {
     })
   }
 
+  // ── Faixas de UCR por região (Controle de HH — Paradas) ─────────────────────
+  const ucrFaixas: Array<{ regiao: 'ES' | 'MG' | 'BAHIA' | 'SP' | 'OUTROS'; ucr_nao_suficiente: number; ucr_a_evoluir: number; ucr_bom: number; ucr_otimo: number; ucr_esplendido: number }> = [
+    { regiao: 'ES',     ucr_nao_suficiente: 161.98, ucr_a_evoluir: 162.00, ucr_bom: 180.00, ucr_otimo: 234.00, ucr_esplendido: 270.00 },
+    { regiao: 'MG',     ucr_nao_suficiente: 188.98, ucr_a_evoluir: 189.00, ucr_bom: 210.00, ucr_otimo: 273.00, ucr_esplendido: 315.00 },
+    { regiao: 'BAHIA',  ucr_nao_suficiente: 188.98, ucr_a_evoluir: 189.00, ucr_bom: 210.00, ucr_otimo: 273.00, ucr_esplendido: 315.00 },
+    { regiao: 'SP',     ucr_nao_suficiente: 197.98, ucr_a_evoluir: 198.00, ucr_bom: 220.00, ucr_otimo: 286.00, ucr_esplendido: 330.00 },
+    { regiao: 'OUTROS', ucr_nao_suficiente: 206.98, ucr_a_evoluir: 207.00, ucr_bom: 230.00, ucr_otimo: 299.00, ucr_esplendido: 345.00 },
+  ]
+  for (const f of ucrFaixas) {
+    const { regiao, ...valores } = f
+    await prisma.ucrFaixaRegiao.upsert({ where: { regiao }, update: {}, create: { regiao, ...valores } })
+  }
+
   console.log('\n✅ Seed concluído com sucesso!')
   console.log('────────────────────────────────────────────────────')
   console.log('Logins:')

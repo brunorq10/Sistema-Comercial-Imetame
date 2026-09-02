@@ -44,12 +44,6 @@ const BodySchema = z.object({
   fin_prev_valor_servico: z.number().nullable().optional(),
   fin_prev_ase: z.number().nullable().optional(),
 
-  ucr_nao_suficiente: z.number().optional(),
-  ucr_a_evoluir: z.number().optional(),
-  ucr_bom: z.number().optional(),
-  ucr_otimo: z.number().optional(),
-  ucr_esplendido: z.number().optional(),
-
   dias: z.array(DiaSchema).optional(),
 })
 
@@ -98,6 +92,7 @@ export async function GET(
         cliente: contrato.cliente?.nome ?? '',
         cliente_final: contrato.cliente_final?.nome ?? null,
         cidade: contrato.cidade,
+        estado: contrato.estado,
         escopo: contrato.descricao,
         responsavel: contrato.responsavel?.nome ?? '',
         valor_orcado: valorOrcado,
@@ -153,11 +148,6 @@ export async function PUT(
       folga_pessoas_real: configData.folga_pessoas_real ?? null,
       fin_prev_valor_servico: toDecimal(configData.fin_prev_valor_servico),
       fin_prev_ase: toDecimal(configData.fin_prev_ase),
-      ucr_nao_suficiente: configData.ucr_nao_suficiente ?? 161.98,
-      ucr_a_evoluir: configData.ucr_a_evoluir ?? 162.00,
-      ucr_bom: configData.ucr_bom ?? 180.00,
-      ucr_otimo: configData.ucr_otimo ?? 234.00,
-      ucr_esplendido: configData.ucr_esplendido ?? 270.00,
     },
     update: {
       prep_inicio: configData.prep_inicio !== undefined ? (configData.prep_inicio ? new Date(configData.prep_inicio) : null) : undefined,
@@ -182,11 +172,6 @@ export async function PUT(
       folga_pessoas_real: configData.folga_pessoas_real,
       fin_prev_valor_servico: configData.fin_prev_valor_servico !== undefined ? toDecimal(configData.fin_prev_valor_servico) : undefined,
       fin_prev_ase: configData.fin_prev_ase !== undefined ? toDecimal(configData.fin_prev_ase) : undefined,
-      ucr_nao_suficiente: configData.ucr_nao_suficiente,
-      ucr_a_evoluir: configData.ucr_a_evoluir,
-      ucr_bom: configData.ucr_bom,
-      ucr_otimo: configData.ucr_otimo,
-      ucr_esplendido: configData.ucr_esplendido,
     },
   })
 
