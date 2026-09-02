@@ -18,9 +18,17 @@ interface DiaState {
   hh_real: string
 }
 
-const HORAS_DIA_PADRAO = '9,8'
-function emptyDia(): DiaState {
-  return { efetivo_plan: '', horas_dia_plan: HORAS_DIA_PADRAO, hh_plan: '', efetivo_real: '', horas_dia_real: HORAS_DIA_PADRAO, hh_real: '' }
+// Padrão de horas/dia: 9,8 só na fase Parada; Preparativo e Pós Parada usam 8,8
+// (mesmo valor já usado para os adicionais de mob./desmob./integ./folga — ver HH_DIA).
+// Vale apenas como sugestão inicial da célula vazia — o usuário pode ajustar livremente.
+const HORAS_DIA_PARADA = '9,8'
+const HORAS_DIA_OUTRAS = '8,8'
+function horasDiaPadrao(etapa: Etapa): string {
+  return etapa === 'PARADA' ? HORAS_DIA_PARADA : HORAS_DIA_OUTRAS
+}
+function emptyDia(etapa: Etapa): DiaState {
+  const h = horasDiaPadrao(etapa)
+  return { efetivo_plan: '', horas_dia_plan: h, hh_plan: '', efetivo_real: '', horas_dia_real: h, hh_real: '' }
 }
 
 // Inteiro com separador de milhar enquanto digita: 1234 -> "1.234"
@@ -236,12 +244,13 @@ export default function ParadaHhPage() {
         const map = new Map<string, DiaState>()
         const sBr = (v: number | null) => v != null ? String(v).replace('.', ',') : ''
         for (const d of diasApi) {
+          const hPadrao = horasDiaPadrao(d.etapa)
           map.set(`${d.etapa}__${d.data.substring(0, 10)}`, {
             efetivo_plan: d.efetivo_plan != null ? d.efetivo_plan.toLocaleString('pt-BR') : '',
-            horas_dia_plan: d.horas_dia_plan != null ? sBr(d.horas_dia_plan) : HORAS_DIA_PADRAO,
+            horas_dia_plan: d.horas_dia_plan != null ? sBr(d.horas_dia_plan) : hPadrao,
             hh_plan: d.hh_plan != null ? sBr(d.hh_plan) : '',
             efetivo_real: d.efetivo_real != null ? d.efetivo_real.toLocaleString('pt-BR') : '',
-            horas_dia_real: d.horas_dia_real != null ? sBr(d.horas_dia_real) : HORAS_DIA_PADRAO,
+            horas_dia_real: d.horas_dia_real != null ? sBr(d.horas_dia_real) : hPadrao,
             hh_real: d.hh_real != null ? sBr(d.hh_real) : '',
           })
         }
@@ -258,14 +267,14 @@ export default function ParadaHhPage() {
   const diasAcomp  = useMemo(() => diasEntreDatas(cfg.acomp_inicio,  cfg.acomp_fim),  [cfg.acomp_inicio, cfg.acomp_fim])
 
   const getDia = useCallback((etapa: Etapa, data: string): DiaState =>
-    dias.get(`${etapa}__${data}`) ?? emptyDia(),
+    dias.get(`${etapa}__${data}`) ?? emptyDia(etapa),
     [dias])
 
   const setDiaProp = useCallback((etapa: Etapa, data: string, prop: keyof DiaState, value: string) => {
     const key = `${etapa}__${data}`
     setDias((prev) => {
       const next = new Map(prev)
-      const cur = next.get(key) ?? emptyDia()
+      const cur = next.get(key) ?? emptyDia(etapa)
       const upd = { ...cur, [prop]: value }
       // HHT (dia) = Efetivo × Horas dia — recalculado automaticamente
       const fmtHH = (x: number) => x > 0 ? x.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''
@@ -299,14 +308,23 @@ export default function ParadaHhPage() {
     return { sumHhPlan, sumHhReal, desvio: sumHhReal - sumHhPlan }
   }, [dias, diasAcomp, getDia])
 
-  // ── Pico efetivo da etapa Parada (auto-calculado) ──────────────────────────
-  const picoEfetivoPrev = useMemo(() =>
-    diasParada.reduce((mx, d) => Math.max(mx, n(getDia('PARADA', d).efetivo_plan)), 0),
-    [dias, diasParada, getDia])
+  // ── Pico efetivo de todo o período (auto-calculado) ────────────────────────
+  // Considera as três fases — Preparativo, Parada e Pós Parada —, não apenas a Parada.
+  const picoEfetivoPrev = useMemo(() => {
+    const etapas: Array<{ etapa: Etapa; dias: string[] }> = [
+      { etapa: 'PREPARATIVO', dias: diasPrep }, { etapa: 'PARADA', dias: diasParada }, { etapa: 'ACOMP_DESMOB', dias: diasAcomp },
+    ]
+    return etapas.reduce((mx, { etapa, dias: ds }) =>
+      ds.reduce((mx2, d) => Math.max(mx2, n(getDia(etapa, d).efetivo_plan)), mx), 0)
+  }, [dias, diasPrep, diasParada, diasAcomp, getDia])
 
-  const picoEfetivoReal = useMemo(() =>
-    diasParada.reduce((mx, d) => Math.max(mx, n(getDia('PARADA', d).efetivo_real)), 0),
-    [dias, diasParada, getDia])
+  const picoEfetivoReal = useMemo(() => {
+    const etapas: Array<{ etapa: Etapa; dias: string[] }> = [
+      { etapa: 'PREPARATIVO', dias: diasPrep }, { etapa: 'PARADA', dias: diasParada }, { etapa: 'ACOMP_DESMOB', dias: diasAcomp },
+    ]
+    return etapas.reduce((mx, { etapa, dias: ds }) =>
+      ds.reduce((mx2, d) => Math.max(mx2, n(getDia(etapa, d).efetivo_real)), mx), 0)
+  }, [dias, diasPrep, diasParada, diasAcomp, getDia])
 
   // ── Adicionais calculados (prev e real separados) ──────────────────────────
   const HH_DIA = 8.8
@@ -904,7 +922,12 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
           </thead>
 
           <tbody>
-            {ROWS.map(({ key, label, bg, bold }) => (
+            {ROWS.map(({ key, label, bg, bold }) => {
+              // Acumulado contínuo: uma única variável por linha, persistindo
+              // através das três etapas (Preparativo → Parada → Pós Parada) —
+              // não pode ser reiniciada a cada seção.
+              let acum = 0
+              return (
               <tr key={key}>
                 {/* Sticky label */}
                 <td className="border border-gray-200 px-2 py-0.5 font-medium"
@@ -917,7 +940,6 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                 </td>
 
                 {etapaSections.flatMap(({ etapa, dias }) => {
-                  let acum = 0
                   return dias.map((d) => {
                     const dia = getDia(etapa, d)
                     const weekend = isWeekend(d)
@@ -1014,7 +1036,8 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                   })
                 })}
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
