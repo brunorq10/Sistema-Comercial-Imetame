@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { regiaoPorEstado, classificarUcr, UCR_CAMPOS, type UcrFaixaValores, type UcrRegiao } from '@/lib/ucr'
+import { calcParadaHhTotais } from '@/lib/hh'
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
-const HH_DIA = 8.8
 
 async function getParadas(disponivel: boolean) {
   const faixasRows = await prisma.ucrFaixaRegiao.findMany()
@@ -40,35 +40,7 @@ async function getParadas(disponivel: boolean) {
 
     if (c.parada_hh_config) {
       const cfg = c.parada_hh_config
-      let baseHhPlan = 0, baseHhReal = 0, picoEfPrev = 0, picoEfReal = 0
-      for (const d of cfg.dias) {
-        baseHhPlan += Number(d.hh_plan ?? 0)
-        baseHhReal += Number(d.hh_real ?? 0)
-        if (d.etapa === 'PARADA') {
-          picoEfPrev = Math.max(picoEfPrev, d.efetivo_plan ?? 0)
-          picoEfReal = Math.max(picoEfReal, d.efetivo_real ?? 0)
-        }
-      }
-
-      const calcA = (ativo: boolean, pico: number, d: unknown) =>
-        ativo && d ? pico * Number(d) * HH_DIA : 0
-
-      const adicPrev =
-        calcA(cfg.mob_ativo, picoEfPrev, cfg.mob_dias_prev) +
-        calcA(cfg.desmob_ativo, picoEfPrev, cfg.desmob_dias_prev) +
-        calcA(cfg.integ_ativo, picoEfPrev, cfg.integ_dias_prev) +
-        (cfg.folga_ativo && cfg.folga_pessoas_prev && cfg.folga_dias_prev
-          ? Number(cfg.folga_pessoas_prev) * Number(cfg.folga_dias_prev) * HH_DIA : 0)
-
-      const adicReal =
-        calcA(cfg.mob_ativo, picoEfReal, cfg.mob_dias_real) +
-        calcA(cfg.desmob_ativo, picoEfReal, cfg.desmob_dias_real) +
-        calcA(cfg.integ_ativo, picoEfReal, cfg.integ_dias_real) +
-        (cfg.folga_ativo && cfg.folga_pessoas_real && cfg.folga_dias_real
-          ? Number(cfg.folga_pessoas_real) * Number(cfg.folga_dias_real) * HH_DIA : 0)
-
-      const hhTotalPrev = baseHhPlan + adicPrev
-      const hhTotalReal = baseHhReal + adicReal
+      const { hhTotalPrev, hhTotalReal } = calcParadaHhTotais(cfg)
 
       const finPrevTotal = Number(cfg.fin_prev_valor_servico ?? 0) + Number(cfg.fin_prev_ase ?? 0)
       const finOrcRsHH   = hhTotalPrev > 0 ? valorOrcado   / hhTotalPrev : null

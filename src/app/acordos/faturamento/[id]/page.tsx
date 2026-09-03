@@ -13,12 +13,8 @@ import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratu
 import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
 import { MultasContratoSection } from '@/components/acordos/MultasContratoSection'
 
-const ContratoFaturamentoBarChart = dynamic(
-  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoBarChart),
-  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
-)
-const ContratoFaturamentoLineChart = dynamic(
-  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoFaturamentoLineChart),
+const ContratoAvancoPercentualChart = dynamic(
+  () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoAvancoPercentualChart),
   { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
 )
 
@@ -82,6 +78,89 @@ function getMonthlyData(subindices: SubDetalhe[], ano: number, anoRef: number) {
   return { previsto, faturado }
 }
 
+// Uma linha por mês (de todos os anos) em que há previsto e/ou faturado — para a
+// tabela Ano/Mês/Previsto/Faturado/Saldo (não depende do seletor de período).
+const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+function getMonthlyTable(subindices: SubDetalhe[], anoRef: number) {
+  const map = new Map<string, { ano: number; mes: number; previsto: number; faturado: number }>()
+  subindices.forEach((s) => {
+    const ano = getSubAno(s, anoRef)
+    MESES.forEach((m, i) => {
+      const v = s[m] ?? 0
+      if (v === 0) return
+      const key = `${ano}-${i}`
+      const cur = map.get(key) ?? { ano, mes: i, previsto: 0, faturado: 0 }
+      cur.previsto += v
+      map.set(key, cur)
+    })
+  })
+  subindices.flatMap((s) => s.notas_fiscais).filter((nf) => nf.ativa).forEach((nf) => {
+    const d = new Date(nf.data_emissao)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const cur = map.get(key) ?? { ano: d.getFullYear(), mes: d.getMonth(), previsto: 0, faturado: 0 }
+    cur.faturado += nf.valor_atribuido
+    map.set(key, cur)
+  })
+  return Array.from(map.values()).sort((a, b) => a.ano - b.ano || a.mes - b.mes)
+}
+
+// ── HH: mesma quebra mensal do endpoint /api/acordos/hh/[id]/resumo,
+// bucketada na mesma granularidade do seletor de período (mês do ano
+// selecionado, ou soma por ano em "Todos") — para alinhar com previsto/faturado.
+interface MesHh { ano: number; mes: number; previsto: number; realizado: number | null }
+
+function getHhMonthly(meses: MesHh[], ano: number) {
+  const previsto = Array(12).fill(0) as number[]
+  const realizado = Array(12).fill(null) as (number | null)[]
+  meses.filter((m) => m.ano === ano).forEach((m) => {
+    previsto[m.mes - 1] = m.previsto
+    realizado[m.mes - 1] = m.realizado
+  })
+  return { previsto, realizado }
+}
+
+function getHhAnual(meses: MesHh[]) {
+  const anos = Array.from(new Set(meses.map((m) => m.ano))).sort()
+  return anos.map((ano) => {
+    const doAno = meses.filter((m) => m.ano === ano)
+    const previsto = doAno.reduce((a, m) => a + m.previsto, 0)
+    const temReal = doAno.some((m) => m.realizado != null)
+    return { ano, previsto, realizado: temReal ? doAno.reduce((a, m) => a + (m.realizado ?? 0), 0) : null }
+  })
+}
+
+// Último período (ano/mês) com dado real registrado — define até onde a linha
+// de avanço % é desenhada. Períodos depois disso ainda não têm informação
+// (não é "zero", é "não sei ainda"), então ficam null em vez de travar em 0.
+function ultimoPeriodoComDado(itens: { ano: number; mes: number }[]): { ano: number; mes: number } | null {
+  return itens.reduce<{ ano: number; mes: number } | null>((max, cur) => {
+    if (!max) return cur
+    return cur.ano > max.ano || (cur.ano === max.ano && cur.mes > max.mes) ? cur : max
+  }, null)
+}
+
+// Acumula uma série (R$ ou HH) e converte para % do total do período exibido —
+// usada no gráfico de Avanço %. `periodos[i]` é o ano/mês de cada posição de
+// `valores`; posições depois de `boundary` ficam null (linha não desenhada ali,
+// em vez de cair para 0) — em granularidade anual, o mês do boundary é ignorado.
+function toCumulativePct(
+  valores: number[],
+  periodos: { ano: number; mes: number }[],
+  boundary: { ano: number; mes: number } | null,
+  total: number,
+  porAno: boolean,
+): (number | null)[] {
+  if (!boundary || total <= 0) return valores.map(() => null)
+  let acc = 0
+  return valores.map((v, i) => {
+    const p = periodos[i]
+    const passou = porAno ? p.ano <= boundary.ano : (p.ano < boundary.ano || (p.ano === boundary.ano && p.mes <= boundary.mes))
+    if (!passou) return null
+    acc += v
+    return (acc / total) * 100
+  })
+}
+
 function buildTimeline(contrato: ContratoDetalhe, historico: HistoricoEntry[]): TimelineEvent[] {
   const events: TimelineEvent[] = [{
     data: contrato.created_at, tipo: 'CONTRATO', titulo: 'Contrato criado',
@@ -129,6 +208,7 @@ export default function ContratoVisaoGeralPage() {
   const backLabel = searchParams.get('from') === 'painel' ? 'Meu Painel' : 'Controle de faturamento'
   const [contrato, setContrato] = useState<ContratoDetalhe | null>(null)
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
+  const [hhResumo, setHhResumo] = useState<{ classificacao: string | null; hh_previsto_total: number | null; hh_realizado_total: number | null; meses: MesHh[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [anoSel, setAnoSel] = useState<number | null>(null)
   const [abaHist, setAbaHist] = useState<'historico' | 'ocorrencias' | 'negociacao'>('historico')
@@ -136,18 +216,21 @@ export default function ContratoVisaoGeralPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const [cRes, hRes] = await Promise.all([
+    const [cRes, hRes, hhRes] = await Promise.all([
       fetch(`/api/faturamento/contratos/${id}`),
       fetch(`/api/faturamento/contratos/${id}/historico`),
+      fetch(`/api/acordos/hh/${id}/resumo`),
     ])
     const cJson = await cRes.json()
     const hJson = await hRes.json()
+    const hhJson = await hhRes.json().catch(() => ({ data: null }))
     if (cJson.data) {
       setContrato(cJson.data)
       const anos = getDistinctAnos(cJson.data)
       if (anos.length > 0) setAnoSel(anos[anos.length - 1])
     }
     if (hJson.data) setHistorico(hJson.data)
+    if (hhJson.data) setHhResumo(hhJson.data)
     setLoading(false)
   }, [id])
 
@@ -173,6 +256,52 @@ export default function ContratoVisaoGeralPage() {
 
   const anualData = useMemo(() =>
     contrato ? buildAnualData(contrato.subindices, contrato.ano_referencia) : [], [contrato])
+
+  const monthlyTable = useMemo(() =>
+    contrato ? getMonthlyTable(contrato.subindices, contrato.ano_referencia) : [], [contrato])
+
+  // ── HH: totais para os cards + séries para o gráfico de avanço % ───────────
+  const hhPrevistoTotal  = hhResumo?.hh_previsto_total ?? null
+  const hhRealizadoTotal = hhResumo?.hh_realizado_total ?? null
+  const hhSaldo          = hhPrevistoTotal != null ? hhPrevistoTotal - (hhRealizadoTotal ?? 0) : null
+  const hhPercRealizado  = hhPrevistoTotal != null && hhPrevistoTotal > 0 ? ((hhRealizadoTotal ?? 0) / hhPrevistoTotal) * 100 : null
+
+  const ultimoPeriodoFat = useMemo(() =>
+    ultimoPeriodoComDado(activeNFs.map((nf) => {
+      const d = new Date(nf.data_emissao)
+      return { ano: d.getFullYear(), mes: d.getMonth() + 1 }
+    })), [activeNFs])
+
+  const ultimoPeriodoHh = useMemo(() =>
+    ultimoPeriodoComDado((hhResumo?.meses ?? []).filter((m) => m.realizado != null).map((m) => ({ ano: m.ano, mes: m.mes }))),
+    [hhResumo])
+
+  const avancoPctData = useMemo(() => {
+    if (!contrato) return { faturamentoPct: [] as (number | null)[], hhPct: [] as (number | null)[], labels: undefined as string[] | undefined }
+
+    if (anoSel !== null && chartData) {
+      const periodosMes = MESES_LABELS.map((_, i) => ({ ano: anoSel, mes: i + 1 }))
+      const totalFatAno = chartData.previsto.reduce((a, b) => a + b, 0)
+      const hhMes = getHhMonthly(hhResumo?.meses ?? [], anoSel)
+      const totalHhAno = hhMes.previsto.reduce((a, b) => a + b, 0)
+      return {
+        faturamentoPct: toCumulativePct(chartData.faturado, periodosMes, ultimoPeriodoFat, totalFatAno, false),
+        hhPct: toCumulativePct(hhMes.realizado.map((v) => v ?? 0), periodosMes, ultimoPeriodoHh, totalHhAno, false),
+        labels: undefined,
+      }
+    }
+
+    const periodosAno = anualData.map((a) => ({ ano: a.ano, mes: 12 }))
+    const hhAnual = getHhAnual(hhResumo?.meses ?? [])
+    // Mesmos anos do faturamento no eixo — soma HH do ano quando existir
+    const hhPorAno = new Map(hhAnual.map((h) => [h.ano, h]))
+    const hhRealizadoPorAno = anualData.map((a) => hhPorAno.get(a.ano)?.realizado ?? null)
+    return {
+      faturamentoPct: toCumulativePct(anualData.map((a) => a.faturado), periodosAno, ultimoPeriodoFat, totalContrato, true),
+      hhPct: toCumulativePct(hhRealizadoPorAno.map((v) => v ?? 0), periodosAno, ultimoPeriodoHh, hhPrevistoTotal ?? 0, true),
+      labels: anualData.map((a) => String(a.ano)),
+    }
+  }, [contrato, anoSel, chartData, anualData, hhResumo, ultimoPeriodoFat, ultimoPeriodoHh, totalContrato, hhPrevistoTotal])
 
   const timeline = useMemo(() =>
     contrato ? buildTimeline(contrato, historico) : [], [contrato, historico])
@@ -226,6 +355,19 @@ export default function ContratoVisaoGeralPage() {
         </div>
       </section>
 
+      {/* Controle de HH — só aparece quando o contrato tem HH rastreado no módulo Acordos */}
+      {hhPrevistoTotal != null && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">⛏ Controle de HH</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <SummaryCard label="HH Total Previsto" value={hhPrevistoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color="text-blue-600" sub="contrato completo" />
+            <SummaryCard label="HH Total Realizado" value={(hhRealizadoTotal ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color="text-green-700" sub="lançado até o momento" />
+            <SummaryCard label="HH Total Restante" value={Math.max(0, hhSaldo ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color={(hhSaldo ?? 0) > 0 ? 'text-orange-600' : 'text-green-600'} sub="previsto − realizado" />
+            <SummaryCard label="% Realizado" value={hhPercRealizado != null ? `${hhPercRealizado.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'} color="text-gray-800" sub="realizado / previsto" />
+          </div>
+        </section>
+      )}
+
       {/* Seletor de ano compartilhado pelos gráficos */}
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Período</h2>
@@ -241,24 +383,50 @@ export default function ContratoVisaoGeralPage() {
         </div>
       </div>
 
-      {/* Gráfico — Faturamento Mensal */}
+      {/* Tabela — Faturamento por Mês */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">⬛ Faturamento Mensal</h2>
-        {anoSel !== null && chartData ? (
-          <ContratoFaturamentoBarChart previsto={chartData.previsto} faturado={chartData.faturado} />
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">▦ Faturamento por Mês</h2>
+        {monthlyTable.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">Nenhum valor previsto ou faturado registrado.</p>
         ) : (
-          <ContratoFaturamentoBarChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
+          <div className="border border-gray-200 rounded-md overflow-auto max-h-[360px]">
+            <table className="w-full border-collapse text-[11px]">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Ano</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Mês</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Previsto</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Faturado</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyTable.map((r) => {
+                  const saldoMes = r.previsto - r.faturado
+                  return (
+                    <tr key={`${r.ano}-${r.mes}`} className="hover:bg-gray-50">
+                      <td className="px-3 py-1.5 text-gray-500 border-b border-gray-100 whitespace-nowrap">{r.ano}</td>
+                      <td className="px-3 py-1.5 text-gray-700 font-medium border-b border-gray-100 whitespace-nowrap">{MESES_LABELS[r.mes]}</td>
+                      <td className="px-3 py-1.5 text-right text-blue-600 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.previsto)}</td>
+                      <td className="px-3 py-1.5 text-right text-green-700 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.faturado)}</td>
+                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${saldoMes > 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(Math.abs(saldoMes))}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      {/* Gráfico — Acumulado */}
+      {/* Gráfico — Avanço % (Faturamento x HH) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Acumulado</h2>
-        {anoSel !== null && chartData ? (
-          <ContratoFaturamentoLineChart previsto={chartData.previsto} faturado={chartData.faturado} />
-        ) : (
-          <ContratoFaturamentoLineChart previsto={anualData.map((d) => d.previsto)} faturado={anualData.map((d) => d.faturado)} labels={anualData.map((d) => String(d.ano))} />
-        )}
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Avanço % — Faturamento x HH</h2>
+        <ContratoAvancoPercentualChart
+          faturamentoPct={avancoPctData.faturamentoPct}
+          hhPct={avancoPctData.hhPct}
+          labels={avancoPctData.labels}
+        />
       </section>
 
       {/* Informações */}

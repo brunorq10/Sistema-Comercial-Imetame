@@ -44,6 +44,19 @@ function fmtTooltip(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function fmtPct(v: number): string {
+  return `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+}
+
+// Índice do último ponto não-nulo de uma série — usado para só rotular o
+// último período com dado real de cada linha (não necessariamente o mesmo
+// período nas duas linhas, já que Faturamento e HH podem estar em pontos
+// diferentes do contrato).
+function lastNonNullIndex(arr: (number | null)[]): number {
+  for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return i
+  return -1
+}
+
 interface AnualData {
   ano: number
   previsto: number
@@ -217,6 +230,110 @@ export function ContratoFaturamentoLineChart({ previsto, faturado, labels }: Pro
     layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
     plugins: { legend: legendPlugin, tooltip: tooltipPlugin },
     scales: { x: xScale, y: yScale },
+  }
+
+  return <Chart type="line" data={data} options={options} />
+}
+
+interface AvancoPercentualProps {
+  /** % acumulado do faturamento sobre o total do contrato, por período. null = sem dado ainda no período. */
+  faturamentoPct: (number | null)[]
+  /** % acumulado do HH realizado sobre o HH total previsto, por período. null = sem dado ainda no período. */
+  hhPct: (number | null)[]
+  labels?: string[]
+}
+
+const COLOR_FAT_PCT = COLORS.acumFaturado // azul — mesmo tom já usado para "Acum. faturado"
+const COLOR_HH_PCT  = '#16A34A'            // verde — mesmo tom já usado para "Realizado" no Controle de HH
+
+/**
+ * Avanço % — Faturamento x HH: duas linhas cumulativas em termos relativos
+ * (% do total), comparando o ritmo de faturamento com o ritmo de consumo de
+ * HH ao longo do contrato. Rótulo de dado só no último ponto COM DADO de cada
+ * linha (não no último índice do eixo) — ao passar o mouse, o tooltip mostra
+ * qualquer ponto normalmente.
+ */
+export function ContratoAvancoPercentualChart({ faturamentoPct, hhPct, labels }: AvancoPercentualProps) {
+  const xLabels = labels ?? MESES_LABELS
+  const lastFat = lastNonNullIndex(faturamentoPct)
+  const lastHh  = lastNonNullIndex(hhPct)
+
+  const data = {
+    labels: xLabels,
+    datasets: [
+      {
+        type: 'line' as const,
+        label: 'Faturamento (%)',
+        data: faturamentoPct,
+        borderColor: COLOR_FAT_PCT,
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: COLOR_FAT_PCT,
+        pointBorderWidth: 2,
+        fill: false,
+        tension: 0.3,
+        spanGaps: false,
+        datalabels: {
+          display: (ctx: Context) => ctx.dataIndex === lastFat,
+          anchor: 'center' as const,
+          align: 'top' as const,
+          offset: 6,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLOR_FAT_PCT,
+          formatter: (v: number) => fmtPct(v),
+        },
+      },
+      {
+        type: 'line' as const,
+        label: 'HH Realizado (%)',
+        data: hhPct,
+        borderColor: COLOR_HH_PCT,
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: COLOR_HH_PCT,
+        pointBorderWidth: 2,
+        fill: false,
+        tension: 0.3,
+        spanGaps: false,
+        datalabels: {
+          display: (ctx: Context) => ctx.dataIndex === lastHh,
+          anchor: 'center' as const,
+          align: 'top' as const,
+          offset: 6,
+          font: { size: 9, weight: 'bold' as const },
+          color: COLOR_HH_PCT,
+          formatter: (v: number) => fmtPct(v),
+        },
+      },
+    ],
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: true,
+    interaction: { mode: 'index' as const, intersect: false },
+    layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
+    plugins: {
+      legend: legendPlugin,
+      tooltip: {
+        ...tooltipPlugin,
+        callbacks: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: (ctx: any) => `  ${ctx.dataset.label}: ${ctx.parsed.y == null ? 'sem dado' : fmtPct(ctx.parsed.y)}`,
+        },
+      },
+    },
+    scales: {
+      x: xScale,
+      y: {
+        ...yScale,
+        min: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ticks: { ...yScale.ticks, callback: (v: any) => `${v}%` },
+      },
+    },
   }
 
   return <Chart type="line" data={data} options={options} />

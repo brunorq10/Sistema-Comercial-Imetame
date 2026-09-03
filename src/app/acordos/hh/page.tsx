@@ -1030,14 +1030,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
 
           {mesData.length > 0 && (
             <>
-              {/* ── Gráficos ── */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Mensal</p>
-                <p className="text-[11px] text-gray-400 mb-3">Comparativo mês a mês</p>
-                {chartLegend}
-                <div style={{ height: 230 }}><Line data={makeSeries(true)} options={chartOpts} /></div>
-              </div>
-
+              {/* ── Gráfico ── */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
                 <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Acumulado</p>
                 <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada ao longo do contrato</p>
