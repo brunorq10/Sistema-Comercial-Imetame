@@ -94,15 +94,11 @@ export async function GET(req: Request) {
   const previstoSubPorMes = new Array<number>(12).fill(0)
   const faturadoPorMes    = new Array<number>(12).fill(0)
 
-  // Acumuladores para projeção multi-ano, aderência por responsável e contratos ativos
-  const previstoPorAno  = new Map<number, number>()
-  const realizadoPorAno = new Map<number, number>()
+  // Acumulador para aderência por responsável
   const porResp = new Map<string, { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number }>()
-  const contratosAtivos: { id: number; indice: string; cliente: string; valorTotal: number; faturado: number; pct: number }[] = []
 
   for (const contrato of contratos) {
     let contratoTotal = 0          // valor total do contrato (soma dos sub-índices)
-    let contratoNFsTotal = 0       // faturado (todas as NFs, todos os anos)
     let contratoNFsAno = 0         // faturado no ano de referência
     let contratoPrevistoAno = 0    // previsto no ano de referência
 
@@ -116,7 +112,6 @@ export async function GET(req: Request) {
       contratoTotal += valorSub
 
       const mensalSub = Array.from({ length: 12 }, (_, i) => getMonthValue(subRec, i + 1)).reduce((a, b) => a + b, 0)
-      if (anoSub != null) previstoPorAno.set(anoSub, (previstoPorAno.get(anoSub) ?? 0) + mensalSub)
 
       if (anoSub === anoAtual) {
         prevMesAtual += getMonthValue(subRec, mesAtual)
@@ -131,9 +126,6 @@ export async function GET(req: Request) {
         const nfAno   = emissao.getUTCFullYear()
         const nfMes   = emissao.getUTCMonth() + 1
         const valor   = Number(nf.valor_atribuido)
-
-        contratoNFsTotal += valor
-        realizadoPorAno.set(nfAno, (realizadoPorAno.get(nfAno) ?? 0) + valor)
 
         if (nfAno === anoAtual) {
           totalFaturadoAno += valor
@@ -166,15 +158,6 @@ export async function GET(req: Request) {
     respEntry.previsto += contratoPrevistoAno
     respEntry.realizado += contratoNFsAno
     porResp.set(respKey, respEntry)
-
-    // Contratos ativos — progresso de faturamento
-    if (contratoTotal > 0) {
-      contratosAtivos.push({
-        id: contrato.id, indice: contrato.indice, cliente: contrato.cliente.nome,
-        valorTotal: contratoTotal, faturado: contratoNFsTotal,
-        pct: (contratoNFsTotal / contratoTotal) * 100,
-      })
-    }
   }
 
   // Previsto do ano = soma das colunas mensais dos subíndices (mesma base da tabela)
@@ -224,18 +207,6 @@ export async function GET(req: Request) {
     }
   })
 
-  // Projeção multi-ano (carteira contratada): realizado x a faturar por ano
-  const anosSet = new Set<number>([...Array.from(previstoPorAno.keys()), ...Array.from(realizadoPorAno.keys())])
-  const projecaoMultiAno = Array.from(anosSet)
-    .filter((a) => !isNaN(a))
-    .sort((a, b) => a - b)
-    .map((a) => {
-      const realizado = realizadoPorAno.get(a) ?? 0
-      const previsto  = previstoPorAno.get(a) ?? 0
-      return { ano: a, realizado, aFaturar: Math.max(0, previsto - realizado) }
-    })
-    .filter((p) => p.realizado > 0 || p.aFaturar > 0)
-
   // Aderência por responsável
   const porResponsavel = Array.from(porResp.values())
     .map((r) => ({
@@ -245,11 +216,6 @@ export async function GET(req: Request) {
       saldo: Math.max(0, r.previsto - r.realizado),
     }))
     .sort((a, b) => b.valorSobGestao - a.valorSobGestao)
-
-  // Contratos ativos — ordenados por % faturado desc
-  const contratosAtivosData = contratosAtivos
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 30)
 
   // Ocorrências contratuais lançadas por responsável (autor do registro)
   const ocorrenciasRaw = await prisma.ocorrenciaContratual.groupBy({
@@ -300,10 +266,8 @@ export async function GET(req: Request) {
       porRamo:    porRamoData,
       porCliente: porClienteData,
       porMes,
-      projecaoMultiAno,
       porResponsavel,
       ocorrenciasPorResponsavel,
-      contratosAtivos: contratosAtivosData,
     },
     error: null,
   })

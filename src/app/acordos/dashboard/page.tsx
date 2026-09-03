@@ -36,10 +36,8 @@ interface DashData {
   porRamo:    { ramo: string; valor: number; percentual: number }[]
   porCliente: { nome: string; valor: number; percentual: number }[]
   porMes:     MesData[]
-  projecaoMultiAno: { ano: number; realizado: number; aFaturar: number }[]
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
   ocorrenciasPorResponsavel: { id: number; nome: string; osSobGestao: number; total: number }[]
-  contratosAtivos: { id: number; indice: string; cliente: string; valorTotal: number; faturado: number; pct: number }[]
   clientes: { id: number; nome: string }[]
 }
 
@@ -250,7 +248,6 @@ function Avatar({ nome }: { nome: string }) {
 }
 
 function adColor(p: number) { return p >= 70 ? { bg: '#DCFCE7', text: '#15803D' } : p >= 50 ? { bg: '#FEF3C7', text: '#B45309' } : { bg: '#FEE2E2', text: '#B91C1C' } }
-function progColor(p: number) { return p >= 70 ? '#16A34A' : p >= 40 ? '#D97706' : '#DC2626' }
 
 const ANO_ATUAL = new Date().getFullYear()
 const ANOS = Array.from({ length: 5 }, (_, i) => ANO_ATUAL - i)
@@ -303,18 +300,6 @@ export default function IndicadoresAcordosPage() {
     plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, datalabels: { display: false }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
     scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: yTick } } },
   }
-  const projChart = data && {
-    labels: data.projecaoMultiAno.map((p) => String(p.ano)),
-    datasets: [
-      { label: 'Realizado', data: data.projecaoMultiAno.map((p) => p.realizado), backgroundColor: '#1B5E20', stack: 's', borderRadius: 3 },
-      { label: 'A faturar (contratado)', data: data.projecaoMultiAno.map((p) => p.aFaturar), backgroundColor: '#A5D6A7', stack: 's', borderRadius: 3 },
-    ],
-  }
-  const projOpts = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, datalabels: { display: false }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
-    scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } }, y: { stacked: true, grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: yTick } } },
-  }
 
   return (
     <div className="p-4 space-y-1 h-full overflow-y-auto bg-gray-50">
@@ -347,7 +332,7 @@ export default function IndicadoresAcordosPage() {
         <>
           {/* Abas de indicadores */}
           <div className="flex items-center gap-1 border-b border-gray-200 !mt-3 overflow-x-auto">
-            {([['geral', 'Indicadores Gerais'], ['responsavel', 'Por Responsável / Multas']] as const).map(([val, label]) => (
+            {([['geral', 'Indicadores Gerais'], ['responsavel', 'Eventos Contratuais']] as const).map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => setAbaInd(val)}
@@ -407,17 +392,7 @@ export default function IndicadoresAcordosPage() {
             <p className="text-[10px] text-gray-400 mt-2">Área de cada retalho proporcional à participação no faturamento total do ano ({fmtM(data.totalFaturadoAno)}).</p>
           </div>
 
-          {/* 7 — Projeção multi-ano */}
-          <SectionTitle>Projeção de faturamento multi-ano (carteira contratada)</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            {data.projecaoMultiAno.length === 0
-              ? <p className="text-center text-gray-400 py-10 text-sm">Sem carteira para projetar.</p>
-              : <div style={{ height: 280 }}>{projChart && <Bar data={projChart} options={projOpts} />}</div>}
-          </div>
-          </>)}
-
-          {abaInd === 'responsavel' && (<>
-          {/* 8 — Aderência por responsável */}
+          {/* 7 — Aderência por responsável */}
           <SectionTitle>Aderência por responsável de Acordos</SectionTitle>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
@@ -504,34 +479,12 @@ export default function IndicadoresAcordosPage() {
               </div>
             )}
           </div>
+          </>)}
 
+          {abaInd === 'responsavel' && (<>
           {/* Multas / Penalidades recebidas */}
           <SectionTitle>Multas / Penalidades recebidas</SectionTitle>
           <MultasIndicador />
-          </>)}
-
-          {abaInd === 'geral' && (<>
-          {/* 9 — Contratos ativos */}
-          <SectionTitle>Contratos ativos — progresso de faturamento</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            {data.contratosAtivos.length === 0 ? (
-              <p className="text-center text-gray-400 py-8 text-sm">Sem contratos ativos.</p>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {data.contratosAtivos.map((c) => (
-                  <div key={c.id} className="flex items-center gap-3">
-                    <span className="text-[11px] text-gray-700 font-medium w-52 flex-shrink-0 truncate" title={`${c.indice} · ${c.cliente}`}>{c.indice} · {c.cliente}</span>
-                    <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                      <div className="h-full rounded flex items-center justify-end pr-1.5" style={{ width: `${Math.min(Math.max(c.pct, 6), 100)}%`, backgroundColor: progColor(c.pct) }}>
-                        <span className="text-[10px] font-bold text-white">{c.pct.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                    <span className="text-[11px] text-gray-600 font-semibold w-20 text-right flex-shrink-0">{fmtM(c.faturado)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
           </>)}
         </>
       )}

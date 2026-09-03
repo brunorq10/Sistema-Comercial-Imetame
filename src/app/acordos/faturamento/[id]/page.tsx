@@ -483,7 +483,7 @@ export default function ContratoVisaoGeralPage() {
       {/* Histórico + Ocorrências + Negociação (abas) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
-          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Ocorrências Contratuais'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
+          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Eventos Contratuais'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setAbaHist(val)}
