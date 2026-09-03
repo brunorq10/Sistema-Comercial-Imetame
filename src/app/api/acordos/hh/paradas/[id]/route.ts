@@ -61,7 +61,10 @@ export async function GET(
       cliente_final: true,
       responsavel: true,
       parada_hh_config: {
-        include: { dias: { orderBy: [{ etapa: 'asc' }, { data: 'asc' }] } },
+        include: {
+          dias: { orderBy: [{ etapa: 'asc' }, { data: 'asc' }] },
+          quemFechou: { select: { nome: true } },
+        },
       },
       subindices: {
         where: { deleted_at: null },
@@ -95,6 +98,7 @@ export async function GET(
         estado: contrato.estado,
         escopo: contrato.descricao,
         responsavel: contrato.responsavel?.nome ?? '',
+        data_inicio: contrato.data_inicio?.toISOString() ?? null,
         valor_orcado: valorOrcado,
         valor_faturado: valorFaturado,
       },
@@ -113,6 +117,11 @@ export async function PUT(
   const contratoId = parseInt(params.id, 10)
   if (isNaN(contratoId)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   { const _n = await exigirTitularContrato(session, contratoId, 'acordos.paradas.controlehh.editar'); if (_n) return _n }
+
+  const existente = await prisma.paradaHhConfig.findUnique({ where: { contrato_id: contratoId }, select: { fechada_em: true } })
+  if (existente?.fechada_em) {
+    return NextResponse.json({ error: 'Esta Parada está fechada e não pode mais ser ajustada. Reabra-a antes de editar.' }, { status: 403 })
+  }
 
   const body = await req.json()
   const parsed = BodySchema.safeParse(body)

@@ -321,7 +321,11 @@ async function main() {
     })
   }
 
-  // ── Faixas de UCR por região (Controle de HH — Paradas) ─────────────────────
+  // ── Faixas de UCR por região/vigência (Controle de HH — Paradas) ────────────
+  // Vigência inicial cobrindo o ano corrente inteiro — idempotente por (regiao, vigencia_inicio).
+  const anoUcr = new Date().getFullYear()
+  const ucrVigenciaInicio = new Date(Date.UTC(anoUcr, 0, 1))
+  const ucrVigenciaFim    = new Date(Date.UTC(anoUcr, 11, 31))
   const ucrFaixas: Array<{ regiao: 'ES' | 'MG' | 'BAHIA' | 'SP' | 'OUTROS'; ucr_nao_suficiente: number; ucr_a_evoluir: number; ucr_bom: number; ucr_otimo: number; ucr_esplendido: number }> = [
     { regiao: 'ES',     ucr_nao_suficiente: 161.98, ucr_a_evoluir: 162.00, ucr_bom: 180.00, ucr_otimo: 234.00, ucr_esplendido: 270.00 },
     { regiao: 'MG',     ucr_nao_suficiente: 188.98, ucr_a_evoluir: 189.00, ucr_bom: 210.00, ucr_otimo: 273.00, ucr_esplendido: 315.00 },
@@ -331,7 +335,12 @@ async function main() {
   ]
   for (const f of ucrFaixas) {
     const { regiao, ...valores } = f
-    await prisma.ucrFaixaRegiao.upsert({ where: { regiao }, update: {}, create: { regiao, ...valores } })
+    const existente = await prisma.ucrFaixaVigencia.findFirst({ where: { regiao, vigencia_inicio: ucrVigenciaInicio } })
+    if (!existente) {
+      await prisma.ucrFaixaVigencia.create({
+        data: { regiao, vigencia_inicio: ucrVigenciaInicio, vigencia_fim: ucrVigenciaFim, ...valores, created_by: admin.id },
+      })
+    }
   }
 
   console.log('\n✅ Seed concluído com sucesso!')

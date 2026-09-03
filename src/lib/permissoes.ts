@@ -89,8 +89,10 @@ export const CATALOGO = {
   'acordos.paradas.controlehh.editar':{ todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   'acordos.paradas.remover':          { perfis: ['GESTAO_ACORDOS'] },
   'acordos.paradas.novo':             { perfis: ['GESTAO_ACORDOS'] },
-  // Faixas de UCR (cadastro central por região) — só gestão edita; demais só visualizam
-  'acordos.paradas.ucr.editar':       { perfis: ['GESTAO_ACORDOS'] },
+  // Faixas de UCR (cadastro central por região/vigência) — gestão + analista crítico editam; demais só visualizam
+  'acordos.paradas.ucr.editar':       { perfis: ['GESTAO_ACORDOS'], analista: true },
+  // Reabrir Parada fechada — restrito (fechar usa a mesma permissão de controlehh.editar)
+  'acordos.paradas.reabrir':          { perfis: ['GESTAO_ACORDOS'], analista: true },
   // HH — Fabricações
   'acordos.fab.itens.editar':         { perfis: ['GESTAO_ACORDOS'] },
   'acordos.fab.excluir':              { perfis: ['GESTAO_ACORDOS'] },

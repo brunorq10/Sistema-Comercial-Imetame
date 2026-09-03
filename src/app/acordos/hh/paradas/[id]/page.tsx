@@ -4,7 +4,10 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, MapPin, User, Building2, Briefcase } from 'lucide-react'
 import { CurrencyInput } from '@/components/ui/Input'
-import { regiaoPorEstado, classificarUcr, UCR_FAIXAS, UCR_REGIOES, type UcrFaixaValores } from '@/lib/ucr'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { UcrFaixasTabela } from '@/components/acordos/UcrFaixasTabela'
+import { usePermissions } from '@/hooks/usePermissions'
+import { regiaoPorEstado, classificarUcr, resolverVigencia, UCR_FAIXAS, UCR_REGIOES, type UcrVigencia } from '@/lib/ucr'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -48,8 +51,14 @@ interface ContratoInfo {
   estado: string | null
   escopo: string | null
   responsavel: string
+  data_inicio: string | null
   valor_orcado: number
   valor_faturado: number
+}
+
+interface FechamentoInfo {
+  fechada_em: string | null
+  fechada_por_nome: string | null
 }
 
 interface ConfigState {
@@ -164,10 +173,10 @@ function configFromApi(c: Record<string, unknown>): ConfigState {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <button type="button" onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-600' : 'bg-gray-300'}`}>
+    <button type="button" disabled={disabled} onClick={() => onChange(!value)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${value ? 'bg-green-600' : 'bg-gray-300'}`}>
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   )
@@ -182,9 +191,10 @@ function KpiCard({ label, value, color }: { label: string; value: string; color?
   )
 }
 
-function EtapaCard({ label, inicio, fim, onChangeInicio, onChangeFim }: {
+function EtapaCard({ label, inicio, fim, onChangeInicio, onChangeFim, disabled }: {
   label: string; inicio: string; fim: string
   onChangeInicio: (v: string) => void; onChangeFim: (v: string) => void
+  disabled?: boolean
 }) {
   const duracao = useMemo(() => diasEntreDatas(inicio, fim).length, [inicio, fim])
   return (
@@ -193,13 +203,13 @@ function EtapaCard({ label, inicio, fim, onChangeInicio, onChangeFim }: {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-gray-500">Início</label>
-          <input type="date" value={inicio} onChange={(e) => onChangeInicio(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-green-500 focus:outline-none" />
+          <input type="date" value={inicio} disabled={disabled} onChange={(e) => onChangeInicio(e.target.value)}
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-green-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500" />
         </div>
         <div>
           <label className="block text-xs text-gray-500">Fim</label>
-          <input type="date" value={fim} onChange={(e) => onChangeFim(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-green-500 focus:outline-none" />
+          <input type="date" value={fim} disabled={disabled} onChange={(e) => onChangeFim(e.target.value)}
+            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-green-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500" />
         </div>
       </div>
       <p className="mt-2 text-xs text-gray-500">
@@ -215,28 +225,46 @@ export default function ParadaHhPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
+  const { pode } = usePermissions()
+  const podeReabrir = pode('acordos.paradas.reabrir')
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [contrato, setContrato] = useState<ContratoInfo | null>(null)
+  const [fechamento, setFechamento] = useState<FechamentoInfo>({ fechada_em: null, fechada_por_nome: null })
   const [cfg, setCfg] = useState<ConfigState>(defaultConfig())
   const [dias, setDias] = useState<Map<string, DiaState>>(new Map())
-  const [faixasUcr, setFaixasUcr] = useState<Record<string, UcrFaixaValores>>({})
+  const [vigenciasUcr, setVigenciasUcr] = useState<UcrVigencia[]>([])
+
+  const [confirmFechar, setConfirmFechar] = useState(false)
+  const [fecharLoading, setFecharLoading] = useState(false)
+  const [fecharErro, setFecharErro] = useState<string | null>(null)
+  const [confirmReabrir, setConfirmReabrir] = useState(false)
+  const [reabrirLoading, setReabrirLoading] = useState(false)
+  const [reabrirErro, setReabrirErro] = useState<string | null>(null)
+
+  const fechada = fechamento.fechada_em != null
 
   useEffect(() => {
     fetch('/api/acordos/hh/paradas/ucr-faixas')
       .then((r) => r.json())
-      .then((j) => {
-        const map: Record<string, UcrFaixaValores> = {}
-        for (const f of (j.data?.faixas ?? [])) {
-          map[f.regiao] = Object.fromEntries(UCR_FAIXAS.map((c) => [c.campo, f[c.campo]])) as UcrFaixaValores
-        }
-        setFaixasUcr(map)
-      })
+      .then((j) => setVigenciasUcr([...(j.data?.vigentes ?? []), ...(j.data?.historico ?? [])]))
       .catch(() => {})
   }, [])
 
   const regiaoDoContrato = regiaoPorEstado(contrato?.estado)
-  const faixaAtual = faixasUcr[regiaoDoContrato] ?? null
+  // Faixa fixada pela data de início da Parada — não "a atual" (ver src/lib/ucr.ts).
+  const dataReferenciaUcr = cfg.parada_inicio || contrato?.data_inicio || null
+  const faixaAtual = dataReferenciaUcr
+    ? resolverVigencia(vigenciasUcr, regiaoDoContrato, new Date(dataReferenciaUcr))
+    : null
+  const valoresPorRegiaoNoPeriodo = useMemo(() => {
+    if (!dataReferenciaUcr) return {}
+    const data = new Date(dataReferenciaUcr)
+    return Object.fromEntries(
+      UCR_REGIOES.map((r) => [r.regiao, resolverVigencia(vigenciasUcr, r.regiao, data)]),
+    )
+  }, [vigenciasUcr, dataReferenciaUcr])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -245,6 +273,10 @@ export default function ParadaHhPage() {
       const json = await res.json()
       if (!json.data) return
       setContrato(json.data.contrato)
+      setFechamento({
+        fechada_em: json.data.config?.fechada_em ?? null,
+        fechada_por_nome: json.data.config?.quemFechou?.nome ?? null,
+      })
       if (json.data.config) {
         setCfg(configFromApi(json.data.config as Record<string, unknown>))
         const diasApi = (json.data.config.dias ?? []) as Array<{
@@ -416,6 +448,31 @@ export default function ParadaHhPage() {
     } finally { setSaving(false) }
   }
 
+  // ── Fechar / Reabrir Parada ──────────────────────────────────────────────
+  async function handleFechar() {
+    setFecharLoading(true); setFecharErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/paradas/${id}/fechar`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || json.error) { setFecharErro(json.error ?? 'Erro ao fechar a Parada'); return }
+      setConfirmFechar(false)
+      await fetchData()
+    } finally { setFecharLoading(false) }
+  }
+
+  async function handleReabrir(motivo: string) {
+    setReabrirLoading(true); setReabrirErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/paradas/${id}/reabrir`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivo }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setReabrirErro(json.error ?? 'Erro ao reabrir a Parada'); return }
+      setConfirmReabrir(false)
+      await fetchData()
+    } finally { setReabrirLoading(false) }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -454,16 +511,40 @@ export default function ParadaHhPage() {
           {contrato?.responsavel && (
             <div className="hidden items-center gap-1 text-xs text-gray-500 lg:flex"><User size={13} /><span>{contrato.responsavel}</span></div>
           )}
-          <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60">
-            <Save size={16} />
-            {saving ? 'Salvando…' : 'Lançar realizado'}
-          </button>
+          {!fechada && (
+            <>
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60">
+                <Save size={16} />
+                {saving ? 'Salvando…' : 'Lançar realizado'}
+              </button>
+              <button onClick={() => { setFecharErro(null); setConfirmFechar(true) }}
+                className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
+                Fechar Parada
+              </button>
+            </>
+          )}
+          {fechada && podeReabrir && (
+            <button onClick={() => { setReabrirErro(null); setConfirmReabrir(true) }}
+              className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+              Reabrir Parada
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── Scrollable Content ───────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {fechada && (
+          <div className="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-700 flex items-center gap-2">
+            <span className="font-semibold">Parada fechada</span>
+            <span>
+              em {fechamento.fechada_em ? new Date(fechamento.fechada_em).toLocaleDateString('pt-BR') : '–'}
+              {fechamento.fechada_por_nome ? ` por ${fechamento.fechada_por_nome}` : ''} — os lançamentos estão consolidados e não podem mais ser ajustados.
+              {podeReabrir ? ' Use "Reabrir Parada" para editar novamente.' : ''}
+            </span>
+          </div>
+        )}
 
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -476,15 +557,15 @@ export default function ParadaHhPage() {
 
         {/* ── Etapas ───────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <EtapaCard label="Preparativo"
+          <EtapaCard label="Preparativo" disabled={fechada}
             inicio={cfg.prep_inicio} fim={cfg.prep_fim}
             onChangeInicio={(v) => setCfg((p) => ({ ...p, prep_inicio: v }))}
             onChangeFim={(v) => setCfg((p) => ({ ...p, prep_fim: v }))} />
-          <EtapaCard label="Parada"
+          <EtapaCard label="Parada" disabled={fechada}
             inicio={cfg.parada_inicio} fim={cfg.parada_fim}
             onChangeInicio={(v) => setCfg((p) => ({ ...p, parada_inicio: v }))}
             onChangeFim={(v) => setCfg((p) => ({ ...p, parada_fim: v }))} />
-          <EtapaCard label="Pós Parada"
+          <EtapaCard label="Pós Parada" disabled={fechada}
             inicio={cfg.acomp_inicio} fim={cfg.acomp_fim}
             onChangeInicio={(v) => setCfg((p) => ({ ...p, acomp_inicio: v }))}
             onChangeFim={(v) => setCfg((p) => ({ ...p, acomp_fim: v }))} />
@@ -507,7 +588,7 @@ export default function ParadaHhPage() {
         {/* ── Grade de HH Diário ───────────────────────────────────────────── */}
         <DailyGrid
           diasPrep={diasPrep} diasParada={diasParada} diasAcomp={diasAcomp}
-          getDia={getDia} setDiaProp={setDiaProp}
+          getDia={getDia} setDiaProp={setDiaProp} disabled={fechada}
         />
 
         {/* ── Horas Adicionais ─────────────────────────────────────────────── */}
@@ -540,16 +621,16 @@ export default function ParadaHhPage() {
                     <tr key={row.label} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-2.5 font-medium text-gray-700">{row.label}</td>
                       <td className="px-4 py-2.5 text-center">
-                        <Toggle value={ativo} onChange={(v) => setCfg((p) => ({ ...p, [row.ativoKey]: v }))} />
+                        <Toggle value={ativo} disabled={fechada} onChange={(v) => setCfg((p) => ({ ...p, [row.ativoKey]: v }))} />
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <input type="number" min={0} step={0.1} disabled={!ativo}
+                        <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
                           value={cfg[row.prevKey]}
                           onChange={(e) => setCfg((p) => ({ ...p, [row.prevKey]: e.target.value }))}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <input type="number" min={0} step={0.1} disabled={!ativo}
+                        <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
                           value={cfg[row.realKey]}
                           onChange={(e) => setCfg((p) => ({ ...p, [row.realKey]: e.target.value }))}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
@@ -577,16 +658,16 @@ export default function ParadaHhPage() {
                     <tr className="border-b hover:bg-gray-50">
                       <td className="px-4 py-2.5 font-medium text-gray-700">Folga</td>
                       <td className="px-4 py-2.5 text-center">
-                        <Toggle value={ativo} onChange={(v) => setCfg((p) => ({ ...p, folga_ativo: v }))} />
+                        <Toggle value={ativo} disabled={fechada} onChange={(v) => setCfg((p) => ({ ...p, folga_ativo: v }))} />
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <input type="number" min={0} step={0.1} disabled={!ativo}
+                        <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
                           value={cfg.folga_dias_prev}
                           onChange={(e) => setCfg((p) => ({ ...p, folga_dias_prev: e.target.value }))}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
                       </td>
                       <td className="px-4 py-2.5 text-center">
-                        <input type="number" min={0} step={0.1} disabled={!ativo}
+                        <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
                           value={cfg.folga_dias_real}
                           onChange={(e) => setCfg((p) => ({ ...p, folga_dias_real: e.target.value }))}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
@@ -596,14 +677,14 @@ export default function ParadaHhPage() {
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1 justify-center">
                             <span className="text-blue-600 w-10">Prev:</span>
-                            <input type="number" min={0} disabled={!ativo}
+                            <input type="number" min={0} disabled={!ativo || fechada}
                               value={cfg.folga_pessoas_prev}
                               onChange={(e) => setCfg((p) => ({ ...p, folga_pessoas_prev: e.target.value }))}
                               className="w-16 rounded border border-gray-300 px-1 py-0.5 text-center text-xs disabled:cursor-not-allowed disabled:bg-gray-100" />
                           </div>
                           <div className="flex items-center gap-1 justify-center">
                             <span className="text-green-600 w-10">Real:</span>
-                            <input type="number" min={0} disabled={!ativo}
+                            <input type="number" min={0} disabled={!ativo || fechada}
                               value={cfg.folga_pessoas_real}
                               onChange={(e) => setCfg((p) => ({ ...p, folga_pessoas_real: e.target.value }))}
                               className="w-16 rounded border border-gray-300 px-1 py-0.5 text-center text-xs disabled:cursor-not-allowed disabled:bg-gray-100" />
@@ -711,7 +792,7 @@ export default function ParadaHhPage() {
                     <CurrencyInput
                       value={cfg.fin_prev_valor_servico}
                       onChange={(v) => setCfg((p) => ({ ...p, fin_prev_valor_servico: v }))}
-                      placeholder="0,00"
+                      placeholder="0,00" disabled={fechada}
                       className="w-36 text-right" />
                   </td>
                   <td className="px-4 py-2 text-right text-gray-800 font-semibold">
@@ -727,7 +808,7 @@ export default function ParadaHhPage() {
                     <CurrencyInput
                       value={cfg.fin_prev_ase}
                       onChange={(v) => setCfg((p) => ({ ...p, fin_prev_ase: v }))}
-                      placeholder="0,00"
+                      placeholder="0,00" disabled={fechada}
                       className="w-36 text-right" />
                   </td>
                   <td className="px-4 py-2 text-center text-gray-300">—</td>
@@ -780,50 +861,63 @@ export default function ParadaHhPage() {
           </div>
         </div>
 
-        {/* ── UCR — leitura apenas (cadastrado em Faixas de UCR, por região) ── */}
+        {/* ── UCR — tabela completa (todas as regiões) da vigência aplicável ── */}
         <div className="rounded-lg border bg-white shadow-sm">
           <div className="border-b bg-green-700 px-4 py-2 rounded-t-lg flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">UCR — Uso Consciente do Recurso</h3>
             <span className="text-[11px] text-green-200 font-normal">
-              Faixa aplicada: {UCR_REGIOES.find((r) => r.regiao === regiaoDoContrato)?.label ?? regiaoDoContrato}
+              Região desta Parada: {UCR_REGIOES.find((r) => r.regiao === regiaoDoContrato)?.label ?? regiaoDoContrato}
               {contrato?.estado ? ` (UF: ${contrato.estado})` : ''}
+              {faixaAtual ? ` · Vigência: ${new Date(faixaAtual.vigencia_inicio).toLocaleDateString('pt-BR')} a ${new Date(faixaAtual.vigencia_fim).toLocaleDateString('pt-BR')}` : ''}
             </span>
           </div>
-          {!faixaAtual ? (
-            <p className="text-center text-gray-400 py-6 text-xs">Carregando faixas de UCR...</p>
+          {!dataReferenciaUcr ? (
+            <p className="text-center text-gray-400 py-6 text-xs">Informe a data de início da Parada para ver as faixas aplicáveis.</p>
+          ) : !faixaAtual ? (
+            <p className="text-center text-amber-600 py-6 text-xs px-4">
+              Não há faixa de UCR vigente para a região {regiaoDoContrato} cobrindo {new Date(dataReferenciaUcr).toLocaleDateString('pt-BR')}.
+              Cadastre uma faixa em &quot;Faixas de UCR&quot; antes de fechar esta Parada.
+            </p>
           ) : (
-            <div className="flex flex-wrap gap-3 p-4">
-              {UCR_FAIXAS.map((row, i) => {
-                const curr = faixaAtual[row.campo]
-                const prevVal = i > 0 ? faixaAtual[UCR_FAIXAS[i - 1].campo] : null
-                const faixaLabel = i === 0
-                  ? `≤ ${fmtR$(curr)}`
-                  : i === UCR_FAIXAS.length - 1
-                    ? `> ${fmtR$(prevVal!)}`
-                    : `${fmtR$(prevVal!)} – ${fmtR$(curr)}`
-                const isAtiva =
-                  classifyRsHH(finOrcadoRsHH) === row.label ||
-                  classifyRsHH(finPrevRsHH)   === row.label ||
-                  classifyRsHH(finRealRsHH)   === row.label
-                return (
-                  <div key={row.label}
-                    className="flex-1 min-w-[120px] rounded-lg border-2 px-3 py-2 text-center"
-                    style={{
-                      borderColor: isAtiva ? row.cor : '#E5E7EB',
-                      background: isAtiva ? row.bg : '#FAFAFA',
-                    }}>
-                    <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: row.cor }}>
-                      {row.label}
-                    </div>
-                    <div className="mt-0.5 text-xs font-semibold text-gray-700">{faixaLabel}</div>
-                  </div>
-                )
-              })}
+            <div className="p-4">
+              <UcrFaixasTabela
+                valoresPorRegiao={valoresPorRegiaoNoPeriodo}
+                regiaoDestaque={regiaoDoContrato}
+                faixaAtivaPorRegiao={{ [regiaoDoContrato]: classifyRsHH(finRealRsHH) }}
+              />
             </div>
           )}
         </div>
 
       </div>
+
+      {confirmFechar && (
+        <ConfirmDialog
+          open
+          title="Fechar Parada"
+          message="Isso consolida os lançamentos desta Parada — nenhum ajuste poderá ser feito até que ela seja reaberta. Confirmar o fechamento?"
+          variant="warning"
+          confirmLabel="Fechar Parada"
+          loading={fecharLoading}
+          error={fecharErro}
+          onConfirm={handleFechar}
+          onClose={() => setConfirmFechar(false)}
+        />
+      )}
+      {confirmReabrir && (
+        <ConfirmDialog
+          open
+          title="Reabrir Parada"
+          message="Explique o motivo da reabertura — ficará registrado no histórico."
+          variant="warning"
+          confirmLabel="Reabrir Parada"
+          input={{ label: 'Justificativa', placeholder: 'Motivo da reabertura...', required: true, multiline: true }}
+          loading={reabrirLoading}
+          error={reabrirErro}
+          onConfirm={handleReabrir}
+          onClose={() => setConfirmReabrir(false)}
+        />
+      )}
     </div>
   )
 }
@@ -834,9 +928,10 @@ interface DailyGridProps {
   diasPrep: string[]; diasParada: string[]; diasAcomp: string[]
   getDia: (etapa: Etapa, data: string) => DiaState
   setDiaProp: (etapa: Etapa, data: string, prop: keyof DiaState, value: string) => void
+  disabled?: boolean
 }
 
-function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: DailyGridProps) {
+function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabled }: DailyGridProps) {
   const noData = diasPrep.length === 0 && diasParada.length === 0 && diasAcomp.length === 0
   if (noData) {
     return (
@@ -947,9 +1042,9 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W }}>
-                          <input type="text" inputMode="numeric" value={val}
+                          <input type="text" inputMode="numeric" value={val} disabled={disabled}
                             onChange={(e) => setDiaProp(etapa, d, prop, maskInt(e.target.value))}
-                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none"
+                            className="w-full bg-transparent px-0.5 py-0.5 text-center focus:bg-yellow-50 focus:outline-none disabled:text-gray-400"
                             style={{ textAlign: 'center', color: (weekend && val !== '') ? '#C62828' : undefined }} />
                         </td>
                       )
@@ -961,7 +1056,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp }: Dail
                       return (
                         <td key={`${etapa}_${d}`} className="border border-gray-200 p-0"
                           style={{ background: bg ?? '#fff', minWidth: COL_W, width: COL_W }}>
-                          <input type="text" inputMode="decimal" value={val}
+                          <input type="text" inputMode="decimal" value={val} disabled={disabled}
                             onChange={(e) => setDiaProp(etapa, d, prop, e.target.value)}
                             onBlur={(e) => {
                               const num = n(e.target.value)

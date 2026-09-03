@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { regiaoPorEstado, classificarUcr, UCR_CAMPOS, type UcrFaixaValores, type UcrRegiao } from '@/lib/ucr'
+import { regiaoPorEstado, classificarUcr, resolverVigencia } from '@/lib/ucr'
 import { calcParadaHhTotais } from '@/lib/hh'
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 
 async function getParadas(disponivel: boolean) {
-  const faixasRows = await prisma.ucrFaixaRegiao.findMany()
-  const faixasPorRegiao = Object.fromEntries(
-    faixasRows.map((f) => [f.regiao, Object.fromEntries(UCR_CAMPOS.map((c) => [c, Number(f[c])])) as UcrFaixaValores]),
-  ) as Partial<Record<UcrRegiao, UcrFaixaValores>>
+  // Todas as vigências de UCR — a resolução por contrato usa a região (Estado)
+  // + data de início da Parada (fallback: data de início do contrato).
+  const vigenciasRows = await prisma.ucrFaixaVigencia.findMany()
+  const vigencias = vigenciasRows.map((v) => ({
+    ...v,
+    vigencia_inicio: v.vigencia_inicio.toISOString(),
+    vigencia_fim: v.vigencia_fim.toISOString(),
+    ucr_nao_suficiente: Number(v.ucr_nao_suficiente),
+    ucr_a_evoluir: Number(v.ucr_a_evoluir),
+    ucr_bom: Number(v.ucr_bom),
+    ucr_otimo: Number(v.ucr_otimo),
+    ucr_esplendido: Number(v.ucr_esplendido),
+  }))
 
   const contratos = await prisma.contrato.findMany({
     where: { cancelled_at: null, hh_cancelado_at: null, classificacao: 'PARADAS' },
@@ -47,8 +56,12 @@ async function getParadas(disponivel: boolean) {
       const finPrevRsHH  = hhTotalReal  > 0 ? finPrevTotal  / hhTotalReal  : null
       const finRealRsHH  = hhTotalReal  > 0 ? valorFaturado / hhTotalReal  : null
 
-      // Faixa de UCR aplicada automaticamente pela região (Estado) do contrato
-      const faixaContrato = faixasPorRegiao[regiaoPorEstado(c.estado)] ?? null
+      // Faixa de UCR vigente na data de início da Parada (fixada nesse momento —
+      // ver src/lib/ucr.ts). Fallback: data de início do contrato.
+      const dataReferencia = cfg.parada_inicio ?? c.data_inicio
+      const faixaContrato = dataReferencia
+        ? resolverVigencia(vigencias, regiaoPorEstado(c.estado), dataReferencia)
+        : null
 
       paradaStats = {
         hh_previsto:       hhTotalPrev > 0 ? hhTotalPrev : null,

@@ -137,8 +137,11 @@ model User {
   fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
   fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
   hh_acomp_historico          HhAcompanhamentoHistorico[] @relation("HhAcompHistCriador")
-  ucr_faixas_atualizadas      UcrFaixaRegiao[]       @relation("UcrFaixaAtualizador")
+  ucr_faixas_criadas          UcrFaixaVigencia[]     @relation("UcrFaixaVigenciaCriador")
+  ucr_faixas_atualizadas      UcrFaixaVigencia[]     @relation("UcrFaixaVigenciaAtualizador")
   ucr_faixas_historico        UcrFaixaHistorico[]    @relation("UcrFaixaHistCriador")
+  parada_fechada_por          ParadaHhConfig[]       @relation("ParadaFechadaPor")
+  parada_fechamento_historico ParadaFechamentoHistorico[] @relation("ParadaFechHistCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -631,9 +634,15 @@ enum UcrRegiao {
   OUTROS
 }
 
-model UcrFaixaRegiao {
+// Faixa de UCR vigente por REGIÃO durante um PERÍODO (início/fim) — os valores
+// mudam periodicamente e cada Parada é avaliada pela vigência que estava
+// cobrindo a data de início dela (ver src/lib/ucr.ts:resolverVigencia), mesmo
+// que essa vigência já tenha "vencido" quando a Parada for fechada depois.
+model UcrFaixaVigencia {
   id                 Int       @id @default(autoincrement())
-  regiao             UcrRegiao @unique
+  regiao             UcrRegiao
+  vigencia_inicio    DateTime  @db.Date
+  vigencia_fim       DateTime  @db.Date
 
   ucr_nao_suficiente Decimal   @db.Decimal(10, 2)
   ucr_a_evoluir      Decimal   @db.Decimal(10, 2)
@@ -641,29 +650,34 @@ model UcrFaixaRegiao {
   ucr_otimo          Decimal   @db.Decimal(10, 2)
   ucr_esplendido     Decimal   @db.Decimal(10, 2)
 
+  created_at         DateTime  @default(now())
+  created_by         Int
   updated_at         DateTime  @updatedAt
   updated_by         Int?
 
-  usuario            User?     @relation("UcrFaixaAtualizador", fields: [updated_by], references: [id])
-  historico          UcrFaixaHistorico[]
+  criador     User                @relation("UcrFaixaVigenciaCriador", fields: [created_by], references: [id])
+  atualizador User?               @relation("UcrFaixaVigenciaAtualizador", fields: [updated_by], references: [id])
+  historico   UcrFaixaHistorico[]
 
-  @@map("ucr_faixas_regiao")
+  @@index([regiao, vigencia_inicio, vigencia_fim])
+  @@map("ucr_faixas_vigencia")
 }
 
-// Histórico De/Para de cada alteração de faixa — mesmo formato de FabricacaoItemHistorico.
+// Histórico De/Para de cada alteração de vigência (valores ou datas) — mesmo
+// formato de FabricacaoItemHistorico.
 model UcrFaixaHistorico {
-  id         Int       @id @default(autoincrement())
-  regiao     UcrRegiao
-  campo      String
-  valor_de   Decimal?  @db.Decimal(10, 2)
-  valor_para Decimal   @db.Decimal(10, 2)
-  created_at DateTime  @default(now())
-  created_by Int
+  id          Int      @id @default(autoincrement())
+  vigencia_id Int
+  campo       String   // ucr_* (5 valores) | vigencia_inicio | vigencia_fim
+  valor_de    String?
+  valor_para  String
+  created_at  DateTime @default(now())
+  created_by  Int
 
-  faixa   UcrFaixaRegiao @relation(fields: [regiao], references: [regiao])
-  usuario User           @relation("UcrFaixaHistCriador", fields: [created_by], references: [id])
+  vigencia UcrFaixaVigencia @relation(fields: [vigencia_id], references: [id], onDelete: Cascade)
+  usuario  User             @relation("UcrFaixaHistCriador", fields: [created_by], references: [id])
 
-  @@index([regiao])
+  @@index([vigencia_id])
   @@map("ucr_faixas_historico")
 }
 
@@ -702,16 +716,40 @@ model ParadaHhConfig {
   fin_prev_valor_servico Decimal? @db.Decimal(15, 2)
   fin_prev_ase           Decimal? @db.Decimal(15, 2)
 
-  // UCR: faixas não são mais por contrato — ver UcrFaixaRegiao (cadastro
-  // central por Estado, aplicado automaticamente pelo campo `estado` do contrato).
+  // UCR: faixas não são mais por contrato — ver UcrFaixaVigencia (cadastro
+  // central por região/período, aplicado pelo Estado do contrato + data de
+  // início da Parada — ver src/lib/ucr.ts).
+
+  // Fechamento — consolida os lançamentos; reabertura exige justificativa
+  // (ver ParadaFechamentoHistorico) e é restrita a perfis específicos.
+  fechada_em             DateTime?
+  fechada_por            Int?
 
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 
   contrato               Contrato         @relation(fields: [contrato_id], references: [id])
   dias                   ParadaHhDia[]
+  fechamentos            ParadaFechamentoHistorico[]
+  quemFechou             User?            @relation("ParadaFechadaPor", fields: [fechada_por], references: [id])
 
   @@map("parada_hh_config")
+}
+
+// Auditoria de fechamento/reabertura da Parada — mesmo padrão de HhAcompanhamentoHistorico.
+model ParadaFechamentoHistorico {
+  id         Int      @id @default(autoincrement())
+  config_id  Int
+  acao       String   // FECHADA | REABERTA
+  motivo     String?  // obrigatório só em REABERTA
+  created_at DateTime @default(now())
+  created_by Int
+
+  config  ParadaHhConfig @relation(fields: [config_id], references: [id], onDelete: Cascade)
+  usuario User           @relation("ParadaFechHistCriador", fields: [created_by], references: [id])
+
+  @@index([config_id])
+  @@map("parada_fechamento_historico")
 }
 
 model ParadaHhDia {
