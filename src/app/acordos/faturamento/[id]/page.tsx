@@ -20,7 +20,11 @@ const ContratoAvancoPercentualChart = dynamic(
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface NFDetalhe extends NFContratoItem { created_at: string }
-interface SubDetalhe extends Omit<SubIndiceItem, 'notas_fiscais'> { notas_fiscais: NFDetalhe[] }
+interface ConsolidadoDetalhe { mes: number; ano: number; valor_previsto: number }
+interface SubDetalhe extends Omit<SubIndiceItem, 'notas_fiscais'> {
+  notas_fiscais: NFDetalhe[]
+  consolidados: ConsolidadoDetalhe[]
+}
 interface ContratoDetalhe extends Omit<ContratoItem, 'subindices'> {
   created_at: string
   subindices: SubDetalhe[]
@@ -78,28 +82,34 @@ function getMonthlyData(subindices: SubDetalhe[], ano: number, anoRef: number) {
   return { previsto, faturado }
 }
 
-// Uma linha por mês (de todos os anos) em que há previsto e/ou faturado — para a
-// tabela Ano/Mês/Previsto/Faturado/Saldo (não depende do seletor de período).
+// Uma linha por mês (de todos os anos) em que há previsto, consolidado e/ou
+// faturado — para a tabela Ano/Mês/Previsto/Consolidado/Faturado/Diferenças
+// (não depende do seletor de período).
 const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 function getMonthlyTable(subindices: SubDetalhe[], anoRef: number) {
-  const map = new Map<string, { ano: number; mes: number; previsto: number; faturado: number }>()
+  const map = new Map<string, { ano: number; mes: number; previsto: number; consolidado: number; temConsolidado: boolean; faturado: number }>()
+  const get = (ano: number, mes: number) => {
+    const key = `${ano}-${mes}`
+    const cur = map.get(key) ?? { ano, mes, previsto: 0, consolidado: 0, temConsolidado: false, faturado: 0 }
+    map.set(key, cur)
+    return cur
+  }
   subindices.forEach((s) => {
     const ano = getSubAno(s, anoRef)
     MESES.forEach((m, i) => {
       const v = s[m] ?? 0
       if (v === 0) return
-      const key = `${ano}-${i}`
-      const cur = map.get(key) ?? { ano, mes: i, previsto: 0, faturado: 0 }
-      cur.previsto += v
-      map.set(key, cur)
+      get(ano, i).previsto += v
+    })
+    s.consolidados.forEach((c) => {
+      const cur = get(c.ano, c.mes - 1)
+      cur.consolidado += c.valor_previsto
+      cur.temConsolidado = true
     })
   })
   subindices.flatMap((s) => s.notas_fiscais).filter((nf) => nf.ativa).forEach((nf) => {
     const d = new Date(nf.data_emissao)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const cur = map.get(key) ?? { ano: d.getFullYear(), mes: d.getMonth(), previsto: 0, faturado: 0 }
-    cur.faturado += nf.valor_atribuido
-    map.set(key, cur)
+    get(d.getFullYear(), d.getMonth()).faturado += nf.valor_atribuido
   })
   return Array.from(map.values()).sort((a, b) => a.ano - b.ano || a.mes - b.mes)
 }
@@ -139,19 +149,25 @@ function ultimoPeriodoComDado(itens: { ano: number; mes: number }[]): { ano: num
   }, null)
 }
 
-// Acumula uma série (R$ ou HH) e converte para % do total do período exibido —
-// usada no gráfico de Avanço %. `periodos[i]` é o ano/mês de cada posição de
-// `valores`; posições depois de `boundary` ficam null (linha não desenhada ali,
-// em vez de cair para 0) — em granularidade anual, o mês do boundary é ignorado.
+// Acumula uma série (R$ ou HH) e converte para % do TOTAL DO CONTRATO (não do
+// período exibido) — usada no gráfico de Avanço %, que deve sempre refletir o
+// avanço acumulado desde o início do contrato, mesmo quando o usuário está
+// olhando um ano específico. `seed` carrega o acumulado de todos os períodos
+// anteriores ao primeiro item de `valores` (ex.: anos anteriores ao selecionado),
+// para a linha não "resetar" para 0% ao trocar de ano. `periodos[i]` é o ano/mês
+// de cada posição de `valores`; posições depois de `boundary` ficam null (linha
+// não desenhada ali, em vez de cair para 0) — em granularidade anual, o mês do
+// boundary é ignorado.
 function toCumulativePct(
   valores: number[],
   periodos: { ano: number; mes: number }[],
   boundary: { ano: number; mes: number } | null,
   total: number,
   porAno: boolean,
+  seed = 0,
 ): (number | null)[] {
   if (!boundary || total <= 0) return valores.map(() => null)
-  let acc = 0
+  let acc = seed
   return valores.map((v, i) => {
     const p = periodos[i]
     const passou = porAno ? p.ano <= boundary.ano : (p.ano < boundary.ano || (p.ano === boundary.ano && p.mes <= boundary.mes))
@@ -281,12 +297,21 @@ export default function ContratoVisaoGeralPage() {
 
     if (anoSel !== null && chartData) {
       const periodosMes = MESES_LABELS.map((_, i) => ({ ano: anoSel, mes: i + 1 }))
-      const totalFatAno = chartData.previsto.reduce((a, b) => a + b, 0)
       const hhMes = getHhMonthly(hhResumo?.meses ?? [], anoSel)
-      const totalHhAno = hhMes.previsto.reduce((a, b) => a + b, 0)
+
+      // Acumulado de anos anteriores ao selecionado — a linha continua de onde
+      // parou em vez de "resetar" para 0% ao trocar de ano (o % é sempre do
+      // total do contrato, não do ano exibido).
+      const seedFat = activeNFs
+        .filter((nf) => new Date(nf.data_emissao).getFullYear() < anoSel)
+        .reduce((a, nf) => a + nf.valor_atribuido, 0)
+      const seedHh = (hhResumo?.meses ?? [])
+        .filter((m) => m.ano < anoSel && m.realizado != null)
+        .reduce((a, m) => a + (m.realizado ?? 0), 0)
+
       return {
-        faturamentoPct: toCumulativePct(chartData.faturado, periodosMes, ultimoPeriodoFat, totalFatAno, false),
-        hhPct: toCumulativePct(hhMes.realizado.map((v) => v ?? 0), periodosMes, ultimoPeriodoHh, totalHhAno, false),
+        faturamentoPct: toCumulativePct(chartData.faturado, periodosMes, ultimoPeriodoFat, totalContrato, false, seedFat),
+        hhPct: toCumulativePct(hhMes.realizado.map((v) => v ?? 0), periodosMes, ultimoPeriodoHh, hhPrevistoTotal ?? 0, false, seedHh),
         labels: undefined,
       }
     }
@@ -333,6 +358,35 @@ export default function ContratoVisaoGeralPage() {
             </>
           }
         />
+      </div>
+
+      {/* Informações — cabeçalho da página, acima do Resumo Financeiro */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informações</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2">
+          <InfoRow label="Nº Acordo" value={contrato.num_acordo} />
+          <InfoRow label="Nº Proposta" value={contrato.num_proposta} />
+          <InfoRow label="Data base" value={formatDate(contrato.solicitacao?.data_base ?? null)} />
+          <InfoRow label="Responsável" value={contrato.responsavel?.nome} />
+          <InfoRow label="Mercado" value={contrato.cliente.ramo_atuacao ? RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] : null} />
+          <InfoRow label="Classificação" value={contrato.classificacao ? CLASSIFICACAO_LABELS[contrato.classificacao] : null} />
+          <InfoRow label="Data início" value={formatDate(contrato.data_inicio)} />
+          <InfoRow label="Data fim" value={formatDate(contrato.data_fim)} />
+          <InfoRow label="Ano referência" value={String(contrato.ano_referencia)} />
+        </div>
+        {anualData.length > 1 && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase mb-1">Previsão por ano</p>
+            <div className="flex gap-6">
+              {anualData.map((a) => (
+                <div key={a.ano} className="flex gap-2 text-xs">
+                  <span className="text-gray-500">{a.ano}</span>
+                  <span className="font-medium text-blue-600">{formatCurrency(a.previsto)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Resumo financeiro */}
@@ -389,31 +443,56 @@ export default function ContratoVisaoGeralPage() {
         {monthlyTable.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">Nenhum valor previsto ou faturado registrado.</p>
         ) : (
-          <div className="border border-gray-200 rounded-md overflow-auto max-h-[360px]">
+          <div className="border border-gray-200 rounded-md overflow-auto" style={{ maxHeight: '446px' }}>
             <table className="w-full border-collapse text-[11px]">
               <thead className="sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Ano</th>
                   <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Mês</th>
                   <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Previsto</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Consolidado</th>
                   <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Faturado</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Saldo</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. e Prev.</th>
+                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. Cons.</th>
                 </tr>
               </thead>
               <tbody>
                 {monthlyTable.map((r) => {
-                  const saldoMes = r.previsto - r.faturado
+                  const difPrev = r.faturado - r.previsto
+                  const difCons = r.faturado - r.consolidado
                   return (
                     <tr key={`${r.ano}-${r.mes}`} className="hover:bg-gray-50">
                       <td className="px-3 py-1.5 text-gray-500 border-b border-gray-100 whitespace-nowrap">{r.ano}</td>
                       <td className="px-3 py-1.5 text-gray-700 font-medium border-b border-gray-100 whitespace-nowrap">{MESES_LABELS[r.mes]}</td>
                       <td className="px-3 py-1.5 text-right text-blue-600 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.previsto)}</td>
+                      <td className="px-3 py-1.5 text-right text-purple-600 font-semibold border-b border-gray-100 whitespace-nowrap">{r.temConsolidado ? formatCurrency(r.consolidado) : '—'}</td>
                       <td className="px-3 py-1.5 text-right text-green-700 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.faturado)}</td>
-                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${saldoMes > 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(Math.abs(saldoMes))}</td>
+                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${difPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(difPrev)}</td>
+                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${!r.temConsolidado ? 'text-gray-300' : difCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{r.temConsolidado ? formatCurrency(difCons) : '—'}</td>
                     </tr>
                   )
                 })}
               </tbody>
+              <tfoot className="sticky bottom-0 z-10">
+                {(() => {
+                  const totPrev = monthlyTable.reduce((a, r) => a + r.previsto, 0)
+                  const totCons = monthlyTable.reduce((a, r) => a + r.consolidado, 0)
+                  const totFat  = monthlyTable.reduce((a, r) => a + r.faturado, 0)
+                  const temCons = monthlyTable.some((r) => r.temConsolidado)
+                  const totDifPrev = totFat - totPrev
+                  const totDifCons = totFat - totCons
+                  return (
+                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                      <td colSpan={2} className="px-3 py-2 text-[10px] uppercase tracking-wide text-gray-700 whitespace-nowrap">Total</td>
+                      <td className="px-3 py-2 text-right text-blue-600 whitespace-nowrap">{formatCurrency(totPrev)}</td>
+                      <td className="px-3 py-2 text-right text-purple-600 whitespace-nowrap">{temCons ? formatCurrency(totCons) : '—'}</td>
+                      <td className="px-3 py-2 text-right text-green-700 whitespace-nowrap">{formatCurrency(totFat)}</td>
+                      <td className={`px-3 py-2 text-right whitespace-nowrap ${totDifPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(totDifPrev)}</td>
+                      <td className={`px-3 py-2 text-right whitespace-nowrap ${!temCons ? 'text-gray-300' : totDifCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{temCons ? formatCurrency(totDifCons) : '—'}</td>
+                    </tr>
+                  )
+                })()}
+              </tfoot>
             </table>
           </div>
         )}
@@ -430,35 +509,6 @@ export default function ContratoVisaoGeralPage() {
           labels={avancoPctData.labels}
         />
       </section>
-
-      {/* Informações */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informações</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2">
-          <InfoRow label="Nº Acordo" value={contrato.num_acordo} />
-          <InfoRow label="Nº Proposta" value={contrato.num_proposta} />
-          <InfoRow label="Data base" value={formatDate(contrato.solicitacao?.data_base ?? null)} />
-          <InfoRow label="Responsável" value={contrato.responsavel?.nome} />
-          <InfoRow label="Mercado" value={contrato.cliente.ramo_atuacao ? RAMO_ATUACAO_LABELS[contrato.cliente.ramo_atuacao as keyof typeof RAMO_ATUACAO_LABELS] : null} />
-          <InfoRow label="Classificação" value={contrato.classificacao ? CLASSIFICACAO_LABELS[contrato.classificacao] : null} />
-          <InfoRow label="Data início" value={formatDate(contrato.data_inicio)} />
-          <InfoRow label="Data fim" value={formatDate(contrato.data_fim)} />
-          <InfoRow label="Ano referência" value={String(contrato.ano_referencia)} />
-        </div>
-        {anualData.length > 1 && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 uppercase mb-1">Previsão por ano</p>
-            <div className="flex gap-6">
-              {anualData.map((a) => (
-                <div key={a.ano} className="flex gap-2 text-xs">
-                  <span className="text-gray-500">{a.ano}</span>
-                  <span className="font-medium text-blue-600">{formatCurrency(a.previsto)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Eventos de Medição */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">

@@ -338,8 +338,9 @@ export function ContratoAvancoPercentualChart({
       y: {
         ...yScale,
         min: 0,
+        max: 100,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ticks: { ...yScale.ticks, callback: (v: any) => `${v}%` },
+        ticks: { ...yScale.ticks, stepSize: 20, callback: (v: any) => `${v}%` },
       },
     },
   }

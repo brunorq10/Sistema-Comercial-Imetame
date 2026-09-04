@@ -140,7 +140,25 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const nfTotalMap: Record<string, number> = {}
   nfTotals.forEach((t) => { nfTotalMap[t.numero_nf] = Number(t._sum.percentual ?? 0) })
 
-  return NextResponse.json({ data: serializeContrato(contrato, nfTotalMap, solicitacao), error: null })
+  // Valor Consolidado por mês/ano de cada sub-índice — só o consolidado ATIVO
+  // (não arquivado) conta; um sub-índice pode ter um valor consolidado
+  // diferente do "Valor Previsto" atual se este foi alterado depois da geração
+  // do consolidado do mês (RN-CF-12/14).
+  const subindiceIds = contrato.subindices.map((s) => s.id)
+  const consolidadoItens = subindiceIds.length > 0
+    ? await prisma.consolidadoMesItem.findMany({
+        where: { subindice_id: { in: subindiceIds }, consolidado: { arquivado_at: null } },
+        select: { subindice_id: true, valor_previsto: true, consolidado: { select: { mes: true, ano: true } } },
+      })
+    : []
+  const consolidadoMap = new Map<number, { mes: number; ano: number; valor_previsto: number }[]>()
+  consolidadoItens.forEach((it) => {
+    const arr = consolidadoMap.get(it.subindice_id) ?? []
+    arr.push({ mes: it.consolidado.mes, ano: it.consolidado.ano, valor_previsto: Number(it.valor_previsto) })
+    consolidadoMap.set(it.subindice_id, arr)
+  })
+
+  return NextResponse.json({ data: serializeContrato(contrato, nfTotalMap, solicitacao, consolidadoMap), error: null })
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -330,8 +348,10 @@ function computeContratoStatus(c: any): string {
   return 'A_FATURAR'
 }
 
+type ConsolidadoMap = Map<number, { mes: number; ano: number; valor_previsto: number }[]>
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, solicitacao: any = null) {
+function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, solicitacao: any = null, consolidadoMap: ConsolidadoMap = new Map()) {
   return {
     id: c.id,
     indice: c.indice,
@@ -355,7 +375,7 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, soli
     created_at: c.created_at.toISOString(),
     prev_anos_seguintes: 0,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    subindices: c.subindices.map((s: any) => serializeSubindice(s, nfTotalMap)),
+    subindices: c.subindices.map((s: any) => serializeSubindice(s, nfTotalMap, consolidadoMap)),
   }
 }
 
@@ -410,7 +430,7 @@ function serializeSolicitacao(s: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function serializeSubindice(s: any, nfTotalMap: Record<string, number> = {}) {
+function serializeSubindice(s: any, nfTotalMap: Record<string, number> = {}, consolidadoMap: ConsolidadoMap = new Map()) {
   const nfsAtivas = s.notas_fiscais?.filter((nf: any) => nf.ativa) ?? []
   const totalFaturado = nfsAtivas.reduce((acc: number, nf: any) => acc + Number(nf.valor_atribuido), 0)
   const status: 'A_FATURAR' | 'FATURADO' | 'PARCIAL' =
@@ -437,6 +457,7 @@ function serializeSubindice(s: any, nfTotalMap: Record<string, number> = {}) {
     total_faturado: totalFaturado,
     status_faturamento: status,
     prev_anos_seguintes: 0,
+    consolidados: consolidadoMap.get(s.id) ?? [],
     notas_fiscais: s.notas_fiscais?.map((nf: any) => ({
       id: nf.id, numero_nf: nf.numero_nf,
       valor_total_nf: Number(nf.valor_total_nf),
