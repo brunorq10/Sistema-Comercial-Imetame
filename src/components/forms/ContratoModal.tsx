@@ -288,6 +288,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     if (!clienteId) { setError('Selecione o cliente'); return }
     if (!clienteFinalId) { setError('Selecione o cliente final'); return }
     if (!anoRef) { setError('Ano de referência obrigatório'); return }
+    if (!numProposta.trim()) { setError('Nº Proposta é obrigatório'); return }
     if (!valorContrato || isNaN(Number(valorContrato)) || Number(valorContrato) <= 0) {
       setError('Valor total do contrato é obrigatório'); return
     }
@@ -472,7 +473,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         <Field label="Nº Acordo">
           <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
-        <Field label="Nº Proposta">
+        <Field label="Nº Proposta *">
           <Select value={numProposta} onChange={(e) => setNumProposta(e.target.value)} disabled={!clienteId}>
             <option value="">{clienteId ? 'Selecione...' : 'Selecione o cliente primeiro'}</option>
             {numProposta && !propostasCliente.some((p) => p.numero === numProposta) && (

@@ -163,6 +163,7 @@ function ContratosFab({ contratos, onAbrir, onHistorico, onExcluir }: {
         <thead>
           <tr className="bg-green-primary text-white text-[10px] uppercase tracking-wide">
             <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Índice</th>
+            <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Nº OS</th>
             <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente</th>
             <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente final</th>
             <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Descrição</th>
@@ -183,6 +184,7 @@ function ContratosFab({ contratos, onAbrir, onHistorico, onExcluir }: {
             return (
               <tr key={c.id} className={cn('border-b border-gray-100', i % 2 ? 'bg-gray-50' : 'bg-white')}>
                 <td className="px-2 py-1.5 font-bold text-green-dark whitespace-nowrap">{c.indice}</td>
+                <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">{c.num_os ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{c.cliente.nome}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{c.cliente_final?.nome ?? '—'}</td>
                 <td className="px-2 py-1.5 max-w-[220px] truncate" title={c.descricao ?? ''}>{c.descricao ?? '—'}</td>

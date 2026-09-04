@@ -146,6 +146,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: 'Adicione ao menos um evento de medição' }, { status: 400 })
   }
 
+  // Nº Proposta é obrigatório (fora do rascunho) — várias propostas podem virar
+  // vários contratos diferentes, não há unicidade aqui, só presença do campo.
+  if (!parsed.data.rascunho && !parsed.data.num_proposta?.trim()) {
+    return NextResponse.json({ data: null, error: 'Nº Proposta é obrigatório' }, { status: 400 })
+  }
+
   // RN-CF-03: soma dos sub-índices deve coincidir com valor_contrato (apenas aviso — não bloqueia)
   let sumWarning: string | null = null
   if (!parsed.data.rascunho && parsed.data.valor_contrato != null && parsed.data.subindices.length > 0) {
