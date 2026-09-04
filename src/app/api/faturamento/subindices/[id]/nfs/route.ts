@@ -40,16 +40,32 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
     )
   }
 
-  // Validate total % for this NF across all active records globally
-  const totalExistente = await prisma.notaFiscalContrato.aggregate({
-    where: { numero_nf: parsed.data.numero_nf, ativa: true, deleted_at: null },
-    _sum: { percentual: true },
-  })
+  // Validate total % for this NF across all active records globally, e (quando já
+  // houver lançamento ativo) que o valor total informado é o mesmo já lançado —
+  // uma mesma NF real tem um único valor total, só o % por item pode variar.
+  const [totalExistente, nfExistente] = await Promise.all([
+    prisma.notaFiscalContrato.aggregate({
+      where: { numero_nf: parsed.data.numero_nf, ativa: true, deleted_at: null },
+      _sum: { percentual: true },
+    }),
+    prisma.notaFiscalContrato.findFirst({
+      where: { numero_nf: parsed.data.numero_nf, ativa: true, deleted_at: null },
+      orderBy: { created_at: 'asc' },
+      select: { valor_total_nf: true },
+    }),
+  ])
   const totalAlocado = Number(totalExistente._sum.percentual ?? 0)
   const restante = 100 - totalAlocado
   if (totalAlocado + parsed.data.percentual > 100 + 0.001) {
     return NextResponse.json(
       { data: null, error: `NF ${parsed.data.numero_nf} já possui ${totalAlocado.toFixed(2)}% alocados. Restam ${restante.toFixed(2)}% disponíveis.` },
+      { status: 422 },
+    )
+  }
+  const valorExistente = nfExistente ? Number(nfExistente.valor_total_nf) : null
+  if (valorExistente != null && Math.abs(valorExistente - parsed.data.valor_total_nf) > 0.01) {
+    return NextResponse.json(
+      { data: null, error: `NF ${parsed.data.numero_nf} já está lançada com valor total de R$ ${valorExistente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Informe o mesmo valor total da NF.` },
       { status: 422 },
     )
   }

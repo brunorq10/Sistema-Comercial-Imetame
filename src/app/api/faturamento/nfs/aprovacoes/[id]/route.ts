@@ -43,16 +43,32 @@ export const PATCH = withApi(async (req: NextRequest, { params }: { params: { id
   const aprovado = acao === 'APROVAR'
 
   // RN-19: ao aprovar, revalida que o % alocado do número da NF não ultrapassa 100%
-  // (NFs pendentes não reservam %; por isso a checagem acontece também aqui)
+  // e que o valor total da NF bate com os demais lançamentos já ativos dessa NF
+  // (NFs pendentes não reservam % nem travam o valor total; por isso a checagem
+  // acontece também aqui, além do momento do lançamento).
   if (aprovado) {
-    const agg = await prisma.notaFiscalContrato.aggregate({
-      where: { numero_nf: nf.numero_nf, ativa: true, deleted_at: null, id: { not: id } },
-      _sum: { percentual: true },
-    })
+    const [agg, existente] = await Promise.all([
+      prisma.notaFiscalContrato.aggregate({
+        where: { numero_nf: nf.numero_nf, ativa: true, deleted_at: null, id: { not: id } },
+        _sum: { percentual: true },
+      }),
+      prisma.notaFiscalContrato.findFirst({
+        where: { numero_nf: nf.numero_nf, ativa: true, deleted_at: null, id: { not: id } },
+        orderBy: { created_at: 'asc' },
+        select: { valor_total_nf: true },
+      }),
+    ])
     const jaAlocado = Number(agg._sum.percentual ?? 0)
     if (jaAlocado + Number(nf.percentual) > 100 + 0.001) {
       return NextResponse.json(
         { data: null, error: `Não é possível aprovar: a NF ${nf.numero_nf} ficaria com ${(jaAlocado + Number(nf.percentual)).toFixed(2)}% alocados (máximo 100%). Já há ${jaAlocado.toFixed(2)}% ativos.` },
+        { status: 422 },
+      )
+    }
+    const valorExistente = existente ? Number(existente.valor_total_nf) : null
+    if (valorExistente != null && Math.abs(valorExistente - Number(nf.valor_total_nf)) > 0.01) {
+      return NextResponse.json(
+        { data: null, error: `Não é possível aprovar: a NF ${nf.numero_nf} já está ativa com valor total de R$ ${valorExistente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, diferente do valor deste lançamento (R$ ${Number(nf.valor_total_nf).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).` },
         { status: 422 },
       )
     }

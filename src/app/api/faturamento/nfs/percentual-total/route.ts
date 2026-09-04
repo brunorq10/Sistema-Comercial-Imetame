@@ -9,11 +9,19 @@ export async function GET(req: NextRequest) {
   const numero_nf = req.nextUrl.searchParams.get('numero_nf')
   if (!numero_nf) return NextResponse.json({ data: null, error: 'numero_nf obrigatório' }, { status: 400 })
 
-  const result = await prisma.notaFiscalContrato.aggregate({
-    where: { numero_nf, ativa: true, deleted_at: null },
-    _sum: { percentual: true },
-  })
+  const [result, existente] = await Promise.all([
+    prisma.notaFiscalContrato.aggregate({
+      where: { numero_nf, ativa: true, deleted_at: null },
+      _sum: { percentual: true },
+    }),
+    prisma.notaFiscalContrato.findFirst({
+      where: { numero_nf, ativa: true, deleted_at: null },
+      orderBy: { created_at: 'asc' },
+      select: { valor_total_nf: true },
+    }),
+  ])
 
   const total = Number(result._sum.percentual ?? 0)
-  return NextResponse.json({ data: { total }, error: null })
+  const valor_total_nf = existente ? Number(existente.valor_total_nf) : null
+  return NextResponse.json({ data: { total, valor_total_nf }, error: null })
 }

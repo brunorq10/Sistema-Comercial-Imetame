@@ -35,6 +35,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   const [warning, setWarning] = useState<string | null>(null)
   const [enviadoAprovacao, setEnviadoAprovacao] = useState(false)
   const [nfAlocado, setNfAlocado] = useState<number | null>(null)
+  const [nfValorExistente, setNfValorExistente] = useState<number | null>(null)
   // NFs lançadas exibidas na aba (cópia local, atualizada após edição)
   const [nfsLocal, setNfsLocal] = useState<NFContratoItem[]>(subindice.notas_fiscais)
   const [nfEditando, setNfEditando] = useState<NFContratoListItem | null>(null)
@@ -81,7 +82,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       setAba('lancar')
       setTipoDocumento('NF')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
-      setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null); setEnviadoAprovacao(false)
+      setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null); setNfValorExistente(null); setEnviadoAprovacao(false)
     }
   }, [open])
 
@@ -109,17 +110,20 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   })
 
   const handleNumeroNFBlur = async () => {
-    if (!numeroNF.trim()) { setNfAlocado(null); return }
+    if (!numeroNF.trim()) { setNfAlocado(null); setNfValorExistente(null); return }
     try {
       const res = await fetch(`/api/faturamento/nfs/percentual-total?numero_nf=${encodeURIComponent(numeroNF.trim())}`)
       if (res.ok) {
         const json = await res.json()
         const total = Number(json.data?.total ?? 0)
+        const valorExistente = json.data?.valor_total_nf != null ? Number(json.data.valor_total_nf) : null
         setNfAlocado(total)
+        setNfValorExistente(valorExistente)
         if (total > 0) {
           const restante = 100 - total
           setPercentual(restante > 0 ? String(restante) : '0')
         }
+        if (valorExistente != null) setValorTotal(String(valorExistente))
       }
     } catch { /* silencia — não bloqueia o lançamento */ }
   }
@@ -130,6 +134,12 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
     if (!dataVencimento) { setError('Data de vencimento obrigatória'); return }
     if (!valorTotal || Number(valorTotal) <= 0) { setError('Valor total inválido'); return }
     if (!percentual || Number(percentual) <= 0 || Number(percentual) > 100) { setError('Percentual deve estar entre 0,01 e 100'); return }
+    if (nfAlocado != null && Number(percentual) > 100 - nfAlocado + 0.001) {
+      setError(`NF ${numeroNF} já possui ${nfAlocado.toFixed(2)}% alocados. Restam ${(100 - nfAlocado).toFixed(2)}% disponíveis.`); return
+    }
+    if (nfValorExistente != null && Math.abs(nfValorExistente - Number(valorTotal)) > 0.01) {
+      setError(`NF ${numeroNF} já está lançada com valor total de ${formatCurrency(nfValorExistente)}. Informe o mesmo valor total da NF.`); return
+    }
 
     setLoading(true); setError(null); setWarning(null)
     try {
@@ -302,14 +312,15 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               <Input
                 placeholder="Ex: 000123"
                 value={numeroNF}
-                onChange={(e) => { setNumeroNF(e.target.value); setNfAlocado(null) }}
+                onChange={(e) => { setNumeroNF(e.target.value); setNfAlocado(null); setNfValorExistente(null) }}
                 onBlur={handleNumeroNFBlur}
               />
-              {nfAlocado !== null && nfAlocado > 0 && (
+              {(nfAlocado !== null && nfAlocado > 0) && (
                 <p className={`text-[10px] mt-1 ${nfAlocado >= 100 ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
                   {nfAlocado >= 100
                     ? `NF ${numeroNF} já tem 100% alocados — não é possível adicionar novos lançamentos.`
                     : `NF ${numeroNF} já possui ${nfAlocado.toFixed(2)}% alocados. Disponível: ${(100 - nfAlocado).toFixed(2)}%`}
+                  {nfValorExistente != null && ` · Valor total já lançado: ${formatCurrency(nfValorExistente)}`}
                 </p>
               )}
             </Field>
@@ -323,7 +334,11 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
               <CurrencyInput
                 value={valorTotal}
                 onChange={setValorTotal}
+                disabled={nfValorExistente != null}
               />
+              {nfValorExistente != null && (
+                <p className="text-[10px] mt-1 text-gray-400">Travado — esta NF já tem valor total lançado, deve ser o mesmo em todos os itens.</p>
+              )}
             </Field>
             <Field label="% referente a este item">
               <Input
