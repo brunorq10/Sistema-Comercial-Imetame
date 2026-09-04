@@ -8,12 +8,12 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { cn } from '@/lib/utils'
-import { LancamentoHhModal } from '@/components/acordos/LancamentoHhModal'
 import { FabricacoesView } from '@/components/acordos/FabricacoesView'
 import { ParadasResumoView } from '@/components/acordos/ParadasResumoView'
 import { FaixasUcrView } from '@/components/acordos/FaixasUcrView'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
+import { barColors } from '@/lib/hh'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -43,21 +43,11 @@ interface ContratoHh {
   realizados: { id: number; mes: number; ano: number; hh_realizado: number; observacoes: string | null }[]
 }
 
-interface LancamentoDetalhe {
-  id: number; versao: number
-  data_inicio: string; data_fim: string
-  motivo: string | null; created_at: string; criador: string
-  meses: { mes: number; ano: number; hh_previsto: number | null; hh_planejado: number | null }[]
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 const nowLabel = () => { const d = new Date(); return `${MESES_LABELS[d.getMonth()]} ${d.getFullYear()}` }
 const fmtMes   = (mes: number, ano: number) => `${MESES_LABELS[mes-1]}/${String(ano).slice(2)}`
-const fmtDate  = (iso: string) => {
-  const d = new Date(iso); return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`
-}
 
 function gerarMeses(inicio: string, fim: string) {
   const r: { mes: number; ano: number }[] = []
@@ -96,229 +86,6 @@ const UCR_STYLE: Record<string, { cor: string; bg: string }> = {
   'Esplêndido':     { cor: '#8779C8', bg: '#E1DDF4' },
 }
 function ucrStyle(label: string | null) { return label ? UCR_STYLE[label] ?? null : null }
-
-// ─── Botão de ação (padrão das outras tabelas) ────────────────────────────────
-
-// ─── Modal Visualizar Contrato HH ─────────────────────────────────────────────
-
-interface VisualizarContratoHhModalProps {
-  contrato: ContratoHh
-  onClose: () => void
-}
-
-function VisualizarContratoHhModal({ contrato, onClose }: VisualizarContratoHhModalProps) {
-  const [lancamentos, setLancamentos] = useState<LancamentoDetalhe[]>([])
-  const [loading,     setLoading]     = useState(true)
-  const [expandedRev, setExpandedRev] = useState<number | null>(null)
-
-  useEffect(() => {
-    fetch(`/api/acordos/hh/${contrato.id}/lancamento`)
-      .then(r => r.json())
-      .then(j => { setLancamentos(j.data ?? []); if (j.data?.[0]) setExpandedRev(j.data[0].id) })
-      .finally(() => setLoading(false))
-  }, [contrato.id])
-
-  const loc = (n: number) => n.toLocaleString('pt-BR')
-  const pctPrev = contrato.hh_previsto && contrato.hh_previsto > 0 && contrato.hh_realizado != null
-    ? (contrato.hh_realizado / contrato.hh_previsto) * 100 : null
-  const pctPlan = contrato.hh_planejado && contrato.hh_planejado > 0 && contrato.hh_realizado != null
-    ? (contrato.hh_realizado / contrato.hh_planejado) * 100 : null
-
-  function PctChip({ pct }: { pct: number }) {
-    const c = pctColor(pct)
-    return <span className="text-[10px] font-bold ml-2" style={{ color: c }}>{pct.toFixed(1)}%</span>
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-end sm:justify-end bg-black/40" onClick={onClose}>
-      <div className="bg-white h-full w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="bg-[#1B5E20] text-white px-5 py-4 flex-shrink-0">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold bg-white/20 rounded px-2 py-0.5">{contrato.indice}</span>
-                {contrato.num_os && <span className="text-white/70 text-[11px]">OS: {contrato.num_os}</span>}
-              </div>
-              <p className="text-white font-semibold text-[14px] mt-1 leading-snug">{contrato.descricao ?? '—'}</p>
-              <p className="text-white/70 text-[11px] mt-0.5">
-                {contrato.cliente.nome}
-                {contrato.cliente_final && <> • <span className="text-white/50">Final: {contrato.cliente_final.nome}</span></>}
-              </p>
-              <div className="flex items-center gap-3 mt-1 text-white/60 text-[10px]">
-                {contrato.responsavel && <span>Resp.: {contrato.responsavel.nome}</span>}
-                {(contrato.cidade || contrato.estado) && <span>{[contrato.cidade, contrato.estado].filter(Boolean).join(' / ')}</span>}
-                {contrato.data_inicio && contrato.data_fim && (
-                  <span>{fmtDate(contrato.data_inicio)} – {fmtDate(contrato.data_fim)}</span>
-                )}
-              </div>
-            </div>
-            <button onClick={onClose} className="text-white/60 hover:text-white text-[22px] leading-none ml-4">×</button>
-          </div>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-3 border-b border-gray-200 flex-shrink-0">
-          {[
-            { label: 'HH Previsto',  val: contrato.hh_previsto,  color: '#185FA5', pct: null },
-            { label: 'HH Planejado', val: contrato.hh_planejado, color: '#BA7517', pct: null },
-            { label: 'HH Realizado', val: contrato.hh_realizado, color: '#3B6D11', pct: pctPrev },
-          ].map(({ label, val, color, pct }) => (
-            <div key={label} className="px-4 py-3 border-r border-gray-100 last:border-r-0">
-              <p className="text-[9px] text-gray-400 uppercase tracking-wider">{label}</p>
-              <p className="text-[20px] font-bold leading-tight mt-0.5" style={{ color }}>
-                {val != null ? loc(val) : <span className="text-gray-300 text-[14px]">—</span>}
-              </p>
-              {pct != null && <PctChip pct={pct} />}
-              {label === 'HH Planejado' && pctPrev != null && (
-                <p className="text-[9px] text-gray-400 mt-0.5">
-                  {pctPlan != null ? <PctChip pct={pctPlan} /> : null}
-                  <span className="text-[9px] text-gray-400"> vs plan.</span>
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
-
-          {/* Lançamentos */}
-          <section>
-            <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
-              Lançamentos ({lancamentos.length})
-            </h3>
-            {loading ? (
-              <p className="text-gray-400 text-[11px]">Carregando...</p>
-            ) : lancamentos.length === 0 ? (
-              <p className="text-gray-400 text-[11px]">Nenhum lançamento registrado.</p>
-            ) : (
-              <div className="border border-gray-200 rounded-md overflow-hidden">
-                {lancamentos.map((lan, idx) => {
-                  const isAtual   = idx === 0
-                  const expanded  = expandedRev === lan.id
-                  const totPrev   = lan.meses.reduce((s, m) => s + (m.hh_previsto  ?? 0), 0)
-                  const totPlan   = lan.meses.reduce((s, m) => s + (m.hh_planejado ?? 0), 0)
-                  return (
-                    <div key={lan.id} className="border-b border-gray-100 last:border-b-0">
-                      <button className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                        onClick={() => setExpandedRev(expanded ? null : lan.id)}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-gray-700">
-                            Rev.{String(lan.versao).padStart(2,'0')}
-                          </span>
-                          {isAtual && <span className="text-[8px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">ATUAL</span>}
-                          {lan.motivo && <span className="text-[10px] text-gray-400 italic">"{lan.motivo}"</span>}
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] text-gray-500">
-                          <span>{fmtDate(lan.data_inicio)} – {fmtDate(lan.data_fim)}</span>
-                          <span className="text-[#185FA5] font-medium">Prev: {loc(totPrev)}</span>
-                          <span className="text-[#BA7517] font-medium">Plan: {loc(totPlan)}</span>
-                          <span className="text-gray-400">{expanded ? '▲' : '▼'}</span>
-                        </div>
-                      </button>
-                      {expanded && (
-                        <div className="border-t border-gray-100 overflow-x-auto bg-gray-50">
-                          <table className="text-[10px] w-full">
-                            <thead>
-                              <tr className="bg-gray-100 text-gray-500 text-[9px] uppercase">
-                                <th className="px-3 py-1.5 text-left">Mês</th>
-                                <th className="px-3 py-1.5 text-right text-[#185FA5]">HH Previsto</th>
-                                <th className="px-3 py-1.5 text-right text-[#BA7517]">HH Planejado</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {lan.meses.map(m => (
-                                <tr key={`${m.mes}-${m.ano}`} className="border-t border-gray-100">
-                                  <td className="px-3 py-1 text-gray-600">{fmtMes(m.mes, m.ano)}</td>
-                                  <td className="px-3 py-1 text-right text-[#185FA5] font-medium">{m.hh_previsto != null ? loc(m.hh_previsto) : '—'}</td>
-                                  <td className="px-3 py-1 text-right text-[#BA7517] font-medium">{m.hh_planejado != null ? loc(m.hh_planejado) : '—'}</td>
-                                </tr>
-                              ))}
-                              <tr className="border-t-2 border-gray-300 bg-gray-100 font-bold">
-                                <td className="px-3 py-1.5 text-gray-700 text-[9px] uppercase">Total</td>
-                                <td className="px-3 py-1.5 text-right text-[#185FA5]">{loc(totPrev)}</td>
-                                <td className="px-3 py-1.5 text-right text-[#BA7517]">{loc(totPlan)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          <p className="px-3 py-1.5 text-[9px] text-gray-400">
-                            Criado por {lan.criador} em {fmtDate(lan.created_at)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* HH Realizado */}
-          <section>
-            <h3 className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">
-              HH Realizado ({contrato.realizados.length} {contrato.realizados.length === 1 ? 'mês' : 'meses'})
-            </h3>
-            {contrato.realizados.length === 0 ? (
-              <p className="text-gray-400 text-[11px]">Nenhum realizado lançado ainda.</p>
-            ) : (
-              <div className="border border-gray-200 rounded-md overflow-hidden">
-                <table className="text-[11px] w-full">
-                  <thead className="bg-gray-50">
-                    <tr className="text-[9px] text-gray-500 uppercase border-b border-gray-200">
-                      <th className="px-3 py-2 text-left">Mês / Ano</th>
-                      <th className="px-3 py-2 text-right text-[#3B6D11]">HH Realizado</th>
-                      <th className="px-3 py-2 text-right text-[#185FA5]">HH Planejado</th>
-                      <th className="px-3 py-2 text-center">% Real/Plan</th>
-                      <th className="px-3 py-2 text-left">Observações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contrato.realizados.map(r => {
-                      const mesLan = contrato.lancamento_atual?.meses.find(m => m.mes === r.mes && m.ano === r.ano)
-                      const plan   = mesLan?.hh_planejado ?? null
-                      const pct    = plan && plan > 0 ? (r.hh_realizado / plan) * 100 : null
-                      return (
-                        <tr key={r.id} className="border-b border-gray-50">
-                          <td className="px-3 py-2 font-medium text-gray-700">{fmtMes(r.mes, r.ano)}</td>
-                          <td className="px-3 py-2 text-right font-bold text-[#3B6D11]">{loc(r.hh_realizado)}</td>
-                          <td className="px-3 py-2 text-right text-[#BA7517]">{plan != null ? loc(plan) : '—'}</td>
-                          <td className="px-3 py-2 text-center">
-                            {pct != null
-                              ? <span className="text-[10px] font-bold" style={{ color: pctColor(pct) }}>{pct.toFixed(1)}%</span>
-                              : <span className="text-gray-300">—</span>}
-                          </td>
-                          <td className="px-3 py-2 text-gray-400 text-[10px]">{r.observacoes ?? '—'}</td>
-                        </tr>
-                      )
-                    })}
-                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[11px]">
-                      <td className="px-3 py-2 text-gray-700 text-[9px] uppercase">Total</td>
-                      <td className="px-3 py-2 text-right text-[#3B6D11]">
-                        {loc(contrato.realizados.reduce((s, r) => s + r.hh_realizado, 0))}
-                      </td>
-                      <td colSpan={3} />
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-        </div>
-
-        <div className="border-t border-gray-100 px-5 py-3 flex justify-end bg-gray-50 flex-shrink-0">
-          <button onClick={onClose}
-            className="border border-gray-300 text-gray-600 rounded-md px-4 py-1.5 text-[11px] font-medium hover:bg-gray-100">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Modal Editar Contrato (dados cadastrais) ─────────────────────────────────
 
@@ -552,9 +319,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
   classificacao: 'OBRAS' | 'PARADAS'
 }) {
   const router = useRouter()
-  const [modalLancamento,  setModalLancamento]  = useState<ContratoHh | null>(null)
   const [modalEditar,      setModalEditar]      = useState<ContratoHh | null>(null)
-  const [modalVisualizar,  setModalVisualizar]  = useState<ContratoHh | null>(null)
   const [novoModal,        setNovoModal]        = useState(false)
   const [deleteId,         setDeleteId]         = useState<number | null>(null)
   const [deleteMotivo,     setDeleteMotivo]     = useState('')
@@ -729,8 +494,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                       ]} />
                     ) : (
                       <AcoesMenu items={[
-                        { label: 'Lançar HH', icon: '+', destaque: true, onClick: () => setModalLancamento(c) },
-                        { label: 'Visualizar lançamentos', icon: '👁', onClick: () => setModalVisualizar(c) },
+                        { label: 'Abrir contrato', icon: '+', destaque: true, onClick: () => router.push(`/acordos/hh/obras/${c.id}`) },
                         { label: 'Editar dados cadastrais', icon: '✎', onClick: () => setModalEditar(c) },
                         { label: 'Remover do acompanhamento', icon: '🗑', destrutiva: true, onClick: () => { setDeleteId(c.id); setDeleteMotivo('') } },
                       ]} />
@@ -779,16 +543,9 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           onSelect={c => {
             setNovoModal(false)
             if (classificacao === 'PARADAS') router.push(`/acordos/hh/paradas/${c.id}`)
-            else setModalLancamento(c)
+            else router.push(`/acordos/hh/obras/${c.id}`)
           }}
           classificacao={classificacao}
-        />
-      )}
-      {modalLancamento && (
-        <LancamentoHhModal
-          contrato={modalLancamento}
-          onClose={() => setModalLancamento(null)}
-          onSuccess={() => { onRefresh() }}
         />
       )}
       {modalEditar && (
@@ -800,23 +557,11 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           onSuccess={() => { setModalEditar(null); onRefresh() }}
         />
       )}
-      {modalVisualizar && (
-        <VisualizarContratoHhModal
-          contrato={modalVisualizar}
-          onClose={() => setModalVisualizar(null)}
-        />
-      )}
     </>
   )
 }
 
 // ─── Visão Resumo ─────────────────────────────────────────────────────────────
-
-function barColors(pct: number) {
-  if (pct > 100) return { text: '#DC2626', bg: '#EF4444' }
-  if (pct >= 90)  return { text: '#CA8A04', bg: '#EAB308' }
-  return { text: '#16A34A', bg: '#22C55E' }
-}
 
 function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: ReturnType<typeof useFilterOptions> }) {
   const [filters, setFilters] = useState<FilterState>({})

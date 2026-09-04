@@ -49,6 +49,15 @@ export function calcParadaHhTotais(cfg: ParadaHhConfigComDias): ParadaHhTotais {
   return { hhTotalPrev: baseHhPlan + adicPrev, hhTotalReal: baseHhReal + adicReal }
 }
 
+// Cor de barras/células de progresso de HH: verde <90%, âmbar 90-100%, vermelho >100%
+// do previsto (ou planejado, conforme o contexto). Usado pelos cards KPI e pela grade
+// mês a mês tanto na Visão Resumo (agregada) quanto na página dedicada de um contrato.
+export function barColors(pct: number): { text: string; bg: string } {
+  if (pct > 100) return { text: '#DC2626', bg: '#EF4444' }
+  if (pct >= 90)  return { text: '#CA8A04', bg: '#EAB308' }
+  return { text: '#16A34A', bg: '#22C55E' }
+}
+
 export interface MesHh { ano: number; mes: number; previsto: number; realizado: number | null }
 
 // Junta registros mensais de previsto e de realizado (Obras/Fabricações — já
