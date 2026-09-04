@@ -423,8 +423,10 @@ export default function ContratoVisaoGeralPage() {
       <section className="bg-white border border-gray-200 rounded-lg p-4">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Avanço % — Faturamento x HH</h2>
         <ContratoAvancoPercentualChart
-          faturamentoPct={avancoPctData.faturamentoPct}
-          hhPct={avancoPctData.hhPct}
+          serieA={avancoPctData.faturamentoPct}
+          serieB={avancoPctData.hhPct}
+          labelA="Faturamento (%)"
+          labelB="HH Realizado (%)"
           labels={avancoPctData.labels}
         />
       </section>

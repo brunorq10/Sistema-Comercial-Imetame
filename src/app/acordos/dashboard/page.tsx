@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { Doughnut } from 'react-chartjs-2'
 import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
+import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -286,20 +287,24 @@ export default function IndicadoresAcordosPage() {
   const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em]'
   const selectCls = 'w-full px-2 py-[5px] border border-gray-300 rounded text-[11px] text-gray-800 bg-white outline-none focus:border-green-primary transition-colors'
 
-  // Chart configs
-  const yTick = (v: string | number) => typeof v === 'number' ? `R$ ${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : v
-  const mesChart = data && {
-    labels: MES_LABEL,
-    datasets: [
-      { label: 'Previsto', data: data.porMes.map((m) => m.previsto), backgroundColor: '#1565C0', borderRadius: 3 },
-      { label: 'Realizado', data: data.porMes.map((m) => m.faturado), backgroundColor: '#16A34A', borderRadius: 3 },
-    ],
-  }
-  const mesOpts = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } }, datalabels: { display: false }, tooltip: { callbacks: { label: (c: { dataset: { label?: string }; parsed: { y: number | null } }) => `${c.dataset.label}: ${fmt(c.parsed.y ?? 0)}` } } },
-    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: yTick } } },
-  }
+  // Meta de faturamento acumulada (%) x Faturado acumulado (%) — ambas em
+  // relação ao total previsto do ano. A meta é conhecida para o ano inteiro
+  // (orçamento fechado); o faturado só é conhecido até o mês corrente do ano
+  // selecionado (meses futuros ficam null — sem dado, não "zero").
+  const totalPrevistoAno = data ? data.porMes.reduce((a, m) => a + m.previsto, 0) : 0
+  const mesConhecidoAte = !data ? 0
+    : anoNum < data.anoAtual ? 12
+    : anoNum === data.anoAtual ? data.mesAtual
+    : 0
+  const metaAcumPct = data
+    ? (() => { let acc = 0; return data.porMes.map((m) => { acc += m.previsto; return totalPrevistoAno > 0 ? (acc / totalPrevistoAno) * 100 : null }) })()
+    : []
+  const faturadoAcumPct = data
+    ? (() => { let acc = 0; return data.porMes.map((m) => {
+        acc += m.faturado
+        return m.mes <= mesConhecidoAte && totalPrevistoAno > 0 ? (acc / totalPrevistoAno) * 100 : null
+      }) })()
+    : []
 
   return (
     <div className="p-4 space-y-1 h-full overflow-y-auto bg-gray-50">
@@ -375,10 +380,17 @@ export default function IndicadoresAcordosPage() {
             </div>
           </div>
 
-          {/* 4 — Faturamento mês a mês */}
-          <SectionTitle>Faturamento mês a mês — previsto vs realizado</SectionTitle>
+          {/* 4 — Meta acumulada x Faturado acumulado (%) */}
+          <SectionTitle>Meta de faturamento acumulada x faturamento real — avanço %</SectionTitle>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            <div style={{ height: 300 }}>{mesChart && <Bar data={mesChart} options={mesOpts} />}</div>
+            <div style={{ height: 300 }}>
+              <ContratoAvancoPercentualChart
+                serieA={metaAcumPct} serieB={faturadoAcumPct}
+                labelA="Meta acumulada (%)" labelB="Faturado acumulado (%)"
+                corA="#1565C0" corB="#16A34A"
+                labels={MES_LABEL}
+              />
+            </div>
           </div>
 
           {/* 5 — Tabela detalhada */}

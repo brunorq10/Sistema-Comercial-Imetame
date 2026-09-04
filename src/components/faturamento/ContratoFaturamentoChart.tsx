@@ -236,10 +236,14 @@ export function ContratoFaturamentoLineChart({ previsto, faturado, labels }: Pro
 }
 
 interface AvancoPercentualProps {
-  /** % acumulado do faturamento sobre o total do contrato, por período. null = sem dado ainda no período. */
-  faturamentoPct: (number | null)[]
-  /** % acumulado do HH realizado sobre o HH total previsto, por período. null = sem dado ainda no período. */
-  hhPct: (number | null)[]
+  /** % acumulado da série A (ex.: faturamento), por período. null = sem dado ainda no período. */
+  serieA: (number | null)[]
+  /** % acumulado da série B (ex.: HH realizado, meta acumulada), por período. null = sem dado ainda no período. */
+  serieB: (number | null)[]
+  labelA?: string
+  labelB?: string
+  corA?: string
+  corB?: string
   labels?: string[]
 }
 
@@ -247,63 +251,67 @@ const COLOR_FAT_PCT = COLORS.acumFaturado // azul — mesmo tom já usado para "
 const COLOR_HH_PCT  = '#16A34A'            // verde — mesmo tom já usado para "Realizado" no Controle de HH
 
 /**
- * Avanço % — Faturamento x HH: duas linhas cumulativas em termos relativos
- * (% do total), comparando o ritmo de faturamento com o ritmo de consumo de
- * HH ao longo do contrato. Rótulo de dado só no último ponto COM DADO de cada
- * linha (não no último índice do eixo) — ao passar o mouse, o tooltip mostra
- * qualquer ponto normalmente.
+ * Avanço % — duas linhas cumulativas em termos relativos (% do total),
+ * comparando o ritmo de duas séries ao longo do tempo (ex.: Faturamento x HH
+ * num contrato, ou Meta x Faturado nos Indicadores Acordos). Rótulo de dado
+ * só no último ponto COM DADO de cada linha (não no último índice do eixo,
+ * já que cada série pode ter dado disponível até um período diferente) — ao
+ * passar o mouse, o tooltip mostra qualquer ponto normalmente.
  */
-export function ContratoAvancoPercentualChart({ faturamentoPct, hhPct, labels }: AvancoPercentualProps) {
+export function ContratoAvancoPercentualChart({
+  serieA, serieB, labelA = 'Faturamento (%)', labelB = 'HH Realizado (%)',
+  corA = COLOR_FAT_PCT, corB = COLOR_HH_PCT, labels,
+}: AvancoPercentualProps) {
   const xLabels = labels ?? MESES_LABELS
-  const lastFat = lastNonNullIndex(faturamentoPct)
-  const lastHh  = lastNonNullIndex(hhPct)
+  const lastA = lastNonNullIndex(serieA)
+  const lastB = lastNonNullIndex(serieB)
 
   const data = {
     labels: xLabels,
     datasets: [
       {
         type: 'line' as const,
-        label: 'Faturamento (%)',
-        data: faturamentoPct,
-        borderColor: COLOR_FAT_PCT,
+        label: labelA,
+        data: serieA,
+        borderColor: corA,
         borderWidth: 2.5,
         pointRadius: 4,
         pointBackgroundColor: '#fff',
-        pointBorderColor: COLOR_FAT_PCT,
+        pointBorderColor: corA,
         pointBorderWidth: 2,
         fill: false,
         tension: 0.3,
         spanGaps: false,
         datalabels: {
-          display: (ctx: Context) => ctx.dataIndex === lastFat,
+          display: (ctx: Context) => ctx.dataIndex === lastA,
           anchor: 'center' as const,
           align: 'top' as const,
           offset: 6,
           font: { size: 9, weight: 'bold' as const },
-          color: COLOR_FAT_PCT,
+          color: corA,
           formatter: (v: number) => fmtPct(v),
         },
       },
       {
         type: 'line' as const,
-        label: 'HH Realizado (%)',
-        data: hhPct,
-        borderColor: COLOR_HH_PCT,
+        label: labelB,
+        data: serieB,
+        borderColor: corB,
         borderWidth: 2.5,
         pointRadius: 4,
         pointBackgroundColor: '#fff',
-        pointBorderColor: COLOR_HH_PCT,
+        pointBorderColor: corB,
         pointBorderWidth: 2,
         fill: false,
         tension: 0.3,
         spanGaps: false,
         datalabels: {
-          display: (ctx: Context) => ctx.dataIndex === lastHh,
+          display: (ctx: Context) => ctx.dataIndex === lastB,
           anchor: 'center' as const,
           align: 'top' as const,
           offset: 6,
           font: { size: 9, weight: 'bold' as const },
-          color: COLOR_HH_PCT,
+          color: corB,
           formatter: (v: number) => fmtPct(v),
         },
       },
