@@ -95,23 +95,55 @@ function Gauge({ percent, faturado, previsto }: { percent: number; faturado: num
   )
 }
 
-// ══ Barras horizontais por mercado ══
-function BarrasMercado({ data }: { data: { ramo: string; percentual: number; valor: number }[] }) {
+// ══ Tabela — Faturamento por mercado (Mercado / Faturado (R$) / Participação) ══
+const MERCADO_COLORS = ['#16A34A', '#1565C0', '#F59E0B', '#8B5CF6', '#DC2626', '#0891B2']
+
+function TabelaMercado({ data }: { data: { ramo: string; percentual: number; valor: number }[] }) {
   if (data.length === 0) return <p className="text-[11px] text-gray-400 py-6 text-center">Sem dados</p>
-  const max = Math.max(...data.map((d) => d.percentual), 1)
+  const max = Math.max(...data.map((d) => d.valor), 1)
+  const totalValor = data.reduce((s, d) => s + d.valor, 0)
   return (
-    <div className="flex flex-col gap-2.5">
-      {data.map((item) => (
-        <div key={item.ramo} className="flex items-center gap-3">
-          <span className="text-[11px] text-gray-700 font-medium w-40 flex-shrink-0 truncate" title={item.ramo}>{item.ramo}</span>
-          <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden relative">
-            <div className="h-full bg-[#1565C0] rounded flex items-center justify-end pr-1.5" style={{ width: `${(item.percentual / max) * 100}%`, minWidth: 22 }}>
-              <span className="text-[10px] font-bold text-white">{item.percentual.toFixed(0)}%</span>
-            </div>
-          </div>
-          <span className="text-[11px] text-gray-600 font-semibold w-20 text-right flex-shrink-0">{fmtM(item.valor)}</span>
-        </div>
-      ))}
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px] border-collapse">
+        <thead>
+          <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
+            <th className="py-2 pr-3 font-semibold">Mercado</th>
+            <th className="py-2 px-3 font-semibold">Faturado (R$)</th>
+            <th className="py-2 pl-3 font-semibold text-right">Participação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item, i) => {
+            const color = MERCADO_COLORS[i % MERCADO_COLORS.length]
+            return (
+              <tr key={item.ramo} className="border-b border-gray-50">
+                <td className="py-2.5 pr-3">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className="text-gray-700 font-medium">{item.ramo}</span>
+                  </span>
+                </td>
+                <td className="py-2.5 px-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-3 bg-gray-100 rounded overflow-hidden max-w-[140px]">
+                      <div className="h-full rounded" style={{ width: `${(item.valor / max) * 100}%`, background: color }} />
+                    </div>
+                    <span className="text-gray-700 font-semibold whitespace-nowrap">{fmtM(item.valor)}</span>
+                  </div>
+                </td>
+                <td className="py-2.5 pl-3 text-right text-gray-600 font-semibold whitespace-nowrap">{item.percentual.toFixed(1).replace('.', ',')}%</td>
+              </tr>
+            )
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-gray-200 font-bold">
+            <td className="py-2.5 pr-3 text-gray-800">Total</td>
+            <td className="py-2.5 px-3 text-gray-800 whitespace-nowrap">{fmtM(totalValor)}</td>
+            <td className="py-2.5 pl-3 text-right text-gray-800">100%</td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   )
 }
@@ -372,7 +404,7 @@ export default function IndicadoresAcordosPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <p className="text-[12px] font-bold text-gray-700 mb-3">Faturamento por mercado</p>
-              <BarrasMercado data={data.porRamo} />
+              <TabelaMercado data={data.porRamo} />
             </div>
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <p className="text-[12px] font-bold text-gray-700 mb-3">% faturado geral do ano</p>
