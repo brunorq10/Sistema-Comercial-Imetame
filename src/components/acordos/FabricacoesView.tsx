@@ -1,97 +1,35 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, IntegerInput, CurrencyInput } from '@/components/ui/Input'
+import { Field, Input } from '@/components/ui/Input'
 import { cn, formatDate } from '@/lib/utils'
+import { barColors } from '@/lib/hh'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
+import {
+  MESES_LABELS, mesesEntre, key, pesoPrevItem, pesoRealItem, pctAvanco, fmtHh, fmtPeso, fmtPct,
+  type ContratoFab,
+} from '@/lib/fabricacoes'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
-const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-const fmtHh = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
-const fmtPeso = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const fmtPct = (v: number) => `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-
-function barColors(pct: number) {
-  if (pct > 100) return { text: '#DC2626', bg: '#EF4444' }
-  if (pct >= 90) return { text: '#CA8A04', bg: '#EAB308' }
-  return { text: '#16A34A', bg: '#22C55E' }
-}
-
-// ── Tipos vindos da API ─────────────────────────────────────────────────────
-interface MesPlano { mes: number; ano: number; hh_orcado: number | null; hh_previsto: number | null; peso_previsto: number | null }
-interface MesReal  { mes: number; ano: number; hh_realizado: number | null; peso_realizado: number | null }
-interface ItemFab {
-  id: number
-  descricao: string
-  peso_total: number | null
-  data_inicio: string
-  data_fim: string
-  ordem: number
-  meses: MesPlano[]
-  realizados: MesReal[]
-}
-export interface ContratoFab {
-  id: number
-  indice: string
-  num_os: string | null
-  ano_referencia?: number | null
-  cliente: { id: number; nome: string; ramo_atuacao?: string | null }
-  cliente_final: { id: number; nome: string } | null
-  responsavel: { id: number; nome: string } | null
-  cidade: string | null
-  estado: string | null
-  classificacao: string | null
-  descricao: string | null
-  data_inicio: string | null
-  data_fim: string | null
-  tem_itens: boolean
-  hh_orcado: number | null
-  hh_previsto: number | null
-  hh_realizado: number | null
-  peso_total: number | null
-  peso_previsto: number | null
-  peso_realizado: number | null
-  itens: ItemFab[]
-}
-
-// Lista de meses (mes,ano) entre duas datas YYYY-MM-DD (inclusive)
-function mesesEntre(inicio: string, fim: string): { mes: number; ano: number }[] {
-  if (!inicio || !fim) return []
-  const a = new Date(inicio), b = new Date(fim)
-  if (isNaN(a.getTime()) || isNaN(b.getTime()) || a > b) return []
-  const out: { mes: number; ano: number }[] = []
-  let y = a.getUTCFullYear(), m = a.getUTCMonth()
-  const yE = b.getUTCFullYear(), mE = b.getUTCMonth()
-  let guard = 0
-  while ((y < yE || (y === yE && m <= mE)) && guard < 240) {
-    out.push({ mes: m, ano: y }); m++; if (m > 11) { m = 0; y++ }; guard++
-  }
-  return out
-}
-const key = (ano: number, mes: number) => `${ano}-${mes}`
-
-// Somas de peso por item e % de avanço (= peso realizado / peso previsto)
-const pesoPrevItem = (it: ItemFab) => it.meses.reduce((a, m) => a + (m.peso_previsto ?? 0), 0)
-const pesoRealItem = (it: ItemFab) => it.realizados.reduce((a, r) => a + (r.peso_realizado ?? 0), 0)
-const pctAvanco = (prev: number, real: number) => (prev > 0 ? (real / prev) * 100 : 0)
+export type { ContratoFab }
 
 // ════════════════════════════════════════════════════════════════════════════
 export function FabricacoesView() {
+  const router = useRouter()
   const [contratos, setContratos] = useState<ContratoFab[]>([])
   const [loading, setLoading] = useState(true)
   const [visao, setVisao] = useState<'contratos' | 'resumo'>('contratos')
 
   const [picker, setPicker] = useState(false)
-  const [cadastro, setCadastro] = useState<ContratoFab | null>(null)
-  const [lancamento, setLancamento] = useState<ContratoFab | null>(null)
   const [historico, setHistorico] = useState<ContratoFab | null>(null)
   const [excluir, setExcluir] = useState<ContratoFab | null>(null)
 
@@ -138,8 +76,7 @@ export function FabricacoesView() {
       ) : (
         <ContratosFab
           contratos={filtradas}
-          onEditar={(c) => setCadastro(c)}
-          onLancar={(c) => setLancamento(c)}
+          onAbrir={(c) => router.push(`/acordos/hh/fabricacoes/${c.id}`)}
           onHistorico={(c) => setHistorico(c)}
           onExcluir={(c) => setExcluir(c)}
         />
@@ -148,21 +85,7 @@ export function FabricacoesView() {
       {picker && (
         <PickerModal
           onClose={() => setPicker(false)}
-          onSelect={(c) => { setPicker(false); setCadastro(c) }}
-        />
-      )}
-      {cadastro && (
-        <CadastroModal
-          contrato={cadastro}
-          onClose={() => setCadastro(null)}
-          onSuccess={() => { setCadastro(null); fetchData() }}
-        />
-      )}
-      {lancamento && (
-        <LancamentoModal
-          contrato={lancamento}
-          onClose={() => setLancamento(null)}
-          onSuccess={() => { setLancamento(null); fetchData() }}
+          onSelect={(c) => { setPicker(false); router.push(`/acordos/hh/fabricacoes/${c.id}?novo=1`) }}
         />
       )}
       {historico && (
@@ -225,10 +148,9 @@ function ExcluirLancamentosModal({ contrato, onClose, onSuccess }: {
 }
 
 // ── Tabela de contratos cadastrados ─────────────────────────────────────────
-function ContratosFab({ contratos, onEditar, onLancar, onHistorico, onExcluir }: {
+function ContratosFab({ contratos, onAbrir, onHistorico, onExcluir }: {
   contratos: ContratoFab[]
-  onEditar: (c: ContratoFab) => void
-  onLancar: (c: ContratoFab) => void
+  onAbrir: (c: ContratoFab) => void
   onHistorico: (c: ContratoFab) => void
   onExcluir: (c: ContratoFab) => void
 }) {
@@ -273,8 +195,7 @@ function ContratosFab({ contratos, onEditar, onLancar, onHistorico, onExcluir }:
                 <td className="px-2 py-1.5 text-right font-semibold text-[#1565C0]">{fmtPct(pctAvanco(pPrev, pReal))}</td>
                 <td className="px-2 py-1.5 text-center whitespace-nowrap w-[64px]">
                   <AcoesMenu items={[
-                    { label: 'Lançar realizado', icon: '+', destaque: true, onClick: () => onLancar(c) },
-                    { label: 'Editar itens', icon: '✎', onClick: () => onEditar(c) },
+                    { label: 'Abrir contrato', icon: '+', destaque: true, onClick: () => onAbrir(c) },
                     { label: 'Histórico de alterações', icon: '🕘', onClick: () => onHistorico(c) },
                     { label: 'Excluir lançamentos', icon: '🗑', destrutiva: true, onClick: () => onExcluir(c) },
                   ]} />
@@ -318,321 +239,6 @@ function PickerModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c:
             <p className="text-[10px] text-gray-500 truncate">{c.descricao ?? 'Sem descrição'} · {[c.cidade, c.estado].filter(Boolean).join('/')}</p>
           </button>
         ))}
-      </div>
-    </Modal>
-  )
-}
-
-// ── Cadastro de itens: descrição/peso/datas + HH orçado/previsto + peso previsto/mês ──
-interface ItemForm {
-  id: number | null
-  descricao: string
-  peso_total: string
-  data_inicio: string
-  data_fim: string
-  // chave `${ano}-${mes}` → { orcado, previsto, pesoPrev }
-  meses: Record<string, { orcado: string; previsto: string; pesoPrev: string }>
-}
-
-function CadastroModal({ contrato, onClose, onSuccess }: {
-  contrato: ContratoFab; onClose: () => void; onSuccess: () => void
-}) {
-  const init: ItemForm[] = contrato.itens.length > 0
-    ? contrato.itens.map((it) => ({
-        id: it.id,
-        descricao: it.descricao,
-        peso_total: it.peso_total != null ? String(it.peso_total).replace('.', ',') : '',
-        data_inicio: it.data_inicio.slice(0, 10),
-        data_fim: it.data_fim.slice(0, 10),
-        meses: Object.fromEntries(it.meses.map((m) => [key(m.ano, m.mes), {
-          orcado: m.hh_orcado != null ? String(m.hh_orcado) : '',
-          previsto: m.hh_previsto != null ? String(m.hh_previsto) : '',
-          pesoPrev: m.peso_previsto != null ? String(m.peso_previsto).replace('.', ',') : '',
-        }])),
-      }))
-    : [{ id: null, descricao: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }]
-
-  const [itens, setItens] = useState<ItemForm[]>(init)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const parsePeso = (v: string) => v ? Number(v.replace(/\./g, '').replace(',', '.')) : null
-
-  const upd = (i: number, patch: Partial<ItemForm>) =>
-    setItens((prev) => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
-  const updMes = (i: number, k: string, campo: 'orcado' | 'previsto' | 'pesoPrev', v: string) =>
-    setItens((prev) => prev.map((it, idx) => {
-      if (idx !== i) return it
-      const cur = it.meses[k] ?? { orcado: '', previsto: '', pesoPrev: '' }
-      return { ...it, meses: { ...it.meses, [k]: { ...cur, [campo]: v } } }
-    }))
-  const addItem = () => setItens((p) => [...p, { id: null, descricao: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }])
-  const rmItem = (i: number) => setItens((p) => p.filter((_, idx) => idx !== i))
-
-  const handleSave = async () => {
-    for (let i = 0; i < itens.length; i++) {
-      const it = itens[i]
-      if (!it.descricao.trim()) { setError(`Item ${i + 1}: descrição obrigatória`); return }
-      if (!it.data_inicio || !it.data_fim) { setError(`Item ${i + 1}: datas obrigatórias`); return }
-      if (it.data_inicio > it.data_fim) { setError(`Item ${i + 1}: data final antes da inicial`); return }
-    }
-    setLoading(true); setError(null)
-    try {
-      const payload = {
-        contrato_id: contrato.id,
-        itens: itens.map((it) => ({
-          id: it.id,
-          descricao: it.descricao.trim(),
-          peso_total: parsePeso(it.peso_total),
-          data_inicio: it.data_inicio,
-          data_fim: it.data_fim,
-          meses: mesesEntre(it.data_inicio, it.data_fim).map(({ mes, ano }) => {
-            const cell = it.meses[key(ano, mes)] ?? { orcado: '', previsto: '', pesoPrev: '' }
-            return {
-              mes, ano,
-              hh_orcado: cell.orcado ? Number(cell.orcado) : null,
-              hh_previsto: cell.previsto ? Number(cell.previsto) : null,
-              peso_previsto: parsePeso(cell.pesoPrev),
-            }
-          }),
-        })),
-      }
-      const res = await fetch('/api/acordos/hh/fabricacoes', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      })
-      const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao salvar'); return }
-      onSuccess()
-    } finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open onClose={onClose} wide
-      hasChanges
-      title={`Itens de Fabricação — ${contrato.indice} · ${contrato.cliente.nome}`}
-      footer={
-        <>
-          <ModalCancelButton disabled={loading} />
-          <Button onClick={handleSave} disabled={loading}>{loading ? 'Salvando...' : 'Salvar itens'}</Button>
-        </>
-      }>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>}
-
-      <div className="space-y-4">
-        {itens.map((it, i) => {
-          const meses = mesesEntre(it.data_inicio, it.data_fim)
-          return (
-            <div key={i} className="border border-gray-200 rounded-md p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-600">Item {i + 1}</span>
-                {itens.length > 1 && (
-                  <button onClick={() => rmItem(i)} className="text-red-400 hover:text-red-600 text-sm">remover ×</button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-2">
-                <Field label="Descrição *" className="sm:col-span-2">
-                  <Input value={it.descricao} onChange={(e) => upd(i, { descricao: e.target.value })} placeholder="Ex: Skid de tubulação" />
-                </Field>
-                <Field label="Peso total (t)">
-                  <CurrencyInput value={it.peso_total} onChange={(v) => upd(i, { peso_total: v })} placeholder="Ex: 12,50" />
-                </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Início *">
-                    <Input type="date" value={it.data_inicio} onChange={(e) => upd(i, { data_inicio: e.target.value })} />
-                  </Field>
-                  <Field label="Fim *">
-                    <Input type="date" value={it.data_fim} onChange={(e) => upd(i, { data_fim: e.target.value })} />
-                  </Field>
-                </div>
-              </div>
-
-              {meses.length === 0 ? (
-                <p className="text-[10px] text-gray-400 italic">Informe início e fim para habilitar o lançamento por mês.</p>
-              ) : (
-                <div className="overflow-x-auto border border-gray-100 rounded">
-                  <table className="text-[10px] border-collapse min-w-max">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-2 py-1 text-left font-semibold text-gray-500 sticky left-0 bg-gray-50">Mês</th>
-                        {meses.map(({ mes, ano }) => (
-                          <th key={key(ano, mes)} className="px-1 py-1 text-center font-semibold text-gray-500 whitespace-nowrap w-[84px]">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-gray-100">
-                        <td className="px-2 py-1 font-semibold text-gray-500 sticky left-0 bg-white whitespace-nowrap">HH Orçado</td>
-                        {meses.map(({ mes, ano }) => {
-                          const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={it.meses[k]?.orcado ?? ''} onChange={(v) => updMes(i, k, 'orcado', v)} placeholder="0" className="h-7 text-center" /></td>
-                        })}
-                      </tr>
-                      <tr className="border-t border-gray-100">
-                        <td className="px-2 py-1 font-semibold text-gray-500 sticky left-0 bg-white whitespace-nowrap">HH Previsto</td>
-                        {meses.map(({ mes, ano }) => {
-                          const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={it.meses[k]?.previsto ?? ''} onChange={(v) => updMes(i, k, 'previsto', v)} placeholder="0" className="h-7 text-center" /></td>
-                        })}
-                      </tr>
-                      <tr className="border-t border-gray-100 bg-[#E3F2FD]">
-                        <td className="px-2 py-1 font-semibold text-[#185FA5] sticky left-0 bg-[#E3F2FD] whitespace-nowrap">Peso Previsto (t)</td>
-                        {meses.map(({ mes, ano }) => {
-                          const k = key(ano, mes)
-                          return <td key={k} className="px-1 py-1 w-[84px]"><CurrencyInput value={it.meses[k]?.pesoPrev ?? ''} onChange={(v) => updMes(i, k, 'pesoPrev', v)} placeholder="0,00" className="h-7 text-center" /></td>
-                        })}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      <button onClick={addItem}
-        className="mt-3 w-full border border-dashed border-green-primary text-green-primary text-[12px] py-2 rounded hover:bg-green-light transition-colors">
-        + Adicionar item
-      </button>
-    </Modal>
-  )
-}
-
-// ── Lançamento do realizado (HH + peso realizado) por item/mês ────────────────
-function LancamentoModal({ contrato, onClose, onSuccess }: {
-  contrato: ContratoFab; onClose: () => void; onSuccess: () => void
-}) {
-  // estado: itemId → mesKey → { hh, pesoReal }
-  const initial: Record<number, Record<string, { hh: string; pesoReal: string }>> = {}
-  for (const it of contrato.itens) {
-    initial[it.id] = {}
-    for (const r of it.realizados) {
-      initial[it.id][key(r.ano, r.mes)] = {
-        hh: r.hh_realizado != null ? String(r.hh_realizado) : '',
-        pesoReal: r.peso_realizado != null ? String(r.peso_realizado).replace('.', ',') : '',
-      }
-    }
-  }
-  const [dados, setDados] = useState(initial)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const parsePeso = (v: string) => v ? Number(v.replace(/\./g, '').replace(',', '.')) : null
-
-  const set = (itemId: number, k: string, campo: 'hh' | 'pesoReal', v: string) =>
-    setDados((prev) => {
-      const it = { ...(prev[itemId] ?? {}) }
-      const cur = it[k] ?? { hh: '', pesoReal: '' }
-      it[k] = { ...cur, [campo]: v }
-      return { ...prev, [itemId]: it }
-    })
-
-  const handleSave = async () => {
-    const lancamentos: { item_id: number; mes: number; ano: number; hh_realizado: number | null; peso_realizado: number | null }[] = []
-    for (const it of contrato.itens) {
-      for (const { mes, ano } of mesesEntre(it.data_inicio.slice(0, 10), it.data_fim.slice(0, 10))) {
-        const k = key(ano, mes)
-        const cell = dados[it.id]?.[k]
-        if (!cell) continue
-        lancamentos.push({
-          item_id: it.id, mes, ano,
-          hh_realizado: cell.hh ? Number(cell.hh) : null,
-          peso_realizado: parsePeso(cell.pesoReal),
-        })
-      }
-    }
-    if (lancamentos.length === 0) { onClose(); return }
-    setLoading(true); setError(null)
-    try {
-      const res = await fetch('/api/acordos/hh/fabricacoes/realizado', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lancamentos }),
-      })
-      const json = await res.json()
-      if (!res.ok || json.error) { setError(json.error ?? 'Erro ao lançar'); return }
-      onSuccess()
-    } finally { setLoading(false) }
-  }
-
-  return (
-    <Modal open onClose={onClose} wide hasChanges
-      title={`Lançar realizado — ${contrato.indice} · ${contrato.cliente.nome}`}
-      footer={
-        <>
-          <ModalCancelButton disabled={loading} />
-          <Button onClick={handleSave} disabled={loading}>{loading ? 'Salvando...' : 'Salvar lançamentos'}</Button>
-        </>
-      }>
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>}
-      <p className="text-[11px] text-gray-500 mb-3">
-        O <strong>% de avanço</strong> de cada mês é calculado = <strong>peso realizado ÷ peso previsto</strong>. Todos os lançamentos são a nível de mês.
-      </p>
-
-      <div className="space-y-4">
-        {contrato.itens.map((it) => {
-          const meses = mesesEntre(it.data_inicio.slice(0, 10), it.data_fim.slice(0, 10))
-          const planMap = new Map(it.meses.map((m) => [key(m.ano, m.mes), m]))
-          // acumulado = soma(peso realizado informado) / soma(peso previsto do plano)
-          let somaReal = 0
-          for (const k of Object.keys(dados[it.id] ?? {})) somaReal += parsePeso(dados[it.id]?.[k]?.pesoReal ?? '') ?? 0
-          const acum = pctAvanco(pesoPrevItem(it), somaReal)
-          return (
-            <div key={it.id} className="border border-gray-200 rounded-md p-3">
-              <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
-                <span className="text-[11px] font-bold text-gray-700">{it.descricao}</span>
-                <span className="text-[10px] text-gray-400">Peso total: {it.peso_total != null ? `${fmtPeso(it.peso_total)} t` : '—'}</span>
-              </div>
-              <div className="overflow-x-auto border border-gray-100 rounded">
-                <table className="text-[10px] border-collapse min-w-max">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-2 py-1 text-left font-semibold text-gray-500 sticky left-0 bg-gray-50">Indicador</th>
-                      {meses.map(({ mes, ano }) => (
-                        <th key={key(ano, mes)} className="px-1 py-1 text-center font-semibold text-gray-500 whitespace-nowrap w-[84px]">{MESES_LABELS[mes]}/{String(ano).slice(2)}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-t border-gray-100">
-                      <td className="px-2 py-1 text-gray-500 sticky left-0 bg-white whitespace-nowrap">HH Previsto</td>
-                      {meses.map(({ mes, ano }) => <td key={key(ano, mes)} className="px-2 py-1 text-center text-gray-500">{planMap.get(key(ano, mes))?.hh_previsto ?? '—'}</td>)}
-                    </tr>
-                    <tr className="border-t border-gray-100 bg-[#F1F8E9]">
-                      <td className="px-2 py-1 font-semibold text-green-dark sticky left-0 bg-[#F1F8E9] whitespace-nowrap">HH Realizado</td>
-                      {meses.map(({ mes, ano }) => {
-                        const k = key(ano, mes)
-                        return <td key={k} className="px-1 py-1 w-[84px]"><IntegerInput value={dados[it.id]?.[k]?.hh ?? ''} onChange={(v) => set(it.id, k, 'hh', v)} placeholder="0" className="h-7 text-center" /></td>
-                      })}
-                    </tr>
-                    <tr className="border-t border-gray-100">
-                      <td className="px-2 py-1 text-[#185FA5] sticky left-0 bg-white whitespace-nowrap">Peso Previsto (t)</td>
-                      {meses.map(({ mes, ano }) => {
-                        const p = planMap.get(key(ano, mes))?.peso_previsto
-                        return <td key={key(ano, mes)} className="px-2 py-1 text-center text-[#185FA5]">{p != null ? fmtPeso(p) : '—'}</td>
-                      })}
-                    </tr>
-                    <tr className="border-t border-gray-100 bg-[#E8F5E9]">
-                      <td className="px-2 py-1 font-semibold text-green-dark sticky left-0 bg-[#E8F5E9] whitespace-nowrap">Peso Realizado (t)</td>
-                      {meses.map(({ mes, ano }) => {
-                        const k = key(ano, mes)
-                        return <td key={k} className="px-1 py-1 w-[84px]"><CurrencyInput value={dados[it.id]?.[k]?.pesoReal ?? ''} onChange={(v) => set(it.id, k, 'pesoReal', v)} placeholder="0,00" className="h-7 text-center" /></td>
-                      })}
-                    </tr>
-                    <tr className="border-t border-gray-100">
-                      <td className="px-2 py-1 font-semibold text-[#1565C0] sticky left-0 bg-white whitespace-nowrap">% Avanço (mês)</td>
-                      {meses.map(({ mes, ano }) => {
-                        const k = key(ano, mes)
-                        const pr = parsePeso(dados[it.id]?.[k]?.pesoReal ?? '') ?? 0
-                        const pp = planMap.get(k)?.peso_previsto ?? 0
-                        return <td key={k} className="px-2 py-1 text-center text-[#1565C0]">{pr > 0 && pp > 0 ? fmtPct((pr / pp) * 100) : '—'}</td>
-                      })}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[10px] text-gray-500 mt-1">Avanço acumulado: <strong className="text-[#1565C0]">{fmtPct(acum)}</strong></p>
-            </div>
-          )
-        })}
       </div>
     </Modal>
   )

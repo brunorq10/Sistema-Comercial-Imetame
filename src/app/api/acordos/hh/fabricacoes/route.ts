@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/permissaoApi'
+import { FAB_CONTRATO_INCLUDE, mapContratoFab } from '@/lib/fabricacoes'
 
 // Contratos elegíveis para Fabricações: classificação Fabricações ou Óleo e Gás
 const CLASSIF_FABRICACAO = ['FABRICACOES', 'OLEO_GAS'] as const
@@ -29,66 +30,10 @@ export async function GET(req: NextRequest) {
   const contratos = await prisma.contrato.findMany({
     where: { cancelled_at: null, classificacao: { in: CLASSIF_FABRICACAO as unknown as string[] as never } },
     orderBy: { indice: 'asc' },
-    include: {
-      cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
-      cliente_final: { select: { id: true, nome: true } },
-      responsavel:   { select: { id: true, nome: true } },
-      fabricacao_itens: {
-        orderBy: { ordem: 'asc' },
-        include: {
-          meses:      true,
-          realizados: true,
-        },
-      },
-    },
+    include: FAB_CONTRATO_INCLUDE,
   })
 
-  const data = contratos.map((c) => {
-    const itens = c.fabricacao_itens.map((it) => ({
-      id: it.id,
-      descricao: it.descricao,
-      peso_total: it.peso_total != null ? Number(it.peso_total) : null,
-      data_inicio: it.data_inicio.toISOString(),
-      data_fim: it.data_fim.toISOString(),
-      ordem: it.ordem,
-      meses: it.meses.map((m) => ({
-        mes: m.mes, ano: m.ano,
-        hh_orcado: m.hh_orcado, hh_previsto: m.hh_previsto,
-        peso_previsto: m.peso_previsto != null ? Number(m.peso_previsto) : null,
-      })),
-      realizados: it.realizados.map((r) => ({
-        mes: r.mes, ano: r.ano,
-        hh_realizado: r.hh_realizado,
-        peso_realizado: r.peso_realizado != null ? Number(r.peso_realizado) : null,
-      })),
-    }))
-
-    const temItens = itens.length > 0
-    const hhOrcado = itens.reduce((a, i) => a + i.meses.reduce((b, m) => b + (m.hh_orcado ?? 0), 0), 0)
-    const hhPrevisto = itens.reduce((a, i) => a + i.meses.reduce((b, m) => b + (m.hh_previsto ?? 0), 0), 0)
-    const hhRealizado = itens.reduce((a, i) => a + i.realizados.reduce((b, r) => b + (r.hh_realizado ?? 0), 0), 0)
-    const pesoPrevisto = itens.reduce((a, i) => a + i.meses.reduce((b, m) => b + (m.peso_previsto ?? 0), 0), 0)
-    const pesoRealizado = itens.reduce((a, i) => a + i.realizados.reduce((b, r) => b + (r.peso_realizado ?? 0), 0), 0)
-    const pesoTotal = itens.reduce((a, i) => a + (i.peso_total ?? 0), 0)
-
-    return {
-      id: c.id, indice: c.indice, num_os: c.num_os, ano_referencia: c.ano_referencia,
-      num_acordo: c.num_acordo ?? null, num_proposta: c.num_proposta ?? null,
-      cidade: c.cidade, estado: c.estado, classificacao: c.classificacao,
-      cliente: c.cliente, cliente_final: c.cliente_final ?? null,
-      descricao: c.descricao, responsavel: c.responsavel,
-      data_inicio: c.data_inicio?.toISOString() ?? null,
-      data_fim:    c.data_fim?.toISOString()    ?? null,
-      tem_itens: temItens,
-      hh_orcado:   hhOrcado   > 0 ? hhOrcado   : null,
-      hh_previsto: hhPrevisto > 0 ? hhPrevisto : null,
-      hh_realizado: hhRealizado > 0 ? hhRealizado : null,
-      peso_total:     pesoTotal     > 0 ? pesoTotal     : null,
-      peso_previsto:  pesoPrevisto  > 0 ? pesoPrevisto  : null,
-      peso_realizado: pesoRealizado > 0 ? pesoRealizado : null,
-      itens,
-    }
-  })
+  const data = contratos.map(mapContratoFab)
 
   if (disponivel) return NextResponse.json({ data: data.filter((c) => !c.tem_itens), error: null })
   return NextResponse.json({ data: data.filter((c) => c.tem_itens), error: null })
