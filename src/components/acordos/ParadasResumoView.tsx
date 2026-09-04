@@ -1,13 +1,21 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
-import { Bar } from 'react-chartjs-2'
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement,
+  Tooltip, Legend, BarController, LineController,
+} from 'chart.js'
+import { Chart } from 'react-chartjs-2'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels)
+ChartJS.register(
+  CategoryScale, LinearScale, BarElement, LineElement, PointElement,
+  Tooltip, Legend, BarController, LineController, ChartDataLabels,
+)
+
+const META_HH_INDICE = 80
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const fmtHh = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -94,29 +102,56 @@ export function ParadasResumoView() {
   const pctAseFat = agg.faturado > 0 ? (agg.ase / agg.faturado) * 100 : null
   const desvCor = (v: number) => (v <= 0 ? '#16A34A' : '#DC2626')
 
-  const chartData = {
+  // Índice mensal = HH Realizado / HH Orçado (%), com meta fixa de 80%.
+  const pctPorMes = agg.meses.map((m) => m.prev > 0 ? (m.real / m.prev) * 100 : 0)
+  const indiceChartData = {
     labels: agg.meses.map((m) => `${MESES_LABELS[m.mes]}/${String(m.ano).slice(2)}`),
     datasets: [
-      { label: 'Previsto', data: agg.meses.map((m) => m.prev), backgroundColor: '#185FA5' },
-      { label: 'Realizado', data: agg.meses.map((m) => m.real), backgroundColor: '#16A34A' },
+      {
+        type: 'bar' as const,
+        label: 'Índice (Realizado/Orçado)',
+        data: pctPorMes,
+        backgroundColor: pctPorMes.map((p) => p >= META_HH_INDICE ? '#22C55E' : '#F87171'),
+        borderRadius: 3,
+        order: 2,
+        datalabels: {
+          anchor: 'end' as const, align: 'end' as const, color: '#374151',
+          font: { size: 11, weight: 'bold' as const },
+          formatter: (v: number) => `${Math.round(v)}%`,
+        },
+      },
+      {
+        type: 'line' as const,
+        label: `Meta (${META_HH_INDICE}%)`,
+        data: agg.meses.map(() => META_HH_INDICE),
+        borderColor: '#4B5563',
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        fill: false,
+        order: 1,
+        datalabels: { display: false },
+      },
     ],
   }
-  const chartOpts = {
+  const indiceChartOpts = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { position: 'bottom' as const, labels: { font: { size: 11 }, boxWidth: 10 } },
-      tooltip: { callbacks: { label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => `${ctx.dataset.label}: ${fmtHh(ctx.parsed.y ?? 0)}` } },
-      datalabels: {
-        anchor: 'end' as const,
-        align: 'end' as const,
-        color: '#444',
-        font: { size: 10, weight: 'bold' as const },
-        formatter: (v: number) => v > 0 ? Math.round(v).toLocaleString('pt-BR') : '',
+      tooltip: {
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(1)}%`,
+        },
       },
     },
     scales: {
       x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-      y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, callback: (v: string | number) => typeof v === 'number' ? v.toLocaleString('pt-BR') : v } },
+      y: {
+        min: 0,
+        grid: { color: '#f0f0f0' },
+        ticks: { font: { size: 10 }, callback: (v: string | number) => `${v}%` },
+      },
     },
     layout: { padding: { top: 20 } },
   }
@@ -144,14 +179,67 @@ export function ParadasResumoView() {
         <KpiCard label="R$/HH Realizado" value={fmtRsHh(rsHhReal)} color="#16A34A" small />
       </div>
 
-      {/* Gráfico HH previsto x realizado mês a mês */}
+      {/* HH Total — Índice Realizado/Orçado, mês a mês */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Total — Previsto x Realizado</p>
-        <p className="text-[11px] text-gray-400 mb-3">Distribuição mês a mês</p>
+        <p className="text-[11px] text-gray-400 mb-3">Índice (HH Realizado ÷ HH Orçado) por mês — meta de {META_HH_INDICE}%</p>
         {agg.meses.length === 0 ? (
           <p className="text-center text-gray-400 py-10 text-sm">Sem HH lançado para exibir.</p>
         ) : (
-          <div style={{ height: 280 }}><Bar data={chartData} options={chartOpts} /></div>
+          <>
+            <div style={{ height: 280 }}><Chart type="bar" data={indiceChartData} options={indiceChartOpts} /></div>
+
+            <div className="mt-4 overflow-x-auto border border-gray-100 rounded-md">
+              <table className="w-full text-[11px] border-collapse min-w-max">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-gray-100">
+                    <th className="px-3 py-2 text-left font-semibold text-gray-600 sticky left-0 bg-slate-50 whitespace-nowrap">Indicador</th>
+                    {agg.meses.map((m) => (
+                      <th key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center font-semibold text-gray-600 whitespace-nowrap">{MESES_LABELS[m.mes]}/{String(m.ano).slice(2)}</th>
+                    ))}
+                    <th className="px-3 py-2 text-center font-bold text-gray-700 whitespace-nowrap bg-slate-100">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-600 sticky left-0 bg-white whitespace-nowrap">Meta (&gt;= {META_HH_INDICE}%)</td>
+                    {agg.meses.map((m) => <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center text-gray-500">{META_HH_INDICE}%</td>)}
+                    <td className="px-3 py-2 text-center font-semibold text-gray-700 bg-slate-50">{META_HH_INDICE}%</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="px-3 py-2 font-medium text-[#16A34A] sticky left-0 bg-white whitespace-nowrap">HH Realizado</td>
+                    {agg.meses.map((m) => <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center text-[#16A34A]">{fmtHh(m.real)}</td>)}
+                    <td className="px-3 py-2 text-center font-semibold text-[#16A34A] bg-slate-50">{fmtHh(agg.hhReal)}</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="px-3 py-2 font-medium text-[#185FA5] sticky left-0 bg-white whitespace-nowrap">HH Orçado</td>
+                    {agg.meses.map((m) => <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center text-[#185FA5]">{fmtHh(m.prev)}</td>)}
+                    <td className="px-3 py-2 text-center font-semibold text-[#185FA5] bg-slate-50">{fmtHh(agg.hhPrev)}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 font-semibold text-gray-700 sticky left-0 bg-white whitespace-nowrap">Índice (Realizado/Orçado)</td>
+                    {agg.meses.map((m, i) => {
+                      const pct = pctPorMes[i]
+                      return (
+                        <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center font-semibold"
+                          style={{ color: pct >= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
+                          {Math.round(pct)}%
+                        </td>
+                      )
+                    })}
+                    {(() => {
+                      const pctTotal = agg.hhPrev > 0 ? (agg.hhReal / agg.hhPrev) * 100 : 0
+                      return (
+                        <td className="px-3 py-2 text-center font-bold bg-slate-50" style={{ color: pctTotal >= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
+                          {Math.round(pctTotal)}%
+                        </td>
+                      )
+                    })()}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
