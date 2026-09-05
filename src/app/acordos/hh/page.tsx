@@ -2,11 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  Chart as ChartJS, CategoryScale, LinearScale,
-  PointElement, LineElement, Tooltip, Filler,
-} from 'chart.js'
-import { Line } from 'react-chartjs-2'
 import { cn } from '@/lib/utils'
 import { FabricacoesView } from '@/components/acordos/FabricacoesView'
 import { ParadasResumoView } from '@/components/acordos/ParadasResumoView'
@@ -14,8 +9,7 @@ import { FaixasUcrView } from '@/components/acordos/FaixasUcrView'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 import { barColors } from '@/lib/hh'
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
+import { HhComportamentoChart } from '@/components/acordos/HhComportamentoChart'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -595,50 +589,11 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const pctRealPrev = totPrev > 0 && totReal != null ? (totReal / totPrev) * 100 : null
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
 
-  const labels  = mesData.map(m => m.label)
   const cumPrev = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlan = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.planejado] }, [])
   const cumReal = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length-1] ?? 0) : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
 
   const loc = (n: number) => n.toLocaleString('pt-BR')
-
-  const chartOpts = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      datalabels: { display: false },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        callbacks: {
-          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
-            const v = ctx.parsed.y
-            if (v == null) return ''
-            return `${ctx.dataset.label}: ${v.toLocaleString('pt-BR')}`
-          },
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-      y: {
-        ticks: {
-          font: { size: 10 },
-          callback: (value: string | number) => typeof value === 'number' ? value.toLocaleString('pt-BR') : value,
-        },
-        grid: { color: '#f0f0f0' },
-      },
-    },
-  }
-
-  const makeSeries = (monthly: boolean) => ({
-    labels,
-    datasets: [
-      { label: 'Previsto',  data: monthly ? mesData.map(m => m.previsto)  : cumPrev, borderColor: '#185FA5', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [6,3], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#185FA5', spanGaps: true  },
-      { label: 'Planejado', data: monthly ? mesData.map(m => m.planejado) : cumPlan, borderColor: '#BA7517', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,2], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#BA7517', spanGaps: true  },
-      { label: 'Realizado', data: monthly ? mesData.map(m => m.realizado) : cumReal, borderColor: '#16A34A', backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 2.5, pointBackgroundColor: '#16A34A', spanGaps: false },
-    ],
-  })
 
   // Tabela: desvio mensal (realizado_mes vs previsto_mes / planejado_mes)
   const tabelaRows = mesData.map((m, i) => {
@@ -651,24 +606,6 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
     const desvPlan = m.planejado > 0 && m.realizado != null ? ((m.realizado - m.planejado) / m.planejado) * 100 : null
     return { ...m, prevAcum, planAcum, realAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
   })
-
-  const chartLegend = (
-    <div className="flex items-center gap-5 mb-3">
-      {([
-        ['#185FA5', 'Previsto',  'dashed'],
-        ['#BA7517', 'Planejado', 'dashed'],
-        ['#16A34A', 'Realizado', 'solid'],
-      ] as [string, string, string][]).map(([c, l, style]) => (
-        <span key={l} className="flex items-center gap-2 text-[11px] text-gray-500">
-          <span className="inline-block w-5 h-0.5" style={{
-            background: style === 'solid' ? c
-              : `repeating-linear-gradient(90deg,${c} 0,${c} 4px,transparent 4px,transparent 8px)`,
-          }} />
-          {l}
-        </span>
-      ))}
-    </div>
-  )
 
   const hasData = selecionados.length > 0 && selecionados.some(c => c.tem_lancamento)
 
@@ -775,12 +712,9 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
 
           {mesData.length > 0 && (
             <>
-              {/* ── Gráfico ── */}
+              {/* ── Gráfico: Comportamento do HH ── */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Acumulado</p>
-                <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada ao longo do contrato</p>
-                {chartLegend}
-                <div style={{ height: 230 }}><Line data={makeSeries(false)} options={chartOpts} /></div>
+                <HhComportamentoChart variant="resumo" mesData={mesData} />
               </div>
 
               {/* ── Tabela ── */}
