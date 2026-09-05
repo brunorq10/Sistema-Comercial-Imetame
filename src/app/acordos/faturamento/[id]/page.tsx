@@ -12,9 +12,16 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { OcorrenciasContratuais } from '@/components/acordos/OcorrenciasContratuais'
 import { InformacoesTabela } from '@/components/painel/InformacoesTabela'
 import { MultasContratoSection } from '@/components/acordos/MultasContratoSection'
+import { ParadaHhTabela } from '@/components/faturamento/ParadaHhTabela'
+import { buildParadaHhRows, type ParadaHhConfigDados } from '@/lib/paradaHh'
 
 const ContratoAvancoPercentualChart = dynamic(
   () => import('@/components/faturamento/ContratoFaturamentoChart').then((m) => m.ContratoAvancoPercentualChart),
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
+)
+
+const ParadaHhChart = dynamic(
+  () => import('@/components/faturamento/ParadaHhChart').then((m) => m.ParadaHhChart),
   { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Carregando gráfico...</div> },
 )
 
@@ -225,6 +232,7 @@ export default function ContratoVisaoGeralPage() {
   const [contrato, setContrato] = useState<ContratoDetalhe | null>(null)
   const [historico, setHistorico] = useState<HistoricoEntry[]>([])
   const [hhResumo, setHhResumo] = useState<{ classificacao: string | null; hh_previsto_total: number | null; hh_realizado_total: number | null; meses: MesHh[] } | null>(null)
+  const [paradaConfig, setParadaConfig] = useState<ParadaHhConfigDados | null>(null)
   const [loading, setLoading] = useState(true)
   const [anoSel, setAnoSel] = useState<number | null>(null)
   const [abaHist, setAbaHist] = useState<'historico' | 'ocorrencias' | 'negociacao'>('historico')
@@ -247,10 +255,18 @@ export default function ContratoVisaoGeralPage() {
     }
     if (hJson.data) setHistorico(hJson.data)
     if (hhJson.data) setHhResumo(hhJson.data)
+    if (hhJson.data?.classificacao === 'PARADAS') {
+      const pRes = await fetch(`/api/acordos/hh/paradas/${id}`)
+      const pJson = await pRes.json().catch(() => ({ data: null }))
+      setParadaConfig(pJson.data?.config ?? null)
+    }
     setLoading(false)
   }, [id])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  const isParada = hhResumo?.classificacao === 'PARADAS'
+  const paradaRows = useMemo(() => isParada ? buildParadaHhRows(paradaConfig) : [], [isParada, paradaConfig])
 
   const allNFs    = useMemo(() => contrato?.subindices.flatMap((s) => s.notas_fiscais) ?? [], [contrato])
   const activeNFs = useMemo(() => allNFs.filter((nf) => nf.ativa), [allNFs])
@@ -422,93 +438,104 @@ export default function ContratoVisaoGeralPage() {
         </section>
       )}
 
-      {/* Seletor de ano compartilhado pelos gráficos */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Período</h2>
-        <div className="flex gap-1">
-          {anosDisponiveis.map((ano) => (
-            <button key={ano} onClick={() => setAnoSel(ano)}
-              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-            >{ano}</button>
-          ))}
-          <button onClick={() => setAnoSel(null)}
-            className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-          >Todos</button>
-        </div>
-      </div>
-
-      {/* Tabela — Faturamento por Mês */}
-      <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">▦ Faturamento por Mês</h2>
-        {monthlyTable.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">Nenhum valor previsto ou faturado registrado.</p>
-        ) : (
-          <div className="border border-gray-200 rounded-md overflow-auto" style={{ maxHeight: '446px' }}>
-            <table className="w-full border-collapse text-[11px]">
-              <thead className="sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Ano</th>
-                  <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Mês</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Previsto</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Consolidado</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Faturado</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. e Prev.</th>
-                  <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. Cons.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyTable.map((r) => {
-                  const difPrev = r.faturado - r.previsto
-                  const difCons = r.faturado - r.consolidado
-                  return (
-                    <tr key={`${r.ano}-${r.mes}`} className="hover:bg-gray-50">
-                      <td className="px-3 py-1.5 text-gray-500 border-b border-gray-100 whitespace-nowrap">{r.ano}</td>
-                      <td className="px-3 py-1.5 text-gray-700 font-medium border-b border-gray-100 whitespace-nowrap">{MESES_LABELS[r.mes]}</td>
-                      <td className="px-3 py-1.5 text-right text-blue-600 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.previsto)}</td>
-                      <td className="px-3 py-1.5 text-right text-purple-600 font-semibold border-b border-gray-100 whitespace-nowrap">{r.temConsolidado ? formatCurrency(r.consolidado) : '—'}</td>
-                      <td className="px-3 py-1.5 text-right text-green-700 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.faturado)}</td>
-                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${difPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(difPrev)}</td>
-                      <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${!r.temConsolidado ? 'text-gray-300' : difCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{r.temConsolidado ? formatCurrency(difCons) : '—'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot className="sticky bottom-0 z-10">
-                {(() => {
-                  const totPrev = monthlyTable.reduce((a, r) => a + r.previsto, 0)
-                  const totCons = monthlyTable.reduce((a, r) => a + r.consolidado, 0)
-                  const totFat  = monthlyTable.reduce((a, r) => a + r.faturado, 0)
-                  const temCons = monthlyTable.some((r) => r.temConsolidado)
-                  const totDifPrev = totFat - totPrev
-                  const totDifCons = totFat - totCons
-                  return (
-                    <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
-                      <td colSpan={2} className="px-3 py-2 text-[10px] uppercase tracking-wide text-gray-700 whitespace-nowrap">Total</td>
-                      <td className="px-3 py-2 text-right text-blue-600 whitespace-nowrap">{formatCurrency(totPrev)}</td>
-                      <td className="px-3 py-2 text-right text-purple-600 whitespace-nowrap">{temCons ? formatCurrency(totCons) : '—'}</td>
-                      <td className="px-3 py-2 text-right text-green-700 whitespace-nowrap">{formatCurrency(totFat)}</td>
-                      <td className={`px-3 py-2 text-right whitespace-nowrap ${totDifPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(totDifPrev)}</td>
-                      <td className={`px-3 py-2 text-right whitespace-nowrap ${!temCons ? 'text-gray-300' : totDifCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{temCons ? formatCurrency(totDifCons) : '—'}</td>
-                    </tr>
-                  )
-                })()}
-              </tfoot>
-            </table>
+      {/* Seletor de ano compartilhado pelos gráficos — sem efeito para Paradas
+          (tabela/gráfico diários abaixo não usam ano), então fica escondido. */}
+      {!isParada && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Período</h2>
+          <div className="flex gap-1">
+            {anosDisponiveis.map((ano) => (
+              <button key={ano} onClick={() => setAnoSel(ano)}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+              >{ano}</button>
+            ))}
+            <button onClick={() => setAnoSel(null)}
+              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+            >Todos</button>
           </div>
-        )}
-      </section>
+        </div>
+      )}
 
-      {/* Gráfico — Avanço % (Faturamento x HH) */}
-      <section className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Avanço % — Faturamento x HH</h2>
-        <ContratoAvancoPercentualChart
-          serieA={avancoPctData.faturamentoPct}
-          serieB={avancoPctData.hhPct}
-          labelA="Faturamento (%)"
-          labelB="HH Realizado (%)"
-          labels={avancoPctData.labels}
-        />
-      </section>
+      {/* Tabela — Faturamento por Mês (Paradas: HH Previsto x Realizado por dia) */}
+      {isParada ? (
+        <ParadaHhTabela rows={paradaRows} />
+      ) : (
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">▦ Faturamento por Mês</h2>
+          {monthlyTable.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Nenhum valor previsto ou faturado registrado.</p>
+          ) : (
+            <div className="border border-gray-200 rounded-md overflow-auto" style={{ maxHeight: '446px' }}>
+              <table className="w-full border-collapse text-[11px]">
+                <thead className="sticky top-0 z-10">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Ano</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Mês</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Previsto</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Consolidado</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Valor Faturado</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. e Prev.</th>
+                    <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Dif. Fat. Cons.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyTable.map((r) => {
+                    const difPrev = r.faturado - r.previsto
+                    const difCons = r.faturado - r.consolidado
+                    return (
+                      <tr key={`${r.ano}-${r.mes}`} className="hover:bg-gray-50">
+                        <td className="px-3 py-1.5 text-gray-500 border-b border-gray-100 whitespace-nowrap">{r.ano}</td>
+                        <td className="px-3 py-1.5 text-gray-700 font-medium border-b border-gray-100 whitespace-nowrap">{MESES_LABELS[r.mes]}</td>
+                        <td className="px-3 py-1.5 text-right text-blue-600 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.previsto)}</td>
+                        <td className="px-3 py-1.5 text-right text-purple-600 font-semibold border-b border-gray-100 whitespace-nowrap">{r.temConsolidado ? formatCurrency(r.consolidado) : '—'}</td>
+                        <td className="px-3 py-1.5 text-right text-green-700 font-semibold border-b border-gray-100 whitespace-nowrap">{formatCurrency(r.faturado)}</td>
+                        <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${difPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(difPrev)}</td>
+                        <td className={`px-3 py-1.5 text-right font-semibold border-b border-gray-100 whitespace-nowrap ${!r.temConsolidado ? 'text-gray-300' : difCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{r.temConsolidado ? formatCurrency(difCons) : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot className="sticky bottom-0 z-10">
+                  {(() => {
+                    const totPrev = monthlyTable.reduce((a, r) => a + r.previsto, 0)
+                    const totCons = monthlyTable.reduce((a, r) => a + r.consolidado, 0)
+                    const totFat  = monthlyTable.reduce((a, r) => a + r.faturado, 0)
+                    const temCons = monthlyTable.some((r) => r.temConsolidado)
+                    const totDifPrev = totFat - totPrev
+                    const totDifCons = totFat - totCons
+                    return (
+                      <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                        <td colSpan={2} className="px-3 py-2 text-[10px] uppercase tracking-wide text-gray-700 whitespace-nowrap">Total</td>
+                        <td className="px-3 py-2 text-right text-blue-600 whitespace-nowrap">{formatCurrency(totPrev)}</td>
+                        <td className="px-3 py-2 text-right text-purple-600 whitespace-nowrap">{temCons ? formatCurrency(totCons) : '—'}</td>
+                        <td className="px-3 py-2 text-right text-green-700 whitespace-nowrap">{formatCurrency(totFat)}</td>
+                        <td className={`px-3 py-2 text-right whitespace-nowrap ${totDifPrev < 0 ? 'text-orange-600' : 'text-green-600'}`}>{formatCurrency(totDifPrev)}</td>
+                        <td className={`px-3 py-2 text-right whitespace-nowrap ${!temCons ? 'text-gray-300' : totDifCons < 0 ? 'text-orange-600' : 'text-green-600'}`}>{temCons ? formatCurrency(totDifCons) : '—'}</td>
+                      </tr>
+                    )
+                  })()}
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Gráfico — Avanço % (Faturamento x HH) — Paradas: HH Previsto x Realizado por dia */}
+      {isParada ? (
+        <ParadaHhChart rows={paradaRows} />
+      ) : (
+        <section className="bg-white border border-gray-200 rounded-lg p-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Avanço % — Faturamento x HH</h2>
+          <ContratoAvancoPercentualChart
+            serieA={avancoPctData.faturamentoPct}
+            serieB={avancoPctData.hhPct}
+            labelA="Faturamento (%)"
+            labelB="HH Realizado (%)"
+            labels={avancoPctData.labels}
+          />
+        </section>
+      )}
 
       {/* Eventos de Medição */}
       <div className="bg-white border border-gray-200 rounded-lg p-4">
