@@ -8,7 +8,7 @@ import { Doughnut } from 'react-chartjs-2'
 import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
-import { KpiCard, KpiMiniCard } from '@/components/dashboard/KpiCard'
+import { KpiCard } from '@/components/dashboard/KpiCard'
 import { SectionTitle } from '@/components/dashboard/SectionTitle'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
 import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
@@ -357,10 +357,10 @@ export default function IndicadoresAcordosPage() {
             <KpiCard label="Previsão anos seguintes" value={fmtM(data.faturamentoProxAnos)} accent="#475569" sub="contratos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 !mt-3">
-            <KpiMiniCard label={`Previsão mês atual (${mesLabel})`} value={fmtM(data.prevMesAtual)} />
-            <KpiMiniCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} />
-            <KpiMiniCard label={`Faturado último mês (${mesAntLabel})`} value={fmtM(data.faturadoUltimoMes)} />
-            <KpiMiniCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} />
+            <KpiCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} accent="#16A34A" />
+            <KpiCard label={`Previsão mês atual (${mesLabel})`} value={fmtM(data.prevMesAtual)} accent="#1565C0" />
+            <KpiCard label={`Faturado último mês (${mesAntLabel})`} value={fmtM(data.faturadoUltimoMes)} accent="#16A34A" />
+            <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent="#1565C0" />
           </div>
 
           {/* 2/3 — Faturamento por mercado + Gauge */}

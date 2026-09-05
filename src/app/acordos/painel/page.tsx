@@ -12,6 +12,7 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import type { SubIndiceItem, PrevisaoAlteracaoItem, ContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import { compareContratos, nextSort, sortIndicator, type SortState } from '@/lib/sortContratos'
+import { KpiCard } from '@/components/dashboard/KpiCard'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
@@ -87,25 +88,6 @@ function StatusBadge({ status }: { status: string }) {
 // Valor por extenso (sem abreviação M/K)
 function fmtM(v: number) {
   return formatCurrency(v)
-}
-
-// ── Cards no estilo "Indicadores Acordos" — Visão consolidada do ano ──────────
-function BigCard({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 border-l-4" style={{ borderLeftColor: accent }}>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>
-      <p className="text-[22px] font-bold leading-none tracking-tight" style={{ color: accent }}>{fmtM(value)}</p>
-      {sub && <p className="text-[10px] text-gray-400 mt-1.5">{sub}</p>}
-    </div>
-  )
-}
-function MiniCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm px-3.5 py-2.5">
-      <p className="text-[10px] font-medium text-gray-400 mb-0.5">{label}</p>
-      <p className="text-[15px] font-bold text-gray-800 leading-none">{fmtM(value)}</p>
-    </div>
-  )
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -317,17 +299,17 @@ export default function MeuPainelAcordosPage() {
         {/* Indicadores — Visão consolidada do ano */}
         <div className="flex flex-col gap-3 mb-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <BigCard label={`Total faturado no ano (${indicators.anoAtual})`} value={indicators.fatAnoAtual} accent="#16A34A"
+            <KpiCard label={`Total faturado no ano (${indicators.anoAtual})`} value={fmtM(indicators.fatAnoAtual)} accent="#16A34A"
               sub={`${(indicators.prevAnoAtual > 0 ? (indicators.fatAnoAtual / indicators.prevAnoAtual) * 100 : 0).toFixed(1).replace('.', ',')}% da previsão`} />
-            <BigCard label="Previsão de faturamento no ano" value={indicators.prevAnoAtual} accent="#1565C0" sub="meta anual de receita" />
-            <BigCard label="Falta faturar no ano" value={Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual)} accent="#D97706" sub="saldo até dezembro" />
-            <BigCard label="Previsão anos seguintes" value={indicators.prevAnosSeguintes} accent="#475569" sub="contratos multi-ano" />
+            <KpiCard label="Previsão de faturamento no ano" value={fmtM(indicators.prevAnoAtual)} accent="#1565C0" sub="meta anual de receita" />
+            <KpiCard label="Falta faturar no ano" value={fmtM(Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual))} accent="#D97706" sub="saldo até dezembro" />
+            <KpiCard label="Previsão anos seguintes" value={fmtM(indicators.prevAnosSeguintes)} accent="#475569" sub="contratos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <MiniCard label={`Previsão mês atual (${indicators.mesAtualLabel})`} value={indicators.prevMesAtual} />
-            <MiniCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={indicators.fatMesAtual} />
-            <MiniCard label={`Faturado último mês (${indicators.mesPassadoLabel})`} value={indicators.fatUltimoMes} />
-            <MiniCard label={`Previsão próximo mês (${indicators.mesProximoLabel})`} value={indicators.prevProxMes} />
+            <KpiCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.fatMesAtual)} accent="#16A34A" />
+            <KpiCard label={`Previsão mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.prevMesAtual)} accent="#1565C0" />
+            <KpiCard label={`Faturado último mês (${indicators.mesPassadoLabel})`} value={fmtM(indicators.fatUltimoMes)} accent="#16A34A" />
+            <KpiCard label={`Previsão próximo mês (${indicators.mesProximoLabel})`} value={fmtM(indicators.prevProxMes)} accent="#1565C0" />
           </div>
         </div>
 
