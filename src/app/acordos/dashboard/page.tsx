@@ -8,6 +8,11 @@ import { Doughnut } from 'react-chartjs-2'
 import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
+import { KpiCard, KpiMiniCard } from '@/components/dashboard/KpiCard'
+import { SectionTitle } from '@/components/dashboard/SectionTitle'
+import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
+import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
+import { ProgressBar } from '@/components/dashboard/ProgressBar'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -49,30 +54,6 @@ const RAMO_OPTIONS = [
   { value: 'OLEO_GAS',       label: 'Óleo e Gás' },
   { value: 'OUTROS',         label: 'Outros' },
 ]
-
-// ══ Seção título ══
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.06em] mt-5 mb-2">{children}</h3>
-}
-
-// ══ Card grande (Visão consolidada) ══
-function BigCard({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 border-l-4" style={{ borderLeftColor: accent }}>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{label}</p>
-      <p className="text-[24px] font-bold leading-none tracking-tight" style={{ color: accent }}>{fmtM(value)}</p>
-      {sub && <p className="text-[10px] text-gray-400 mt-1.5">{sub}</p>}
-    </div>
-  )
-}
-function MiniCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm px-3.5 py-2.5">
-      <p className="text-[10px] font-medium text-gray-400 mb-0.5">{label}</p>
-      <p className="text-[16px] font-bold text-gray-800 leading-none">{fmtM(value)}</p>
-    </div>
-  )
-}
 
 // ══ Gauge (velocímetro) ══
 function Gauge({ percent, faturado, previsto }: { percent: number; faturado: number; previsto: number }) {
@@ -125,9 +106,7 @@ function TabelaMercado({ data }: { data: { ramo: string; percentual: number; val
                 </td>
                 <td className="py-2.5 px-3">
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-3 bg-gray-100 rounded overflow-hidden max-w-[140px]">
-                      <div className="h-full rounded" style={{ width: `${(item.valor / max) * 100}%`, background: color }} />
-                    </div>
+                    <ProgressBar pct={(item.valor / max) * 100} color={color} size="sm" className="max-w-[140px]" />
                     <span className="text-gray-700 font-semibold whitespace-nowrap">{fmtM(item.valor)}</span>
                   </div>
                 </td>
@@ -316,9 +295,6 @@ export default function IndicadoresAcordosPage() {
   const mesProxLabel = MES_LABEL[mesAtual === 12 ? 0 : mesAtual]
   const clientes = data?.clientes ?? []
 
-  const fLbl = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em]'
-  const selectCls = 'w-full px-2 py-[5px] border border-gray-300 rounded text-[11px] text-gray-800 bg-white outline-none focus:border-green-primary transition-colors'
-
   // Meta de faturamento acumulada (%) x Faturado acumulado (%) — ambas em
   // relação ao total previsto do ano. A meta é conhecida para o ano inteiro
   // (orçamento fechado); o faturado só é conhecido até o mês corrente do ano
@@ -346,21 +322,18 @@ export default function IndicadoresAcordosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 flex flex-wrap gap-2.5 items-end !mt-3">
-        <div className="min-w-[90px]">
-          <label className={fLbl}>Ano</label>
-          <select value={ano} onChange={(e) => setAno(e.target.value)} className={selectCls}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
-        </div>
-        <div className="min-w-[180px] flex-1">
-          <label className={fLbl}>Cliente</label>
+      <FilterBar className="!mt-3">
+        <FilterField label="Ano" className="min-w-[90px]">
+          <select value={ano} onChange={(e) => setAno(e.target.value)} className={filterSelectClass}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
+        </FilterField>
+        <FilterField label="Cliente" className="min-w-[180px] flex-1">
           <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
-        </div>
-        <div className="min-w-[150px]">
-          <label className={fLbl}>Mercado</label>
+        </FilterField>
+        <FilterField label="Mercado" className="min-w-[150px]">
           <SearchableMultiSelect values={ramo} onChange={setRamo} options={RAMO_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} emptyLabel="Todos" />
-        </div>
-        <button onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]) }} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
-      </div>
+        </FilterField>
+        <ClearFiltersButton onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]) }} />
+      </FilterBar>
 
       {loading && <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>}
       {error && <p className="text-center text-red-500 py-8 text-sm">{error}</p>}
@@ -368,35 +341,26 @@ export default function IndicadoresAcordosPage() {
       {!loading && !error && data && (
         <>
           {/* Abas de indicadores */}
-          <div className="flex items-center gap-1 border-b border-gray-200 !mt-3 overflow-x-auto">
-            {([['geral', 'Indicadores Gerais'], ['responsavel', 'Eventos Contratuais']] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setAbaInd(val)}
-                className={
-                  'text-[12px] font-semibold px-3 py-2 -mb-px border-b-2 whitespace-nowrap transition-colors ' +
-                  (abaInd === val ? 'border-green-primary text-green-primary' : 'border-transparent text-gray-400 hover:text-gray-600')
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <DashboardTabs
+            tabs={[{ key: 'geral', label: 'Indicadores Gerais' }, { key: 'responsavel', label: 'Eventos Contratuais' }]}
+            active={abaInd}
+            onChange={setAbaInd}
+          />
 
           {abaInd === 'geral' && (<>
           {/* 1 — Visão consolidada do ano */}
           <SectionTitle>Visão consolidada do ano</SectionTitle>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <BigCard label="Total faturado no ano" value={data.totalFaturadoAno} accent="#16A34A" sub={`${data.percFaturadoGeral.toFixed(1).replace('.', ',')}% da previsão`} />
-            <BigCard label="Previsão de faturamento no ano" value={data.prevFaturamentoAno} accent="#1565C0" sub="meta anual de receita" />
-            <BigCard label="Falta faturar no ano" value={data.aFaturarAno} accent="#D97706" sub="saldo até dezembro" />
-            <BigCard label="Previsão anos seguintes" value={data.faturamentoProxAnos} accent="#475569" sub="contratos multi-ano" />
+            <KpiCard label="Total faturado no ano" value={fmtM(data.totalFaturadoAno)} accent="#16A34A" sub={`${data.percFaturadoGeral.toFixed(1).replace('.', ',')}% da previsão`} />
+            <KpiCard label="Previsão de faturamento no ano" value={fmtM(data.prevFaturamentoAno)} accent="#1565C0" sub="meta anual de receita" />
+            <KpiCard label="Falta faturar no ano" value={fmtM(data.aFaturarAno)} accent="#D97706" sub="saldo até dezembro" />
+            <KpiCard label="Previsão anos seguintes" value={fmtM(data.faturamentoProxAnos)} accent="#475569" sub="contratos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 !mt-3">
-            <MiniCard label={`Previsão mês atual (${mesLabel})`} value={data.prevMesAtual} />
-            <MiniCard label={`Faturado mês atual (${mesLabel})`} value={data.faturadoMesAtual} />
-            <MiniCard label={`Faturado último mês (${mesAntLabel})`} value={data.faturadoUltimoMes} />
-            <MiniCard label={`Previsão próximo mês (${mesProxLabel})`} value={data.prevProxMes} />
+            <KpiMiniCard label={`Previsão mês atual (${mesLabel})`} value={fmtM(data.prevMesAtual)} />
+            <KpiMiniCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} />
+            <KpiMiniCard label={`Faturado último mês (${mesAntLabel})`} value={fmtM(data.faturadoUltimoMes)} />
+            <KpiMiniCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} />
           </div>
 
           {/* 2/3 — Faturamento por mercado + Gauge */}
@@ -464,7 +428,7 @@ export default function IndicadoresAcordosPage() {
                         <td className="px-4 py-2.5 text-right text-[#16A34A] tabular-nums">{fmtM(r.realizado)}</td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(r.aderencia, 100)}%`, backgroundColor: c.text }} /></div>
+                            <ProgressBar pct={r.aderencia} color={c.text} size="md" />
                             <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: c.bg, color: c.text }}>{r.aderencia.toFixed(0)}%</span>
                           </div>
                         </td>
