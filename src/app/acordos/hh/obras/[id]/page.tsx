@@ -11,6 +11,7 @@ import { Line } from 'react-chartjs-2'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { barColors } from '@/lib/hh'
+import { RealizadoDiarioObras } from '@/components/acordos/RealizadoDiarioObras'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
 
@@ -100,11 +101,6 @@ export default function ContratoObrasHhPage() {
   const [savingPP, setSavingPP] = useState(false)
   const [erroPP, setErroPP] = useState<string | null>(null)
 
-  // ── Edição: Realizado ──
-  const [editRealizado, setEditRealizado] = useState<Record<string, string>>({})
-  const [savingReal, setSavingReal] = useState(false)
-  const [erroReal, setErroReal] = useState<string | null>(null)
-
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
@@ -146,14 +142,9 @@ export default function ContratoObrasHhPage() {
     const persistido = lancSelecionado?.meses.find(m => m.mes === mes && m.ano === ano) ?? null
     const previsto = modo === 'previsto_planejado' ? (Number(editPrevisto[key]) || 0) : (persistido?.hh_previsto ?? 0)
     const planejado = modo === 'previsto_planejado' ? (Number(editPlanejado[key]) || 0) : (persistido?.hh_planejado ?? 0)
-    let realizado: number | null
-    if (modo === 'realizado' && key in editRealizado) {
-      realizado = editRealizado[key] === '' ? null : (Number(editRealizado[key]) || 0)
-    } else {
-      realizado = realizadosMap.get(key) ?? null
-    }
+    const realizado = realizadosMap.get(key) ?? null
     return { mes, ano, label: fmtMes(mes, ano), previsto, planejado, realizado }
-  }), [mesesAtivos, lancSelecionado, modo, editPrevisto, editPlanejado, editRealizado, realizadosMap])
+  }), [mesesAtivos, lancSelecionado, modo, editPrevisto, editPlanejado, realizadosMap])
 
   const totPrev = mesData.reduce((s, m) => s + m.previsto, 0)
   const totPlan = mesData.reduce((s, m) => s + m.planejado, 0)
@@ -254,13 +245,11 @@ export default function ContratoObrasHhPage() {
   }
 
   function handleAbrirEdicaoReal() {
-    setEditRealizado({})
-    setErroReal(null)
     setModo('realizado')
   }
 
   function handleCancelarEdicao() {
-    setModo('leitura'); setErroPP(null); setErroReal(null)
+    setModo('leitura'); setErroPP(null)
   }
 
   async function handleSalvarPP() {
@@ -292,26 +281,6 @@ export default function ContratoObrasHhPage() {
       await fetchData()
       setModo('leitura')
     } finally { setSavingPP(false) }
-  }
-
-  async function handleSalvarRealizado() {
-    const entradas = Object.entries(editRealizado).filter(([, v]) => v !== '')
-    if (entradas.length === 0) { setErroReal('Informe ao menos um valor de HH Realizado'); return }
-
-    setSavingReal(true); setErroReal(null)
-    try {
-      const results = await Promise.all(entradas.map(([k, v]) => {
-        const [ano, mes] = k.split('-').map(Number)
-        return fetch(`/api/acordos/hh/${id}/realizado`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mes, ano, hh_realizado: Math.round(Number(v) || 0) }),
-        })
-      }))
-      if (results.some(r => !r.ok)) { setErroReal('Erro ao salvar um ou mais lançamentos'); return }
-      await fetchData()
-      setModo('leitura')
-      setEditRealizado({})
-    } finally { setSavingReal(false) }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -436,24 +405,15 @@ export default function ContratoObrasHhPage() {
               </div>
             )}
 
-            {modo === 'realizado' && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-[11px] text-green-800">
-                  <span className="font-bold uppercase tracking-wide mr-1">Lançando Realizado</span>
-                  — pode ser ajustado a qualquer momento; não gera uma nova revisão.
-                </p>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {erroReal && <span className="text-red-600 text-[11px]">{erroReal}</span>}
-                  <button onClick={handleCancelarEdicao} className="text-[11px] px-4 py-1.5 border border-gray-300 rounded-md hover:bg-white text-gray-600">Cancelar</button>
-                  <button onClick={handleSalvarRealizado} disabled={savingReal}
-                    className="text-[11px] px-4 py-1.5 bg-green-primary text-white rounded-md hover:bg-green-dark disabled:opacity-60">
-                    {savingReal ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {mesData.length === 0 ? (
+            {modo === 'realizado' ? (
+              <RealizadoDiarioObras
+                contratoId={Number(id)}
+                mesesContrato={mesesAtivos}
+                mesesPlano={lancAtual?.meses ?? []}
+                onFechar={handleCancelarEdicao}
+                onSalvo={fetchData}
+              />
+            ) : mesData.length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-4 py-3 rounded-md">
                 Nenhum lançamento de HH registrado ainda para este contrato.
                 {podeEditar && modo === 'leitura' && ' Clique em "Editar Previsto/Planejado" para cadastrar o primeiro lançamento.'}
@@ -554,9 +514,6 @@ export default function ContratoObrasHhPage() {
                     {modo === 'previsto_planejado' && (
                       <span className="text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-100 text-[#185FA5]">Editando Previsto/Planejado</span>
                     )}
-                    {modo === 'realizado' && (
-                      <span className="text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-green-100 text-green-dark">Lançando Realizado</span>
-                    )}
                   </div>
                   <div className="overflow-x-auto" style={{ maxHeight: '556px', overflowY: 'auto' }}>
                     <table className="w-full text-[12px]">
@@ -606,15 +563,8 @@ export default function ContratoObrasHhPage() {
                                 ) : loc(row.planejado)}
                               </td>
 
-                              <td className="px-4 py-2.5 text-right font-bold" style={{ color: modo === 'realizado' ? undefined : (rcPrev ?? '#9CA3AF') }}>
-                                {modo === 'realizado' ? (
-                                  <input type="text" inputMode="decimal"
-                                    value={editRealizado[key] ?? (row.realizado != null ? String(row.realizado) : '')}
-                                    onChange={e => setEditRealizado(p => ({ ...p, [key]: e.target.value }))}
-                                    onBlur={e => setEditRealizado(p => ({ ...p, [key]: parsePtBrHh(e.target.value) }))}
-                                    onPaste={e => { e.preventDefault(); setEditRealizado(p => ({ ...p, [key]: parsePtBrHh(e.clipboardData.getData('text')) })) }}
-                                    className="w-20 text-right border border-green-200 bg-green-50/60 rounded px-1.5 py-1 text-[11px] font-normal focus:outline-none focus:border-green-400" />
-                                ) : (row.realizado != null ? loc(row.realizado) : <span className="text-slate-300 font-normal">—</span>)}
+                              <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcPrev ?? '#9CA3AF' }}>
+                                {row.realizado != null ? loc(row.realizado) : <span className="text-slate-300 font-normal">—</span>}
                               </td>
 
                               <td className="px-4 py-2.5 text-right text-[#185FA5]">{loc(row.prevAcum)}</td>

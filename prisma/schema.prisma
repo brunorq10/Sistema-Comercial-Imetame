@@ -133,6 +133,7 @@ model User {
   contratos_criados           Contrato[]             @relation("ContratoCriador")
   hh_lancamentos              HhLancamento[]         @relation("HhLancamentoCriador")
   hh_realizados               HhRealizado[]          @relation("HhRealizadoCriador")
+  hh_realizados_dia_criados   HhRealizadoDia[]       @relation("HhRealizadoDiaCriador")
   fabricacao_itens_criados    FabricacaoItem[]       @relation("FabricacaoItemCriador")
   fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
   fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
@@ -545,6 +546,37 @@ model HhRealizado {
   @@map("hh_realizado")
 }
 
+// HH Realizado de Obras lançado DIARIAMENTE (efetivo → horas calculadas por
+// regra fixa). O total mensal em HhRealizado é mantido por soma destes dias
+// (ver src/app/api/acordos/hh/[id]/realizado-dia/route.ts) — HhRealizado
+// continua Int de propósito, para não quebrar os consumidores existentes.
+model HhRealizadoDia {
+  id                Int      @id @default(autoincrement())
+  contrato_id       Int
+  data              DateTime @db.Date
+
+  efetivo_normal    Int?
+  horas_normais     Decimal? @db.Decimal(8, 2) // calculado: efetivo_normal * 8.8
+
+  efetivo_extra     Int?
+  horas_extra_valor Decimal? @db.Decimal(4, 2) // horas por pessoa extra (padrão 1, editável por dia)
+  horas_extras      Decimal? @db.Decimal(8, 2) // calculado: efetivo_extra * horas_extra_valor
+
+  hh_total          Decimal  @db.Decimal(8, 2) // horas_normais + horas_extras
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by Int
+  updated_by Int?
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id])
+  criador  User     @relation("HhRealizadoDiaCriador", fields: [created_by], references: [id])
+
+  @@unique([contrato_id, data])
+  @@index([contrato_id])
+  @@map("hh_realizado_dia")
+}
+
 // ── Fabricações: HH por ITEM (descrição, peso, datas) ────────────────────────
 model FabricacaoItem {
   id          Int      @id @default(autoincrement())
@@ -868,6 +900,7 @@ model Contrato {
   historico      HistoricoContrato[]
   hh_lancamentos   HhLancamento[]
   hh_realizados    HhRealizado[]
+  hh_realizados_dia HhRealizadoDia[]
   hh_acomp_historico HhAcompanhamentoHistorico[]
   fabricacao_itens FabricacaoItem[]
   parada_hh_config ParadaHhConfig?
