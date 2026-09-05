@@ -106,16 +106,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
     </div>
   )
 
-  if (variant === 'resumo') {
-    return (
-      <div className="space-y-4">
-        {blocoBarras}
-        <Legenda variant={variant} />
-      </div>
-    )
-  }
-
-  // ── variant === 'contrato': barras + curva acumulada ──
+  // ── Curva acumulada (sempre exibida, junto com as barras) ──
   const labels = mesData.map(m => m.label)
   const cumPrevisto  = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlanejado = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.planejado] }, [])
@@ -129,9 +120,9 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   const chartData = {
     labels,
     datasets: [
-      { label: 'Orçado',    data: cumPrevisto,  borderColor: COR_PREVISTO,  backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [6, 3], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: COR_PREVISTO,  spanGaps: true },
-      { label: 'Planejado', data: cumPlanejado, borderColor: COR_PLANEJADO, backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4, 2], tension: 0.4, pointRadius: 2.5, pointBackgroundColor: COR_PLANEJADO, spanGaps: true },
-      { label: 'Realizado', data: cumRealizado, borderColor: COR_REALIZADO, backgroundColor: 'transparent', borderWidth: 1.5, tension: 0.4, pointRadius: 2.5, pointBackgroundColor: COR_REALIZADO, spanGaps: false },
+      { label: 'Orçado',    data: cumPrevisto,  borderColor: COR_PREVISTO,  backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PREVISTO,  spanGaps: true },
+      { label: 'Planejado', data: cumPlanejado, borderColor: COR_PLANEJADO, backgroundColor: 'transparent', borderWidth: 2, borderDash: [4, 2], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PLANEJADO, spanGaps: true },
+      { label: 'Realizado', data: cumRealizado, borderColor: COR_REALIZADO, backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_REALIZADO, spanGaps: false },
     ],
   }
 
@@ -168,18 +159,20 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
         {blocoBarras}
         <div className="w-full lg:flex-1 min-w-0 flex flex-col">
           <p className="text-[13px] font-bold text-gray-700 mb-0.5">Evolução acumulada</p>
-          <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada ao longo do contrato</p>
+          <p className="text-[11px] text-gray-400 mb-3">
+            {variant === 'contrato' ? 'Progressão acumulada ao longo do contrato' : 'Progressão acumulada ao longo do período selecionado'}
+          </p>
           <div style={{ height: HEIGHT }}><Line data={chartData} options={chartOpts} /></div>
         </div>
       </div>
-      <Legenda variant={variant} />
+      <Legenda />
     </div>
   )
 }
 
 // ─── Legenda ─────────────────────────────────────────────────────────────────
 
-function Legenda({ variant }: { variant: 'resumo' | 'contrato' }) {
+function Legenda() {
   const itens: [string, string, string][] = [
     [COR_PREVISTO,  'Orçado/Previsto', 'dashed'],
     [COR_PLANEJADO, 'Planejado',       'dashed'],
@@ -189,14 +182,10 @@ function Legenda({ variant }: { variant: 'resumo' | 'contrato' }) {
     <div className="flex items-center justify-center gap-5">
       {itens.map(([c, l, style]) => (
         <span key={l} className="flex items-center gap-2 text-[11px] text-gray-500">
-          {variant === 'contrato' ? (
-            <span className="inline-block w-5 h-0.5" style={{
-              background: style === 'solid' ? c
-                : `repeating-linear-gradient(90deg,${c} 0,${c} 4px,transparent 4px,transparent 8px)`,
-            }} />
-          ) : (
-            <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: c }} />
-          )}
+          <span className="inline-block w-5 h-0.5" style={{
+            background: style === 'solid' ? c
+              : `repeating-linear-gradient(90deg,${c} 0,${c} 4px,transparent 4px,transparent 8px)`,
+          }} />
           {l}
         </span>
       ))}
