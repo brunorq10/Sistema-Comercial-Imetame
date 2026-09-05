@@ -168,7 +168,7 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
   return (
     <div className="h-full overflow-auto border border-gray-200 rounded-md">
       <table className="w-full border-collapse text-[11px]">
-        <thead className="sticky top-0 z-10">
+        <thead className="sticky top-0 z-10 bg-green-primary">
           {/* ── Linha totalizadora ── */}
           <tr className="bg-[#C8E6C9] border-b-2 border-green-primary">
             <td

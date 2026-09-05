@@ -47,7 +47,7 @@ export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlterac
   return (
     <div className="h-full border border-gray-200 rounded-md overflow-auto">
       <table className="w-full border-collapse text-[11px]">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-10 bg-green-primary">
             <tr>
               <Th>Nº Proposta</Th>
               <Th>Versão</Th>

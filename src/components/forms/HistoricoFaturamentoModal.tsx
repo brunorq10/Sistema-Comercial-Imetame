@@ -60,7 +60,7 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
   return (
     <div className="overflow-auto" style={{ maxHeight: maxH }}>
       <table className="w-full border-collapse text-[11px]">
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 bg-green-primary">
               <tr>
                 <th className="bg-green-primary text-white px-3 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap">
                   Data / Hora

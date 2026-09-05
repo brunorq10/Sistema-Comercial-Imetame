@@ -269,7 +269,7 @@ function HistoricoFabModal({ contrato, onClose }: { contrato: ContratoFab; onClo
       ) : (
         <div className="overflow-auto max-h-[480px]">
           <table className="w-full border-collapse text-[11px]">
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 bg-green-primary">
               <tr className="bg-green-primary text-white text-[10px] uppercase tracking-wide">
                 <th className="px-3 py-[7px] text-left font-semibold whitespace-nowrap">Data / Hora</th>
                 <th className="px-3 py-[7px] text-left font-semibold whitespace-nowrap">Item</th>

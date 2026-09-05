@@ -260,7 +260,7 @@ function TabelaAbertas({ items }: { items: SolicitacaoAberta[] }) {
           <col style={{ width: 70 }} />
           <col style={{ width: 90 }} />
         </colgroup>
-        <thead className="sticky top-0 z-10">
+        <thead className="sticky top-0 z-10 bg-slate-50">
           <tr>
             <th className={cn(thCls, 'text-center px-1')} />
             <th className={thCls}>Nº</th>

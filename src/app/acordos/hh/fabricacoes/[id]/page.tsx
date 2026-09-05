@@ -340,7 +340,7 @@ export default function ContratoFabricacaoPage() {
               </div>
               <div className="overflow-x-auto" style={{ maxHeight: '480px', overflowY: 'auto' }}>
                 <table className="w-full text-[12px]">
-                  <thead className="sticky top-0 z-10">
+                  <thead className="sticky top-0 z-10 bg-green-primary">
                     <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
                       <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Mês</th>
                       <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">HH Orçado</th>
@@ -373,7 +373,7 @@ export default function ContratoFabricacaoPage() {
                       )
                     })}
                   </tbody>
-                  <tfoot className="sticky bottom-0 z-10">
+                  <tfoot className="sticky bottom-0 z-10 bg-slate-50">
                     <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
                       <td className="px-4 py-3 text-[11px] uppercase tracking-wide text-gray-700">Total</td>
                       <td className="px-4 py-3 text-right" style={{ color: '#6B7280' }}>{loc(totals.orc)}</td>

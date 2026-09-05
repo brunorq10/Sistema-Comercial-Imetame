@@ -66,7 +66,7 @@ function Gauge({ percent, faturado, previsto }: { percent: number; faturado: num
     plugins: { legend: { display: false }, tooltip: { enabled: false }, datalabels: { display: false } },
   }
   return (
-    <div className="relative mx-auto" style={{ height: 200, maxWidth: 320 }}>
+    <div className="relative mx-auto" style={{ height: 280, maxWidth: 460 }}>
       <Doughnut data={data} options={opts} />
       <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
         <span className="text-[36px] font-bold text-green-primary leading-none">{percent.toFixed(1).replace('.', ',')}%</span>
@@ -363,17 +363,16 @@ export default function IndicadoresAcordosPage() {
             <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent="#1565C0" />
           </div>
 
-          {/* 2/3 — Faturamento por mercado + Gauge */}
-          <SectionTitle>Faturamento por mercado · % faturado geral do ano</SectionTitle>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-              <p className="text-[12px] font-bold text-gray-700 mb-3">Faturamento por mercado</p>
-              <TabelaMercado data={data.porRamo} />
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-              <p className="text-[12px] font-bold text-gray-700 mb-3">% faturado geral do ano</p>
-              <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
-            </div>
+          {/* 2 — Faturamento por mercado */}
+          <SectionTitle>Faturamento por mercado</SectionTitle>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <TabelaMercado data={data.porRamo} />
+          </div>
+
+          {/* 3 — % faturado geral do ano */}
+          <SectionTitle>% faturado geral do ano</SectionTitle>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
           </div>
 
           {/* 4 — Meta acumulada x Faturado acumulado (%) */}

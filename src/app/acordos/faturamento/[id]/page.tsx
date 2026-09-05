@@ -438,24 +438,6 @@ export default function ContratoVisaoGeralPage() {
         </section>
       )}
 
-      {/* Seletor de ano compartilhado pelos gráficos — sem efeito para Paradas
-          (tabela/gráfico diários abaixo não usam ano), então fica escondido. */}
-      {!isParada && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Período</h2>
-          <div className="flex gap-1">
-            {anosDisponiveis.map((ano) => (
-              <button key={ano} onClick={() => setAnoSel(ano)}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-              >{ano}</button>
-            ))}
-            <button onClick={() => setAnoSel(null)}
-              className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-            >Todos</button>
-          </div>
-        </div>
-      )}
-
       {/* Tabela — Faturamento por Mês (Paradas: HH Previsto x Realizado por dia) */}
       {isParada ? (
         <ParadaHhTabela rows={paradaRows} />
@@ -467,7 +449,7 @@ export default function ContratoVisaoGeralPage() {
           ) : (
             <div className="border border-gray-200 rounded-md overflow-auto" style={{ maxHeight: '446px' }}>
               <table className="w-full border-collapse text-[11px]">
-                <thead className="sticky top-0 z-10">
+                <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Ano</th>
                     <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Mês</th>
@@ -495,7 +477,7 @@ export default function ContratoVisaoGeralPage() {
                     )
                   })}
                 </tbody>
-                <tfoot className="sticky bottom-0 z-10">
+                <tfoot className="sticky bottom-0 z-10 bg-gray-50">
                   {(() => {
                     const totPrev = monthlyTable.reduce((a, r) => a + r.previsto, 0)
                     const totCons = monthlyTable.reduce((a, r) => a + r.consolidado, 0)
@@ -526,7 +508,19 @@ export default function ContratoVisaoGeralPage() {
         <ParadaHhChart rows={paradaRows} />
       ) : (
         <section className="bg-white border border-gray-200 rounded-lg p-4">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">∿ Avanço % — Faturamento x HH</h2>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">∿ Avanço % — Faturamento x HH</h2>
+            <div className="flex gap-1">
+              {anosDisponiveis.map((ano) => (
+                <button key={ano} onClick={() => setAnoSel(ano)}
+                  className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === ano ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                >{ano}</button>
+              ))}
+              <button onClick={() => setAnoSel(null)}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${anoSel === null ? 'bg-green-primary text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+              >Todos</button>
+            </div>
+          </div>
           <ContratoAvancoPercentualChart
             serieA={avancoPctData.faturamentoPct}
             serieB={avancoPctData.hhPct}

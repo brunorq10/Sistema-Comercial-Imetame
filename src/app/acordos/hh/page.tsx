@@ -356,7 +356,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
 
       <div className="flex-1 min-h-0 overflow-auto border border-gray-200 rounded-md bg-white">
         <table className="text-[11px] border-collapse min-w-full">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-10 bg-green-primary">
             <tr className="bg-green-primary text-white">
               <th colSpan={9} className="px-3 py-1.5 text-left text-[10px] font-semibold border-r border-green-700">Cadastro</th>
               <th colSpan={classificacao === 'PARADAS' ? 7 : 5} className="px-3 py-1.5 text-center text-[10px] font-semibold bg-[#1B5E20] border-r border-green-700">Indicadores de HH</th>
@@ -721,7 +721,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto" style={{ maxHeight: '556px', overflowY: 'auto' }}>
                   <table className="w-full text-[12px]">
-                    <thead className="sticky top-0 z-10">
+                    <thead className="sticky top-0 z-10 bg-green-primary">
                       <tr className="bg-green-primary text-white text-[9px] uppercase tracking-wide">
                         <th className="px-4 py-2 text-left font-semibold whitespace-nowrap">Mês</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto</th>
@@ -767,7 +767,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                         )
                       })}
                     </tbody>
-                    <tfoot className="sticky bottom-0 z-10">
+                    <tfoot className="sticky bottom-0 z-10 bg-slate-50">
                       <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
                         <td className="px-4 py-3 text-[11px] uppercase tracking-wide text-gray-700">Total</td>
                         <td className="px-4 py-3 text-right text-[#185FA5]">{loc(totPrev)}</td>

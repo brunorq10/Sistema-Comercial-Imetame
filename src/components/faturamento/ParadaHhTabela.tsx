@@ -20,7 +20,7 @@ export function ParadaHhTabela({ rows }: { rows: ParadaHhRow[] }) {
       ) : (
         <div className="border border-gray-200 rounded-md overflow-auto" style={{ maxHeight: '446px' }}>
           <table className="w-full border-collapse text-[11px]">
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 bg-gray-50">
               <tr>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Etapa</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Data</th>
@@ -53,7 +53,7 @@ export function ParadaHhTabela({ rows }: { rows: ParadaHhRow[] }) {
                 )
               })}
             </tbody>
-            <tfoot className="sticky bottom-0 z-10">
+            <tfoot className="sticky bottom-0 z-10 bg-gray-50">
               <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
                 <td colSpan={2} className="px-3 py-2 text-[10px] uppercase tracking-wide text-gray-700 whitespace-nowrap">Total</td>
                 <td className="px-3 py-2 text-right text-blue-600 whitespace-nowrap">{fmtHH(totPrevisto)}</td>
