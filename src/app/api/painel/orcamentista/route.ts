@@ -104,6 +104,7 @@ export async function GET(req: NextRequest) {
       portal_fechamento: s.portal_fechamento?.toISOString() ?? null,
 
       versao_atual: revisaoEsperada,
+      as_sold: s.as_sold,
       tecnica_enviada: tecnicaEnviada,
       tecnica_nao_aplicavel: tecnicaAtual?.nao_aplicavel ?? false,
       data_envio_tecnica: tecnicaAtual?.data_envio?.toISOString() ?? null,

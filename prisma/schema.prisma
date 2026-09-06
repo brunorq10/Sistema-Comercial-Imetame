@@ -590,6 +590,9 @@ model FabricacaoItem {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
   created_by  Int
+  // Lixeira: exclusão vira soft-delete recuperável (mesmo padrão de NF/sub-índice)
+  deleted_at  DateTime?
+  deleted_by  Int?
 
   contrato   Contrato              @relation(fields: [contrato_id], references: [id])
   criador    User                  @relation("FabricacaoItemCriador", fields: [created_by], references: [id])
@@ -598,6 +601,7 @@ model FabricacaoItem {
   historico  FabricacaoItemHistorico[]
 
   @@index([contrato_id])
+  @@index([deleted_at])
   @@map("fabricacao_itens")
 }
 
@@ -820,6 +824,11 @@ model ParadaHhDia {
 
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
+  // Quem lançou/alterou este dia — nullable porque dias já existentes antes desta
+  // coluna não têm essa informação (mesmo padrão de solicitado_por/revisado_por
+  // em NotaFiscalContrato: resolvido à parte via lookup de usuário, sem relation).
+  created_by       Int?
+  updated_by       Int?
 
   config           ParadaHhConfig @relation(fields: [config_id], references: [id])
 
@@ -935,6 +944,7 @@ model Contrato {
   @@index([status])
   @@index([cancelled_at])
   @@index([hh_cancelado_at])
+  @@index([responsavel_id])
   @@map("contratos")
 }
 

@@ -7,12 +7,12 @@ import { exigirTitularContrato } from '@/lib/permissaoApi'
 const DiaSchema = z.object({
   etapa: z.enum(['PREPARATIVO', 'PARADA', 'ACOMP_DESMOB']),
   data: z.string(), // ISO date
-  efetivo_plan: z.number().int().nullable().optional(),
-  horas_dia_plan: z.number().nullable().optional(),
-  hh_plan: z.number().nullable().optional(),
-  efetivo_real: z.number().int().nullable().optional(),
-  horas_dia_real: z.number().nullable().optional(),
-  hh_real: z.number().nullable().optional(),
+  efetivo_plan: z.number().int().nonnegative().nullable().optional(),
+  horas_dia_plan: z.number().nonnegative().nullable().optional(),
+  hh_plan: z.number().nonnegative().nullable().optional(),
+  efetivo_real: z.number().int().nonnegative().nullable().optional(),
+  horas_dia_real: z.number().nonnegative().nullable().optional(),
+  hh_real: z.number().nonnegative().nullable().optional(),
 })
 
 const BodySchema = z.object({
@@ -253,6 +253,8 @@ export async function PUT(
             efetivo_real: d.efetivo_real ?? null,
             horas_dia_real: d.horas_dia_real ?? null,
             hh_real: d.hh_real != null ? d.hh_real : null,
+            created_by: userId,
+            updated_by: userId,
           },
           update: {
             efetivo_plan: d.efetivo_plan ?? null,
@@ -261,6 +263,7 @@ export async function PUT(
             efetivo_real: d.efetivo_real ?? null,
             horas_dia_real: d.horas_dia_real ?? null,
             hh_real: d.hh_real != null ? d.hh_real : null,
+            updated_by: userId,
           },
         }),
       ),

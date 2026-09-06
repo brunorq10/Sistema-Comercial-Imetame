@@ -9,6 +9,7 @@ import { UcrFaixasTabela } from '@/components/acordos/UcrFaixasTabela'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { regiaoPorEstado, classificarUcr, resolverVigencia, UCR_FAIXAS, UCR_REGIOES, type UcrVigencia } from '@/lib/ucr'
+import { formatCurrency } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ function fmtPct(v: number | null | undefined): string {
 
 function fmtR$(v: number | null | undefined): string {
   if (v == null || isNaN(v)) return '–'
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return formatCurrency(v)
 }
 
 function isWeekend(dateStr: string): boolean {
@@ -862,11 +863,11 @@ export default function ParadaHhPage() {
                   </td>
                   <td className="px-4 py-2 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <div className="text-[10px] text-gray-400 mt-0.5">HH Real</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">HH Realizado</div>
                   </td>
                   <td className="px-4 py-2 text-right text-gray-700">
                     {hhTotalReal > 0 ? fmtHH(hhTotalReal) : <span className="text-gray-300">–</span>}
-                    <div className="text-[10px] text-gray-400 mt-0.5">HH Real</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">HH Realizado</div>
                   </td>
                 </tr>
               </tbody>

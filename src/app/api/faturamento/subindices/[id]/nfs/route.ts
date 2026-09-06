@@ -29,6 +29,11 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  // SEG-15: vencimento não pode ser anterior à emissão
+  if (new Date(parsed.data.data_vencimento) < new Date(parsed.data.data_emissao)) {
+    return NextResponse.json({ data: null, error: 'A data de vencimento não pode ser anterior à data de emissão.' }, { status: 400 })
+  }
+
   // RN-CF-07: bloquear lançamento quando há alteração de previsão pendente
   const alteracaoPendente = await prisma.previsaoAlteracao.count({
     where: { subindice_id: subindiceId, status: 'PENDENTE' },

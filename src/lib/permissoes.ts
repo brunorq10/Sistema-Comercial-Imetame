@@ -50,6 +50,9 @@ export const CATALOGO = {
   'orc.solicitacao.revisao': { perfis: ['ADM_COMERCIAL'], analista: true },
   'orc.solicitacao.editar':  { perfis: ['ADM_COMERCIAL'], analista: true },
   'orc.solicitacao.cancelar':{ perfis: ['ADM_COMERCIAL'], analista: true },
+  // Transferir orçamentista: exclusivo do Analista Crítico (não é liberado a
+  // todo ADM_COMERCIAL, ao contrário das demais permissões de solicitação acima).
+  'orc.solicitacao.transferir': { perfis: [], analista: true },
   // Análise de Solicitações
   'orc.analise.ver':         { perfis: ['GESTAO_COMERCIAL', 'ADM_COMERCIAL'], analista: true },
   'orc.analise.abrir':       { perfis: [], analista: true },

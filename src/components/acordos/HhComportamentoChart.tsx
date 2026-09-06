@@ -60,7 +60,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   const totRealizado = temRealizado ? mesData.reduce((s, m) => s + (m.realizado ?? 0), 0) : null
 
   const barras = [
-    { label: 'Orçado',    valor: totPrevisto,  cor: COR_PREVISTO },
+    { label: 'Previsto',  valor: totPrevisto,  cor: COR_PREVISTO },
     { label: 'Planejado', valor: totPlanejado, cor: COR_PLANEJADO },
     { label: 'Realizado', valor: totRealizado, cor: COR_REALIZADO },
   ]
@@ -71,7 +71,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   const blocoBarras = (
     <div className="w-full lg:flex-1 min-w-0 flex flex-col">
       <p className="text-[13px] font-bold text-gray-700 mb-0.5">{titulo ?? (variant === 'contrato' ? 'Total do contrato' : 'Total selecionado')}</p>
-      <p className="text-[11px] text-gray-400 mb-3">Orçado x Planejado x Realizado</p>
+      <p className="text-[11px] text-gray-400 mb-3">Previsto x Planejado x Realizado</p>
       <div style={{ height: HEIGHT }} className="flex flex-col">
         <div className="flex-1 flex flex-col justify-evenly">
           {barras.map(b => {
@@ -120,7 +120,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   const chartData = {
     labels,
     datasets: [
-      { label: 'Orçado',    data: cumPrevisto,  borderColor: COR_PREVISTO,  backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PREVISTO,  spanGaps: true },
+      { label: 'Previsto',  data: cumPrevisto,  borderColor: COR_PREVISTO,  backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PREVISTO,  spanGaps: true },
       { label: 'Planejado', data: cumPlanejado, borderColor: COR_PLANEJADO, backgroundColor: 'transparent', borderWidth: 2, borderDash: [4, 2], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PLANEJADO, spanGaps: true },
       { label: 'Realizado', data: cumRealizado, borderColor: COR_REALIZADO, backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_REALIZADO, spanGaps: false },
     ],
@@ -174,7 +174,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
 
 function Legenda() {
   const itens: [string, string, string][] = [
-    [COR_PREVISTO,  'Orçado/Previsto', 'dashed'],
+    [COR_PREVISTO,  'Previsto',        'dashed'],
     [COR_PLANEJADO, 'Planejado',       'dashed'],
     [COR_REALIZADO, 'Realizado',       'solid'],
   ]

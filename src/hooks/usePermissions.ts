@@ -50,7 +50,7 @@ export function usePermissions() {
     canRecusarSolicitacao: pode('orc.analise.decidir'),
     canVerTodasSolicitacoes: pode('orc.analise.ver'),
     canCriarRevisao: pode('orc.solicitacao.revisao'),
-    canTransferirOrcamentista: pode('orc.solicitacao.editar'),
+    canTransferirOrcamentista: pode('orc.solicitacao.transferir'),
     canAnalisarSolicitacao: pode('orc.analise.decidir'),
 
     // Propostas (matriz: enviar/editar = Orçamentista no próprio registro)

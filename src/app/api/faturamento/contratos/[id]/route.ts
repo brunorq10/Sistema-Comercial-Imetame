@@ -299,7 +299,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ data: serializeContrato(contrato), error: null })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
@@ -308,6 +308,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+
+  const body = await req.json().catch(() => ({}))
+  const motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  if (motivo.length < 5) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da exclusão (mínimo 5 caracteres).' }, { status: 400 })
+  }
 
   // RN-CF-21: só pode cancelar macro se não houver sub-índices vinculados
   const qtSubindices = await prisma.subIndiceFaturamento.count({ where: { contrato_id: id } })
@@ -323,7 +329,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   await prisma.contrato.update({
     where: { id },
     data: {
-      cancelled_at: new Date(), cancel_reason: 'Excluído pelo usuário', status: 'CANCELADO',
+      cancelled_at: new Date(), cancel_reason: motivo, status: 'CANCELADO',
       deleted_at: new Date(), deleted_by: Number(session.user.id),
     },
   })

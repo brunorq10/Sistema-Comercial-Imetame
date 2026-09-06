@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { FabricacoesView } from '@/components/acordos/FabricacoesView'
 import { ParadasResumoView } from '@/components/acordos/ParadasResumoView'
 import { FaixasUcrView } from '@/components/acordos/FaixasUcrView'
@@ -423,10 +423,10 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                     {c.responsavel?.nome ?? '—'}
                   </td>
                   <td className="px-3 py-2 text-right text-[10px] font-medium" style={{ color: '#185FA5' }}>
-                    {c.valor_orcado != null ? c.valor_orcado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                    {c.valor_orcado != null ? formatCurrency(c.valor_orcado) : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-3 py-2 text-right text-[10px] font-medium" style={{ color: '#3B6D11' }}>
-                    {c.valor_faturado != null ? c.valor_faturado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                    {c.valor_faturado != null ? formatCurrency(c.valor_faturado) : <span className="text-gray-300">—</span>}
                   </td>
                   {classificacao === 'PARADAS' ? (
                     <>
@@ -440,13 +440,13 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                         {c.parada_pct_real_prev != null ? <MiniBar pct={c.parada_pct_real_prev} /> : <span className="text-gray-300 text-[10px] block text-center">—</span>}
                       </td>
                       <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#185FA5' }}>
-                        {c.parada_fin_orcado_rs_hh != null ? c.parada_fin_orcado_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                        {c.parada_fin_orcado_rs_hh != null ? formatCurrency(c.parada_fin_orcado_rs_hh) : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#BA7517' }}>
-                        {c.parada_fin_prev_rs_hh != null ? c.parada_fin_prev_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                        {c.parada_fin_prev_rs_hh != null ? formatCurrency(c.parada_fin_prev_rs_hh) : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-2 py-2 text-right text-[10px] font-medium w-[90px]" style={{ color: '#3B6D11' }}>
-                        {c.parada_fin_real_rs_hh != null ? c.parada_fin_real_rs_hh.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : <span className="text-gray-300">—</span>}
+                        {c.parada_fin_real_rs_hh != null ? formatCurrency(c.parada_fin_real_rs_hh) : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-2 py-2 text-center w-[110px]">
                         {(() => {

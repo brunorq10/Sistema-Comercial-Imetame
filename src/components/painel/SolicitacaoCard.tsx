@@ -1,6 +1,6 @@
 'use client'
 
-import { Badge, ClassificacaoBadge } from '@/components/ui/Badge'
+import { Badge, ClassificacaoBadge, VersaoBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatDate } from '@/lib/utils'
 import { CLASSIFICACAO_LABELS, INTERESSE_LABELS } from '@/types'
@@ -28,6 +28,7 @@ export interface PainelItem {
   portal_hora: string | null
   portal_fechamento: string | null
   versao_atual: number
+  as_sold: boolean
   tecnica_enviada: boolean
   tecnica_nao_aplicavel: boolean
   data_envio_tecnica: string | null
@@ -93,7 +94,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
       <div className="flex items-start justify-between mb-2.5 gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[13px] font-bold">{item.numero}</span>
-          <Badge variant="purple">{`Rev${String(item.versao_atual - 1).padStart(2, '0')}`}</Badge>
+          <VersaoBadge versao={item.versao_atual} asSold={item.as_sold} />
           {item.classificacao && <ClassificacaoBadge value={item.classificacao} />}
           {/* Status urgência */}
           {atrasado

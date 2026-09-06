@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 // POST /api/solicitacoes/:id/reativar
 // RN-15: Adm Comercial reativa solicitação cancelada
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
+  { const { erro } = await exigirPermissao('orc.solicitacao.criar'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

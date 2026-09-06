@@ -74,19 +74,32 @@ export async function POST(req: NextRequest) {
   }
   const { contrato_id, itens } = parsed.data
 
+  const existentesAntes = await prisma.fabricacaoItem.findMany({
+    where: { contrato_id, deleted_at: null },
+    select: { id: true },
+  })
+  const idsPayloadCheck = new Set(itens.filter((it) => it.id != null).map((it) => it.id as number))
+  const haveraRemocao = existentesAntes.some((ex) => !idsPayloadCheck.has(ex.id))
+  if (haveraRemocao) {
+    const { erro } = await exigirPermissao('acordos.fab.excluir')
+    if (erro) return erro
+  }
+
   await prisma.$transaction(async (tx) => {
     const existentes = await tx.fabricacaoItem.findMany({
-      where: { contrato_id },
+      where: { contrato_id, deleted_at: null },
       include: { meses: true },
     })
     const existentesById = new Map(existentes.map((it) => [it.id, it]))
     const idsPayload = new Set(itens.filter((it) => it.id != null).map((it) => it.id as number))
     const hist: Hist[] = []
 
-    // Itens removidos
+    // Itens removidos: soft-delete (recuperável) — mesmo padrão de NF/sub-índice.
+    // Como o histórico não é mais apagado em cascata, o rastro do item sobrevive.
     for (const ex of existentes) {
       if (!idsPayload.has(ex.id)) {
-        await tx.fabricacaoItem.delete({ where: { id: ex.id } })
+        await tx.fabricacaoItem.update({ where: { id: ex.id }, data: { deleted_at: new Date(), deleted_by: userId } })
+        hist.push({ item_id: ex.id, campo: 'Item removido', valor_de: ex.descricao, valor_para: null, created_by: userId })
       }
     }
 

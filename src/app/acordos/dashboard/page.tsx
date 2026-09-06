@@ -386,19 +386,19 @@ export default function IndicadoresAcordosPage() {
 
           {/* 2 — Faturamento por mercado */}
           <SectionTitle>Faturamento por mercado</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <ChartCard>
             <TabelaMercado data={data.porRamo} />
-          </div>
+          </ChartCard>
 
           {/* 3 — % faturado geral do ano */}
           <SectionTitle>% faturado geral do ano</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <ChartCard>
             <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
-          </div>
+          </ChartCard>
 
           {/* 4 — Meta acumulada x Faturado acumulado (%) */}
           <SectionTitle>Meta de faturamento acumulada x faturamento real — avanço %</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <ChartCard>
             <div style={{ height: 300 }}>
               <ContratoAvancoPercentualChart
                 serieA={metaAcumPct} serieB={faturadoAcumPct}
@@ -407,7 +407,7 @@ export default function IndicadoresAcordosPage() {
                 labels={MES_LABEL}
               />
             </div>
-          </div>
+          </ChartCard>
 
           {/* 5 — Tabela detalhada */}
           <SectionTitle>Previsão x realizado por mês — detalhamento</SectionTitle>
@@ -415,10 +415,10 @@ export default function IndicadoresAcordosPage() {
 
           {/* 6 — Participação por empresa */}
           <SectionTitle>Participação de cada empresa no faturamento do ano atual</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <ChartCard>
             <Treemap data={data.porCliente} />
             <p className="text-[10px] text-gray-400 mt-2">Área de cada retalho proporcional à participação no faturamento total do ano ({fmtM(data.totalFaturadoAno)}).</p>
-          </div>
+          </ChartCard>
 
           {/* 7 — Aderência por responsável */}
           <SectionTitle>Aderência por responsável de Acordos</SectionTitle>

@@ -43,6 +43,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const nfAtual = await prisma.notaFiscalContrato.findUnique({ where: { id } })
   if (!nfAtual) return NextResponse.json({ data: null, error: 'NF não encontrada' }, { status: 404 })
 
+  // SEG-15: vencimento não pode ser anterior à emissão
+  const novaEmissao = d.data_emissao ? new Date(d.data_emissao) : nfAtual.data_emissao
+  const novoVencimento = d.data_vencimento ? new Date(d.data_vencimento) : nfAtual.data_vencimento
+  if (novoVencimento < novaEmissao) {
+    return NextResponse.json({ data: null, error: 'A data de vencimento não pode ser anterior à data de emissão.' }, { status: 400 })
+  }
+
   const novoValorTotal  = d.valor_total_nf  ?? Number(nfAtual.valor_total_nf)
   const novoPercentual  = d.percentual      ?? Number(nfAtual.percentual)
   const valorAtribuido  = (novoValorTotal * novoPercentual) / 100

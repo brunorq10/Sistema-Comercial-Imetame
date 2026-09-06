@@ -84,6 +84,7 @@ export const FAB_CONTRATO_INCLUDE = {
   cliente_final: { select: { id: true, nome: true } },
   responsavel:   { select: { id: true, nome: true } },
   fabricacao_itens: {
+    where: { deleted_at: null },
     orderBy: { ordem: 'asc' },
     include: {
       meses:      true,

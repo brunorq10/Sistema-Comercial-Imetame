@@ -3,20 +3,18 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
+import { exigirPermissao } from '@/lib/permissaoApi'
 
 const schema = z.object({
   novo_orcamentista_id: z.number().int().positive(),
 })
 
 // POST /api/solicitacoes/:id/transferir-orcamentista
-// RN-23: ADM_COMERCIAL transfere orçamentista; notifica saída e chegada
+// RN-23: exclusivo do Analista Crítico (ADM_GERAL soberano à parte)
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
-
-  if (!['ADM_COMERCIAL', 'ADM_GERAL'].includes(session.user.perfil as string)) {
-    return NextResponse.json({ data: null, error: 'Apenas administradores podem transferir orçamentistas' }, { status: 403 })
-  }
+  { const { erro } = await exigirPermissao('orc.solicitacao.transferir'); if (erro) return erro }
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { purgarVencidos, cutoffLixeira, LIXEIRA_RETENCAO_DIAS, TIPO_LABELS, type TipoLixeira } from '@/lib/lixeira'
+import { formatCurrency } from '@/lib/utils'
 
 interface ItemLixeira {
   tipo: TipoLixeira
@@ -75,7 +76,7 @@ export async function GET() {
   ])
 
   const nome = (id: number | null) => users.find((u) => u.id === id)?.nome ?? null
-  const fmt = (v: unknown) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const fmt = (v: { toString(): string }) => formatCurrency(Number(v))
 
   const itens: ItemLixeira[] = [
     ...nfs.map((n) => ({

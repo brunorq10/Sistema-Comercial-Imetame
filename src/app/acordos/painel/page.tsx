@@ -23,7 +23,7 @@ const W = {
   indice: 120, cliente: 125, cliente_final: 130, cidade: 110, descricao: 240,
   classificacao: 110, ramo: 140, os: 110, anoRef: 70, acordo: 120, proposta: 110,
   dtInicio: 90, dtFim: 90, statusFat: 90,
-  vlrTotal: 155, vlrFat: 150, saldo: 145,
+  vlrTotal: 175, vlrFat: 170, saldo: 165,
   responsavel: 130, comentarios: 140,
   mes: 130, prevAnos: 130, acoes: 64,
 }

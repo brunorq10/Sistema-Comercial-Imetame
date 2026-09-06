@@ -3,7 +3,8 @@
 import { cn } from '@/lib/utils'
 
 interface ChartCardProps {
-  title: string
+  /** Omitido quando a seção já tem um <SectionTitle> próprio acima do card. */
+  title?: string
   subtitle?: string
   accent?: string
   className?: string
@@ -24,8 +25,8 @@ export function ChartCard({ title, subtitle, accent, className, children }: Char
       )}
       style={accent ? { borderLeftColor: accent } : undefined}
     >
-      <p className="text-[12px] font-bold text-gray-700 mb-3">{title}</p>
-      {subtitle && <p className="text-[11px] text-gray-400 -mt-2 mb-3">{subtitle}</p>}
+      {title && <p className="text-[12px] font-bold text-gray-700 mb-3">{title}</p>}
+      {subtitle && <p className={cn('text-[11px] text-gray-400 mb-3', title && '-mt-2')}>{subtitle}</p>}
       {children}
     </div>
   )

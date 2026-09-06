@@ -884,7 +884,7 @@ export default function DashboardComercialPage() {
         /* ── Aba Propostas ──────────────────────────────────────────────── */
         <>
           <SectionTitle>Solicitações em Aberto — Propostas Pendentes</SectionTitle>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <ChartCard>
             <CardsAbertas
               counts={data.abertas_counts}
               filtro={filtroAbertas}
@@ -897,7 +897,7 @@ export default function DashboardComercialPage() {
                   : data.solicitacoes_abertas.filter((s) => s.situacao === filtroAbertas)
               }
             />
-          </div>
+          </ChartCard>
 
           {/* Pontualidade de envio por orçamentista (movida da aba Valor e Resultado) */}
           <SectionTitle>Pontualidade de envio por orçamentista</SectionTitle>

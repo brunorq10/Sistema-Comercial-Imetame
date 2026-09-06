@@ -109,7 +109,7 @@ export async function DELETE(req: NextRequest) {
   { const _n = await exigirTitularContrato(session, contrato_id, 'acordos.fab.realizado.lancar'); if (_n) return _n }
 
   const itens = await prisma.fabricacaoItem.findMany({
-    where: { contrato_id },
+    where: { contrato_id, deleted_at: null },
     select: { id: true, _count: { select: { realizados: true } } },
   })
   const comLancamentos = itens.filter((it) => it._count.realizados > 0)

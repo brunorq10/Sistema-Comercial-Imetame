@@ -33,6 +33,17 @@ function resolveHhTotal(d: z.infer<typeof schema>): number | null {
   return null
 }
 
+// SEG-14: Paradas exige HH Direto/Indireto, Efetivo Pico e Dias de Parada —
+// hoje só cobrado na tela; sem isso no servidor, uma chamada direta à API
+// grava proposta incompleta que depois aparece como "—" nos indicadores.
+function validarObrigatoriosParada(d: z.infer<typeof schema>): string | null {
+  if (d.hh_direto === undefined) return 'HH Direto é obrigatório'
+  if (d.hh_indireto === undefined) return 'HH Indireto é obrigatório'
+  if (d.efetivo_pico === undefined) return 'Efetivo Pico é obrigatório'
+  if (d.dias_parada === undefined) return 'Dias de Parada é obrigatório'
+  return null
+}
+
 function resolvePesoMontagem(d: z.infer<typeof schema>): number | null {
   if (d.peso_montagem !== undefined) return d.peso_montagem
   const hasCategoria = d.peso_equipamentos !== undefined || d.peso_tubulacoes !== undefined
@@ -78,6 +89,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       || d.peso_tubulacoes !== undefined || d.peso_suportes !== undefined || d.peso_estruturas !== undefined
     if (!hasHh && !hasPeso) {
       return NextResponse.json({ data: null, error: 'Informe os dados da proposta técnica' }, { status: 400 })
+    }
+    if (sol.classificacao === 'PARADAS') {
+      const erroParada = validarObrigatoriosParada(d)
+      if (erroParada) return NextResponse.json({ data: null, error: erroParada }, { status: 400 })
     }
   }
 
@@ -162,6 +177,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
+  const sol = await prisma.solicitacao.findUnique({ where: { id }, select: { classificacao: true } })
   const latest = await prisma.propostaTecnica.findFirst({
     where: { solicitacao_id: id },
     orderBy: { versao: 'desc' },
@@ -171,6 +187,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   const d = parsed.data
+
+  if (!latest.nao_aplicavel && sol?.classificacao === 'PARADAS') {
+    const erroParada = validarObrigatoriosParada(d)
+    if (erroParada) return NextResponse.json({ data: null, error: erroParada }, { status: 400 })
+  }
 
   const proposta = await prisma.propostaTecnica.update({
     where: { id: latest.id },

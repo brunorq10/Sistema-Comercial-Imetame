@@ -10,6 +10,7 @@ import {
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import type { Context } from 'chartjs-plugin-datalabels'
 import { Chart } from 'react-chartjs-2'
+import { formatCurrency } from '@/lib/utils'
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -41,7 +42,7 @@ function fmtAxis(v: number): string {
 }
 
 function fmtTooltip(v: number): string {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return formatCurrency(v)
 }
 
 function fmtPct(v: number): string {

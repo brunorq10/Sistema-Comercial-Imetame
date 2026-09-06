@@ -25,7 +25,7 @@ export function ParadaHhTabela({ rows }: { rows: ParadaHhRow[] }) {
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Etapa</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Data</th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">HH Previsto</th>
-                <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">HH Real</th>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">HH Realizado</th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Previsto Acum.</th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">Real Acum.</th>
                 <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50">%</th>
