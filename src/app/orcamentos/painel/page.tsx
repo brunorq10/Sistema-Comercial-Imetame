@@ -138,144 +138,149 @@ export default function PainelOrcamentosPage() {
   }
 
   return (
-    <div className="p-4 h-full overflow-y-auto">
-      <PageHeader
-        title="Meu Painel — Orçamentos"
-        subtitle='Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.'
-      />
+    <div className="flex flex-col h-full">
+      {/* ── Zona congelada — só título e filtros ─────────────────────────── */}
+      <div className="flex-shrink-0 p-4 pb-0">
+        <PageHeader
+          title="Meu Painel — Orçamentos"
+          subtitle='Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.'
+        />
 
-      {/* Revisões aguardando avaliação do orçamentista */}
-      <RevisoesPendentes onChanged={fetchData} />
-
-      {/* Indicadores filtráveis */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
-        <IndicadorCard
-          label="Total de solicitações"
-          valor={contagens.todas}
-          sub="todas as atribuídas"
-          variant="green"
-          active={filtroAtivo === 'todas'}
-          onClick={() => handleSetFiltro('todas')}
-        />
-        <IndicadorCard
-          label="Em elaboração"
-          valor={contagens.elaboracao}
-          sub="no prazo + atrasadas"
-          variant="amber"
-          active={filtroAtivo === 'elaboracao'}
-          onClick={() => handleSetFiltro('elaboracao')}
-        />
-        <IndicadorCard
-          label="No prazo"
-          valor={contagens.noprazo}
-          sub="dentro do prazo"
-          variant="blue"
-          active={filtroAtivo === 'noprazo'}
-          onClick={() => handleSetFiltro('noprazo')}
-        />
-        <IndicadorCard
-          label="Atrasadas"
-          valor={contagens.atrasado}
-          sub="prazo vencido"
-          variant="red"
-          active={filtroAtivo === 'atrasado'}
-          onClick={() => handleSetFiltro('atrasado')}
-        >
-          {/* Sub-filtros dentro do card Atrasadas */}
-          <div className="mt-2 pt-2 border-t border-red-200 flex gap-1 flex-wrap">
+        {/* Filtros de período e categoria */}
+        <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
+          <Field label="Orçamentista" className="min-w-[150px] flex-1">
+            <Select value={orcamentistaFiltro} onChange={(e) => setOrcamentistaFiltro(e.target.value)}>
+              <option value="">Meu painel</option>
+              {orcamentistas
+                .filter((o) => String(o.id) !== String(userId))
+                .map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+            </Select>
+          </Field>
+          <Field label="Período de atribuição — de" className="min-w-[130px] flex-1">
+            <Input type="date" value={dataDe} onChange={(e) => setDataDe(e.target.value)} />
+          </Field>
+          <Field label="até" className="min-w-[130px] flex-1">
+            <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
+          </Field>
+          <Field label="Classificação" className="min-w-[130px] flex-1">
+            <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>
+              <option value="">Todas</option>
+              <option value="OBRAS">Obras</option>
+              <option value="PARADAS">Paradas</option>
+              <option value="OLEO_GAS">Óleo e Gás</option>
+              <option value="FABRICACOES">Fabricações</option>
+            </Select>
+          </Field>
+          <Field label="Nível de interesse" className="min-w-[130px] flex-1">
+            <Select value={interesse} onChange={(e) => setInteresse(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="ALTO">Alto</option>
+              <option value="MEDIO">Médio</option>
+              <option value="BAIXO">Baixo</option>
+            </Select>
+          </Field>
+          <Field label="Cliente" className="min-w-[160px] flex-1">
+            <Select value={clienteFiltro} onChange={(e) => setClienteFiltro(e.target.value)}>
+              <option value="">Todos</option>
+              {clientesDisponiveis.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </Field>
+          <div className="flex-shrink-0">
             <button
-              onClick={(e) => { e.stopPropagation(); setFiltroAtivo('atrasado'); setSubFiltro(subFiltro === 'tec' ? null : 'tec') }}
-              className={cn(
-                'text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors',
-                subFiltro === 'tec'
-                  ? 'bg-[#FFEBEE] text-red-700 border-red-400'
-                  : 'bg-white text-gray-500 border-gray-300',
-              )}
+              onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro(''); setOrcamentistaFiltro('') }}
+              className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
             >
-              Técnica ({contagens.atrasadoTec})
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setFiltroAtivo('atrasado'); setSubFiltro(subFiltro === 'com' ? null : 'com') }}
-              className={cn(
-                'text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors',
-                subFiltro === 'com'
-                  ? 'bg-[#FFF3E0] text-[#E65100] border-[#FB8C00]'
-                  : 'bg-white text-gray-500 border-gray-300',
-              )}
-            >
-              Comercial ({contagens.atrasadoCom})
+              ✕ Limpar
             </button>
           </div>
-        </IndicadorCard>
-        <IndicadorCard
-          label="Total enviadas"
-          valor={contagens.enviadas}
-          sub="envio completo"
-          variant="green"
-          active={filtroAtivo === 'enviadas'}
-          onClick={() => handleSetFiltro('enviadas')}
-        />
-      </div>
-
-      {/* Filtros de período e categoria */}
-      <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
-        <Field label="Orçamentista" className="min-w-[150px] flex-1">
-          <Select value={orcamentistaFiltro} onChange={(e) => setOrcamentistaFiltro(e.target.value)}>
-            <option value="">Meu painel</option>
-            {orcamentistas
-              .filter((o) => String(o.id) !== String(userId))
-              .map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
-          </Select>
-        </Field>
-        <Field label="Período de atribuição — de" className="min-w-[130px] flex-1">
-          <Input type="date" value={dataDe} onChange={(e) => setDataDe(e.target.value)} />
-        </Field>
-        <Field label="até" className="min-w-[130px] flex-1">
-          <Input type="date" value={dataAte} onChange={(e) => setDataAte(e.target.value)} />
-        </Field>
-        <Field label="Classificação" className="min-w-[130px] flex-1">
-          <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value)}>
-            <option value="">Todas</option>
-            <option value="OBRAS">Obras</option>
-            <option value="PARADAS">Paradas</option>
-            <option value="OLEO_GAS">Óleo e Gás</option>
-            <option value="FABRICACOES">Fabricações</option>
-          </Select>
-        </Field>
-        <Field label="Nível de interesse" className="min-w-[130px] flex-1">
-          <Select value={interesse} onChange={(e) => setInteresse(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="ALTO">Alto</option>
-            <option value="MEDIO">Médio</option>
-            <option value="BAIXO">Baixo</option>
-          </Select>
-        </Field>
-        <Field label="Cliente" className="min-w-[160px] flex-1">
-          <Select value={clienteFiltro} onChange={(e) => setClienteFiltro(e.target.value)}>
-            <option value="">Todos</option>
-            {clientesDisponiveis.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </Select>
-        </Field>
-        <div className="flex-shrink-0">
-          <button
-            onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro(''); setOrcamentistaFiltro('') }}
-            className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
-          >
-            ✕ Limpar
-          </button>
         </div>
       </div>
 
-      {/* Cards */}
-      {loading ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
-      ) : itemsFiltrados.length === 0 ? (
-        <p className="text-center text-gray-400 py-10 text-sm">Nenhuma solicitação encontrada.</p>
-      ) : (
-        itemsFiltrados.map((item) => (
-          <SolicitacaoCard
+      {/* ── Área rolável — revisões pendentes + indicadores + cards ───────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-3">
+        {/* Revisões aguardando avaliação do orçamentista */}
+        <RevisoesPendentes onChanged={fetchData} />
+
+        {/* Indicadores filtráveis */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
+          <IndicadorCard
+            label="Total de solicitações"
+            valor={contagens.todas}
+            sub="todas as atribuídas"
+            variant="green"
+            active={filtroAtivo === 'todas'}
+            onClick={() => handleSetFiltro('todas')}
+          />
+          <IndicadorCard
+            label="Em elaboração"
+            valor={contagens.elaboracao}
+            sub="no prazo + atrasadas"
+            variant="amber"
+            active={filtroAtivo === 'elaboracao'}
+            onClick={() => handleSetFiltro('elaboracao')}
+          />
+          <IndicadorCard
+            label="No prazo"
+            valor={contagens.noprazo}
+            sub="dentro do prazo"
+            variant="blue"
+            active={filtroAtivo === 'noprazo'}
+            onClick={() => handleSetFiltro('noprazo')}
+          />
+          <IndicadorCard
+            label="Atrasadas"
+            valor={contagens.atrasado}
+            sub="prazo vencido"
+            variant="red"
+            active={filtroAtivo === 'atrasado'}
+            onClick={() => handleSetFiltro('atrasado')}
+          >
+            {/* Sub-filtros dentro do card Atrasadas */}
+            <div className="mt-2 pt-2 border-t border-red-200 flex gap-1 flex-wrap">
+              <button
+                onClick={(e) => { e.stopPropagation(); setFiltroAtivo('atrasado'); setSubFiltro(subFiltro === 'tec' ? null : 'tec') }}
+                className={cn(
+                  'text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors',
+                  subFiltro === 'tec'
+                    ? 'bg-[#FFEBEE] text-red-700 border-red-400'
+                    : 'bg-white text-gray-500 border-gray-300',
+                )}
+              >
+                Técnica ({contagens.atrasadoTec})
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setFiltroAtivo('atrasado'); setSubFiltro(subFiltro === 'com' ? null : 'com') }}
+                className={cn(
+                  'text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors',
+                  subFiltro === 'com'
+                    ? 'bg-[#FFF3E0] text-[#E65100] border-[#FB8C00]'
+                    : 'bg-white text-gray-500 border-gray-300',
+                )}
+              >
+                Comercial ({contagens.atrasadoCom})
+              </button>
+            </div>
+          </IndicadorCard>
+          <IndicadorCard
+            label="Total enviadas"
+            valor={contagens.enviadas}
+            sub="envio completo"
+            variant="green"
+            active={filtroAtivo === 'enviadas'}
+            onClick={() => handleSetFiltro('enviadas')}
+          />
+        </div>
+
+        {/* Cards */}
+        {loading ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
+        ) : itemsFiltrados.length === 0 ? (
+          <p className="text-center text-gray-400 py-10 text-sm">Nenhuma solicitação encontrada.</p>
+        ) : (
+          itemsFiltrados.map((item) => (
+            <SolicitacaoCard
             key={item.id}
             item={item}
             onRegistrarTecnica={setModalTecnica}
@@ -289,6 +294,7 @@ export default function PainelOrcamentosPage() {
           />
         ))
       )}
+      </div>
 
       {/* Modais */}
       {modalTecnica && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDate } from '@/lib/utils'
 import { ClassificacaoBadge, InteresseBadge, StatusAnaliseBadge, VersaoBadge } from '@/components/ui/Badge'
 import { CLASSIFICACAO_LABELS, INTERESSE_LABELS, ORIGEM_LABELS, MOTIVO_REPROVACAO_LABELS } from '@/types'
@@ -82,6 +83,7 @@ interface InlineProps {
 }
 
 export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, onLoaded }: InlineProps) {
+  const router = useRouter()
   const [detalhe, setDetalhe] = useState<Detalhe | null>(initialData ?? null)
   const [loading, setLoading] = useState(!initialData)
 
@@ -180,9 +182,17 @@ export function SolicitacaoDetalheInline({ id, onEditarReprovacao, initialData, 
       {/* Histórico de revisões (ciclos) */}
       {ciclos.length > 0 && (
         <>
-          <p className="text-[9px] uppercase tracking-[0.08em] text-gray-400 font-semibold mb-2">
-            Histórico de revisões
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[9px] uppercase tracking-[0.08em] text-gray-400 font-semibold">
+              Histórico de revisões
+            </p>
+            <button
+              onClick={() => router.push(`/orcamentos/propostas/${detalhe.id}/historico?from=/orcamentos/solicitacoes`)}
+              className="text-[10px] font-semibold text-green-primary hover:underline"
+            >
+              Ver histórico de propostas →
+            </button>
+          </div>
           <table className="w-full border border-gray-200 rounded text-[10px]">
             <thead>
               <tr className="bg-gray-100">

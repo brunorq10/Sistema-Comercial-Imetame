@@ -289,28 +289,11 @@ export default function MeuPainelAcordosPage() {
   return (
     <div className="flex flex-col h-full">
 
-      {/* ── Zona congelada ────────────────────────────────────────────────── */}
+      {/* ── Zona congelada — só título e filtros ─────────────────────────── */}
       <div className="flex-shrink-0 px-4 pt-4">
 
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] font-bold">Meu Painel — Acordos</h2>
-        </div>
-
-        {/* Indicadores — Visão consolidada do ano */}
-        <div className="flex flex-col gap-3 mb-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard label={`Total faturado no ano (${indicators.anoAtual})`} value={fmtM(indicators.fatAnoAtual)} accent="#16A34A"
-              sub={`${(indicators.prevAnoAtual > 0 ? (indicators.fatAnoAtual / indicators.prevAnoAtual) * 100 : 0).toFixed(1).replace('.', ',')}% da previsão`} />
-            <KpiCard label="Previsão de faturamento no ano" value={fmtM(indicators.prevAnoAtual)} accent="#1565C0" sub="meta anual de receita" />
-            <KpiCard label="Falta faturar no ano" value={fmtM(Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual))} accent="#D97706" sub="saldo até dezembro" />
-            <KpiCard label="Previsão anos seguintes" value={fmtM(indicators.prevAnosSeguintes)} accent="#475569" sub="contratos multi-ano" />
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.fatMesAtual)} accent="#16A34A" />
-            <KpiCard label={`Previsão mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.prevMesAtual)} accent="#1565C0" />
-            <KpiCard label={`Faturado último mês (${indicators.mesPassadoLabel})`} value={fmtM(indicators.fatUltimoMes)} accent="#16A34A" />
-            <KpiCard label={`Previsão próximo mês (${indicators.mesProximoLabel})`} value={fmtM(indicators.prevProxMes)} accent="#1565C0" />
-          </div>
         </div>
 
         {/* Filtros */}
@@ -359,16 +342,34 @@ export default function MeuPainelAcordosPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-2">{error}</div>
         )}
+      </div>
+
+      {/* ── Área rolável — cards + tabela ─────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+
+        {/* Indicadores — Visão consolidada do ano */}
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard label={`Total faturado no ano (${indicators.anoAtual})`} value={fmtM(indicators.fatAnoAtual)} accent="#16A34A"
+              sub={`${(indicators.prevAnoAtual > 0 ? (indicators.fatAnoAtual / indicators.prevAnoAtual) * 100 : 0).toFixed(1).replace('.', ',')}% da previsão`} />
+            <KpiCard label="Previsão de faturamento no ano" value={fmtM(indicators.prevAnoAtual)} accent="#1565C0" sub="meta anual de receita" />
+            <KpiCard label="Falta faturar no ano" value={fmtM(Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual))} accent="#D97706" sub="saldo até dezembro" />
+            <KpiCard label="Previsão anos seguintes" value={fmtM(indicators.prevAnosSeguintes)} accent="#475569" sub="contratos multi-ano" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.fatMesAtual)} accent="#16A34A" />
+            <KpiCard label={`Previsão mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.prevMesAtual)} accent="#1565C0" />
+            <KpiCard label={`Faturado último mês (${indicators.mesPassadoLabel})`} value={fmtM(indicators.fatUltimoMes)} accent="#16A34A" />
+            <KpiCard label={`Previsão próximo mês (${indicators.mesProximoLabel})`} value={fmtM(indicators.prevProxMes)} accent="#1565C0" />
+          </div>
+        </div>
 
         {!loading && (
           <p className="text-[11px] text-gray-500 mb-2">
             {indicators.totalContratos} contrato{indicators.totalContratos !== 1 ? 's' : ''} · {indicators.totalSubindices} sub-índice{indicators.totalSubindices !== 1 ? 's' : ''}
           </p>
         )}
-      </div>
 
-      {/* ── Tabela ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 px-4 pb-4">
         {loading && contratos.length === 0 ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : filteredContratos.length === 0 ? (
@@ -518,7 +519,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
   }))
 
   return (
-    <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
+    <div className="border border-gray-200 rounded-md overflow-x-auto">
       <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.cliente_final }} /><col style={{ width: W.cidade }} /><col style={{ width: W.descricao }} />
