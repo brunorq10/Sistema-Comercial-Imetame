@@ -437,6 +437,7 @@ export default function SolicitacoesPage() {
                   canEdit={perms.canEditSolicitacao}
                   canCancel={perms.canCancelSolicitacao}
                   canRevisao={perms.canCriarRevisao}
+                  filtrosAtivos={Object.keys(filtrosAplicados).length > 0}
                 />
               </div>
               <Pagination page={page} pages={pages} total={total} limit={20} onPage={setPage} />

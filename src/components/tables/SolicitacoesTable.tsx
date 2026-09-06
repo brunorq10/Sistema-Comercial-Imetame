@@ -28,6 +28,7 @@ interface Props {
   canEdit: boolean
   canCancel: boolean
   canRevisao: boolean
+  filtrosAtivos?: boolean
 }
 
 const col = createColumnHelper<SolicitacaoListItem>()
@@ -44,6 +45,7 @@ export function SolicitacoesTable({
   canEdit,
   canCancel,
   canRevisao,
+  filtrosAtivos,
 }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -177,7 +179,9 @@ export function SolicitacoesTable({
   if (data.length === 0) {
     return (
       <p className="text-center text-gray-400 py-10 text-sm">
-        Nenhuma solicitação encontrada.
+        {filtrosAtivos
+          ? 'Nenhuma solicitação encontrada para os filtros aplicados.'
+          : 'Nenhuma solicitação encontrada.'}
       </p>
     )
   }

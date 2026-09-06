@@ -15,6 +15,7 @@ interface Props {
   onHistoricoAlteracoes: (item: PropostasItem) => void
   onReativar?: (item: PropostasItem) => void
   canEditar: boolean
+  filtrosAtivos?: boolean
 }
 
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
@@ -37,11 +38,15 @@ function ResultadoCell({ resultado }: { resultado: string | null }) {
   return <span className={cn('text-[10px]', cls)}>{RESULTADO_LABELS[resultado] ?? resultado}</span>
 }
 
-export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, onRelatorioOS, onReativar, canEditar }: Props) {
+export function PropostasTable({ data, onEditar, onHistorico, onHistoricoAlteracoes, onRelatorioOS, onReativar, canEditar, filtrosAtivos }: Props) {
   const [hoveredId, setHoveredId] = useState<number | null>(null)
 
   if (data.length === 0) {
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhuma proposta encontrada.</p>
+    return (
+      <p className="text-center text-gray-400 py-10 text-sm">
+        {filtrosAtivos ? 'Nenhuma proposta encontrada para os filtros aplicados.' : 'Nenhuma proposta encontrada.'}
+      </p>
+    )
   }
 
   return (

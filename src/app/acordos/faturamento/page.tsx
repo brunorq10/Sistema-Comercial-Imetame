@@ -54,6 +54,34 @@ export interface NfAprovacaoItem {
   contrato: { id: number; indice: string; descricao: string | null; cliente_nome: string } | null
 }
 
+// Edição pendente de uma NF já ativa/aprovada — os dados "de" continuam
+// contando no faturamento até esta proposta ser decidida.
+export interface NfAlteracaoItem {
+  id: number
+  nf_id: number
+  status: string
+  motivo_recusa: string | null
+  created_at: string
+  reviewed_at: string | null
+  solicitante: string
+  revisor: string | null
+  numero_nf_de: string
+  numero_nf_para: string
+  valor_total_nf_de: number
+  valor_total_nf_para: number
+  percentual_de: number
+  percentual_para: number
+  data_emissao_de: string
+  data_emissao_para: string
+  data_vencimento_de: string
+  data_vencimento_para: string
+  subindice_id_de: number
+  subindice_id_para: number
+  tipo_documento: string
+  subindice: { id: number; ordem: number; descricao: string; valor_total: number }
+  contrato: { id: number; indice: string; descricao: string | null; cliente_nome: string } | null
+}
+
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -183,6 +211,11 @@ export default function FaturamentoPage() {
   const [nfDecisao, setNfDecisao] = useState(false)
   const [reprovarLoading, setReprovarLoading] = useState(false)
   const [reprovarError, setReprovarError] = useState<string | null>(null)
+  // Edições pendentes de NFs já ativas
+  const [nfAlteracoes, setNfAlteracoes] = useState<NfAlteracaoItem[]>([])
+  const [nfAlteracoesHistorico, setNfAlteracoesHistorico] = useState<NfAlteracaoItem[]>([])
+  const [reprovarNfAlteracaoModal, setReprovarNfAlteracaoModal] = useState<NfAlteracaoItem | null>(null)
+  const [motivoNfAlteracao, setMotivoNfAlteracao] = useState('')
 
   // ── Modais ────────────────────────────────────────────────────────────────────
   const [modalConsolidado, setModalConsolidado] = useState(false)
@@ -286,18 +319,24 @@ export default function FaturamentoPage() {
     if (!canEditar) return
     setAlteracoesLoading(true); setAlteracoesError(null)
     try {
-      const [resPend, resHist, resNf, resNfHist] = await Promise.all([
+      const [resPend, resHist, resNf, resNfHist, resNfEdit, resNfEditHist] = await Promise.all([
         fetch('/api/faturamento/alteracoes?status=PENDENTE'),
         fetch('/api/faturamento/alteracoes?history=true'),
         fetch('/api/faturamento/nfs/aprovacoes'),
         fetch('/api/faturamento/nfs/aprovacoes?history=true'),
+        fetch('/api/faturamento/nfs/alteracoes'),
+        fetch('/api/faturamento/nfs/alteracoes?history=true'),
       ])
-      const [jsonPend, jsonHist, jsonNf, jsonNfHist] = await Promise.all([resPend.json(), resHist.json(), resNf.json(), resNfHist.json()])
+      const [jsonPend, jsonHist, jsonNf, jsonNfHist, jsonNfEdit, jsonNfEditHist] = await Promise.all([
+        resPend.json(), resHist.json(), resNf.json(), resNfHist.json(), resNfEdit.json(), resNfEditHist.json(),
+      ])
       if (jsonPend.error) { setAlteracoesError(jsonPend.error); return }
       setAlteracoes(jsonPend.data ?? [])
       setHistorico(jsonHist.data ?? [])
       setNfPendentes(jsonNf.data ?? [])
       setNfHistorico(jsonNfHist.data ?? [])
+      setNfAlteracoes(jsonNfEdit.data ?? [])
+      setNfAlteracoesHistorico(jsonNfEditHist.data ?? [])
     } catch (err) {
       setAlteracoesError(String(err))
     } finally {
@@ -448,6 +487,44 @@ export default function FaturamentoPage() {
       const json = await res.json()
       if (json.error) { setReprovarError(json.error); return }
       setReprovarNfModal(null); setMotivoNf('')
+      fetchAlteracoes(); fetchData()
+    } finally {
+      setNfDecisao(false)
+    }
+  }
+
+  const handleAprovarNfAlteracao = async (id: number) => {
+    setNfDecisao(true)
+    try {
+      const res = await fetch(`/api/faturamento/nfs/alteracoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'APROVAR' }),
+      })
+      const json = await res.json()
+      if (json.error) { setAlteracoesError(json.error); return }
+      fetchAlteracoes()
+      fetchData()
+    } catch (err) {
+      setAlteracoesError(String(err))
+    } finally {
+      setNfDecisao(false)
+    }
+  }
+
+  const handleReprovarNfAlteracaoConfirmar = async () => {
+    if (!reprovarNfAlteracaoModal) return
+    if (!motivoNfAlteracao || motivoNfAlteracao.trim().length < 3) { setReprovarError('Informe o motivo da reprovação (mínimo 3 caracteres)'); return }
+    setNfDecisao(true); setReprovarError(null)
+    try {
+      const res = await fetch(`/api/faturamento/nfs/alteracoes/${reprovarNfAlteracaoModal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'REPROVAR', motivo_recusa: motivoNfAlteracao }),
+      })
+      const json = await res.json()
+      if (json.error) { setReprovarError(json.error); return }
+      setReprovarNfAlteracaoModal(null); setMotivoNfAlteracao('')
       fetchAlteracoes(); fetchData()
     } finally {
       setNfDecisao(false)
@@ -614,9 +691,9 @@ export default function FaturamentoPage() {
         {canEditar && (
           <button className={`${tabBase} ${aba === 'aprovacoes' ? tabAtivo : tabInativo}`} onClick={() => setAba('aprovacoes')}>
             Aprovações
-            {(alteracoes.length + nfPendentes.length) > 0 && aba !== 'aprovacoes' && (
+            {(alteracoes.length + nfPendentes.length + nfAlteracoes.length) > 0 && aba !== 'aprovacoes' && (
               <span className="ml-1.5 bg-amber-500 text-white text-[9px] font-bold rounded-full px-1.5 py-0.5">
-                {alteracoes.length + nfPendentes.length}
+                {alteracoes.length + nfPendentes.length + nfAlteracoes.length}
               </span>
             )}
           </button>
@@ -874,6 +951,10 @@ export default function FaturamentoPage() {
             nfDecisao={nfDecisao}
             onAprovarNf={handleAprovarNf}
             onReprovarNf={(nf) => { setReprovarNfModal(nf); setMotivoNf(''); setReprovarError(null) }}
+            nfAlteracoes={nfAlteracoes}
+            nfAlteracoesHistorico={nfAlteracoesHistorico}
+            onAprovarNfAlteracao={handleAprovarNfAlteracao}
+            onReprovarNfAlteracao={(a) => { setReprovarNfAlteracaoModal(a); setMotivoNfAlteracao(''); setReprovarError(null) }}
           />
         )}
       </div>{/* fim zona de scroll */}
@@ -1069,7 +1150,7 @@ export default function FaturamentoPage() {
                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{excluirSubError}</div>
               )}
               <p className="text-[12px] text-gray-600">
-                O sub-índice <strong>{excluindoSub.descricao}</strong> será excluído permanentemente junto com todas as suas notas fiscais. Esta ação não pode ser desfeita.
+                O sub-índice <strong>{excluindoSub.descricao}</strong> será movido para a Lixeira. A exclusão é bloqueada se houver nota fiscal ativa vinculada a ele.
               </p>
             </div>
             <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
@@ -1184,6 +1265,46 @@ export default function FaturamentoPage() {
           </div>
         </div>
       )}
+
+      {/* Reprovar edição pendente de NF já ativa */}
+      {reprovarNfAlteracaoModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
+            <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
+              Reprovar edição de faturamento
+            </div>
+            <div className="p-[18px]">
+              {reprovarError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{reprovarError}</div>
+              )}
+              <p className="text-[12px] text-gray-600 mb-1">
+                {reprovarNfAlteracaoModal.contrato?.indice ?? '—'}.{reprovarNfAlteracaoModal.subindice.ordem} · <strong>{reprovarNfAlteracaoModal.subindice.descricao}</strong>
+              </p>
+              <p className="text-[11px] text-gray-400 mb-3">
+                NF {reprovarNfAlteracaoModal.numero_nf_de} · Solicitante: {reprovarNfAlteracaoModal.solicitante}
+              </p>
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] block mb-1">
+                Motivo da reprovação *
+              </label>
+              <textarea
+                className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40"
+                rows={3}
+                placeholder="Informe o motivo (mínimo 3 caracteres)"
+                value={motivoNfAlteracao}
+                onChange={(e) => setMotivoNfAlteracao(e.target.value)}
+              />
+            </div>
+            <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => { setReprovarNfAlteracaoModal(null); setMotivoNfAlteracao(''); setReprovarError(null) }} disabled={nfDecisao}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleReprovarNfAlteracaoConfirmar} disabled={nfDecisao}>
+                {nfDecisao ? 'Reprovando...' : 'Confirmar reprovação'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1203,18 +1324,26 @@ interface AbaAprovacoes {
   nfDecisao: boolean
   onAprovarNf: (id: number) => void
   onReprovarNf: (nf: NfAprovacaoItem) => void
+  nfAlteracoes: NfAlteracaoItem[]
+  nfAlteracoesHistorico: NfAlteracaoItem[]
+  onAprovarNfAlteracao: (id: number) => void
+  onReprovarNfAlteracao: (a: NfAlteracaoItem) => void
 }
 
-function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error, onAprovar, onReprovar, nfPendentes, nfHistorico, nfDecisao, onAprovarNf, onReprovarNf }: AbaAprovacoes) {
+function AbaAprovacoes({
+  alteracoes, historico, loading, historicoLoading, error, onAprovar, onReprovar,
+  nfPendentes, nfHistorico, nfDecisao, onAprovarNf, onReprovarNf,
+  nfAlteracoes, nfAlteracoesHistorico, onAprovarNfAlteracao, onReprovarNfAlteracao,
+}: AbaAprovacoes) {
   const [showHistorico, setShowHistorico] = useState(false)
-  const totalHist = historico.length + nfHistorico.length
+  const totalHist = historico.length + nfHistorico.length + nfAlteracoesHistorico.length
 
   if (loading) return <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
   if (error) return (
     <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>
   )
 
-  const totalPend = alteracoes.length + nfPendentes.length
+  const totalPend = alteracoes.length + nfPendentes.length + nfAlteracoes.length
 
   return (
     <div className="space-y-4 pt-1">
@@ -1230,6 +1359,18 @@ function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error
           </p>
           {nfPendentes.map((nf) => (
             <NfAprovacaoRow key={nf.id} nf={nf} loading={nfDecisao} onAprovar={onAprovarNf} onReprovar={onReprovarNf} />
+          ))}
+        </>
+      )}
+
+      {/* Edições pendentes de NFs já ativas */}
+      {nfAlteracoes.length > 0 && (
+        <>
+          <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide pt-1">
+            Edições de faturamento — {nfAlteracoes.length} pendente{nfAlteracoes.length !== 1 ? 's' : ''}
+          </p>
+          {nfAlteracoes.map((a) => (
+            <NfAlteracaoAprovacaoRow key={a.id} alteracao={a} loading={nfDecisao} onAprovar={onAprovarNfAlteracao} onReprovar={onReprovarNfAlteracao} />
           ))}
         </>
       )}
@@ -1269,6 +1410,9 @@ function AbaAprovacoes({ alteracoes, historico, loading, historicoLoading, error
               <>
                 {nfHistorico.map((nf) => (
                   <NfHistoricoRow key={`nf-${nf.id}`} nf={nf} />
+                ))}
+                {nfAlteracoesHistorico.map((a) => (
+                  <NfAlteracaoHistoricoRow key={`nf-edit-${a.id}`} alteracao={a} />
                 ))}
                 {historico.map((a) => (
                   <AlteracaoHistoricoRow key={a.id} alteracao={a} />
@@ -1361,6 +1505,84 @@ function NfHistoricoRow({ nf }: { nf: NfAprovacaoItem }) {
         {nf.revisor && <span>Revisor: <strong className="text-gray-600">{nf.revisor}</strong></span>}
         {nf.revisado_em && <span>{formatDate(nf.revisado_em)}</span>}
         {!aprovado && nf.motivo_recusa && <span className="text-red-600">Motivo: {nf.motivo_recusa}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Linha de aprovação de edição de NF já ativa ──────────────────────────────
+function NfAlteracaoAprovacaoRow({ alteracao, loading, onAprovar, onReprovar }: {
+  alteracao: NfAlteracaoItem; loading: boolean
+  onAprovar: (id: number) => void; onReprovar: (a: NfAlteracaoItem) => void
+}) {
+  const campos: { label: string; de: string; para: string; mudou: boolean }[] = [
+    { label: 'Nº Documento', de: alteracao.numero_nf_de, para: alteracao.numero_nf_para, mudou: alteracao.numero_nf_de !== alteracao.numero_nf_para },
+    { label: 'Valor Total', de: formatCurrency(alteracao.valor_total_nf_de), para: formatCurrency(alteracao.valor_total_nf_para), mudou: alteracao.valor_total_nf_de !== alteracao.valor_total_nf_para },
+    { label: '% Item', de: `${alteracao.percentual_de.toFixed(2)}%`, para: `${alteracao.percentual_para.toFixed(2)}%`, mudou: alteracao.percentual_de !== alteracao.percentual_para },
+    { label: 'Emissão', de: formatDate(alteracao.data_emissao_de), para: formatDate(alteracao.data_emissao_para), mudou: alteracao.data_emissao_de !== alteracao.data_emissao_para },
+    { label: 'Vencimento', de: formatDate(alteracao.data_vencimento_de), para: formatDate(alteracao.data_vencimento_para), mudou: alteracao.data_vencimento_de !== alteracao.data_vencimento_para },
+  ].filter((c) => c.mudou)
+
+  return (
+    <div className="bg-white border border-amber-200 rounded-md p-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 uppercase">Edição de faturamento</span>
+            <span className="text-[11px] font-bold text-green-dark">{alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem}</span>
+            <span className="text-[11px] text-gray-700">{alteracao.subindice.descricao}</span>
+            <span className="text-[10px] text-gray-400">·</span>
+            <span className="text-[10px] text-gray-500">{alteracao.contrato?.cliente_nome ?? '—'}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-[10px] text-gray-400">Solicitante: <strong className="text-gray-600">{alteracao.solicitante}</strong></span>
+            <span className="text-[10px] text-gray-400">{formatDateTime(alteracao.created_at)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button size="sm" variant="outline" onClick={() => onReprovar(alteracao)} disabled={loading}>Reprovar</Button>
+          <Button size="sm" onClick={() => onAprovar(alteracao.id)} disabled={loading}>Aprovar</Button>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 border border-gray-100 rounded p-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {campos.map((c) => (
+          <div key={c.label}>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">{c.label}</p>
+            <p className="text-[11px]">
+              <span className="text-red-500 line-through">{c.de}</span>
+              {' → '}
+              <span className="text-green-700 font-semibold">{c.para}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[9px] text-gray-400 mt-1">
+        Enquanto pendente, a NF <strong>{alteracao.numero_nf_de}</strong> continua no faturamento com os dados atuais. Só troca para os valores acima após a aprovação.
+      </p>
+    </div>
+  )
+}
+
+// Linha de histórico de decisão de uma edição de NF já ativa
+function NfAlteracaoHistoricoRow({ alteracao }: { alteracao: NfAlteracaoItem }) {
+  const aprovado = alteracao.status === 'APROVADO'
+  return (
+    <div className={cn('border rounded-md p-3 text-[11px]', aprovado ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200')}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={cn('font-bold text-[10px] px-1.5 py-0.5 rounded uppercase', aprovado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+          {aprovado ? 'Aprovado' : 'Reprovado'}
+        </span>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 uppercase">Edição de faturamento</span>
+        <span className="font-semibold text-gray-700">{alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem} · {alteracao.subindice.descricao}</span>
+        <span className="text-gray-400">·</span>
+        <span className="text-gray-500">NF {alteracao.numero_nf_de}{alteracao.numero_nf_de !== alteracao.numero_nf_para ? ` → ${alteracao.numero_nf_para}` : ''}</span>
+      </div>
+      <div className="flex items-center gap-3 mt-0.5 text-[10px] text-gray-400 flex-wrap">
+        <span>Solicitante: <strong className="text-gray-600">{alteracao.solicitante}</strong></span>
+        {alteracao.revisor && <span>Revisor: <strong className="text-gray-600">{alteracao.revisor}</strong></span>}
+        {alteracao.reviewed_at && <span>{formatDate(alteracao.reviewed_at)}</span>}
+        {!aprovado && alteracao.motivo_recusa && <span className="text-red-600">Motivo: {alteracao.motivo_recusa}</span>}
       </div>
     </div>
   )

@@ -82,12 +82,62 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 
   // Fluxo de aprovação: quando o RESPONSÁVEL (não-coordenação) edita os dados
-  // da NF (Meu Painel), a alteração vai para aprovação da coordenação — a NF
-  // sai do faturamento até ser aprovada. Coordenação edita direto.
+  // da NF (Meu Painel), a alteração vai para aprovação da coordenação.
+  // Coordenação edita direto.
   const perfil = session.user.perfil
   const isCoordenacao = perfil === 'GESTAO_ACORDOS' || perfil === 'ADM_GERAL'
   const ehEdicaoCampos = d.ativa === undefined  // inativar/reativar não entra nesse fluxo
   const enviarAprovacao = !isCoordenacao && ehEdicaoCampos
+
+  // RN: se a NF já está ativa (contando no faturamento), a edição não pode
+  // tirá-la do faturamento enquanto aguarda aprovação — os dados atuais
+  // continuam valendo até a nova aprovação. A proposta de alteração fica
+  // registrada separadamente (mesmo padrão de PrevisaoAlteracao).
+  if (enviarAprovacao && nfAtual.ativa) {
+    // Substitui qualquer edição pendente anterior desta mesma NF
+    await prisma.notaFiscalAlteracao.updateMany({
+      where: { nf_id: id, status: 'PENDENTE' },
+      data: { status: 'REPROVADO', motivo_recusa: 'Substituída por nova proposta de edição' },
+    })
+
+    const userId = Number(session.user.id)
+    await prisma.notaFiscalAlteracao.create({
+      data: {
+        nf_id: id,
+        responsavel_id: userId,
+        created_by: userId,
+        numero_nf_de: nfAtual.numero_nf,
+        numero_nf_para: numeroNf,
+        valor_total_nf_de: nfAtual.valor_total_nf,
+        valor_total_nf_para: novoValorTotal,
+        percentual_de: nfAtual.percentual,
+        percentual_para: novoPercentual,
+        data_emissao_de: nfAtual.data_emissao,
+        data_emissao_para: d.data_emissao ? new Date(d.data_emissao) : nfAtual.data_emissao,
+        data_vencimento_de: nfAtual.data_vencimento,
+        data_vencimento_para: d.data_vencimento ? new Date(d.data_vencimento) : nfAtual.data_vencimento,
+        subindice_id_de: nfAtual.subindice_id,
+        subindice_id_para: d.subindice_id ?? nfAtual.subindice_id,
+      },
+    })
+
+    const sub = await prisma.subIndiceFaturamento.findUnique({
+      where: { id: nfAtual.subindice_id },
+      select: { ordem: true, descricao: true, contrato: { select: { id: true, indice: true, cliente: { select: { nome: true } } } } },
+    })
+    const gestores = await prisma.user.findMany({ where: { perfil: 'GESTAO_ACORDOS', ativo: true }, select: { id: true } })
+    for (const g of gestores) {
+      createNotificacao(
+        g.id,
+        'Edição de faturamento para aprovação',
+        `${sub?.contrato?.indice ?? ''}.${sub?.ordem ?? ''} · ${sub?.descricao ?? ''} (${sub?.contrato?.cliente?.nome ?? ''}) — NF ${nfAtual.numero_nf} foi editada por ${session.user.nome ?? 'responsável'} e aguarda aprovação. Os dados atuais continuam no faturamento até a decisão.`,
+        sub?.contrato?.id ? `/acordos/faturamento/${sub.contrato.id}` : undefined,
+      )
+    }
+
+    return NextResponse.json({ data: { id: nfAtual.id }, pendente: true, error: null })
+  }
+
   if (enviarAprovacao) {
     updateData.status_aprovacao = 'PENDENTE'
     updateData.ativa = false

@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Save, MapPin, User, Building2, Briefcase } from 'lucide-react'
+import { ArrowLeft, Save, MapPin, User, Building2, Briefcase, History } from 'lucide-react'
 import { CurrencyInput } from '@/components/ui/Input'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { UcrFaixasTabela } from '@/components/acordos/UcrFaixasTabela'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
 import { regiaoPorEstado, classificarUcr, resolverVigencia, UCR_FAIXAS, UCR_REGIOES, type UcrVigencia } from '@/lib/ucr'
 
@@ -51,6 +52,7 @@ interface ContratoInfo {
   estado: string | null
   escopo: string | null
   responsavel: string
+  responsavel_id: number | null
   data_inicio: string | null
   valor_orcado: number
   valor_faturado: number
@@ -142,6 +144,12 @@ function fmtCellHH(v: number): string {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
+// Serializa cfg + dias para detectar alterações não salvas (comparação simples
+// de snapshot — página não tem volume de dado que justifique algo mais fino).
+function snapshot(cfg: ConfigState, dias: Map<string, DiaState>): string {
+  return JSON.stringify({ cfg, dias: Array.from(dias.entries()).sort(([a], [b]) => a.localeCompare(b)) })
+}
+
 function defaultConfig(): ConfigState {
   return {
     prep_inicio: '', prep_fim: '', parada_inicio: '', parada_fim: '', acomp_inicio: '', acomp_fim: '',
@@ -225,7 +233,7 @@ export default function ParadaHhPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
-  const { pode } = usePermissions()
+  const { pode, ehDono } = usePermissions()
   const podeReabrir = pode('acordos.paradas.reabrir')
 
   const [loading, setLoading] = useState(true)
@@ -235,6 +243,9 @@ export default function ParadaHhPage() {
   const [cfg, setCfg] = useState<ConfigState>(defaultConfig())
   const [dias, setDias] = useState<Map<string, DiaState>>(new Map())
   const [vigenciasUcr, setVigenciasUcr] = useState<UcrVigencia[]>([])
+  const savedSnapshotRef = useRef<string>(snapshot(defaultConfig(), new Map()))
+  const [avisoPendente, setAvisoPendente] = useState(false)
+  const [showHistorico, setShowHistorico] = useState(false)
 
   const [confirmFechar, setConfirmFechar] = useState(false)
   const [fecharLoading, setFecharLoading] = useState(false)
@@ -244,6 +255,10 @@ export default function ParadaHhPage() {
   const [reabrirErro, setReabrirErro] = useState<string | null>(null)
 
   const fechada = fechamento.fechada_em != null
+  const dirty = snapshot(cfg, dias) !== savedSnapshotRef.current
+  const podeEditar = pode('acordos.paradas.controlehh.editar', {
+    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel_id } : null, 'contrato'),
+  })
 
   useEffect(() => {
     fetch('/api/acordos/hh/paradas/ucr-faixas')
@@ -278,7 +293,8 @@ export default function ParadaHhPage() {
         fechada_por_nome: json.data.config?.quemFechou?.nome ?? null,
       })
       if (json.data.config) {
-        setCfg(configFromApi(json.data.config as Record<string, unknown>))
+        const newCfg = configFromApi(json.data.config as Record<string, unknown>)
+        setCfg(newCfg)
         const diasApi = (json.data.config.dias ?? []) as Array<{
           etapa: Etapa; data: string
           efetivo_plan: number | null; horas_dia_plan: number | null; hh_plan: number | null
@@ -298,6 +314,7 @@ export default function ParadaHhPage() {
           })
         }
         setDias(map)
+        savedSnapshotRef.current = snapshot(newCfg, map)
       }
     } finally { setLoading(false) }
   }, [id])
@@ -442,9 +459,13 @@ export default function ParadaHhPage() {
           }
         }),
       }
-      await fetch(`/api/acordos/hh/paradas/${id}`, {
+      const res = await fetch(`/api/acordos/hh/paradas/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
+      if (res.ok) {
+        savedSnapshotRef.current = snapshot(cfg, dias)
+        setAvisoPendente(false)
+      }
     } finally { setSaving(false) }
   }
 
@@ -511,14 +532,20 @@ export default function ParadaHhPage() {
           {contrato?.responsavel && (
             <div className="hidden items-center gap-1 text-xs text-gray-500 lg:flex"><User size={13} /><span>{contrato.responsavel}</span></div>
           )}
-          {!fechada && (
+          <button onClick={() => setShowHistorico(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
+            <History size={16} />
+            Histórico
+          </button>
+          {!fechada && podeEditar && (
             <>
               <button onClick={handleSave} disabled={saving}
                 className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60">
                 <Save size={16} />
                 {saving ? 'Salvando…' : 'Lançar realizado'}
               </button>
-              <button onClick={() => { setFecharErro(null); setConfirmFechar(true) }}
+              <button
+                onClick={() => { if (dirty) { setAvisoPendente(true); return } setFecharErro(null); setConfirmFechar(true) }}
                 className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
                 Fechar Parada
               </button>
@@ -535,6 +562,12 @@ export default function ParadaHhPage() {
 
       {/* ── Scrollable Content ───────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {avisoPendente && dirty && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span>Existem alterações não salvas nesta Parada. Salve com &quot;Lançar realizado&quot; antes de fechar — senão elas serão perdidas.</span>
+            <button onClick={() => setAvisoPendente(false)} className="text-amber-600 hover:text-amber-800 font-semibold">✕</button>
+          </div>
+        )}
         {fechada && (
           <div className="rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-700 flex items-center gap-2">
             <span className="font-semibold">Parada fechada</span>
@@ -918,6 +951,13 @@ export default function ParadaHhPage() {
           onClose={() => setConfirmReabrir(false)}
         />
       )}
+      <HistoricoFaturamentoModal
+        open={showHistorico}
+        onClose={() => setShowHistorico(false)}
+        tipo="parada"
+        itemId={Number(id)}
+        titulo={`Parada ${contrato?.numero ?? ''}`}
+      />
     </div>
   )
 }

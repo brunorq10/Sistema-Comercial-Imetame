@@ -72,6 +72,9 @@ export const CATALOGO = {
   'acordos.nf.editar':                { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   'acordos.nf.inativar':              { perfis: ['GESTAO_ACORDOS'] },
   'acordos.nf.excluir':               { perfis: [] },                 // só ADM_GERAL
+  // Multas/Penalidades (editar/inativar) — gestão + responsável pelo próprio contrato.
+  // Exclusão continua reservada (acordos.nf.excluir, só ADM_GERAL).
+  'acordos.multas.editar':            { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   // Ocorrências Contratuais — criar: responsável (próprio) + gestão; excluir:
   // gestão (supervisão); autor sempre pode excluir o próprio (verificado na rota)
   'acordos.ocorrencia.criar':         { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },

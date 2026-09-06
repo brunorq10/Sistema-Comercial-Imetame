@@ -98,6 +98,7 @@ export async function GET(
         estado: contrato.estado,
         escopo: contrato.descricao,
         responsavel: contrato.responsavel?.nome ?? '',
+        responsavel_id: contrato.responsavel?.id ?? null,
         data_inicio: contrato.data_inicio?.toISOString() ?? null,
         valor_orcado: valorOrcado,
         valor_faturado: valorFaturado,
@@ -118,7 +119,7 @@ export async function PUT(
   if (isNaN(contratoId)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   { const _n = await exigirTitularContrato(session, contratoId, 'acordos.paradas.controlehh.editar'); if (_n) return _n }
 
-  const existente = await prisma.paradaHhConfig.findUnique({ where: { contrato_id: contratoId }, select: { fechada_em: true } })
+  const existente = await prisma.paradaHhConfig.findUnique({ where: { contrato_id: contratoId } })
   if (existente?.fechada_em) {
     return NextResponse.json({ error: 'Esta Parada está fechada e não pode mais ser ajustada. Reabra-a antes de editar.' }, { status: 403 })
   }
@@ -128,8 +129,55 @@ export async function PUT(
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const { dias, ...configData } = parsed.data
+  const userId = Number(session.user.id)
 
   const toDecimal = (v: number | null | undefined) => v != null ? v : null
+
+  // ── Auditoria: diff campo a campo do previsto/planejado (mesmo padrão já
+  // usado em FabricacaoItemHistorico) — Paradas hoje sobrescreve a config sem
+  // deixar rastro de quem mudou o quê.
+  const fmtData = (v: Date | string | null | undefined) => {
+    if (!v) return null
+    const d = typeof v === 'string' ? new Date(v) : v
+    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+  }
+  const fmtNum = (v: number | { toString(): string } | null | undefined) => v != null ? Number(v).toLocaleString('pt-BR') : null
+  const fmtBool = (v: boolean | null | undefined) => v == null ? null : (v ? 'Sim' : 'Não')
+  const fmtMoeda = (v: number | { toString(): string } | null | undefined) => v != null ? Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null
+
+  const hist: { campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+  const push = (campo: string, de: string | null, para: string | null) => {
+    if (de !== para) hist.push({ campo, valor_de: de, valor_para: para, created_by: userId })
+  }
+  if (existente) {
+    if (configData.prep_inicio !== undefined) push('Preparativo — Início', fmtData(existente.prep_inicio), fmtData(configData.prep_inicio))
+    if (configData.prep_fim !== undefined) push('Preparativo — Fim', fmtData(existente.prep_fim), fmtData(configData.prep_fim))
+    if (configData.parada_inicio !== undefined) push('Parada — Início', fmtData(existente.parada_inicio), fmtData(configData.parada_inicio))
+    if (configData.parada_fim !== undefined) push('Parada — Fim', fmtData(existente.parada_fim), fmtData(configData.parada_fim))
+    if (configData.acomp_inicio !== undefined) push('Pós Parada — Início', fmtData(existente.acomp_inicio), fmtData(configData.acomp_inicio))
+    if (configData.acomp_fim !== undefined) push('Pós Parada — Fim', fmtData(existente.acomp_fim), fmtData(configData.acomp_fim))
+
+    if (configData.mob_ativo !== undefined) push('Mobilização — Considerar', fmtBool(existente.mob_ativo), fmtBool(configData.mob_ativo))
+    if (configData.mob_dias_prev !== undefined) push('Mobilização — Dias Previsto', fmtNum(existente.mob_dias_prev), fmtNum(configData.mob_dias_prev))
+    if (configData.mob_dias_real !== undefined) push('Mobilização — Dias Realizado', fmtNum(existente.mob_dias_real), fmtNum(configData.mob_dias_real))
+
+    if (configData.desmob_ativo !== undefined) push('Desmobilização — Considerar', fmtBool(existente.desmob_ativo), fmtBool(configData.desmob_ativo))
+    if (configData.desmob_dias_prev !== undefined) push('Desmobilização — Dias Previsto', fmtNum(existente.desmob_dias_prev), fmtNum(configData.desmob_dias_prev))
+    if (configData.desmob_dias_real !== undefined) push('Desmobilização — Dias Realizado', fmtNum(existente.desmob_dias_real), fmtNum(configData.desmob_dias_real))
+
+    if (configData.integ_ativo !== undefined) push('Integração — Considerar', fmtBool(existente.integ_ativo), fmtBool(configData.integ_ativo))
+    if (configData.integ_dias_prev !== undefined) push('Integração — Dias Previsto', fmtNum(existente.integ_dias_prev), fmtNum(configData.integ_dias_prev))
+    if (configData.integ_dias_real !== undefined) push('Integração — Dias Realizado', fmtNum(existente.integ_dias_real), fmtNum(configData.integ_dias_real))
+
+    if (configData.folga_ativo !== undefined) push('Folga — Considerar', fmtBool(existente.folga_ativo), fmtBool(configData.folga_ativo))
+    if (configData.folga_dias_prev !== undefined) push('Folga — Dias Previsto', fmtNum(existente.folga_dias_prev), fmtNum(configData.folga_dias_prev))
+    if (configData.folga_dias_real !== undefined) push('Folga — Dias Realizado', fmtNum(existente.folga_dias_real), fmtNum(configData.folga_dias_real))
+    if (configData.folga_pessoas_prev !== undefined) push('Folga — Pessoas Previsto', fmtNum(existente.folga_pessoas_prev), fmtNum(configData.folga_pessoas_prev))
+    if (configData.folga_pessoas_real !== undefined) push('Folga — Pessoas Realizado', fmtNum(existente.folga_pessoas_real), fmtNum(configData.folga_pessoas_real))
+
+    if (configData.fin_prev_valor_servico !== undefined) push('Valor Total Serviço (Previsto)', fmtMoeda(existente.fin_prev_valor_servico), fmtMoeda(configData.fin_prev_valor_servico))
+    if (configData.fin_prev_ase !== undefined) push('Serviços Extras — ASE (Previsto)', fmtMoeda(existente.fin_prev_ase), fmtMoeda(configData.fin_prev_ase))
+  }
 
   const config = await prisma.paradaHhConfig.upsert({
     where: { contrato_id: contratoId },
@@ -217,6 +265,12 @@ export async function PUT(
         }),
       ),
     )
+  }
+
+  if (hist.length > 0) {
+    await prisma.paradaHhConfigHistorico.createMany({
+      data: hist.map((h) => ({ ...h, config_id: config.id })),
+    })
   }
 
   return NextResponse.json({ data: { config } })

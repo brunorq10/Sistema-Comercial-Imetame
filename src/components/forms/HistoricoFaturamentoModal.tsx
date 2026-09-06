@@ -13,7 +13,7 @@ interface HistoricoEntry {
   alterado_por: string
 }
 
-type AuditTipo = 'subindice' | 'contrato' | 'proposta'
+type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada'
 
 interface Props {
   open: boolean
@@ -37,6 +37,8 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
       ? `/api/faturamento/subindices/${itemId}/historico`
       : tipo === 'proposta'
       ? `/api/solicitacoes/${itemId}/historico`
+      : tipo === 'parada'
+      ? `/api/acordos/hh/paradas/${itemId}/historico`
       : `/api/faturamento/contratos/${itemId}/historico`
     fetch(endpoint)
       .then((r) => r.json())

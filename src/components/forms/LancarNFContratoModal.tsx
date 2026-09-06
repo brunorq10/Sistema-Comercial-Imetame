@@ -395,7 +395,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
         <EditarNFModal
           open
           onClose={() => setNfEditando(null)}
-          onSuccess={() => { setNfEditando(null); refreshNfs() }}
+          onSuccess={refreshNfs}
           nf={nfEditando}
         />
       )}

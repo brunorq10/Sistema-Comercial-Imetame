@@ -551,6 +551,8 @@ export default function ContratoVisaoGeralPage() {
         indice={contrato.indice}
         cliente={contrato.cliente.nome}
         canLancar={pode('acordos.faturamento.item.editar')}
+        canEditar={pode('acordos.multas.editar', { ehDono: contrato.responsavel?.id === userId })}
+        canExcluir={pode('acordos.nf.excluir')}
       />
 
       {/* Histórico + Ocorrências + Negociação (abas) */}
@@ -638,8 +640,20 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
   const thCls = 'px-2 py-2 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap border-b border-gray-200 bg-gray-50'
   const tdCls = 'px-2 py-2 text-[11px] whitespace-nowrap border-b border-gray-100'
 
+  // Mesma verificação já usada na listagem (Painel/Controle de Faturamento):
+  // soma de todos os eventos difere do valor total do contrato.
+  const sumMismatch = contrato.valor_contrato != null &&
+    Math.abs(contrato.subindices.reduce((a, s) => a + s.valor_total, 0) - contrato.valor_contrato) > 0.01
+
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
+    <div>
+      {sumMismatch && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded mb-2 flex items-center gap-1.5">
+          <span>⚠</span>
+          <span>A soma dos eventos de medição difere do valor total do contrato.</span>
+        </div>
+      )}
+      <div className="border border-gray-200 rounded-md overflow-x-auto">
       <table className="w-full border-collapse" style={{ minWidth: 640 }}>
         <thead>
           <tr>
@@ -696,6 +710,7 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
           </tr>
         </tfoot>
       </table>
+      </div>
     </div>
   )
 }

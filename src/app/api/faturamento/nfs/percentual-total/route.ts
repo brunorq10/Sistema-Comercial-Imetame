@@ -9,13 +9,18 @@ export async function GET(req: NextRequest) {
   const numero_nf = req.nextUrl.searchParams.get('numero_nf')
   if (!numero_nf) return NextResponse.json({ data: null, error: 'numero_nf obrigatório' }, { status: 400 })
 
+  // Ao editar uma NF já lançada, exclui o próprio registro do total — senão ele
+  // contaria contra si mesmo e o "disponível" ficaria incorreto.
+  const excluirIdParam = req.nextUrl.searchParams.get('excluir_id')
+  const excluirId = excluirIdParam ? Number(excluirIdParam) : null
+
   const [result, existente] = await Promise.all([
     prisma.notaFiscalContrato.aggregate({
-      where: { numero_nf, ativa: true, deleted_at: null },
+      where: { numero_nf, ativa: true, deleted_at: null, ...(excluirId ? { id: { not: excluirId } } : {}) },
       _sum: { percentual: true },
     }),
     prisma.notaFiscalContrato.findFirst({
-      where: { numero_nf, ativa: true, deleted_at: null },
+      where: { numero_nf, ativa: true, deleted_at: null, ...(excluirId ? { id: { not: excluirId } } : {}) },
       orderBy: { created_at: 'asc' },
       select: { valor_total_nf: true },
     }),

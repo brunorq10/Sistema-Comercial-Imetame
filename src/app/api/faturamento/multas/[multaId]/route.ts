@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirPermissao } from '@/lib/permissaoApi'
+import { exigirPermissao, exigirTitularContrato } from '@/lib/permissaoApi'
 
 const TIPOS = ['MULTA', 'GLOSAS', 'REEMBOLSOS', 'OUTROS'] as const
 
@@ -17,7 +17,7 @@ const putSchema = z.object({
   motivo_inativacao: z.string().nullable().optional(),
 })
 
-// PUT — edita ou inativa/reativa uma multa (gestão).
+// PUT — edita ou inativa/reativa uma multa (gestão, ou responsável pelo próprio contrato).
 export async function PUT(req: NextRequest, { params }: { params: { multaId: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
@@ -25,7 +25,9 @@ export async function PUT(req: NextRequest, { params }: { params: { multaId: str
   const id = Number(params.multaId)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  { const { erro } = await exigirPermissao('acordos.faturamento.item.editar'); if (erro) return erro }
+  const multaAtual = await prisma.multaPenalidade.findUnique({ where: { id }, select: { contrato_id: true } })
+  if (!multaAtual) return NextResponse.json({ data: null, error: 'Multa não encontrada' }, { status: 404 })
+  { const erro = await exigirTitularContrato(session, multaAtual.contrato_id, 'acordos.multas.editar'); if (erro) return erro }
 
   const parsed = putSchema.safeParse(await req.json())
   if (!parsed.success) {

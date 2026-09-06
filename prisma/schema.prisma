@@ -143,6 +143,7 @@ model User {
   ucr_faixas_historico        UcrFaixaHistorico[]    @relation("UcrFaixaHistCriador")
   parada_fechada_por          ParadaHhConfig[]       @relation("ParadaFechadaPor")
   parada_fechamento_historico ParadaFechamentoHistorico[] @relation("ParadaFechHistCriador")
+  parada_config_historico     ParadaHhConfigHistorico[] @relation("ParadaHhConfigHistCriador")
   subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
   nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
   consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
@@ -763,9 +764,29 @@ model ParadaHhConfig {
   contrato               Contrato         @relation(fields: [contrato_id], references: [id])
   dias                   ParadaHhDia[]
   fechamentos            ParadaFechamentoHistorico[]
+  historico              ParadaHhConfigHistorico[]
   quemFechou             User?            @relation("ParadaFechadaPor", fields: [fechada_por], references: [id])
 
   @@map("parada_hh_config")
+}
+
+// Auditoria de mudança de previsto/planejado da Parada (datas de etapa,
+// adicionais de mob./desmob./integ./folga, análise financeira prevista) —
+// log automático campo a campo, mesmo formato de FabricacaoItemHistorico.
+model ParadaHhConfigHistorico {
+  id         Int      @id @default(autoincrement())
+  config_id  Int
+  campo      String
+  valor_de   String?
+  valor_para String?
+  created_at DateTime @default(now())
+  created_by Int
+
+  config  ParadaHhConfig @relation(fields: [config_id], references: [id], onDelete: Cascade)
+  usuario User           @relation("ParadaHhConfigHistCriador", fields: [created_by], references: [id])
+
+  @@index([config_id])
+  @@map("parada_hh_config_historico")
 }
 
 // Auditoria de fechamento/reabertura da Parada — mesmo padrão de HhAcompanhamentoHistorico.
@@ -1108,12 +1129,56 @@ model NotaFiscalContrato {
 
   subindice SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
   criador   User                 @relation("NFContratoCriador", fields: [created_by], references: [id])
+  alteracoes NotaFiscalAlteracao[]
 
   @@index([subindice_id])
   @@index([numero_nf, ativa])
   @@index([status_aprovacao])
   @@index([deleted_at])
   @@map("notas_fiscais_contratos")
+}
+
+enum StatusAlteracaoNF {
+  PENDENTE
+  APROVADO
+  REPROVADO
+}
+
+// Edição pendente de uma NF já ativa/aprovada — RN: a edição fica em análise
+// da coordenação, mas os dados ATUAIS da NF continuam contando no faturamento
+// normalmente até a nova aprovação (mesmo padrão de PrevisaoAlteracao).
+model NotaFiscalAlteracao {
+  id             Int               @id @default(autoincrement())
+  nf_id          Int
+  responsavel_id Int
+  status         StatusAlteracaoNF @default(PENDENTE)
+  motivo_recusa  String?
+  revisor_id     Int?
+  reviewed_at    DateTime?
+
+  numero_nf_de         String
+  numero_nf_para       String
+  valor_total_nf_de    Decimal  @db.Decimal(15, 2)
+  valor_total_nf_para  Decimal  @db.Decimal(15, 2)
+  percentual_de        Decimal  @db.Decimal(5, 2)
+  percentual_para      Decimal  @db.Decimal(5, 2)
+  data_emissao_de      DateTime
+  data_emissao_para    DateTime
+  data_vencimento_de   DateTime
+  data_vencimento_para DateTime
+  subindice_id_de      Int
+  subindice_id_para    Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by Int
+
+  nf NotaFiscalContrato @relation(fields: [nf_id], references: [id], onDelete: Cascade)
+
+  @@index([nf_id])
+  @@index([responsavel_id])
+  @@index([status])
+  @@map("nota_fiscal_alteracoes")
 }
 
 // ─── Consolidado Mensal (Previsão x Realizado) ────────────────────────────────

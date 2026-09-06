@@ -269,6 +269,7 @@ export default function PropostasPage() {
                 onRelatorioOS={setModalOS}
                 onReativar={canCancelSolicitacao ? (item) => { setReativarError(null); setConfirmReativar(item) } : undefined}
                 canEditar={canEditar}
+                filtrosAtivos={Object.values(aplicados).some(v => v.length > 0)}
               />
             </div>
             <Pagination page={page} pages={pages} total={total} limit={20} onPage={setPage} />

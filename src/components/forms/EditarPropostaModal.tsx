@@ -176,6 +176,10 @@ export function EditarPropostaModal({
   const [loadingResFab,  setLoadingResFab]  = useState(false)
   const [errorResFab,    setErrorResFab]    = useState<string | null>(null)
 
+  // ── Confirmação de sucesso (o modal fica aberto — ao contrário dos modais de
+  // "Registrar", este tem abas e o usuário costuma seguir para a próxima) ────────
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
   // ── Cancelamento ──────────────────────────────────────────────────────────────
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [cancelReason,  setCancelReason]  = useState('')
@@ -189,6 +193,7 @@ export function EditarPropostaModal({
     setErrorTec(null); setErrorCom(null); setErrorRes(null)
     setErrorFab(null); setErrorResFab(null)
     setConfirmCancel(false); setCancelReason(''); setErrorCancel(null)
+    setSuccessMsg(null)
 
     const tec = item.propostas_tecnicas[0] ?? null
 
@@ -321,7 +326,7 @@ export function EditarPropostaModal({
     if (hd <= 0)                               { setErrorTec('HH Direto é obrigatório'); return }
     if (!efetivoPico || parseInt(efetivoPico) <= 0) { setErrorTec('Efetivo Pico é obrigatório'); return }
     if (!diasParada  || parseInt(diasParada)  <= 0) { setErrorTec('Dias de Parada é obrigatório'); return }
-    setLoadingTec(true); setErrorTec(null)
+    setLoadingTec(true); setErrorTec(null); setSuccessMsg(null)
     try {
       const body: Record<string, unknown> = {
         hh_direto: hd, hh_indireto: hi,
@@ -335,6 +340,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorTec(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Proposta técnica salva com sucesso.')
       onSuccess()
     } finally { setLoadingTec(false) }
   }
@@ -342,7 +348,7 @@ export function EditarPropostaModal({
   const saveTecnicaObra = async () => {
     if (pesoTotalObra <= 0)         { setErrorTec('Informe o peso de ao menos uma categoria'); return }
     if (!hhTotalObra || numHhObra <= 0) { setErrorTec('HH Total é obrigatório'); return }
-    setLoadingTec(true); setErrorTec(null)
+    setLoadingTec(true); setErrorTec(null); setSuccessMsg(null)
     try {
       const body: Record<string, unknown> = { hh_total: numHhObra, peso_montagem: pesoTotalObra, data_envio: dataEnvioTec }
       pesoCats.forEach(k => { if (Number(pesosObra[k]) > 0) body[`peso_${k}`] = Number(pesosObra[k]) })
@@ -351,6 +357,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorTec(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Proposta técnica salva com sucesso.')
       onSuccess()
     } finally { setLoadingTec(false) }
   }
@@ -358,7 +365,7 @@ export function EditarPropostaModal({
   const saveComercialObra = async () => {
     if (!tecnicaId)      { setErrorCom('Selecione a revisão técnica'); return }
     if (numMontagem <= 0) { setErrorCom('Valor da Montagem é obrigatório'); return }
-    setLoadingCom(true); setErrorCom(null)
+    setLoadingCom(true); setErrorCom(null); setSuccessMsg(null)
     try {
       const body: Record<string, unknown> = {
         proposta_tecnica_id: Number(tecnicaId), valor_montagem_mecanica: numMontagem,
@@ -379,6 +386,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorCom(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Proposta comercial salva com sucesso.')
       onSuccess()
     } finally { setLoadingCom(false) }
   }
@@ -386,7 +394,7 @@ export function EditarPropostaModal({
   const saveComercialParada = async () => {
     if (!tecnicaId)       { setErrorCom('Selecione a revisão técnica'); return }
     if (numValParada <= 0) { setErrorCom('Valor Total é obrigatório'); return }
-    setLoadingCom(true); setErrorCom(null)
+    setLoadingCom(true); setErrorCom(null); setSuccessMsg(null)
     try {
       const body: Record<string, unknown> = {
         proposta_tecnica_id: Number(tecnicaId), valor_total_direto: numValParada, data_envio: dataEnvioCom,
@@ -397,6 +405,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorCom(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Proposta comercial salva com sucesso.')
       onSuccess()
     } finally { setLoadingCom(false) }
   }
@@ -411,7 +420,7 @@ export function EditarPropostaModal({
     if (reAlteracaoRes && justificativaRes.trim().length < 5) {
       setErrorRes('Justificativa obrigatória para alterar um resultado já definido (mín. 5 caracteres)'); return
     }
-    setLoadingRes(true); setErrorRes(null)
+    setLoadingRes(true); setErrorRes(null); setSuccessMsg(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-comercial`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -423,6 +432,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorRes(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Resultado salvo com sucesso.')
       onSuccess()
     } finally { setLoadingRes(false) }
   }
@@ -430,7 +440,7 @@ export function EditarPropostaModal({
   const saveFabricacao = async () => {
     const validos = equipamentos.filter(e => e.descricao.trim() && Number(e.pesoTon) > 0)
     if (validos.length === 0) { setErrorFab('Adicione ao menos um equipamento com descrição e peso'); return }
-    setLoadingFab(true); setErrorFab(null)
+    setLoadingFab(true); setErrorFab(null); setSuccessMsg(null)
     try {
       const body: Record<string, unknown> = {
         equipamentos: validos.map(e => ({
@@ -449,6 +459,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorFab(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Proposta de fabricação salva com sucesso.')
       onSuccess()
     } finally { setLoadingFab(false) }
   }
@@ -461,7 +472,7 @@ export function EditarPropostaModal({
     if (reAlteracaoResFab && justificativaRes.trim().length < 5) {
       setErrorResFab('Justificativa obrigatória para alterar um resultado já definido (mín. 5 caracteres)'); return
     }
-    setLoadingResFab(true); setErrorResFab(null)
+    setLoadingResFab(true); setErrorResFab(null); setSuccessMsg(null)
     try {
       const res = await fetch(`/api/solicitacoes/${item.id}/proposta-fabricacao`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -473,6 +484,7 @@ export function EditarPropostaModal({
       })
       const json = await res.json()
       if (!res.ok || json.error) { setErrorResFab(json.error ?? 'Erro ao salvar'); return }
+      setSuccessMsg('Resultado salvo com sucesso.')
       onSuccess()
     } finally { setLoadingResFab(false) }
   }
@@ -515,6 +527,9 @@ export function EditarPropostaModal({
       confirmClose onClose={onClose} title={`Editar Proposta · ${item.numero}`} extraWide
         footer={<ModalCancelButton label="Fechar" />}
       >
+        {successMsg && (
+          <div className="bg-green-50 border border-green-200 text-green-700 text-xs px-3 py-2 rounded mb-3">✓ {successMsg}</div>
+        )}
         {canRegistrarTecnica && (
           <>
             {errorFab && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{errorFab}</div>}
@@ -618,34 +633,40 @@ export function EditarPropostaModal({
         )}
 
         <ModalSection>Resultado</ModalSection>
-        {errorResFab && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{errorResFab}</div>}
-        <div className="grid grid-cols-2 gap-2.5 mb-3">
-          <Field label="Resultado *">
-            <Select value={resultadoFab} onChange={e => { setResultadoFab(e.target.value); setMotivoPerdaFab('') }}>
-              <option value="AGUARDANDO">Aguardando</option>
-              <option value="GANHOU">Ganhou</option>
-              <option value="PERDEU">Perdeu</option>
-            </Select>
-          </Field>
-          {resultadoFab === 'PERDEU' && (
-            <Field label="Motivo de perda *">
-              <Select value={motivoPerdaFab} onChange={e => setMotivoPerdaFab(e.target.value as MotivoPerda)}>
-                <option value="">Selecione...</option>
-                {(Object.keys(MOTIVO_PERDA_LABELS) as MotivoPerda[]).map(k => <option key={k} value={k}>{MOTIVO_PERDA_LABELS[k]}</option>)}
-              </Select>
-            </Field>
-          )}
-        </div>
-        {reAlteracaoResFab && (
-          <Field label="Justificativa da alteração de resultado *" className="mb-3">
-            <textarea rows={2} value={justificativaRes} onChange={e => setJustificativaRes(e.target.value)}
-              placeholder="O resultado já estava definido — explique o motivo da mudança (mín. 5 caracteres). Ficará registrado no histórico."
-              className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" />
-          </Field>
+        {!hasFabricacao ? (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-2 rounded mb-4">Registre a proposta de fabricação acima antes de definir o resultado.</div>
+        ) : (
+          <>
+            {errorResFab && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{errorResFab}</div>}
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <Field label="Resultado *">
+                <Select value={resultadoFab} onChange={e => { setResultadoFab(e.target.value); setMotivoPerdaFab('') }}>
+                  <option value="AGUARDANDO">Aguardando</option>
+                  <option value="GANHOU">Ganhou</option>
+                  <option value="PERDEU">Perdeu</option>
+                </Select>
+              </Field>
+              {resultadoFab === 'PERDEU' && (
+                <Field label="Motivo de perda *">
+                  <Select value={motivoPerdaFab} onChange={e => setMotivoPerdaFab(e.target.value as MotivoPerda)}>
+                    <option value="">Selecione...</option>
+                    {(Object.keys(MOTIVO_PERDA_LABELS) as MotivoPerda[]).map(k => <option key={k} value={k}>{MOTIVO_PERDA_LABELS[k]}</option>)}
+                  </Select>
+                </Field>
+              )}
+            </div>
+            {reAlteracaoResFab && (
+              <Field label="Justificativa da alteração de resultado *" className="mb-3">
+                <textarea rows={2} value={justificativaRes} onChange={e => setJustificativaRes(e.target.value)}
+                  placeholder="O resultado já estava definido — explique o motivo da mudança (mín. 5 caracteres). Ficará registrado no histórico."
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 resize-none" />
+              </Field>
+            )}
+            <div className="flex justify-end mb-4">
+              <Button onClick={saveResultadoFab} disabled={loadingResFab}>{loadingResFab ? 'Salvando...' : 'Salvar Resultado'}</Button>
+            </div>
+          </>
         )}
-        <div className="flex justify-end mb-4">
-          <Button onClick={saveResultadoFab} disabled={loadingResFab}>{loadingResFab ? 'Salvando...' : 'Salvar Resultado'}</Button>
-        </div>
         <SuspendSection {...{ confirmCancel, setConfirmCancel, cancelReason, setCancelReason, errorCancel, loadingCancel, onSuspender: handleSuspender, canCancelar, suspensa: item.suspensa, cancelada: !!item.proposta_cancelada_at, onReativar: handleReativar }} />
       </Modal>
     )
@@ -655,7 +676,7 @@ export function EditarPropostaModal({
   const TABS: { key: Tab; label: string }[] = ([
     { key: 'tecnica'   as Tab, label: 'Proposta Técnica',  show: canRegistrarTecnica },
     { key: 'comercial' as Tab, label: 'Proposta Comercial', show: canRegistrarComercial },
-    { key: 'resultado' as Tab, label: 'Resultado',          show: true },
+    { key: 'resultado' as Tab, label: 'Resultado',          show: hasComercial },
     { key: 'suspender' as Tab, label: 'Suspender',          show: canCancelar },
   ] as { key: Tab; label: string; show: boolean }[]).filter(t => t.show)
 
@@ -666,12 +687,16 @@ export function EditarPropostaModal({
     >
       <div className="flex border-b border-gray-200 mb-4 -mt-1">
         {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => { setTab(t.key); setSuccessMsg(null) }}
             className={`px-4 py-2 text-[12px] font-semibold border-b-2 transition-colors ${tab === t.key ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             {t.label}
           </button>
         ))}
       </div>
+
+      {successMsg && (
+        <div className="bg-green-50 border border-green-200 text-green-700 text-xs px-3 py-2 rounded mb-4">✓ {successMsg}</div>
+      )}
 
       {/* ── Técnica Paradas ──────────────────────────────────────────────────── */}
       {tab === 'tecnica' && isParada && (
