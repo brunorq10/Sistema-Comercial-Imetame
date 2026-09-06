@@ -9,10 +9,15 @@ import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+import { ChartCard } from '@/components/dashboard/ChartCard'
 import { SectionTitle } from '@/components/dashboard/SectionTitle'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
 import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
 import { ProgressBar } from '@/components/dashboard/ProgressBar'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Avatar } from '@/components/dashboard/Avatar'
+import { DASHBOARD_POSITIVO, DASHBOARD_PREVISTO, DASHBOARD_ATENCAO } from '@/lib/dashboardColors'
+import { formatCurrency } from '@/lib/utils'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -22,9 +27,7 @@ const TREEMAP_COLORS = [
   '#0277BD','#4527A0','#E65100','#00695C','#F57F17','#37474F',
 ]
 
-function fmt(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+const fmt = formatCurrency
 // Valor por extenso (sem abreviação M/K) — pontos de milhar e vírgula decimal
 function fmtM(v: number) {
   return fmt(v)
@@ -61,7 +64,7 @@ const RAMO_OPTIONS = [
 function Gauge({ percent, faturado, previsto }: { percent: number; faturado: number; previsto: number }) {
   const p = Math.min(100, Math.max(0, percent))
   const data = {
-    datasets: [{ data: [p, 100 - p], backgroundColor: ['#16A34A', '#E5E7EB'], borderWidth: 0, circumference: 180, rotation: 270 }],
+    datasets: [{ data: [p, 100 - p], backgroundColor: [DASHBOARD_POSITIVO, '#E5E7EB'], borderWidth: 0, circumference: 180, rotation: 270 }],
   }
   const opts = {
     responsive: true, maintainAspectRatio: false, cutout: '72%',
@@ -200,11 +203,10 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
   const totFixed = data.reduce((s, d) => s + (d.valor_fixado ?? 0), 0)
   const totPct = totPrev > 0 ? (totFat / totPrev) * 100 : 0
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="bg-green-primary px-4 py-2.5 text-center">
-        <h3 className="text-[12px] font-semibold text-white uppercase tracking-wide">Previsão x Realizado por Mês — {ano}</h3>
-        <p className="text-[9px] text-white/70 mt-0.5">Verde = mês com consolidado gerado · Valor Fixado = snapshot do consolidado</p>
-      </div>
+    <ChartCard
+      title={`Previsão x Realizado por Mês — ${ano}`}
+      subtitle="Verde = mês com consolidado gerado · Valor Fixado = snapshot do consolidado"
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] border-collapse">
           <thead>
@@ -250,17 +252,11 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
           </tfoot>
         </table>
       </div>
-    </div>
+    </ChartCard>
   )
 }
 
 // ══ Avatar de iniciais ══
-function Avatar({ nome }: { nome: string }) {
-  const ini = nome.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
-  let h = 0; for (const ch of nome) h = (h * 31 + ch.charCodeAt(0)) % 360
-  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: `hsl(${h},55%,42%)` }}>{ini}</span>
-}
-
 function adColor(p: number) { return p >= 70 ? { bg: '#DCFCE7', text: '#15803D' } : p >= 50 ? { bg: '#FEF3C7', text: '#B45309' } : { bg: '#FEE2E2', text: '#B91C1C' } }
 
 const ANO_ATUAL = new Date().getFullYear()
@@ -328,10 +324,10 @@ export default function IndicadoresAcordosPage() {
     <div className="flex flex-col h-full bg-gray-50">
       {/* ── Zona congelada — título e filtros ────────────────────────────── */}
       <div className="flex-shrink-0 p-4 pb-0">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold">Indicadores Acordos</h2>
-        {data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
-      </div>
+      <PageHeader
+        title="Indicadores Acordos"
+        actions={data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
+      />
 
       {/* Filtros */}
       <FilterBar className="!mt-3">
@@ -376,16 +372,16 @@ export default function IndicadoresAcordosPage() {
           {/* 1 — Visão consolidada do ano */}
           <SectionTitle>Visão consolidada do ano</SectionTitle>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <KpiCard label="Total faturado no ano" value={fmtM(data.totalFaturadoAno)} accent="#16A34A" sub={`${data.percFaturadoGeral.toFixed(1).replace('.', ',')}% da previsão`} />
-            <KpiCard label="Previsão de faturamento no ano" value={fmtM(data.prevFaturamentoAno)} accent="#1565C0" sub="meta anual de receita" />
-            <KpiCard label="Falta faturar no ano" value={fmtM(data.aFaturarAno)} accent="#D97706" sub="saldo até dezembro" />
+            <KpiCard label="Total faturado no ano" value={fmtM(data.totalFaturadoAno)} accent={DASHBOARD_POSITIVO} sub={`${data.percFaturadoGeral.toFixed(1).replace('.', ',')}% da previsão`} />
+            <KpiCard label="Previsão de faturamento no ano" value={fmtM(data.prevFaturamentoAno)} accent={DASHBOARD_PREVISTO} sub="meta anual de receita" />
+            <KpiCard label="Falta faturar no ano" value={fmtM(data.aFaturarAno)} accent={DASHBOARD_ATENCAO} sub="saldo até dezembro" />
             <KpiCard label="Previsão anos seguintes" value={fmtM(data.faturamentoProxAnos)} accent="#475569" sub="contratos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 !mt-3">
-            <KpiCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} accent="#16A34A" />
-            <KpiCard label={`Previsão mês atual (${mesLabel})`} value={fmtM(data.prevMesAtual)} accent="#1565C0" />
-            <KpiCard label={`Faturado último mês (${mesAntLabel})`} value={fmtM(data.faturadoUltimoMes)} accent="#16A34A" />
-            <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent="#1565C0" />
+            <KpiCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} accent={DASHBOARD_POSITIVO} />
+            <KpiCard label={`Previsão mês atual (${mesLabel})`} value={fmtM(data.prevMesAtual)} accent={DASHBOARD_PREVISTO} />
+            <KpiCard label={`Faturado último mês (${mesAntLabel})`} value={fmtM(data.faturadoUltimoMes)} accent={DASHBOARD_POSITIVO} />
+            <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent={DASHBOARD_PREVISTO} />
           </div>
 
           {/* 2 — Faturamento por mercado */}
@@ -407,7 +403,7 @@ export default function IndicadoresAcordosPage() {
               <ContratoAvancoPercentualChart
                 serieA={metaAcumPct} serieB={faturadoAcumPct}
                 labelA="Meta acumulada (%)" labelB="Faturado acumulado (%)"
-                corA="#1565C0" corB="#16A34A"
+                corA={DASHBOARD_PREVISTO} corB={DASHBOARD_POSITIVO}
                 labels={MES_LABEL}
               />
             </div>

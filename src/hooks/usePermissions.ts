@@ -64,5 +64,8 @@ export function usePermissions() {
     // Admin
     isAdmin: inGroup('admin'),
     isGestor: inGroup('gestores'),
+
+    // Cadastros — mesma regra usada em middleware.ts para bloquear a rota
+    canAcessarCadastros: inGroup('admin') || isAnalistaCritico,
   }
 }

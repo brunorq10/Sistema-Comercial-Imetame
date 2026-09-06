@@ -6,6 +6,8 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPOS_MULTA, TIPO_MULTA_MAP, TIPO_MULTA_LABEL } from '@/lib/multas'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { Button } from '@/components/ui/Button'
+import { KpiCard } from '@/components/dashboard/KpiCard'
+import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
 
 interface MultaItem {
   id: number
@@ -29,9 +31,6 @@ interface Opcoes {
   cidades: string[]
   responsaveis: { id: number; nome: string }[]
 }
-
-const selCls = 'border border-gray-300 rounded-md px-2 py-1.5 text-[12px] text-gray-700 bg-white focus:outline-none focus:border-green-primary'
-const lblCls = 'block mb-0.5 text-[9px] font-semibold text-gray-500 uppercase tracking-[0.04em]'
 
 export function MultasIndicador() {
   const [items, setItems] = useState<MultaItem[]>([])
@@ -99,49 +98,35 @@ export function MultasIndicador() {
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       {/* Filtros */}
-      <div className="flex flex-wrap gap-2.5 items-end mb-3">
-        <div className="min-w-[150px] flex-1">
-          <label className={lblCls}>Cliente</label>
+      <FilterBar className="mb-3">
+        <FilterField label="Cliente" className="min-w-[150px] flex-1">
           <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={opcoes.clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
-        </div>
-        <div className="min-w-[120px]">
-          <label className={lblCls}>Cidade</label>
+        </FilterField>
+        <FilterField label="Cidade" className="min-w-[120px]">
           <SearchableMultiSelect values={cidade} onChange={setCidade} options={opcoes.cidades.map((c) => ({ value: c, label: c }))} emptyLabel="Todas" />
-        </div>
-        <div className="min-w-[140px]">
-          <label className={lblCls}>Responsável</label>
+        </FilterField>
+        <FilterField label="Responsável" className="min-w-[140px]">
           <SearchableMultiSelect values={responsavel} onChange={setResponsavel} options={opcoes.responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
-        </div>
-        <div className="min-w-[120px]">
-          <label className={lblCls}>Tipo</label>
+        </FilterField>
+        <FilterField label="Tipo" className="min-w-[120px]">
           <SearchableMultiSelect values={tipo} onChange={setTipo} options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))} emptyLabel="Todos" />
-        </div>
-        <div className="min-w-[120px]">
-          <label className={lblCls}>Período (de)</label>
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={`${selCls} w-full`} />
-        </div>
-        <div className="min-w-[120px]">
-          <label className={lblCls}>Período (até)</label>
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={`${selCls} w-full`} />
-        </div>
-        <button onClick={limpar} className="border border-gray-300 text-gray-500 rounded px-2.5 py-[6px] text-[11px] hover:bg-gray-100 transition-colors">✕ Limpar</button>
+        </FilterField>
+        <FilterField label="Período (de)" className="min-w-[120px]">
+          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={filterSelectClass} />
+        </FilterField>
+        <FilterField label="Período (até)" className="min-w-[120px]">
+          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={filterSelectClass} />
+        </FilterField>
+        <ClearFiltersButton onClick={limpar} />
         <Button size="sm" variant="outline" onClick={exportarExcel} disabled={items.length === 0}>Exportar Excel</Button>
-      </div>
+      </FilterBar>
 
       {/* Cards de resumo por tipo + total */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-3">
         {porTipo.map((t) => (
-          <div key={t.value} className="rounded-lg border p-2.5" style={{ borderColor: t.corBg, backgroundColor: t.corBg }}>
-            <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: t.cor }}>{t.label}</p>
-            <p className="text-[16px] font-bold text-gray-800 leading-tight">{t.count}</p>
-            <p className="text-[10px] text-gray-500">{formatCurrency(t.valor)}</p>
-          </div>
+          <KpiCard key={t.value} label={t.label} value={String(t.count)} sub={formatCurrency(t.valor)} accent={t.cor} />
         ))}
-        <div className="rounded-lg border border-slate-300 bg-slate-50 p-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-600">Valor total</p>
-          <p className="text-[16px] font-bold text-slate-800 leading-tight">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-gray-500">{items.length} lançamento(s)</p>
-        </div>
+        <KpiCard label="Valor total" value={formatCurrency(total)} sub={`${items.length} lançamento(s)`} accent="#475569" />
       </div>
 
       {loading ? (

@@ -67,7 +67,7 @@ export default function LixeiraPage() {
     <div className="p-4 h-full overflow-y-auto">
       <PageHeader
         title="Lixeira"
-        subtitle={`Itens excluídos ficam aqui por ${retencao} dias e podem ser restaurados. Após o prazo, são apagados definitivamente.`}
+        subtitle={`Itens excluídos ficam aqui por ${retencao} dias e podem ser restaurados. Passado o prazo: NFs, eventos de medição, multas, ocorrências e informações são apagados definitivamente; contratos e acompanhamentos de HH deixam de poder ser restaurados por aqui, mas o registro é mantido para histórico.`}
         actions={
           <>
             {tipos.length > 1 && (
@@ -123,7 +123,7 @@ export default function LixeiraPage() {
         open={!!confirmando}
         title="Restaurar item"
         variant="success"
-        message={confirmando ? <>O item <strong>{confirmando.titulo}</strong> voltará a aparecer normalmente no sistema.</> : null}
+        message={confirmando ? <>O item <strong>{confirmando.titulo}</strong> voltará a aparecer em {confirmando.tipoLabel.toLowerCase()} — {confirmando.contexto}.</> : null}
         confirmLabel="Restaurar"
         loading={!!restaurando}
         onConfirm={() => confirmando && restaurar(confirmando)}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import {
   Chart as ChartJS,
@@ -23,6 +23,8 @@ import { SectionTitle } from '@/components/dashboard/SectionTitle'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
 import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
 import { ProgressBar } from '@/components/dashboard/ProgressBar'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Avatar } from '@/components/dashboard/Avatar'
 import {
   DASHBOARD_POSITIVO, DASHBOARD_PREVISTO, DASHBOARD_ATENCAO, DASHBOARD_NEGATIVO,
   dashboardXScale, dashboardTooltipPlugin,
@@ -343,12 +345,6 @@ const MOTIVO_LABELS: Record<string, string> = {
   OUTROS:                   'Outros',
 }
 
-function Initials({ nome }: { nome: string }) {
-  const ini = nome.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
-  let h = 0; for (const ch of nome) h = (h * 31 + ch.charCodeAt(0)) % 360
-  return <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-white text-[10px] font-bold flex-shrink-0" style={{ backgroundColor: `hsl(${h},55%,42%)` }}>{ini}</span>
-}
-
 // 1 — KPIs de situação geral
 function KpiSituacao({ total, aprovadas, reprovadas, em_analise }: { total: number; aprovadas: number; reprovadas: number; em_analise: number }) {
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0)
@@ -462,7 +458,7 @@ function TabelaResponsavel({ data }: { data: OrcDashboardData['por_responsavel']
               <tr><td colSpan={6} className="px-4 py-2.5 text-center text-gray-400 text-[12px]">Sem solicitações classificadas no período.</td></tr>
             ) : data.map((r) => (
               <tr key={r.id} className="border-b border-gray-100">
-                <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Initials nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
+                <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Avatar nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
                 {cols.map((c) => <td key={c.key} className="px-4 py-2.5 text-center text-gray-600">{r[c.key]}</td>)}
                 <td className="px-4 py-2.5 text-center font-bold" style={{ color: GREEN, background: '#F0FDF4' }}>{rowTotal(r)}</td>
               </tr>
@@ -482,7 +478,7 @@ function TabelaResponsavel({ data }: { data: OrcDashboardData['por_responsavel']
 }
 
 // ── Aba "Valor e Resultado" ──────────────────────────────────────────────────
-const fmtMoney  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmtMoney  = formatCurrency
 const fmtMoneyM = (v: number) => fmtMoney(v)   // sem abreviação M/K — número por extenso
 const fmtInt    = (v: number) => v.toLocaleString('pt-BR')
 
@@ -555,7 +551,7 @@ function TabelaPontualidade({ data }: { data: ResultadoDashboardData['pontualida
               const c = pontBadge(r.pct)
               return (
                 <tr key={r.id} className="border-b border-gray-100">
-                  <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Initials nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
+                  <td className="px-4 py-2.5"><div className="flex items-center gap-2"><Avatar nome={r.nome} /><span className="font-medium text-gray-700">{r.nome}</span></div></td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{r.enviadas}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{r.no_prazo}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{r.atrasadas}</td>
@@ -705,11 +701,10 @@ export default function DashboardComercialPage() {
     <div className="flex flex-col h-full bg-gray-50">
       {/* ── Zona congelada — título e filtros ────────────────────────────── */}
       <div className="flex-shrink-0 p-4 pb-0">
-      {/* Título */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-bold">Indicadores Comercial</h2>
-        <span className="text-[11px] text-gray-400">Indicadores consolidados do funil de orçamentos</span>
-      </div>
+      <PageHeader
+        title="Indicadores Comercial"
+        actions={<span className="text-[11px] text-gray-400">Indicadores consolidados do funil de orçamentos</span>}
+      />
 
       {/* Filtros */}
       <FilterBar className="!mt-3">

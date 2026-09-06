@@ -29,39 +29,45 @@ export async function GET() {
   const cutoff = cutoffLixeira()
   const cond = { deleted_at: { not: null, gte: cutoff } }
 
+  // Limite por tipo — protege contra uma lixeira muito pesada (ex.: exclusão em
+  // massa de um contrato grande) carregar tudo de uma vez; mostra sempre os
+  // excluídos mais recentes primeiro, que são os mais prováveis de precisar
+  // restaurar.
+  const LIMITE_POR_TIPO = 300
+
   const [nfs, subs, multas, ocorrencias, infos, contratos, hhRemovidos, users] = await Promise.all([
     prisma.notaFiscalContrato.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, numero_nf: true, valor_atribuido: true, deleted_at: true, deleted_by: true,
         subindice: { select: { descricao: true, contrato: { select: { indice: true, cliente: { select: { nome: true } } } } } } },
     }),
     prisma.subIndiceFaturamento.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, descricao: true, valor_total: true, deleted_at: true, deleted_by: true,
         contrato: { select: { indice: true, cliente: { select: { nome: true } } } } },
     }),
     prisma.multaPenalidade.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, tipo: true, descricao: true, valor_total: true, deleted_at: true, deleted_by: true,
         contrato: { select: { indice: true, cliente: { select: { nome: true } } } } },
     }),
     prisma.ocorrenciaContratual.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, codigo: true, tipo: true, descricao: true, deleted_at: true, deleted_by: true,
         contrato: { select: { indice: true, cliente: { select: { nome: true } } } } },
     }),
     prisma.solicitacaoInfo.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, codigo: true, comentario: true, deleted_at: true, deleted_by: true,
         solicitacao: { select: { numero: true, cliente: { select: { nome: true } } } } },
     }),
     prisma.contrato.findMany({
-      where: cond,
+      where: cond, take: LIMITE_POR_TIPO, orderBy: { deleted_at: 'desc' },
       select: { id: true, indice: true, ano_referencia: true, deleted_at: true, deleted_by: true,
         cliente: { select: { nome: true } } },
     }),
     prisma.contrato.findMany({
-      where: { hh_cancelado_at: { not: null, gte: cutoff } },
+      where: { hh_cancelado_at: { not: null, gte: cutoff } }, take: LIMITE_POR_TIPO, orderBy: { hh_cancelado_at: 'desc' },
       select: { id: true, indice: true, hh_cancelado_at: true, hh_cancelado_por: true, hh_cancel_motivo: true,
         cliente: { select: { nome: true } } },
     }),
@@ -148,24 +154,50 @@ export async function POST(req: NextRequest) {
       return null
     }
 
+    // O contrato-pai precisa estar fora da lixeira antes de restaurar um item
+    // filho — senão o item volta a existir, mas fica invisível (toda listagem
+    // esconde o que pertence a um contrato excluído).
+    const checarContratoPai = (contrato: { deleted_at: Date | null; indice: string } | null | undefined): NextResponse | null => {
+      if (contrato?.deleted_at) {
+        return NextResponse.json({ data: null, error: `Restaure primeiro o contrato ${contrato.indice}, que também está na lixeira.` }, { status: 409 })
+      }
+      return null
+    }
+
     if (tipo === 'nf') {
-      const item = await prisma.notaFiscalContrato.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
+      const item = await prisma.notaFiscalContrato.findFirst({
+        where: { id, deleted_at: { not: null } },
+        select: { deleted_by: true, subindice: { select: { contrato: { select: { deleted_at: true, indice: true } } } } },
+      })
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const pai = checarContratoPai(item.subindice.contrato); if (pai) return pai
       const neg = await restaurar(item.deleted_by); if (neg) return neg
       await prisma.notaFiscalContrato.update({ where: { id }, data })
     } else if (tipo === 'subindice') {
-      const item = await prisma.subIndiceFaturamento.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
+      const item = await prisma.subIndiceFaturamento.findFirst({
+        where: { id, deleted_at: { not: null } },
+        select: { deleted_by: true, contrato: { select: { deleted_at: true, indice: true } } },
+      })
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const pai = checarContratoPai(item.contrato); if (pai) return pai
       const neg = await restaurar(item.deleted_by); if (neg) return neg
       await prisma.subIndiceFaturamento.update({ where: { id }, data })
     } else if (tipo === 'multa') {
-      const item = await prisma.multaPenalidade.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
+      const item = await prisma.multaPenalidade.findFirst({
+        where: { id, deleted_at: { not: null } },
+        select: { deleted_by: true, contrato: { select: { deleted_at: true, indice: true } } },
+      })
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const pai = checarContratoPai(item.contrato); if (pai) return pai
       const neg = await restaurar(item.deleted_by); if (neg) return neg
       await prisma.multaPenalidade.update({ where: { id }, data })
     } else if (tipo === 'ocorrencia') {
-      const item = await prisma.ocorrenciaContratual.findFirst({ where: { id, deleted_at: { not: null } }, select: { deleted_by: true } })
+      const item = await prisma.ocorrenciaContratual.findFirst({
+        where: { id, deleted_at: { not: null } },
+        select: { deleted_by: true, contrato: { select: { deleted_at: true, indice: true } } },
+      })
       if (!item) return NextResponse.json({ data: null, error: 'Item não encontrado na lixeira' }, { status: 404 })
+      const pai = checarContratoPai(item.contrato); if (pai) return pai
       const neg = await restaurar(item.deleted_by); if (neg) return neg
       await prisma.ocorrenciaContratual.update({ where: { id }, data })
     } else if (tipo === 'contrato') {

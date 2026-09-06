@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/hooks/usePermissions'
 
 const NAV_SECTIONS = [
   {
@@ -45,6 +46,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: SidebarProps) {
   const pathname  = usePathname()
   const { data: session } = useSession()
+  const { canAcessarCadastros } = usePermissions()
 
   // Hover temporário: quando recolhida, passar o mouse expande por cima (sem fixar)
   const [hovered, setHovered] = useState(false)
@@ -196,39 +198,24 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
         {/* Divider */}
         <div className="border-t border-gray-100 my-1.5" />
 
-        {/* Cadastros — aba separada */}
-        <Link
-          href="/cadastros"
-          onClick={onClose}
-          title="Cadastros"
-          className={cn(
-            'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
-            railMode && 'lg:justify-center lg:px-0 lg:gap-0',
-            pathname.startsWith('/cadastros')
-              ? 'text-green-primary bg-green-light'
-              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
-          )}
-        >
-          <IconCadastros active={pathname.startsWith('/cadastros')} />
-          <span className={hideInRail}>Cadastros</span>
-        </Link>
-
-        {/* Construtor de Relatório — aba separada */}
-        <Link
-          href="/relatorios"
-          onClick={onClose}
-          title="Construtor de Relatório"
-          className={cn(
-            'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
-            railMode && 'lg:justify-center lg:px-0 lg:gap-0',
-            pathname.startsWith('/relatorios')
-              ? 'text-green-primary bg-green-light'
-              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
-          )}
-        >
-          <IconRelatorios active={pathname.startsWith('/relatorios')} />
-          <span className={hideInRail}>Construtor de Relatório</span>
-        </Link>
+        {/* Cadastros — aba separada, só para quem tem acesso ao módulo */}
+        {canAcessarCadastros && (
+          <Link
+            href="/cadastros"
+            onClick={onClose}
+            title="Cadastros"
+            className={cn(
+              'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
+              railMode && 'lg:justify-center lg:px-0 lg:gap-0',
+              pathname.startsWith('/cadastros')
+                ? 'text-green-primary bg-green-light'
+                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+            )}
+          >
+            <IconCadastros active={pathname.startsWith('/cadastros')} />
+            <span className={hideInRail}>Cadastros</span>
+          </Link>
+        )}
 
         {/* Lixeira — itens excluídos (retenção de 15 dias) */}
         <Link
@@ -304,15 +291,6 @@ function IconCadastros({ active }: { active: boolean }) {
       <circle cx="6" cy="5.5" r="2.5" stroke="currentColor" strokeWidth="1.3" />
       <path d="M1.5 13C1.5 10.5 3.5 9 6 9C8.5 9 10.5 10.5 10.5 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M10.5 5.5H13.5M12 4V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function IconRelatorios({ active }: { active: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
-      <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.5 10V7M7.5 10V5M10.5 10V8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }

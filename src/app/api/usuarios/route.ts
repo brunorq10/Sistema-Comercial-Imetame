@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
   const busca = searchParams.get('busca') ?? undefined
   const includeInativo = searchParams.get('inativo') === '1'
 
+  // Limite defensivo — a tela ainda não pagina, mas evita que a lista cresça
+  // sem controle conforme a base de usuários aumenta.
   const usuarios = await prisma.user.findMany({
     where: {
       ...(!includeInativo && { ativo: true }),
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest) {
       }),
     },
     orderBy: { nome: 'asc' },
+    take: 500,
     select: {
       id: true,
       nome: true,

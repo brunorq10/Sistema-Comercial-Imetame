@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { usePermissions } from '@/hooks/usePermissions'
 
 const MODULES = [
   {
@@ -27,9 +28,22 @@ const MODULES = [
     ),
   },
   {
-    label: 'Dashboard',
-    desc: 'Indicadores comerciais e métricas de desempenho',
+    label: 'Indicadores Comercial',
+    desc: 'Indicadores do funil de orçamentos e propostas',
     href: '/orcamentos/dashboard',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="2" y="2" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <rect x="15" y="2" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <rect x="2" y="15" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <rect x="15" y="15" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Indicadores Acordos',
+    desc: 'Faturamento, HH e eventos contratuais consolidados',
+    href: '/acordos/dashboard',
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
         <rect x="2" y="2" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -55,8 +69,10 @@ const MODULES = [
 
 export default function HomePage() {
   const { data: session } = useSession()
+  const { canAcessarCadastros } = usePermissions()
   const nome = session?.user?.nome ?? 'Usuário'
   const primeiroNome = nome.split(' ')[0]
+  const modulos = MODULES.filter((mod) => mod.href !== '/cadastros' || canAcessarCadastros)
 
   return (
     <div className="h-full overflow-y-auto flex flex-col items-center justify-center px-6 py-10">
@@ -83,11 +99,13 @@ export default function HomePage() {
 
       {/* Módulos */}
       <div className="grid grid-cols-2 gap-4 w-full max-w-[560px]">
-        {MODULES.map((mod) => (
+        {modulos.map((mod, i) => (
           <Link
             key={mod.href}
             href={mod.href}
-            className="bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-3 hover:border-[#2E7D32] hover:shadow-md transition-all group"
+            className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col gap-3 hover:border-[#2E7D32] hover:shadow-md transition-all group ${
+              modulos.length % 2 === 1 && i === modulos.length - 1 ? 'col-span-2' : ''
+            }`}
           >
             <span className="text-[#2E7D32] group-hover:text-[#1B5E20] transition-colors">
               {mod.icon}

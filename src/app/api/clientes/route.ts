@@ -51,13 +51,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data, error: null })
   }
 
-  // Modo completo: listagem do cadastro
+  // Modo completo: listagem do cadastro. Limite defensivo — a tela ainda não
+  // pagina, mas isso evita que a lista cresça sem controle conforme a base
+  // de clientes aumenta.
   const clientes = await prisma.cliente.findMany({
     where: {
       ...(!includeInativo && { ativo: true }),
       ...(busca && { nome: { contains: busca, mode: 'insensitive' } }),
     },
     orderBy: { nome: 'asc' },
+    take: 500,
   })
 
   const data = clientes.map((c) => ({

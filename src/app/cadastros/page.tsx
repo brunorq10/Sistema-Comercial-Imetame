@@ -24,16 +24,20 @@ export default function CadastrosPage() {
   const [incluirInativosClientes, setIncluirInativosClientes] = useState(false)
   const [clienteModal, setClienteModal] = useState(false)
   const [editandoCliente, setEditandoCliente] = useState<ClienteListItem | null>(null)
+  const [erroClientes, setErroClientes] = useState<string | null>(null)
 
   const fetchClientes = useCallback(async () => {
-    setLoadingClientes(true)
+    setLoadingClientes(true); setErroClientes(null)
     try {
       const params = new URLSearchParams({ full: '1' })
       if (buscaClientes) params.set('busca', buscaClientes)
       if (incluirInativosClientes) params.set('inativo', '1')
       const res = await fetch(`/api/clientes?${params}`)
       const json = await res.json()
-      if (json.data) setClientes(json.data)
+      if (!res.ok || json.error) { setErroClientes(json.error ?? 'Erro ao buscar clientes'); return }
+      setClientes(json.data ?? [])
+    } catch {
+      setErroClientes('Falha ao buscar clientes. Verifique sua conexão e tente novamente.')
     } finally {
       setLoadingClientes(false)
     }
@@ -57,16 +61,20 @@ export default function CadastrosPage() {
   const [incluirInativosUsuarios, setIncluirInativosUsuarios] = useState(false)
   const [usuarioModal, setUsuarioModal] = useState(false)
   const [editandoUsuario, setEditandoUsuario] = useState<UsuarioListItem | null>(null)
+  const [erroUsuarios, setErroUsuarios] = useState<string | null>(null)
 
   const fetchUsuarios = useCallback(async () => {
-    setLoadingUsuarios(true)
+    setLoadingUsuarios(true); setErroUsuarios(null)
     try {
       const params = new URLSearchParams()
       if (buscaUsuarios) params.set('busca', buscaUsuarios)
       if (incluirInativosUsuarios) params.set('inativo', '1')
       const res = await fetch(`/api/usuarios?${params}`)
       const json = await res.json()
-      if (json.data) setUsuarios(json.data)
+      if (!res.ok || json.error) { setErroUsuarios(json.error ?? 'Erro ao buscar usuários'); return }
+      setUsuarios(json.data ?? [])
+    } catch {
+      setErroUsuarios('Falha ao buscar usuários. Verifique sua conexão e tente novamente.')
     } finally {
       setLoadingUsuarios(false)
     }
@@ -105,6 +113,9 @@ export default function CadastrosPage() {
       {/* ── CLIENTES ──────────────────────────────────────────────────────── */}
       {tab === 'clientes' && (
         <>
+          {erroClientes && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded mb-4">{erroClientes}</div>
+          )}
           <div className="flex items-center gap-3 mb-4">
             <input
               type="text"
@@ -220,6 +231,9 @@ export default function CadastrosPage() {
       {/* ── USUÁRIOS ──────────────────────────────────────────────────────── */}
       {tab === 'usuarios' && (
         <>
+          {erroUsuarios && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded mb-4">{erroUsuarios}</div>
+          )}
           <div className="flex items-center gap-3 mb-4">
             <input
               type="text"
