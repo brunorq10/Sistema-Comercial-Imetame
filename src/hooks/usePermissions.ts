@@ -67,5 +67,8 @@ export function usePermissions() {
 
     // Cadastros — mesma regra usada em middleware.ts para bloquear a rota
     canAcessarCadastros: inGroup('admin') || isAnalistaCritico,
+
+    // Relatórios gerenciais
+    canAcessarRelatorios: pode('relatorios.ver'),
   }
 }

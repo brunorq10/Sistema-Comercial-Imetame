@@ -110,6 +110,11 @@ export const CATALOGO = {
   'cadastro.cliente.editar':   { perfis: ['ADM_COMERCIAL'], analista: true },
   'cadastro.cliente.inativar': { perfis: ['ADM_COMERCIAL'], analista: true },
   'cadastro.usuario.gerenciar':{ perfis: [] },                        // só ADM_GERAL
+
+  // ─────────── Relatórios gerenciais ───────────
+  // Biblioteca de relatórios pré-definidos — gestão dos dois times (Comercial
+  // e Acordos). Não é operacional (ORCAMENTISTA/ACORDOS não entram aqui).
+  'relatorios.ver': { perfis: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'GESTAO_ACORDOS'] },
 } satisfies Record<string, Entrada>
 
 export type Permissao = keyof typeof CATALOGO

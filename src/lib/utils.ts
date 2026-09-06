@@ -14,6 +14,16 @@ export function formatCurrency(value: number | string | null | undefined): strin
   }).format(num)
 }
 
+export function formatNumber(value: number | null | undefined, maxDecimals = 0): string {
+  if (value === null || value === undefined || isNaN(value)) return '—'
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: maxDecimals })
+}
+
+export function formatPercent(value: number | null | undefined, decimals = 1): string {
+  if (value === null || value === undefined || isNaN(value)) return '—'
+  return `${value.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}%`
+}
+
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return '—'
   // String só-data "YYYY-MM-DD": calendário puro, sem conversão de fuso

@@ -46,7 +46,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: SidebarProps) {
   const pathname  = usePathname()
   const { data: session } = useSession()
-  const { canAcessarCadastros } = usePermissions()
+  const { canAcessarCadastros, canAcessarRelatorios } = usePermissions()
 
   // Hover temporário: quando recolhida, passar o mouse expande por cima (sem fixar)
   const [hovered, setHovered] = useState(false)
@@ -198,6 +198,25 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
         {/* Divider */}
         <div className="border-t border-gray-100 my-1.5" />
 
+        {/* Relatórios — biblioteca de relatórios pré-definidos (gestão) */}
+        {canAcessarRelatorios && (
+          <Link
+            href="/relatorios"
+            onClick={onClose}
+            title="Relatórios"
+            className={cn(
+              'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
+              railMode && 'lg:justify-center lg:px-0 lg:gap-0',
+              pathname.startsWith('/relatorios')
+                ? 'text-green-primary bg-green-light'
+                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+            )}
+          >
+            <IconRelatorios active={pathname.startsWith('/relatorios')} />
+            <span className={hideInRail}>Relatórios</span>
+          </Link>
+        )}
+
         {/* Cadastros — aba separada, só para quem tem acesso ao módulo */}
         {canAcessarCadastros && (
           <Link
@@ -281,6 +300,15 @@ function IconAcordos({ active }: { active: boolean }) {
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
       <path d="M2 10L5.5 6.5L7.5 8.5L10 5.5L13 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
       <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  )
+}
+
+function IconRelatorios({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
+      <path d="M3 2H9.5L12 4.5V13H3V2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M5.2 8.5V10.8M7.5 6.8V10.8M9.8 5.2V10.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   )
 }

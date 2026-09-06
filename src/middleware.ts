@@ -26,7 +26,7 @@ export default auth((req) => {
   const perfil = req.auth?.user?.perfil as string | undefined
   const isAnalista = !!req.auth?.user?.is_analista_critico
 
-  // Apenas o módulo Cadastros permanece com acesso restrito a nível de tela.
+  // Cadastros e Relatórios são módulos de gestão com acesso restrito a nível de tela.
   if (pathname.startsWith('/cadastros')) {
     const podeCadastros = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' || isAnalista
     if (perfil && !podeCadastros) {
@@ -34,7 +34,12 @@ export default auth((req) => {
     }
   }
 
-  // Construtor de Relatório: liberado para todos os usuários autenticados.
+  if (pathname.startsWith('/relatorios')) {
+    const podeRelatorios = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' || perfil === 'GESTAO_COMERCIAL' || perfil === 'GESTAO_ACORDOS'
+    if (perfil && !podeRelatorios) {
+      return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
+    }
+  }
 
   return NextResponse.next()
 })
