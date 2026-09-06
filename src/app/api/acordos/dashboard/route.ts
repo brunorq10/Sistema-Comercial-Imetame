@@ -24,9 +24,12 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const anoParam    = searchParams.get('ano')
-  const clienteId   = searchParams.get('clienteId')
-  const ramoFiltro  = searchParams.get('ramo')
+  const anoParam       = searchParams.get('ano')
+  const clienteId      = searchParams.get('clienteId')
+  const ramoFiltro     = searchParams.get('ramo')
+  const responsavelId  = searchParams.get('responsavelId')
+  const cidadeFiltro   = searchParams.get('cidade')
+  const escopoFiltro   = searchParams.get('escopo')
 
   const hoje        = new Date()
   const anoAtual    = anoParam ? parseInt(anoParam, 10) : hoje.getFullYear()
@@ -37,14 +40,19 @@ export async function GET(req: Request) {
   const anoMesProx  = mesAtual === 12 ? anoAtual + 1 : anoAtual
 
   // Filtros multi-valor: lista separada por vírgula (ex.: clienteId=1,2,3)
-  const clienteIds = clienteId ? clienteId.split(',').map(Number).filter((n) => !isNaN(n)) : []
-  const ramos = ramoFiltro ? ramoFiltro.split(',').filter(Boolean) : []
+  const clienteIds     = clienteId    ? clienteId.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  const ramos          = ramoFiltro   ? ramoFiltro.split(',').filter(Boolean) : []
+  const responsavelIds = responsavelId ? responsavelId.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  const cidades        = cidadeFiltro ? cidadeFiltro.split(',').filter(Boolean) : []
 
   const whereContrato: Prisma.ContratoWhereInput = { cancelled_at: null }
-  if (clienteIds.length) whereContrato.cliente_id = { in: clienteIds }
-  if (ramos.length)      whereContrato.cliente    = { is: { ramo_atuacao: { in: ramos as RamoAtuacao[] } } }
+  if (clienteIds.length)     whereContrato.cliente_id     = { in: clienteIds }
+  if (ramos.length)          whereContrato.cliente        = { is: { ramo_atuacao: { in: ramos as RamoAtuacao[] } } }
+  if (responsavelIds.length) whereContrato.responsavel_id = { in: responsavelIds }
+  if (cidades.length)        whereContrato.cidade         = { in: cidades }
+  if (escopoFiltro?.trim())  whereContrato.descricao      = { contains: escopoFiltro.trim(), mode: 'insensitive' }
 
-  const [contratos, consolidados, clientes] = await Promise.all([
+  const [contratos, consolidados, clientes, filtroMeta] = await Promise.all([
     // Carrega apenas os campos usados na agregação (evita trazer linhas inteiras)
     prisma.contrato.findMany({
       where: whereContrato,
@@ -72,7 +80,24 @@ export async function GET(req: Request) {
       select: { id: true, nome: true },
       orderBy: { nome: 'asc' },
     }),
+    // Opções dos filtros de Responsável/Cidade — lista completa (não recorta
+    // pelos filtros já aplicados), mesmo critério já usado para `clientes` acima.
+    prisma.contrato.findMany({
+      where: { cancelled_at: null },
+      select: { cidade: true, responsavel: { select: { id: true, nome: true } } },
+    }),
   ])
+
+  const responsaveisMap = new Map<number, string>()
+  const cidadesSet = new Set<string>()
+  for (const c of filtroMeta) {
+    if (c.responsavel) responsaveisMap.set(c.responsavel.id, c.responsavel.nome)
+    if (c.cidade) cidadesSet.add(c.cidade)
+  }
+  const responsaveisOpts = Array.from(responsaveisMap.entries())
+    .map(([id, nome]) => ({ id, nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+  const cidadesOpts = Array.from(cidadesSet).sort()
 
   // Mapa mes -> previsto fixado (soma dos itens do consolidado)
   const consolidadosPorMes = new Map<number, number>()
@@ -254,6 +279,8 @@ export async function GET(req: Request) {
       anoAtual,
       mesAtual,
       clientes,
+      responsaveis: responsaveisOpts,
+      cidades: cidadesOpts,
       totalFaturadoAno,
       prevFaturamentoAno,
       aFaturarAno,

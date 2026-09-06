@@ -45,6 +45,8 @@ interface DashData {
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
   ocorrenciasPorResponsavel: { id: number; nome: string; osSobGestao: number; total: number }[]
   clientes: { id: number; nome: string }[]
+  responsaveis: { id: number; nome: string }[]
+  cidades: string[]
 }
 
 const RAMO_OPTIONS = [
@@ -271,6 +273,9 @@ export default function IndicadoresAcordosPage() {
   const [ano, setAno] = useState(String(ANO_ATUAL))
   const [clienteId, setClienteId] = useState<string[]>([])
   const [ramo, setRamo] = useState<string[]>([])
+  const [responsavelId, setResponsavelId] = useState<string[]>([])
+  const [cidade, setCidade] = useState<string[]>([])
+  const [escopo, setEscopo] = useState('')
   const [abaInd, setAbaInd] = useState<'geral' | 'responsavel'>('geral')
 
   const fetchData = useCallback(() => {
@@ -279,13 +284,16 @@ export default function IndicadoresAcordosPage() {
     if (ano && ano !== String(ANO_ATUAL)) params.set('ano', ano)
     if (clienteId.length) params.set('clienteId', clienteId.join(','))
     if (ramo.length) params.set('ramo', ramo.join(','))
+    if (responsavelId.length) params.set('responsavelId', responsavelId.join(','))
+    if (cidade.length) params.set('cidade', cidade.join(','))
+    if (escopo.trim()) params.set('escopo', escopo.trim())
     const qs = params.toString()
     fetch(`/api/acordos/dashboard${qs ? '?' + qs : ''}`)
       .then((r) => r.json())
       .then((j) => { if (j.error) setError(j.error); else setData(j.data) })
       .catch(() => setError('Falha ao carregar dados'))
       .finally(() => setLoading(false))
-  }, [ano, clienteId, ramo])
+  }, [ano, clienteId, ramo, responsavelId, cidade, escopo])
   useEffect(() => { fetchData() }, [fetchData])
 
   const anoNum = parseInt(ano, 10) || ANO_ATUAL
@@ -294,6 +302,8 @@ export default function IndicadoresAcordosPage() {
   const mesAntLabel = MES_LABEL[mesAtual === 1 ? 11 : mesAtual - 2]
   const mesProxLabel = MES_LABEL[mesAtual === 12 ? 0 : mesAtual]
   const clientes = data?.clientes ?? []
+  const responsaveis = data?.responsaveis ?? []
+  const cidades = data?.cidades ?? []
 
   // Meta de faturamento acumulada (%) x Faturado acumulado (%) — ambas em
   // relação ao total previsto do ano. A meta é conhecida para o ano inteiro
@@ -315,7 +325,9 @@ export default function IndicadoresAcordosPage() {
     : []
 
   return (
-    <div className="p-4 space-y-1 h-full overflow-y-auto bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* ── Zona congelada — título e filtros ────────────────────────────── */}
+      <div className="flex-shrink-0 p-4 pb-0">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold">Indicadores Acordos</h2>
         {data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
@@ -326,14 +338,27 @@ export default function IndicadoresAcordosPage() {
         <FilterField label="Ano" className="min-w-[90px]">
           <select value={ano} onChange={(e) => setAno(e.target.value)} className={filterSelectClass}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
         </FilterField>
-        <FilterField label="Cliente" className="min-w-[180px] flex-1">
+        <FilterField label="Responsável" className="min-w-[160px] flex-1">
+          <SearchableMultiSelect values={responsavelId} onChange={setResponsavelId} options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
+        </FilterField>
+        <FilterField label="Cliente" className="min-w-[180px] flex-[2]">
           <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
         </FilterField>
-        <FilterField label="Mercado" className="min-w-[150px]">
+        <FilterField label="Cidade" className="min-w-[140px] flex-1">
+          <SearchableMultiSelect values={cidade} onChange={setCidade} options={cidades.map((c) => ({ value: c, label: c }))} />
+        </FilterField>
+        <FilterField label="Mercado" className="min-w-[150px] flex-1">
           <SearchableMultiSelect values={ramo} onChange={setRamo} options={RAMO_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} emptyLabel="Todos" />
         </FilterField>
-        <ClearFiltersButton onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]) }} />
+        <FilterField label="Escopo" className="min-w-[160px] flex-1">
+          <input type="text" value={escopo} onChange={(e) => setEscopo(e.target.value)} placeholder="Buscar por escopo..." className={filterSelectClass} />
+        </FilterField>
+        <ClearFiltersButton onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]); setResponsavelId([]); setCidade([]); setEscopo('') }} />
       </FilterBar>
+      </div>
+
+      {/* ── Área rolável — indicadores ──────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-3 space-y-1">
 
       {loading && <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>}
       {error && <p className="text-center text-red-500 py-8 text-sm">{error}</p>}
@@ -495,6 +520,7 @@ export default function IndicadoresAcordosPage() {
           </>)}
         </>
       )}
+      </div>
     </div>
   )
 }

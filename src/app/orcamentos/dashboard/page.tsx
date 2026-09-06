@@ -702,7 +702,9 @@ export default function DashboardComercialPage() {
   }
 
   return (
-    <div className="p-4 h-full overflow-y-auto bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* ── Zona congelada — título e filtros ────────────────────────────── */}
+      <div className="flex-shrink-0 p-4 pb-0">
       {/* Título */}
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold">Indicadores Comercial</h2>
@@ -710,7 +712,7 @@ export default function DashboardComercialPage() {
       </div>
 
       {/* Filtros */}
-      <FilterBar className="!mt-3 sticky top-0 z-10">
+      <FilterBar className="!mt-3">
         {aba === 'resultado' ? (
           <>
             <FilterField label="Período (de)">
@@ -790,6 +792,10 @@ export default function DashboardComercialPage() {
 
         <ClearFiltersButton onClick={limpar} />
       </FilterBar>
+      </div>
+
+      {/* ── Área rolável — abas + conteúdo ───────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-3">
 
       {/* Abas */}
       <DashboardTabs
@@ -905,6 +911,7 @@ export default function DashboardComercialPage() {
             : <p className="text-center text-gray-400 py-5 text-[12px]">Carregando...</p>}
         </>
       )}
+      </div>
     </div>
   )
 }
