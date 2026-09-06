@@ -13,6 +13,9 @@ const RESP_LABELS: Record<string, string> = {
 const TIPO_MULTA_LABELS: Record<string, string> = { MULTA: 'Multa', GLOSAS: 'Glosas', REEMBOLSOS: 'Reembolsos', OUTROS: 'Outros' }
 
 // GET /api/relatorios/ocorrencias — OCM-01..03
+// OCM-01 e OCM-02 retornam a lista bruta de registros (é o que se consulta,
+// filtra e exporta); os agregados por tipo/responsabilidade continuam junto
+// para quem quiser o resumo, mas a tabela principal é sempre a lista.
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
@@ -28,40 +31,38 @@ export async function GET(req: NextRequest) {
     prisma.ocorrenciaContratual.findMany({
       where: { deleted_at: null, ...(periodo && { data: periodo }) },
       select: {
-        id: true, tipo: true, responsabilidade: true, data: true,
+        id: true, codigo: true, tipo: true, responsabilidade: true, data: true, descricao: true,
         contrato: { select: { id: true, indice: true, cliente: { select: { id: true, nome: true } } } },
       },
+      orderBy: { data: 'desc' },
     }),
     prisma.multaPenalidade.findMany({
       where: { deleted_at: null, ativa: true, ...(periodo && { data_ocorrencia: periodo }) },
       select: {
-        id: true, tipo: true, valor_total: true, data_ocorrencia: true,
+        id: true, tipo: true, descricao: true, valor_total: true, data_ocorrencia: true,
         contrato: { select: { id: true, indice: true, cliente: { select: { id: true, nome: true } } } },
       },
+      orderBy: { data_ocorrencia: 'desc' },
     }),
     prisma.contrato.groupBy({ by: ['cliente_id'], where: { cancelled_at: null }, _count: { _all: true } }),
   ])
 
-  // ── OCM-01: ocorrências por tipo e responsabilidade ───────────────────────
+  // ── OCM-01: lista de ocorrências + agregados ──────────────────────────────
   const porTipo: Record<string, number> = {}
   const porResponsabilidade: Record<string, number> = {}
-  const porMes = new Array(12).fill(0)
   for (const o of ocorrencias) {
     porTipo[o.tipo] = (porTipo[o.tipo] ?? 0) + 1
     porResponsabilidade[o.responsabilidade] = (porResponsabilidade[o.responsabilidade] ?? 0) + 1
-    porMes[o.data.getUTCMonth()]++
   }
 
-  // ── OCM-02: impacto financeiro de multas ──────────────────────────────────
+  // ── OCM-02: lista de multas + agregados ────────────────────────────────────
   const multasPorTipo: Record<string, number> = {}
-  const multasPorMes = new Array(12).fill(0)
   const multasPorCliente = new Map<number, { nome: string; valor: number }>()
   let totalMultas = 0
   for (const m of multas) {
     const valor = Number(m.valor_total)
     totalMultas += valor
     multasPorTipo[m.tipo] = (multasPorTipo[m.tipo] ?? 0) + valor
-    multasPorMes[m.data_ocorrencia.getUTCMonth()] += valor
     const cur = multasPorCliente.get(m.contrato.cliente.id) ?? { nome: m.contrato.cliente.nome, valor: 0 }
     cur.valor += valor
     multasPorCliente.set(m.contrato.cliente.id, cur)
@@ -88,19 +89,24 @@ export async function GET(req: NextRequest) {
   }).sort((a, b) => b.ocorrencias_por_contrato - a.ocorrencias_por_contrato)
 
   const data = {
-    ocm01: {
-      por_tipo: Object.entries(porTipo).map(([tipo, total]) => ({ tipo, label: TIPO_OCORRENCIA_LABELS[tipo] ?? tipo, total })).sort((a, b) => b.total - a.total),
-      por_responsabilidade: Object.entries(porResponsabilidade).map(([resp, total]) => ({ responsabilidade: resp, label: RESP_LABELS[resp] ?? resp, total })).sort((a, b) => b.total - a.total),
-      por_mes: porMes,
-      total: ocorrencias.length,
-    },
-    ocm02: {
-      total: totalMultas,
-      por_tipo: Object.entries(multasPorTipo).map(([tipo, valor]) => ({ tipo, label: TIPO_MULTA_LABELS[tipo] ?? tipo, valor })).sort((a, b) => b.valor - a.valor),
-      por_mes: multasPorMes,
-      por_cliente: Array.from(multasPorCliente.values()).sort((a, b) => b.valor - a.valor).slice(0, 10),
-    },
-    ocm03: reincidencia.slice(0, 15),
+    ocm01_lista: ocorrencias.map((o) => ({
+      id: o.id, codigo: o.codigo, contrato: o.contrato.indice, cliente: o.contrato.cliente.nome,
+      tipo: o.tipo, tipo_label: TIPO_OCORRENCIA_LABELS[o.tipo] ?? o.tipo,
+      responsabilidade: o.responsabilidade, responsabilidade_label: RESP_LABELS[o.responsabilidade] ?? o.responsabilidade,
+      data: o.data.toISOString(), descricao: o.descricao,
+    })),
+    ocm01_por_tipo: Object.entries(porTipo).map(([tipo, total]) => ({ tipo, label: TIPO_OCORRENCIA_LABELS[tipo] ?? tipo, total })).sort((a, b) => b.total - a.total),
+    ocm01_por_responsabilidade: Object.entries(porResponsabilidade).map(([resp, total]) => ({ responsabilidade: resp, label: RESP_LABELS[resp] ?? resp, total })).sort((a, b) => b.total - a.total),
+
+    ocm02_lista: multas.map((m) => ({
+      id: m.id, contrato: m.contrato.indice, cliente: m.contrato.cliente.nome,
+      tipo: m.tipo, tipo_label: TIPO_MULTA_LABELS[m.tipo] ?? m.tipo,
+      descricao: m.descricao, data: m.data_ocorrencia.toISOString(), valor: Number(m.valor_total),
+    })),
+    ocm02_total: totalMultas,
+    ocm02_por_tipo: Object.entries(multasPorTipo).map(([tipo, valor]) => ({ tipo, label: TIPO_MULTA_LABELS[tipo] ?? tipo, valor })).sort((a, b) => b.valor - a.valor),
+
+    ocm03: reincidencia,
   }
 
   return NextResponse.json({ data, error: null })

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     prisma.contrato.findMany({
       where: { cancelled_at: null },
       select: {
-        id: true, indice: true, ano_referencia: true, classificacao: true, estado: true,
+        id: true, indice: true, ano_referencia: true, classificacao: true, estado: true, status: true, num_os: true,
         data_inicio: true, data_fim: true, valor_contrato: true,
         cliente: { select: { id: true, nome: true } },
         responsavel: { select: { id: true, nome: true } },
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
   const ativos = contratos.filter((c) => c.hh_cancelado_at == null)
   const porClassif = new Map<string, { contratos: number; valor: number }>()
   const porResponsavel = new Map<string, { nome: string; contratos: number; valor: number }>()
+  const carteiraLista: Array<{ id: number; indice: string; cliente: string; responsavel: string | null; classificacao: string | null; num_os: string | null; status: string; valor: number }> = []
   for (const c of ativos) {
     const valor = Number(c.valor_contrato ?? c.subindices.reduce((a, s) => a + Number(s.valor_total), 0))
     if (c.classificacao) {
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
     const r = porResponsavel.get(respKey) ?? { nome: respNome, contratos: 0, valor: 0 }
     r.contratos++; r.valor += valor
     porResponsavel.set(respKey, r)
+    carteiraLista.push({ id: c.id, indice: c.indice, cliente: c.cliente.nome, responsavel: c.responsavel?.nome ?? null, classificacao: c.classificacao, num_os: c.num_os, status: c.status, valor })
   }
 
   // ── CTR-02: aderência de HH (Obras + Paradas) ─────────────────────────────
@@ -152,6 +154,7 @@ export async function GET(req: NextRequest) {
       responsaveis: Array.from(new Map(ativos.filter((c) => c.responsavel).map((c) => [c.responsavel!.id, c.responsavel!.nome])).entries()).map(([id, nome]) => ({ id, nome })),
     },
 
+    ctr01_lista: carteiraLista.sort((a, b) => b.valor - a.valor),
     ctr01_carteira: {
       total_contratos: ativos.length,
       valor_total: Array.from(porClassif.values()).reduce((a, b) => a + b.valor, 0),
