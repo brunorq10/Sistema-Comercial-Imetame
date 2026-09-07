@@ -118,13 +118,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   if (!contrato) return NextResponse.json({ data: null, error: 'Não encontrado' }, { status: 404 })
 
-  // Busca solicitação vinculada pelo num_proposta (= Solicitacao.numero na aba Propostas)
-  const solicitacao = contrato.num_proposta
-    ? await prisma.solicitacao.findFirst({
-        where: { numero: contrato.num_proposta, cancelled_at: null },
+  // Busca a solicitação vinculada — preferencialmente por solicitacao_id (o
+  // vínculo real); cai para o casamento por texto (num_proposta) só em
+  // contratos antigos que ainda não foram migrados para o vínculo por ID.
+  const solicitacao = contrato.solicitacao_id
+    ? await prisma.solicitacao.findUnique({
+        where: { id: contrato.solicitacao_id },
         select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
       })
-    : null
+    : contrato.num_proposta
+      ? await prisma.solicitacao.findFirst({
+          where: { numero: contrato.num_proposta, cancelled_at: null },
+          select: { id: true, numero: true, ...SOLICITACAO_INCLUDE },
+        })
+      : null
 
   // Compute total % launched per NF across entire DB
   const allNFNumbers = Array.from(new Set(
@@ -190,10 +197,25 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (rest.data_inicio !== undefined) data.data_inicio = rest.data_inicio ? new Date(rest.data_inicio) : null
   if (rest.data_fim !== undefined) data.data_fim = rest.data_fim ? new Date(rest.data_fim) : null
 
-  // Mantém o vínculo com a solicitação de origem em sincronia com o Nº Proposta
-  // (elo dos relatórios cruzados Comercial × Acordos), exceto se o chamador já
-  // enviou solicitacao_id explicitamente.
-  if (rest.num_proposta !== undefined && rest.solicitacao_id === undefined) {
+  // Vínculo com a solicitação de origem — fonte de verdade é solicitacao_id
+  // (escolhido por ID na busca do formulário). Quando enviado, sincroniza o
+  // Nº Proposta (texto) a partir do número real da solicitação, para nunca
+  // divergirem; quando ausente, mantém o caminho legado de casar por texto.
+  if (rest.solicitacao_id !== undefined) {
+    if (rest.solicitacao_id) {
+      const sol = await prisma.solicitacao.findUnique({
+        where: { id: rest.solicitacao_id },
+        select: { id: true, numero: true, cancelled_at: true },
+      })
+      if (!sol || sol.cancelled_at) {
+        return NextResponse.json({ data: null, error: 'Solicitação vinculada não encontrada' }, { status: 400 })
+      }
+      data.solicitacao_id = sol.id
+      data.num_proposta = sol.numero
+    } else {
+      data.solicitacao_id = null
+    }
+  } else if (rest.num_proposta !== undefined) {
     const sol = rest.num_proposta
       ? await prisma.solicitacao.findFirst({ where: { numero: rest.num_proposta.trim(), cancelled_at: null }, select: { id: true } })
       : null
@@ -368,6 +390,7 @@ function serializeContrato(c: any, nfTotalMap: Record<string, number> = {}, soli
     cidade: c.cidade ?? null,
     estado: c.estado ?? null,
     responsavel: c.responsavel,
+    solicitacao_id: c.solicitacao_id ?? null,
     solicitacao: solicitacao ? serializeSolicitacao(solicitacao) : null,
     num_os: c.num_os,
     num_acordo: c.num_acordo,

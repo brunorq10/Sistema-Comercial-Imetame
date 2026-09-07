@@ -448,6 +448,7 @@ export interface ContratoItem {
   cidade: string | null
   estado: string | null
   responsavel: { id: number; nome: string } | null
+  solicitacao_id: number | null
   solicitacao?: ContratoSolicitacaoVinculada | null
   num_os: string | null
   num_acordo: string | null

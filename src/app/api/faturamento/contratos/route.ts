@@ -36,6 +36,7 @@ const schema = z.object({
   num_os: z.string().optional(),
   num_acordo: z.string().optional(),
   num_proposta: z.string().optional(),
+  solicitacao_id: z.number().int().positive().optional().nullable(),
   responsavel_id: z.number().int().positive().optional(),
   data_inicio: z.string().optional(),
   data_fim: z.string().optional(),
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest) {
 
   // Nº Proposta é obrigatório (fora do rascunho) — várias propostas podem virar
   // vários contratos diferentes, não há unicidade aqui, só presença do campo.
-  if (!parsed.data.rascunho && !parsed.data.num_proposta?.trim()) {
+  if (!parsed.data.rascunho && !parsed.data.solicitacao_id && !parsed.data.num_proposta?.trim()) {
     return NextResponse.json({ data: null, error: 'Nº Proposta é obrigatório' }, { status: 400 })
   }
 
@@ -165,10 +166,25 @@ export async function POST(req: NextRequest) {
   const count = await prisma.contrato.count()
   const indice = `CT-${String(count + 1).padStart(3, '0')}`
 
-  // Vincula a solicitação de origem quando o Nº Proposta corresponde ao número
-  // de uma solicitação — é o elo usado nos relatórios cruzados Comercial × Acordos.
+  // Vincula a solicitação de origem — é o elo usado nos relatórios cruzados
+  // Comercial × Acordos. Fonte de verdade é solicitacao_id (escolhido por ID
+  // na busca do formulário); quando presente, também sincroniza o Nº Proposta
+  // (texto) a partir do número real da solicitação, para nunca divergirem.
   let solicitacaoId: number | null = null
-  if (parsed.data.num_proposta) {
+  let numProposta = parsed.data.num_proposta ?? null
+  if (parsed.data.solicitacao_id) {
+    const sol = await prisma.solicitacao.findUnique({
+      where: { id: parsed.data.solicitacao_id },
+      select: { id: true, numero: true, cancelled_at: true },
+    })
+    if (!sol || sol.cancelled_at) {
+      return NextResponse.json({ data: null, error: 'Solicitação vinculada não encontrada' }, { status: 400 })
+    }
+    solicitacaoId = sol.id
+    numProposta = sol.numero
+  } else if (parsed.data.num_proposta) {
+    // Caminho legado (sem seleção por ID) — mantém compatibilidade para
+    // contratos digitados manualmente sem uma solicitação real no sistema.
     const sol = await prisma.solicitacao.findFirst({
       where: { numero: parsed.data.num_proposta.trim(), cancelled_at: null },
       select: { id: true },
@@ -187,7 +203,7 @@ export async function POST(req: NextRequest) {
       estado:           parsed.data.estado ?? null,
       num_os: parsed.data.num_os ?? null,
       num_acordo: parsed.data.num_acordo ?? null,
-      num_proposta: parsed.data.num_proposta ?? null,
+      num_proposta: numProposta,
       solicitacao_id: solicitacaoId,
       responsavel_id: parsed.data.responsavel_id ?? null,
       data_inicio: parsed.data.data_inicio ? new Date(parsed.data.data_inicio) : null,
@@ -279,6 +295,7 @@ function serializeContrato(c: any, anoFiltro?: number, nfTotalMap: Record<string
     cidade: c.cidade ?? null,
     estado: c.estado ?? null,
     responsavel: c.responsavel,
+    solicitacao_id: c.solicitacao_id ?? null,
     num_os: c.num_os,
     num_acordo: c.num_acordo,
     num_proposta: c.num_proposta,

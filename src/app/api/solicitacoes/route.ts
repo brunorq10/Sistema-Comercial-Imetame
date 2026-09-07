@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       },
       select: { id: true, numero: true, cliente: { select: { nome: true } } },
       orderBy: { numero: 'asc' },
-      take: clienteId !== undefined ? undefined : 10,
+      take: 500,
     })
     return NextResponse.json({ data: rows.map((r) => ({ id: r.id, numero: r.numero, cliente: r.cliente.nome })), error: null })
   }

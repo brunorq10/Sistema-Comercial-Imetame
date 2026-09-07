@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, CurrencyInput } from '@/components/ui/Input'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { maskOS } from '@/lib/utils'
 import type { ContratoItem } from '@/types'
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
@@ -78,7 +79,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     filiais: { id: number; nome: string | null; cidade: string; estado: string }[]
   }[]>([])
   const [responsaveis, setResponsaveis] = useState<{ id: number; nome: string }[]>([])
-  const [propostasCliente, setPropostasCliente] = useState<{ id: number; numero: string }[]>([])
+  const [propostasDisponiveis, setPropostasDisponiveis] = useState<{ id: number; numero: string; cliente: string }[]>([])
 
   const [anoRef, setAnoRef] = useState(String(anoAtual))
   const [status, setStatus] = useState('A_FATURAR')
@@ -87,7 +88,9 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
   const [numAcordo, setNumAcordo] = useState('')
+  const [solicitacaoId, setSolicitacaoId] = useState('')
   const [numProposta, setNumProposta] = useState('')
+  const [numPropostaManual, setNumPropostaManual] = useState(false)
   const [numOs, setNumOs] = useState('')   // OS a nível de contrato (item macro)
   const [responsavelId, setResponsavelId] = useState('')
   const [dataInicio, setDataInicio] = useState('')
@@ -105,16 +108,13 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
   useEffect(() => {
     fetch('/api/clientes').then((r) => r.json()).then((j) => setClientes(j.data ?? []))
     fetch('/api/users/acordos').then((r) => r.json()).then((j) => setResponsaveis(j.data ?? []))
-  }, [])
-
-  // Ajuste 1: lista de propostas (Solicitacao.numero) do cliente selecionado, para vincular ao contrato
-  useEffect(() => {
-    if (!clienteId) { setPropostasCliente([]); return }
-    fetch(`/api/solicitacoes?modo=autocomplete&cliente_id=${clienteId}`)
+    // Lista completa de solicitações (todas as clientes) para vincular ao contrato pelo ID real —
+    // não fica restrita ao cliente já escolhido no contrato, para nunca "esconder" a proposta certa.
+    fetch('/api/solicitacoes?modo=autocomplete')
       .then((r) => r.json())
-      .then((j) => setPropostasCliente((j.data ?? []).map((r: { id: number; numero: string }) => ({ id: r.id, numero: r.numero }))))
-      .catch(() => setPropostasCliente([]))
-  }, [clienteId])
+      .then((j) => setPropostasDisponiveis((j.data ?? []).map((r: { id: number; numero: string; cliente: string }) => ({ id: r.id, numero: r.numero, cliente: r.cliente }))))
+      .catch(() => setPropostasDisponiveis([]))
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -131,6 +131,10 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       setEstado(editando.estado ?? '')
       setNumAcordo(editando.num_acordo ?? '')
       setNumProposta(editando.num_proposta ?? '')
+      setSolicitacaoId(editando.solicitacao_id ? String(editando.solicitacao_id) : '')
+      // Contrato antigo com texto mas sem vínculo real por ID — abre já em modo manual
+      // para não perder a informação, sinalizando que precisa ser revinculado.
+      setNumPropostaManual(!editando.solicitacao_id && !!editando.num_proposta)
       // OS no contrato; fallback p/ dados antigos que tinham OS no sub-índice
       setNumOs(editando.num_os ?? (editando.subindices?.find((s) => s.num_os)?.num_os ?? ''))
       setResponsavelId(editando.responsavel ? String(editando.responsavel.id) : '')
@@ -173,7 +177,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       prevClienteFinalRef.current = ''
       setAnoRef(String(anoAtual)); setStatus('A_FATURAR'); setClienteId('')
       setClienteFinalId(''); setCidade(''); setEstado('')
-      setNumAcordo(''); setNumProposta(''); setNumOs(''); setResponsavelId('')
+      setNumAcordo(''); setNumProposta(''); setSolicitacaoId(''); setNumPropostaManual(false); setNumOs(''); setResponsavelId('')
       setDataInicio(''); setDataFim(''); setDescricao(''); setClassificacao(''); setValorContrato('')
       setSubindices([emptySubindice(anoAtual)])
     }
@@ -211,6 +215,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         descricao: descricao || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
+        solicitacao_id: !numPropostaManual && solicitacaoId ? Number(solicitacaoId) : undefined,
         num_os: numOs || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
         valor_contrato: valorContrato ? Number(valorContrato) : undefined,
@@ -288,7 +293,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     if (!clienteId) { setError('Selecione o cliente'); return }
     if (!clienteFinalId) { setError('Selecione o cliente final'); return }
     if (!anoRef) { setError('Ano de referência obrigatório'); return }
-    if (!numProposta.trim()) { setError('Nº Proposta é obrigatório'); return }
+    if (numPropostaManual ? !numProposta.trim() : !solicitacaoId) { setError('Nº Proposta é obrigatório'); return }
     if (!valorContrato || isNaN(Number(valorContrato)) || Number(valorContrato) <= 0) {
       setError('Valor total do contrato é obrigatório'); return
     }
@@ -328,6 +333,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         estado: estado || undefined,
         num_acordo: numAcordo || undefined,
         num_proposta: numProposta || undefined,
+        solicitacao_id: numPropostaManual ? null : (solicitacaoId ? Number(solicitacaoId) : null),
         num_os: numOs || undefined,
         responsavel_id: responsavelId ? Number(responsavelId) : undefined,
         data_inicio: dataInicio || undefined,
@@ -474,13 +480,35 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
           <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
         <Field label="Nº Proposta *">
-          <Select value={numProposta} onChange={(e) => setNumProposta(e.target.value)} disabled={!clienteId}>
-            <option value="">{clienteId ? 'Selecione...' : 'Selecione o cliente primeiro'}</option>
-            {numProposta && !propostasCliente.some((p) => p.numero === numProposta) && (
-              <option value={numProposta}>{numProposta}</option>
-            )}
-            {propostasCliente.map((p) => <option key={p.id} value={p.numero}>{p.numero}</option>)}
-          </Select>
+          {numPropostaManual ? (
+            <>
+              <Input placeholder="Ex: SOL-0053" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} />
+              <button
+                type="button"
+                onClick={() => { setNumPropostaManual(false); setNumProposta('') }}
+                className="mt-1 text-[10px] text-green-primary hover:underline"
+              >
+                Buscar na lista de solicitações
+              </button>
+            </>
+          ) : (
+            <>
+              <SearchableSelect
+                value={solicitacaoId}
+                onChange={(v) => { setSolicitacaoId(v); setNumProposta(propostasDisponiveis.find((p) => String(p.id) === v)?.numero ?? '') }}
+                options={propostasDisponiveis.map((p) => ({ value: String(p.id), label: `${p.numero} — ${p.cliente}` }))}
+                placeholder="Buscar por número ou cliente..."
+                emptyLabel="Nenhuma selecionada"
+              />
+              <button
+                type="button"
+                onClick={() => { setNumPropostaManual(true); setSolicitacaoId('') }}
+                className="mt-1 text-[10px] text-gray-400 hover:text-gray-600 hover:underline"
+              >
+                Não encontro na lista — digitar manualmente
+              </button>
+            </>
+          )}
         </Field>
         <Field label="Valor total do contrato (R$)">
           <CurrencyInput value={valorContrato} onChange={setValorContrato} />
