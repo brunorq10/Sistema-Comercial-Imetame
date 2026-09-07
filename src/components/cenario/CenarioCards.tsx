@@ -16,33 +16,20 @@ function Card({ label, value, sub, accent }: { label: string; value: string; sub
 }
 
 export function CenarioCards({ ind }: { ind: IndicadoresCenario }) {
-  const saldoNeg = ind.saldoNoPico < 0
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
       <Card
-        label="Itens no cenário"
+        label="Itens"
         value={String(ind.totalItens)}
         sub={`${ind.totalContratos} contrato${ind.totalContratos === 1 ? '' : 's'} · ${ind.totalPropostas} proposta${ind.totalPropostas === 1 ? '' : 's'}`}
       />
-      <Card label="Quantidade de Paradas" value={String(ind.qtdParadas)} accent="#B45309" />
-      <Card label="Quantidade de Obras" value={String(ind.qtdObras)} accent="#1565C0" />
-      <Card label="Capacidade de efetivo" value={ind.capacidade.toLocaleString('pt-BR')} />
+      <Card label="Paradas" value={String(ind.qtdParadas)} accent="#B45309" />
+      <Card label="Obras" value={String(ind.qtdObras)} accent="#1565C0" />
       <Card
-        label="Pico comprometido"
+        label="Efetivo no Pico"
         value={ind.pico.toLocaleString('pt-BR')}
         sub={ind.mesPico ? `${MESES_ABREV[ind.mesPico.mes - 1]}/${ind.mesPico.ano}` : '—'}
         accent="#6A1B9A"
-      />
-      <Card
-        label="Saldo no pico"
-        value={ind.saldoNoPico.toLocaleString('pt-BR')}
-        sub="capacidade − pico"
-        accent={saldoNeg ? '#C62828' : '#2E7D32'}
-      />
-      <Card
-        label="Meses acima da capacidade"
-        value={String(ind.mesesAcimaCapacidade)}
-        accent={ind.mesesAcimaCapacidade > 0 ? '#C62828' : '#2E7D32'}
       />
     </div>
   )

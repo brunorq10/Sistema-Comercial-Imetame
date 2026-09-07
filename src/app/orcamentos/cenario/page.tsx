@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
 import { usePermissions } from '@/hooks/usePermissions'
 import { CenarioCards } from '@/components/cenario/CenarioCards'
 import { CenarioGanttTable } from '@/components/cenario/CenarioGanttTable'
@@ -34,10 +33,6 @@ export default function CenarioPage() {
   const [data, setData] = useState<CenarioData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [capacidadeEdit, setCapacidadeEdit] = useState('')
-  const [editandoCapacidade, setEditandoCapacidade] = useState(false)
-  const [salvandoCapacidade, setSalvandoCapacidade] = useState(false)
-
   const [modalNovo, setModalNovo] = useState(false)
   const [modalGerenciar, setModalGerenciar] = useState(false)
   const [gerenciarFocoId, setGerenciarFocoId] = useState<number | null>(null)
@@ -50,47 +45,13 @@ export default function CenarioPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const salvarCapacidade = async () => {
-    const v = Number(capacidadeEdit)
-    if (!capacidadeEdit || isNaN(v) || v < 0) return
-    setSalvandoCapacidade(true)
-    try {
-      await fetch('/api/cenario/config', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ capacidade_efetivo: v }),
-      })
-      setEditandoCapacidade(false)
-      fetchData()
-    } finally {
-      setSalvandoCapacidade(false)
-    }
-  }
-
   return (
     <div className="h-full overflow-y-auto p-4">
       <PageHeader
         title="Cenário"
-        subtitle="Projeção de atividades futuras — carga de efetivo comprometida mês a mês (contratos + propostas em orçamentação), comparada com a capacidade disponível."
+        subtitle="Projeção de atividades futuras — carga de efetivo comprometida mês a mês (contratos + propostas em orçamentação)."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            {editandoCapacidade ? (
-              <div className="flex items-center gap-1.5">
-                <Field label="" className="mb-0">
-                  <Input type="number" min={0} className="w-24" value={capacidadeEdit} onChange={(e) => setCapacidadeEdit(e.target.value)} autoFocus />
-                </Field>
-                <Button size="sm" onClick={salvarCapacidade} disabled={salvandoCapacidade}>{salvandoCapacidade ? '...' : 'Salvar'}</Button>
-                <Button size="sm" variant="outline" onClick={() => setEditandoCapacidade(false)} disabled={salvandoCapacidade}>Cancelar</Button>
-              </div>
-            ) : (
-              canEditarCenario && data && (
-                <button
-                  onClick={() => { setCapacidadeEdit(String(data.capacidade)); setEditandoCapacidade(true) }}
-                  className="text-[11px] text-gray-500 border border-gray-300 rounded px-2.5 py-[5px] hover:bg-gray-50 transition-colors"
-                  title="Editar capacidade de efetivo"
-                >
-                  Capacidade: <strong className="text-gray-700">{data.capacidade.toLocaleString('pt-BR')}</strong> ✎
-                </button>
-              )
-            )}
             <Button size="sm" variant="outline" onClick={() => setModalRetratos(true)}>Retratos</Button>
             {canEditarCenario && (
               <>
@@ -124,7 +85,6 @@ export default function CenarioPage() {
             linhas={toLinhas(data.lancamentos)}
             periodo={data.periodo}
             totais={data.totais}
-            capacidade={data.capacidade}
             editavel={canEditarCenario}
             onEditar={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
             onExcluir={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}

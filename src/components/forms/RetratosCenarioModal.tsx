@@ -209,7 +209,6 @@ export function RetratosCenarioModal({ open, onClose, editavel }: Props) {
               linhas={toLinhas(retratoAtivo.lancamentos)}
               periodo={retratoAtivo.periodo}
               totais={retratoAtivo.totais}
-              capacidade={retratoAtivo.capacidade}
               editavel={false}
             />
           </div>

@@ -6,7 +6,9 @@ import { mesKey, totaisPorMes, type CenarioLinha, type MesRef, type TotalMes } f
 
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
-// ── Larguras das colunas de identificação (congeladas) ────────────────────────
+// ── Larguras das colunas de identificação ──────────────────────────────────
+// Apenas Cliente/Cidade/Escopo ficam congeladas (sticky); as demais colunas de
+// identificação rolam junto com a linha do tempo.
 const W = {
   cliente: 150, cidade: 110, escopo: 220, classificacao: 90,
   origem: 90, inicio: 85, fim: 85, efetivo: 70,
@@ -15,13 +17,8 @@ const L = {
   cliente: 0,
   cidade: W.cliente,
   escopo: W.cliente + W.cidade,
-  classificacao: W.cliente + W.cidade + W.escopo,
-  origem: W.cliente + W.cidade + W.escopo + W.classificacao,
-  inicio: W.cliente + W.cidade + W.escopo + W.classificacao + W.origem,
-  fim: W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio,
-  efetivo: W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio + W.fim,
 }
-const FROZEN_TOTAL = L.efetivo + W.efetivo
+const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio + W.fim + W.efetivo
 const MES_W = 74
 
 const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
@@ -31,13 +28,12 @@ interface Props {
   linhas: CenarioLinha[]
   periodo: MesRef[]
   totais: TotalMes[]
-  capacidade: number
   editavel?: boolean
   onEditar?: (linha: CenarioLinha) => void
   onExcluir?: (linha: CenarioLinha) => void
 }
 
-export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editavel, onEditar, onExcluir }: Props) {
+export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar, onExcluir }: Props) {
   const anos = useMemo(() => {
     const grupos: { ano: number; qtdMeses: number }[] = []
     for (const m of periodo) {
@@ -48,7 +44,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
     return grupos
   }, [periodo])
 
-  const maxTotal = useMemo(() => Math.max(capacidade, ...totais.map((t) => t.total), 1), [totais, capacidade])
+  const maxTotal = useMemo(() => Math.max(...totais.map((t) => t.total), 1), [totais])
 
   if (linhas.length === 0) {
     return (
@@ -64,7 +60,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
 
   return (
     <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: 560 }}>
-      <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: FROZEN_TOTAL + periodo.length * MES_W }}>
+      <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: ID_TOTAL_WIDTH + periodo.length * MES_W }}>
         <colgroup>
           <col style={{ width: W.cliente }} /><col style={{ width: W.cidade }} /><col style={{ width: W.escopo }} />
           <col style={{ width: W.classificacao }} /><col style={{ width: W.origem }} /><col style={{ width: W.inicio }} />
@@ -77,12 +73,12 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
           <tr>
             <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.cliente }} rowSpan={2}>Cliente</th>
             <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.cidade }} rowSpan={2}>Cidade/UF</th>
-            <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
-            <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.classificacao }} rowSpan={2}>Classif.</th>
-            <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.origem }} rowSpan={2}>Origem</th>
-            <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.inicio }} rowSpan={2}>Início prev.</th>
-            <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.fim }} rowSpan={2}>Fim prev.</th>
-            <th className={cn(th, 'z-[30] shadow-[3px_0_6px_rgba(0,0,0,0.12)]')} style={{ top: 0, left: L.efetivo }} rowSpan={2}>Efetivo</th>
+            <th className={cn(th, 'z-[30] shadow-[3px_0_6px_rgba(0,0,0,0.12)]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
+            <th className={th} rowSpan={2}>Classif.</th>
+            <th className={th} rowSpan={2}>Origem</th>
+            <th className={th} rowSpan={2}>Início prev.</th>
+            <th className={th} rowSpan={2}>Fim prev.</th>
+            <th className={th} rowSpan={2}>Efetivo</th>
             {anos.map((g) => (
               <th key={g.ano} colSpan={g.qtdMeses} className="sticky top-0 z-[15] bg-green-dark text-white px-2 py-[3px] text-center font-bold text-[10px] border-b border-green-primary border-l-2 border-l-white/30">
                 {g.ano}
@@ -91,7 +87,9 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
           </tr>
           <tr>
             {periodo.map((m) => (
-              <th key={mesKey(m)} className="sticky z-[15] bg-green-primary text-white px-1 py-[3px] text-center font-medium text-[9px] border-b border-green-dark" style={{ top: 22 }} />
+              <th key={mesKey(m)} className="sticky z-[15] bg-green-primary text-white px-1 py-[3px] text-center font-medium text-[9px] border-b border-green-dark" style={{ top: 22 }}>
+                {MESES_ABREV[m.mes - 1]}
+              </th>
             ))}
           </tr>
         </thead>
@@ -114,20 +112,20 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
                 <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-500')} style={{ left: L.cidade }}>
                   {[l.cidade, l.estado].filter(Boolean).join('/') || '—'}
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-600')} style={{ left: L.escopo }}>
+                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-600')} style={{ left: L.escopo, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }}>
                   <span className="truncate block" style={{ maxWidth: W.escopo - 16 }} title={l.escopo ?? ''}>{l.escopo ?? '—'}</span>
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-600')} style={{ left: L.classificacao }}>
+                <td className={cn(td, 'text-gray-600')}>
                   {CLASSIF_LABEL[l.classificacao]}
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50')} style={{ left: L.origem }}>
+                <td className={td}>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: origemBg, color: origemCor }}>
                     {ORIGEM_LABEL[l.origem]}
                   </span>
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-500')} style={{ left: L.inicio }}>{formatDate(l.data_inicio.toISOString())}</td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-500')} style={{ left: L.fim }}>{formatDate(l.data_fim.toISOString())}</td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 font-bold text-right pr-3')} style={{ left: L.efetivo, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }}>
+                <td className={cn(td, 'text-gray-500')}>{formatDate(l.data_inicio.toISOString())}</td>
+                <td className={cn(td, 'text-gray-500')}>{formatDate(l.data_fim.toISOString())}</td>
+                <td className={cn(td, 'font-bold text-right pr-3')}>
                   <div className="flex items-center justify-end gap-1">
                     {l.efetivo.toLocaleString('pt-BR')}
                     {editavel && (
@@ -158,48 +156,38 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
         <tfoot>
           {/* ── TOTAL COMPROMETIDO ── */}
           <tr className="border-t-2 border-gray-300">
-            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700')} style={{ left: L.cliente }} colSpan={8}>TOTAL COMPROMETIDO</td>
+            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3}>TOTAL COMPROMETIDO</td>
+            <td className={cn(td, 'bg-gray-100')} colSpan={5} />
             {totais.map((t) => (
-              <td key={mesKey(t)} className={cn('px-1 py-[5px] text-center text-[10px] font-bold', t.acimaCapacidade ? 'bg-[#FFEBEE] text-red-700' : 'bg-gray-100 text-gray-700')}>
+              <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700">
                 {t.total.toLocaleString('pt-BR')}
-              </td>
-            ))}
-          </tr>
-          {/* ── SALDO DE EFETIVO ── */}
-          <tr>
-            <td className={cn(td, tdF, 'bg-gray-50 font-semibold text-gray-600')} style={{ left: L.cliente }} colSpan={8}>SALDO DE EFETIVO</td>
-            {totais.map((t) => (
-              <td key={mesKey(t)} className={cn('px-1 py-[5px] text-center text-[10px] font-bold bg-gray-50', t.saldo < 0 ? 'text-red-700' : 'text-green-700')}>
-                {t.saldo.toLocaleString('pt-BR')}
               </td>
             ))}
           </tr>
 
           {/* ── Gráfico de barras (mesma grade, mesmo scroll) ── */}
           <tr>
-            <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.cliente }} colSpan={8}>
+            <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3}>
               <div className="flex items-center gap-3 py-1">
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Contratos</span>
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#B45309' }} />Propostas</span>
-                <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-3 border-t-2 border-dashed inline-block" style={{ borderColor: '#6B7280' }} />Capacidade</span>
               </div>
             </td>
+            <td className="bg-white align-bottom" colSpan={5} />
             {totais.map((t) => {
               const hMax = 110
               const hContratos = Math.round((t.contratos / maxTotal) * hMax)
               const hPropostas = Math.round((t.propostas / maxTotal) * hMax)
-              const hCapacidade = Math.round((capacidade / maxTotal) * hMax)
               return (
                 <td key={mesKey(t)} className="px-1 py-1 align-bottom relative" style={{ height: hMax + 28 }}>
                   <div className="relative mx-auto" style={{ width: MES_W - 16, height: hMax }}>
-                    <div className="absolute left-0 right-0 border-t-2 border-dashed" style={{ borderColor: '#6B7280', bottom: hCapacidade }} />
-                    <div className={cn('absolute left-0 right-0 flex flex-col justify-end', t.acimaCapacidade && 'ring-1 ring-red-400 rounded-sm')} style={{ bottom: 0, height: hMax }}>
+                    <div className="absolute left-0 right-0 flex flex-col justify-end" style={{ bottom: 0, height: hMax }}>
                       {t.propostas > 0 && <div style={{ height: hPropostas, background: '#E8A838' }} title={`Propostas: ${t.propostas}`} />}
                       {t.contratos > 0 && <div style={{ height: hContratos, background: '#2D7DD2' }} title={`Contratos: ${t.contratos}`} />}
                     </div>
                   </div>
                   {t.total > 0 && (
-                    <p className={cn('text-center text-[9px] font-bold mt-0.5', t.acimaCapacidade ? 'text-red-600' : 'text-gray-600')}>
+                    <p className="text-center text-[9px] font-bold mt-0.5 text-gray-600">
                       {t.total.toLocaleString('pt-BR')}
                     </p>
                   )}
@@ -210,7 +198,8 @@ export function CenarioGanttTable({ linhas, periodo, totais, capacidade, editave
 
           {/* ── Rótulos dos meses ── */}
           <tr>
-            <td className={cn(td, tdF, 'bg-white')} style={{ left: L.cliente }} colSpan={8} />
+            <td className={cn(td, tdF, 'bg-white')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3} />
+            <td className="bg-white" colSpan={5} />
             {periodo.map((m) => (
               <td key={mesKey(m)} className="px-1 py-[4px] text-center text-[9px] text-gray-500 font-semibold border-t border-gray-100">
                 {MESES_ABREV[m.mes - 1]}/{String(m.ano).slice(2)}
