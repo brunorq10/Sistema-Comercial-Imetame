@@ -21,8 +21,18 @@ const L = {
 const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio + W.fim + W.efetivo
 const MES_W = 74
 
+// ── Limite de altura: cabeçalho + 10 linhas de lançamento + rodapé de totais/gráfico.
+// Acima de 10 lançamentos, o wrapper passa a rolar verticalmente (barra de rolagem).
+const HEADER_H = 44
+const ROW_H = 26
+const VISIBLE_ROWS = 10
+const RODAPE_TOTAL_H = 26
+const RODAPE_CHART_H = 138
+const RODAPE_MESES_H = 22
+const MAX_HEIGHT = HEADER_H + VISIBLE_ROWS * ROW_H + RODAPE_TOTAL_H + RODAPE_CHART_H + RODAPE_MESES_H
+
 const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
-const CLASSIF_LABEL: Record<string, string> = { OBRAS: 'Obras', PARADAS: 'Paradas' }
+const CLASSIF_LABEL: Record<string, string> = { OBRAS: 'Obras', PARADAS: 'Paradas', FABRICACOES: 'Fabricação', OLEO_GAS: 'Óleo e Gás' }
 
 interface Props {
   linhas: CenarioLinha[]
@@ -55,11 +65,11 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
   }
 
   const th = 'sticky top-0 z-[20] bg-green-primary text-white px-2 py-[6px] text-left font-semibold text-[10px] whitespace-nowrap border-b border-green-dark'
-  const td = 'px-2 py-[5px] text-[11px] whitespace-nowrap'
-  const tdF = 'sticky z-[5] shadow-[3px_0_6px_rgba(0,0,0,0.06)]'
+  const td = 'px-2 py-[5px] text-[11px] whitespace-nowrap border-b border-gray-100'
+  const tdF = 'sticky z-[5] shadow-[2px_0_4px_rgba(0,0,0,0.05)]'
 
   return (
-    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: 560 }}>
+    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: MAX_HEIGHT }}>
       <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: ID_TOTAL_WIDTH + periodo.length * MES_W }}>
         <colgroup>
           <col style={{ width: W.cliente }} /><col style={{ width: W.cidade }} /><col style={{ width: W.escopo }} />
@@ -73,7 +83,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
           <tr>
             <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.cliente }} rowSpan={2}>Cliente</th>
             <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.cidade }} rowSpan={2}>Cidade/UF</th>
-            <th className={cn(th, 'z-[30] shadow-[3px_0_6px_rgba(0,0,0,0.12)]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
+            <th className={cn(th, 'z-[30] shadow-[2px_0_4px_rgba(0,0,0,0.08)]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
             <th className={th} rowSpan={2}>Classif.</th>
             <th className={th} rowSpan={2}>Origem</th>
             <th className={th} rowSpan={2}>Início prev.</th>
@@ -95,9 +105,10 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
         </thead>
 
         <tbody>
-          {linhas.map((l) => {
+          {linhas.map((l, i) => {
             const origemCor = l.origem === 'CONTRATO' ? '#1565C0' : '#B45309'
             const origemBg = l.origem === 'CONTRATO' ? '#E3F0FB' : '#FEF3E2'
+            const rowBg = i % 2 === 1 ? '#F9FAFB' : '#FFFFFF'
             const mesesAtivos = new Set(
               (() => { const out: string[] = []; let a = l.data_inicio.getUTCFullYear(), m = l.data_inicio.getUTCMonth() + 1
                 const af = l.data_fim.getUTCFullYear(), mf = l.data_fim.getUTCMonth() + 1
@@ -105,14 +116,14 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                 return out })(),
             )
             return (
-              <tr key={l.id} className="hover:bg-gray-50 group">
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 font-semibold text-gray-700')} style={{ left: L.cliente }}>
+              <tr key={l.id} className={cn('group border-b border-gray-100 hover:bg-green-light transition-colors', i % 2 === 1 ? 'bg-gray-50' : 'bg-white')}>
+                <td className={cn(td, tdF, 'font-semibold text-gray-700')} style={{ left: L.cliente, background: rowBg }}>
                   <span className="truncate block" style={{ maxWidth: W.cliente - 16 }} title={l.cliente_nome}>{l.cliente_nome}</span>
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-500')} style={{ left: L.cidade }}>
+                <td className={cn(td, tdF, 'text-gray-500')} style={{ left: L.cidade, background: rowBg }}>
                   {[l.cidade, l.estado].filter(Boolean).join('/') || '—'}
                 </td>
-                <td className={cn(td, tdF, 'bg-white group-hover:bg-gray-50 text-gray-600')} style={{ left: L.escopo, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }}>
+                <td className={cn(td, tdF, 'text-gray-600')} style={{ left: L.escopo, background: rowBg }}>
                   <span className="truncate block" style={{ maxWidth: W.escopo - 16 }} title={l.escopo ?? ''}>{l.escopo ?? '—'}</span>
                 </td>
                 <td className={cn(td, 'text-gray-600')}>
@@ -139,7 +150,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                 {periodo.map((m) => {
                   const ativo = mesesAtivos.has(mesKey(m))
                   return (
-                    <td key={mesKey(m)} className="px-1 py-[5px] text-center text-[10px]">
+                    <td key={mesKey(m)} className="px-1 py-[5px] text-center text-[10px] border-b border-gray-100">
                       {ativo ? (
                         <span className="inline-block px-1.5 py-0.5 rounded font-semibold" style={{ background: origemBg, color: origemCor }}>
                           {l.efetivo}
@@ -155,11 +166,11 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
 
         <tfoot>
           {/* ── TOTAL COMPROMETIDO ── */}
-          <tr className="border-t-2 border-gray-300">
-            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3}>TOTAL COMPROMETIDO</td>
-            <td className={cn(td, 'bg-gray-100')} colSpan={5} />
+          <tr>
+            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700 border-t-2 border-t-gray-300')} style={{ left: L.cliente }} colSpan={3}>TOTAL COMPROMETIDO</td>
+            <td className={cn(td, 'bg-gray-100 border-t-2 border-t-gray-300')} colSpan={5} />
             {totais.map((t) => (
-              <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700">
+              <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700 border-t-2 border-t-gray-300">
                 {t.total.toLocaleString('pt-BR')}
               </td>
             ))}
@@ -167,7 +178,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
 
           {/* ── Gráfico de barras (mesma grade, mesmo scroll) ── */}
           <tr>
-            <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3}>
+            <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.cliente }} colSpan={3}>
               <div className="flex items-center gap-3 py-1">
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Contratos</span>
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#B45309' }} />Propostas</span>
@@ -198,7 +209,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
 
           {/* ── Rótulos dos meses ── */}
           <tr>
-            <td className={cn(td, tdF, 'bg-white')} style={{ left: L.cliente, boxShadow: '3px 0 6px rgba(0,0,0,0.06)' }} colSpan={3} />
+            <td className={cn(td, tdF, 'bg-white')} style={{ left: L.cliente }} colSpan={3} />
             <td className="bg-white" colSpan={5} />
             {periodo.map((m) => (
               <td key={mesKey(m)} className="px-1 py-[4px] text-center text-[9px] text-gray-500 font-semibold border-t border-gray-100">

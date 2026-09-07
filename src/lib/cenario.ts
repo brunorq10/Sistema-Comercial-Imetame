@@ -15,7 +15,7 @@ export interface CenarioLinha {
   cidade: string | null
   estado: string | null
   escopo: string | null
-  classificacao: 'OBRAS' | 'PARADAS'
+  classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'
   origem: OrigemCenario
   data_inicio: Date
   data_fim: Date
@@ -87,6 +87,8 @@ export interface IndicadoresCenario {
   totalPropostas: number
   qtdParadas: number
   qtdObras: number
+  qtdFabricacoes: number
+  qtdOleoGas: number
   capacidade: number
   pico: number
   mesPico: MesRef | null
@@ -104,6 +106,8 @@ export function calcularIndicadores(linhas: CenarioLinha[], capacidade: number):
     totalPropostas: linhas.filter((l) => l.origem === 'PROPOSTA').length,
     qtdParadas: linhas.filter((l) => l.classificacao === 'PARADAS').length,
     qtdObras: linhas.filter((l) => l.classificacao === 'OBRAS').length,
+    qtdFabricacoes: linhas.filter((l) => l.classificacao === 'FABRICACOES').length,
+    qtdOleoGas: linhas.filter((l) => l.classificacao === 'OLEO_GAS').length,
     capacidade,
     pico: pico.total > 0 ? pico.total : 0,
     mesPico: pico.total > 0 ? { ano: pico.ano, mes: pico.mes } : null,

@@ -17,7 +17,7 @@ function Card({ label, value, sub, accent }: { label: string; value: string; sub
 
 export function CenarioCards({ ind }: { ind: IndicadoresCenario }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-3">
       <Card
         label="Itens"
         value={String(ind.totalItens)}
@@ -25,6 +25,8 @@ export function CenarioCards({ ind }: { ind: IndicadoresCenario }) {
       />
       <Card label="Paradas" value={String(ind.qtdParadas)} accent="#B45309" />
       <Card label="Obras" value={String(ind.qtdObras)} accent="#1565C0" />
+      <Card label="Fabricação" value={String(ind.qtdFabricacoes)} accent="#00897B" />
+      <Card label="Óleo e Gás" value={String(ind.qtdOleoGas)} accent="#455A64" />
       <Card
         label="Efetivo no Pico"
         value={ind.pico.toLocaleString('pt-BR')}
