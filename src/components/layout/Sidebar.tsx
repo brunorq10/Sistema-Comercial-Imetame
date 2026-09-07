@@ -19,6 +19,7 @@ const NAV_SECTIONS = [
       { label: 'Solicitações',        href: '/orcamentos/solicitacoes' },
       { label: 'Propostas',           href: '/orcamentos/propostas' },
       { label: 'Indicadores Comercial', href: '/orcamentos/dashboard' },
+      { label: 'Cenário',             href: '/orcamentos/cenario', requerCenario: true },
     ],
   },
   {
@@ -46,7 +47,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: SidebarProps) {
   const pathname  = usePathname()
   const { data: session } = useSession()
-  const { canAcessarCadastros, canAcessarRelatorios } = usePermissions()
+  const { canAcessarCadastros, canAcessarRelatorios, canAcessarCenario } = usePermissions()
 
   // Hover temporário: quando recolhida, passar o mouse expande por cima (sem fixar)
   const [hovered, setHovered] = useState(false)
@@ -187,6 +188,7 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
               {isOpen && (
                 <div className={cn('bg-gray-50 border-l-0', hideInRail)}>
                   {section.items.map((item) => {
+                    if ('requerCenario' in item && item.requerCenario && !canAcessarCenario) return null
                     const active = pathname === item.href || pathname.startsWith(item.href + '/')
                     return (
                       <Link

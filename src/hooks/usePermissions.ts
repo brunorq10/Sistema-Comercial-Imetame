@@ -70,5 +70,9 @@ export function usePermissions() {
 
     // Relatórios gerenciais
     canAcessarRelatorios: pode('relatorios.ver'),
+
+    // Cenário (módulo Comercial)
+    canAcessarCenario: pode('cenario.ver'),
+    canEditarCenario: pode('cenario.editar'),
   }
 }

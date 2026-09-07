@@ -115,6 +115,15 @@ export const CATALOGO = {
   // Biblioteca de relatórios pré-definidos — gestão dos dois times (Comercial
   // e Acordos). Não é operacional (ORCAMENTISTA/ACORDOS não entram aqui).
   'relatorios.ver': { perfis: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'GESTAO_ACORDOS'] },
+
+  // ─────────── Cenário (módulo Comercial) ───────────
+  // Visualização: Orçamentistas, Gestão Comercial, Gestão de Acordos e
+  // Analista Crítico (flag). ADM_COMERCIAL sem o flag NÃO entra — grupo
+  // deliberadamente diferente das demais permissões de Orçamentos.
+  'cenario.ver':    { perfis: ['ORCAMENTISTA', 'GESTAO_COMERCIAL', 'GESTAO_ACORDOS'], analista: true },
+  // Lançar/editar/excluir lançamentos, editar capacidade, tirar/excluir retratos
+  // — restrito ao Analista Crítico (flag); demais perfis com acesso são só leitura.
+  'cenario.editar': { perfis: [], analista: true },
 } satisfies Record<string, Entrada>
 
 export type Permissao = keyof typeof CATALOGO

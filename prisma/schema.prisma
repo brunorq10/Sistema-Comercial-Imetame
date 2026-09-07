@@ -163,6 +163,11 @@ model User {
   revisoes_criadas            RevisaoPendente[]              @relation("RevisaoPendenteCriador")
   relatorios_os_criados       RelatorioOS[]                  @relation("RelatorioOSCriador")
   revisoes_avaliadas          RevisaoPendente[]              @relation("RevisaoPendenteAvaliador")
+  cenario_config_atualizacoes CenarioConfig[]                @relation("CenarioConfigAtualizador")
+  cenario_lancamentos_criados CenarioLancamento[]             @relation("CenarioLancCriador")
+  cenario_lancamentos_atualizados CenarioLancamento[]         @relation("CenarioLancAtualizador")
+  cenario_lancamentos_historico   CenarioLancamentoHistorico[] @relation("CenarioLancHistCriador")
+  cenario_retratos_criados    CenarioRetrato[]                @relation("CenarioRetratoCriador")
 
   @@map("users")
 }
@@ -402,6 +407,7 @@ model PropostaComercial {
   solicitacao      Solicitacao      @relation(fields: [solicitacao_id], references: [id])
   proposta_tecnica PropostaTecnica? @relation(fields: [proposta_tecnica_id], references: [id])
   criador          User             @relation(fields: [created_by], references: [id])
+  cenario_lancamento CenarioLancamento?
 
   @@index([solicitacao_id])
   @@map("propostas_comerciais")
@@ -1382,4 +1388,114 @@ model RelatorioVersao {
   @@unique([relatorio_id, versao])
   @@index([relatorio_id])
   @@map("relatorios_versoes")
+}
+
+// ─── Cenário (módulo Comercial): projeção de carga de efetivo futura ──────────
+// v1: apenas Obras e Paradas (efetivo). Fabricações/Óleo e Gás (toneladas) ficam
+// para uma 2ª etapa.
+
+// Parâmetro único (singleton, id=1) — capacidade de efetivo da empresa usada
+// como referência de comparação no Cenário.
+model CenarioConfig {
+  id                 Int      @id @default(autoincrement())
+  capacidade_efetivo Int
+  updated_at         DateTime @updatedAt
+  updated_by         Int
+
+  atualizador User @relation("CenarioConfigAtualizador", fields: [updated_by], references: [id])
+
+  @@map("cenario_config")
+}
+
+// Um lançamento por proposta comercial (1:1) — a origem (CONTRATO/PROPOSTA) é
+// sempre computada a partir do `resultado` da proposta vinculada, nunca
+// armazenada aqui (ver src/lib/cenario.ts). Dados denormalizados de propósito:
+// podem ser ajustados no lançamento, divergindo da proposta de origem.
+model CenarioLancamento {
+  id                     Int           @id @default(autoincrement())
+  proposta_comercial_id  Int           @unique
+  cliente_nome           String
+  cliente_final_nome     String?
+  cidade                 String?
+  estado                 String?       @db.VarChar(2)
+  escopo                 String?
+  classificacao          Classificacao
+  data_inicio            DateTime
+  data_fim               DateTime
+  efetivo                Int
+  observacao             String?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+  created_by             Int
+  updated_by             Int?
+  // RN-18: exclusão não permitida — soft-cancel com justificativa
+  cancelled_at           DateTime?
+  cancel_reason          String?
+
+  proposta_comercial PropostaComercial @relation(fields: [proposta_comercial_id], references: [id])
+  criador            User              @relation("CenarioLancCriador", fields: [created_by], references: [id])
+  atualizador        User?             @relation("CenarioLancAtualizador", fields: [updated_by], references: [id])
+  historico          CenarioLancamentoHistorico[]
+
+  @@index([cancelled_at])
+  @@map("cenario_lancamentos")
+}
+
+model CenarioLancamentoHistorico {
+  id            Int      @id @default(autoincrement())
+  lancamento_id Int
+  campo         String
+  valor_de      String?
+  valor_para    String?
+  created_at    DateTime @default(now())
+  created_by    Int
+
+  lancamento CenarioLancamento @relation(fields: [lancamento_id], references: [id], onDelete: Cascade)
+  usuario    User              @relation("CenarioLancHistCriador", fields: [created_by], references: [id])
+
+  @@index([lancamento_id])
+  @@map("cenario_lancamentos_historico")
+}
+
+// Retrato: cópia congelada e completa do Cenário num momento — usada nas
+// reuniões periódicas. Imutável após criado (só consulta ou exclusão).
+model CenarioRetrato {
+  id                 Int      @id @default(autoincrement())
+  nome               String
+  observacao         String?
+  capacidade_efetivo Int
+  created_at         DateTime @default(now())
+  created_by         Int
+
+  criador     User                       @relation("CenarioRetratoCriador", fields: [created_by], references: [id])
+  lancamentos CenarioRetratoLancamento[]
+
+  @@index([created_at])
+  @@map("cenario_retratos")
+}
+
+// Linha congelada de um retrato — cópia denormalizada completa (não é FK viva;
+// proposta_comercial_id é mantido só como chave de correspondência para a
+// comparação com o cenário atual).
+model CenarioRetratoLancamento {
+  id                    Int           @id @default(autoincrement())
+  retrato_id            Int
+  proposta_comercial_id Int
+  cliente_nome          String
+  cliente_final_nome    String?
+  cidade                String?
+  estado                String?       @db.VarChar(2)
+  escopo                String?
+  classificacao         Classificacao
+  origem                String        // 'CONTRATO' | 'PROPOSTA' — congelado no momento do retrato
+  data_inicio           DateTime
+  data_fim              DateTime
+  efetivo               Int
+  observacao            String?
+
+  retrato CenarioRetrato @relation(fields: [retrato_id], references: [id], onDelete: Cascade)
+
+  @@index([retrato_id])
+  @@index([proposta_comercial_id])
+  @@map("cenario_retratos_lancamentos")
 }

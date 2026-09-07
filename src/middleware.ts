@@ -41,6 +41,13 @@ export default auth((req) => {
     }
   }
 
+  if (pathname.startsWith('/orcamentos/cenario')) {
+    const podeCenario = perfil === 'ADM_GERAL' || perfil === 'ORCAMENTISTA' || perfil === 'GESTAO_COMERCIAL' || perfil === 'GESTAO_ACORDOS' || isAnalista
+    if (perfil && !podeCenario) {
+      return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
+    }
+  }
+
   return NextResponse.next()
 })
 
