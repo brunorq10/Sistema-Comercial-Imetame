@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { Overlay } from '@/components/ui/Overlay'
 
 // Shared context so Cancel buttons inside footer/children trigger the guarded close
 const ModalCloseCtx = createContext<(() => void) | null>(null)
@@ -62,7 +63,8 @@ export function Modal({ open, onClose, title, subtitle, children, footer, wide, 
   }
 
   return (
-    // Backdrop — intentionally has no onClick so clicking outside never closes the modal
+    <Overlay>
+    {/* Backdrop — intentionally has no onClick so clicking outside never closes the modal */}
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
       <ModalCloseCtx.Provider value={handleClose}>
         <div
@@ -121,6 +123,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer, wide, 
         </div>
       </ModalCloseCtx.Provider>
     </div>
+    </Overlay>
   )
 }
 

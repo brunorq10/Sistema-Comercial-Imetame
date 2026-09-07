@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Overlay } from '@/components/ui/Overlay'
 
 type Variant = 'danger' | 'warning' | 'info' | 'success'
 
@@ -44,6 +45,7 @@ export function ConfirmDialog({
   const inputInvalido = !!input?.required && valor.trim().length < 3
 
   return (
+    <Overlay>
     <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
       <div className="bg-white rounded-lg w-[440px] max-w-full shadow-2xl">
         <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${HEADER_BG[variant]}`}>
@@ -79,5 +81,6 @@ export function ConfirmDialog({
         </div>
       </div>
     </div>
+    </Overlay>
   )
 }

@@ -6,6 +6,7 @@ import { TIPO_MULTA_MAP } from '@/lib/multas'
 import { LancarMultaModal } from '@/components/forms/LancarMultaModal'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { Button } from '@/components/ui/Button'
+import { Overlay } from '@/components/ui/Overlay'
 import type { MultaEdit } from '@/components/forms/MultaForm'
 
 interface Multa extends MultaEdit {
@@ -162,6 +163,7 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
       )}
 
       {multaAcao && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
             <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${
@@ -200,6 +202,7 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
             </div>
           </div>
         </div>
+        </Overlay>
       )}
     </section>
   )

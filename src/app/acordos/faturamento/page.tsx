@@ -16,6 +16,7 @@ import { EditarSubIndiceModal } from '@/components/forms/EditarSubIndiceModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { ComentarioSubindiceModal } from '@/components/forms/ComentarioSubindiceModal'
 import { Button } from '@/components/ui/Button'
+import { Overlay } from '@/components/ui/Overlay'
 import { Field, Input } from '@/components/ui/Input'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -1005,6 +1006,7 @@ export default function FaturamentoPage() {
       )}
 
       {nfAcao && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
             <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${
@@ -1055,6 +1057,7 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {multaEditando && (
@@ -1069,6 +1072,7 @@ export default function FaturamentoPage() {
       )}
 
       {multaAcao && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
             <div className={`px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg text-white ${
@@ -1104,9 +1108,11 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {cancelando && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
@@ -1137,9 +1143,11 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {excluindoSub && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[440px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
@@ -1163,6 +1171,7 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {modalHistorico && (
@@ -1188,6 +1197,7 @@ export default function FaturamentoPage() {
 
       {/* Modal reprovar */}
       {reprovarModal && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
@@ -1224,10 +1234,12 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {/* Reprovar lançamento de faturamento (NF) */}
       {reprovarNfModal && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
@@ -1264,10 +1276,12 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
 
       {/* Reprovar edição pendente de NF já ativa */}
       {reprovarNfAlteracaoModal && (
+        <Overlay>
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
@@ -1304,6 +1318,7 @@ export default function FaturamentoPage() {
             </div>
           </div>
         </div>
+        </Overlay>
       )}
     </div>
   )
