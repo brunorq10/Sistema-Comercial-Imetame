@@ -7,10 +7,10 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 
 function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-3 border-l-[3px]" style={{ borderLeftColor: accent ?? '#2E7D32' }}>
-      <p className="text-[10px] text-gray-400 uppercase tracking-[0.04em] mb-1">{label}</p>
-      <p className="text-[20px] font-bold text-gray-800">{value}</p>
-      {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+    <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 border-l-[3px] min-w-0" style={{ borderLeftColor: accent ?? '#2E7D32' }}>
+      <p className="text-[9px] text-gray-400 uppercase tracking-[0.03em] mb-0.5 truncate">{label}</p>
+      <p className="text-[15px] font-bold text-gray-800 leading-tight">{value}</p>
+      {sub && <p className="text-[9px] text-gray-400 mt-0.5 truncate">{sub}</p>}
     </div>
   )
 }
@@ -18,7 +18,7 @@ function Card({ label, value, sub, accent }: { label: string; value: string; sub
 export function CenarioCards({ ind }: { ind: IndicadoresCenario }) {
   const saldoNeg = ind.saldoNoPico < 0
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 mb-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-3">
       <Card
         label="Itens no cenário"
         value={String(ind.totalItens)}
