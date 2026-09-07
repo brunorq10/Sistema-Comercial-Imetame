@@ -246,6 +246,10 @@ interface AvancoPercentualProps {
   corA?: string
   corB?: string
   labels?: string[]
+  /** false faz o gráfico ocupar toda a largura do container (precisa de um
+   * wrapper com altura explícita, ex. style={{ height: 300 }}). Default true
+   * (proporção fixa) para telas sem altura explícita, como a de contrato. */
+  maintainAspectRatio?: boolean
 }
 
 const COLOR_FAT_PCT = COLORS.acumFaturado // azul — mesmo tom já usado para "Acum. faturado"
@@ -261,7 +265,7 @@ const COLOR_HH_PCT  = '#16A34A'            // verde — mesmo tom já usado para
  */
 export function ContratoAvancoPercentualChart({
   serieA, serieB, labelA = 'Faturamento (%)', labelB = 'HH Realizado (%)',
-  corA = COLOR_FAT_PCT, corB = COLOR_HH_PCT, labels,
+  corA = COLOR_FAT_PCT, corB = COLOR_HH_PCT, labels, maintainAspectRatio = true,
 }: AvancoPercentualProps) {
   const xLabels = labels ?? MESES_LABELS
   const lastA = lastNonNullIndex(serieA)
@@ -321,7 +325,7 @@ export function ContratoAvancoPercentualChart({
 
   const options = {
     responsive: true,
-    maintainAspectRatio: true,
+    maintainAspectRatio,
     // Sem isso, os pontos e o rótulo % que caem exatamente em 0 ou 100 (bordas
     // do eixo fixo) ficam com a metade cortada pela área de desenho do
     // Chart.js — aqui deixamos desenhar um pouco além da área do gráfico,

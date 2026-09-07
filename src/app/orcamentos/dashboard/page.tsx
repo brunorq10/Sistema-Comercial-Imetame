@@ -700,14 +700,14 @@ export default function DashboardComercialPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* ── Zona congelada — título e filtros ────────────────────────────── */}
-      <div className="flex-shrink-0 p-4 pb-0">
+      <div className="flex-shrink-0 p-3 pb-0">
       <PageHeader
         title="Indicadores Comercial"
         actions={<span className="text-[11px] text-gray-400">Indicadores consolidados do funil de orçamentos</span>}
       />
 
       {/* Filtros */}
-      <FilterBar className="!mt-3">
+      <FilterBar className="!mt-2">
         {aba === 'resultado' ? (
           <>
             <FilterField label="Período (de)">
@@ -790,7 +790,7 @@ export default function DashboardComercialPage() {
       </div>
 
       {/* ── Área rolável — abas + conteúdo ───────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 pt-2">
 
       {/* Abas */}
       <DashboardTabs

@@ -13,7 +13,7 @@ interface DashboardTabsProps<T extends string> {
 // institucional com sublinhado, inativa em cinza.
 export function DashboardTabs<T extends string>({ tabs, active, onChange, className }: DashboardTabsProps<T>) {
   return (
-    <div className={cn('flex items-center gap-1 border-b border-gray-200 !mt-3 overflow-x-auto', className)}>
+    <div className={cn('flex items-center gap-1 border-b border-gray-200 !mt-2 overflow-x-auto', className)}>
       {tabs.map((t) => (
         <button
           key={t.key}

@@ -215,7 +215,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
               <th className="text-right px-4 py-2 font-semibold">Valor Fixado</th>
               <th className="text-right px-4 py-2 font-semibold">Previsto {ano}</th>
               <th className="text-right px-4 py-2 font-semibold">Valor Total Faturado {ano}</th>
-              <th className="text-center px-4 py-2 font-semibold w-32">% Fat. / Previsto</th>
+              <th className="text-right px-4 py-2 font-semibold w-32">% Fat. / Previsto</th>
               <th className="text-right px-4 py-2 font-semibold">Resultado</th>
             </tr>
           </thead>
@@ -231,7 +231,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
                 </td>
                 <td className="px-4 py-2 text-right text-[#1565C0] tabular-nums">{fmt(row.previsto)}</td>
                 <td className="px-4 py-2 text-right text-gray-700 tabular-nums">{fmt(row.faturado)}</td>
-                <td className="px-4 py-2 text-center">
+                <td className="px-4 py-2 text-right">
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${row.percentual >= 100 ? 'bg-green-100 text-green-800' : 'bg-orange-50 text-orange-700'}`}>
                     {row.percentual.toFixed(1).replace('.', ',')}%
                   </span>
@@ -246,7 +246,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
               <td className="px-4 py-2.5 text-right tabular-nums text-purple-100">{totFixed > 0 ? fmt(totFixed) : '—'}</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{fmt(totPrev)}</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{fmt(totFat)}</td>
-              <td className="px-4 py-2.5 text-center">{totPct.toFixed(1).replace('.', ',')}%</td>
+              <td className="px-4 py-2.5 text-right">{totPct.toFixed(1).replace('.', ',')}%</td>
               <td className={`px-4 py-2.5 text-right tabular-nums ${totRes >= 0 ? 'text-green-100' : 'text-red-200'}`}>{fmt(totRes)}</td>
             </tr>
           </tfoot>
@@ -323,14 +323,14 @@ export default function IndicadoresAcordosPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* ── Zona congelada — título e filtros ────────────────────────────── */}
-      <div className="flex-shrink-0 p-4 pb-0">
+      <div className="flex-shrink-0 p-3 pb-0">
       <PageHeader
         title="Indicadores Acordos"
         actions={data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
       />
 
       {/* Filtros */}
-      <FilterBar className="!mt-3">
+      <FilterBar className="!mt-2">
         <FilterField label="Ano" className="min-w-[90px]">
           <select value={ano} onChange={(e) => setAno(e.target.value)} className={filterSelectClass}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
         </FilterField>
@@ -354,7 +354,7 @@ export default function IndicadoresAcordosPage() {
       </div>
 
       {/* ── Área rolável — indicadores ──────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 pt-3 space-y-1">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 pt-2 space-y-1">
 
       {loading && <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>}
       {error && <p className="text-center text-red-500 py-8 text-sm">{error}</p>}
@@ -405,6 +405,7 @@ export default function IndicadoresAcordosPage() {
                 labelA="Meta acumulada (%)" labelB="Faturado acumulado (%)"
                 corA={DASHBOARD_PREVISTO} corB={DASHBOARD_POSITIVO}
                 labels={MES_LABEL}
+                maintainAspectRatio={false}
               />
             </div>
           </ChartCard>
