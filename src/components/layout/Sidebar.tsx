@@ -217,6 +217,23 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
           </Link>
         )}
 
+        {/* Exceções — pendências automáticas, visível a qualquer perfil autenticado */}
+        <Link
+          href="/excecoes"
+          onClick={onClose}
+          title="Exceções"
+          className={cn(
+            'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
+            railMode && 'lg:justify-center lg:px-0 lg:gap-0',
+            pathname.startsWith('/excecoes')
+              ? 'text-green-primary bg-green-light'
+              : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
+          )}
+        >
+          <IconExcecoes active={pathname.startsWith('/excecoes')} />
+          <span className={hideInRail}>Exceções</span>
+        </Link>
+
         {/* Cadastros — aba separada, só para quem tem acesso ao módulo */}
         {canAcessarCadastros && (
           <Link
@@ -309,6 +326,15 @@ function IconRelatorios({ active }: { active: boolean }) {
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
       <path d="M3 2H9.5L12 4.5V13H3V2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
       <path d="M5.2 8.5V10.8M7.5 6.8V10.8M9.8 5.2V10.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconExcecoes({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cn('flex-shrink-0', active ? 'text-green-primary' : 'text-gray-400')}>
+      <path d="M7.5 1.5L14 12.5H1L7.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M7.5 6V8.5M7.5 10.3V10.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }
