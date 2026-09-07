@@ -322,8 +322,13 @@ export function ContratoAvancoPercentualChart({
   const options = {
     responsive: true,
     maintainAspectRatio: true,
+    // Sem isso, os pontos e o rótulo % que caem exatamente em 0 ou 100 (bordas
+    // do eixo fixo) ficam com a metade cortada pela área de desenho do
+    // Chart.js — aqui deixamos desenhar um pouco além da área do gráfico,
+    // usando o padding abaixo como respiro.
+    clip: false as const,
     interaction: { mode: 'index' as const, intersect: false },
-    layout: { padding: { top: 48, right: 16, bottom: 0, left: 0 } },
+    layout: { padding: { top: 48, right: 16, bottom: 12, left: 0 } },
     plugins: {
       legend: legendPlugin,
       tooltip: {
