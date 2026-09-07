@@ -10,10 +10,12 @@ const schema = z.object({
   cidade: z.string().optional().nullable(),
   estado: z.string().max(2).optional().nullable(),
   escopo: z.string().optional().nullable(),
-  classificacao: z.enum(['OBRAS', 'PARADAS']), // v1: só efetivo (Obras/Paradas)
+  classificacao: z.enum(['OBRAS', 'PARADAS', 'FABRICACOES', 'OLEO_GAS']),
   data_inicio: z.string().min(1),
   data_fim: z.string().min(1),
   efetivo: z.number().int().positive(),
+  // Detalhamento mês a mês (Obras/Fabricações/Óleo e Gás) — chave "AAAA-MM".
+  efetivo_mensal: z.record(z.string(), z.number().int().nonnegative()).optional().nullable(),
   observacao: z.string().optional().nullable(),
 })
 
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
       data_inicio: new Date(d.data_inicio),
       data_fim: new Date(d.data_fim),
       efetivo: d.efetivo,
+      efetivo_mensal: d.classificacao !== 'PARADAS' ? (d.efetivo_mensal ?? undefined) : undefined,
       observacao: d.observacao ?? null,
       created_by: usuario.id,
     },

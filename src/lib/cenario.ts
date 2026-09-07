@@ -2,10 +2,18 @@
 // Cenário (módulo Comercial) — cálculos compartilhados entre o cenário AO VIVO
 // e os RETRATOS (histórico congelado). Ambos alimentam estas mesmas funções
 // com uma lista de "linhas" no mesmo formato — só muda a origem do dado.
-// v1: apenas efetivo (Obras e Paradas). Fabricações fica para 2ª etapa.
 // ════════════════════════════════════════════════════════════════════════════
 
 export type OrigemCenario = 'CONTRATO' | 'PROPOSTA'
+export type ClassificacaoCenario = 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'
+
+export const CLASSIFICACAO_LABEL: Record<ClassificacaoCenario, string> = {
+  OBRAS: 'Obras', PARADAS: 'Paradas', FABRICACOES: 'Fabricação', OLEO_GAS: 'Óleo e Gás',
+}
+/** Paradas usam um único efetivo para todo o período — as demais classificações admitem detalhamento mês a mês. */
+export function admiteEfetivoMensal(classificacao: ClassificacaoCenario): boolean {
+  return classificacao !== 'PARADAS'
+}
 
 export interface CenarioLinha {
   id: number
@@ -15,11 +23,13 @@ export interface CenarioLinha {
   cidade: string | null
   estado: string | null
   escopo: string | null
-  classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'
+  classificacao: ClassificacaoCenario
   origem: OrigemCenario
   data_inicio: Date
   data_fim: Date
   efetivo: number
+  /** Efetivo por mês ("AAAA-MM" -> valor) — Obras/Fabricações/Óleo e Gás. Null = usa `efetivo` em todos os meses (Paradas ou lançamento sem detalhamento). */
+  efetivo_mensal: Record<string, number> | null
   observacao: string | null
 }
 
@@ -50,10 +60,17 @@ export function periodoCenario(linhas: CenarioLinha[]): MesRef[] {
   return mesesDoIntervalo(inicioMin, fimMax)
 }
 
-/** Efetivo de pico: o mesmo valor em todos os meses tocados pelo lançamento (não dividido). */
+/**
+ * Efetivo por mês tocado pelo lançamento. Usa `efetivo_mensal[mesKey]` quando
+ * informado (Obras/Fabricações/Óleo e Gás com detalhamento mês a mês); nos
+ * demais casos (Paradas, ou mês sem detalhamento), repete `efetivo`.
+ */
 export function efetivoPorMes(linha: CenarioLinha): Map<string, number> {
   const map = new Map<string, number>()
-  for (const m of mesesDoIntervalo(linha.data_inicio, linha.data_fim)) map.set(mesKey(m), linha.efetivo)
+  for (const m of mesesDoIntervalo(linha.data_inicio, linha.data_fim)) {
+    const key = mesKey(m)
+    map.set(key, linha.efetivo_mensal?.[key] ?? linha.efetivo)
+  }
   return map
 }
 
@@ -142,6 +159,7 @@ export function toLinha(l: any): CenarioLinha {
     data_inicio: l.data_inicio,
     data_fim: l.data_fim,
     efetivo: l.efetivo,
+    efetivo_mensal: (l.efetivo_mensal as Record<string, number> | null) ?? null,
     observacao: l.observacao,
   }
 }

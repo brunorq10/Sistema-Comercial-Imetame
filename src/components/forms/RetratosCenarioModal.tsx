@@ -18,7 +18,7 @@ interface RetratoResumo {
 interface RetratoDetalhe {
   id: number; nome: string; observacao: string | null; created_at: string; autor: string
   capacidade: number
-  lancamentos: Array<{ id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null; cidade: string | null; estado: string | null; escopo: string | null; classificacao: 'OBRAS' | 'PARADAS'; origem: 'CONTRATO' | 'PROPOSTA'; data_inicio: string; data_fim: string; efetivo: number; observacao: string | null }>
+  lancamentos: Array<{ id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null; cidade: string | null; estado: string | null; escopo: string | null; classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'; data_inicio: string; data_fim: string; efetivo: number; observacao: string | null }>
   periodo: MesRef[]
   totais: TotalMes[]
   indicadores: IndicadoresCenario
@@ -35,7 +35,7 @@ interface Comparacao {
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 function toLinhas(lancs: RetratoDetalhe['lancamentos']): CenarioLinha[] {
-  return lancs.map((l) => ({ ...l, data_inicio: new Date(l.data_inicio), data_fim: new Date(l.data_fim) }))
+  return lancs.map((l) => ({ ...l, data_inicio: new Date(l.data_inicio), data_fim: new Date(l.data_fim), efetivo_mensal: null }))
 }
 
 interface Props {

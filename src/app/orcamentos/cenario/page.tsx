@@ -16,8 +16,8 @@ interface CenarioData {
   lancamentos: Array<{
     id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null
     cidade: string | null; estado: string | null; escopo: string | null
-    classificacao: 'OBRAS' | 'PARADAS'; origem: 'CONTRATO' | 'PROPOSTA'
-    data_inicio: string; data_fim: string; efetivo: number; observacao: string | null
+    classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'
+    data_inicio: string; data_fim: string; efetivo: number; efetivo_mensal: Record<string, number> | null; observacao: string | null
   }>
   periodo: MesRef[]
   totais: TotalMes[]
@@ -73,7 +73,7 @@ export default function CenarioPage() {
           <div className="bg-white border border-dashed border-gray-300 rounded-md p-10 text-center">
             <p className="text-[13px] font-semibold text-gray-600 mb-1">Nenhum lançamento no cenário ainda</p>
             <p className="text-[11px] text-gray-400 mb-4">
-              {canEditarCenario ? 'Comece lançando uma proposta já enviada de Obras ou Paradas.' : 'Assim que houver lançamentos, eles aparecem aqui.'}
+              {canEditarCenario ? 'Comece lançando uma proposta já enviada.' : 'Assim que houver lançamentos, eles aparecem aqui.'}
             </p>
             {canEditarCenario && <Button onClick={() => setModalNovo(true)}>+ Novo lançamento</Button>}
           </div>

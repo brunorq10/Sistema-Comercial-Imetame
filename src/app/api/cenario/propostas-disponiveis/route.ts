@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/permissaoApi'
 
 // GET /api/cenario/propostas-disponiveis?busca=
-// Etapa 1 do Novo Lançamento — propostas ENVIADAS de Obras/Paradas (v1), com os
-// dados de pré-preenchimento (datas previstas de execução vêm da Proposta
-// Técnica; efetivo vem de efetivo_pico — só existe para Paradas). Propostas já
-// lançadas no cenário voltam marcadas (ja_lancada), não excluídas da lista.
+// Etapa 1 do Novo Lançamento — propostas ENVIADAS de Obras/Paradas/Fabricações/
+// Óleo e Gás, com os dados de pré-preenchimento (datas previstas de execução
+// vêm da Proposta Técnica; efetivo vem de efetivo_pico — só existe para
+// Paradas). Propostas já lançadas no cenário voltam marcadas (ja_lancada), não
+// excluídas da lista.
 export async function GET(req: NextRequest) {
   const { erro } = await exigirPermissao('cenario.ver')
   if (erro) return erro
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   const solicitacoes = await prisma.solicitacao.findMany({
     where: {
       cancelled_at: null,
-      classificacao: { in: ['OBRAS', 'PARADAS'] },
+      classificacao: { in: ['OBRAS', 'PARADAS', 'FABRICACOES', 'OLEO_GAS'] },
       ...(busca ? {
         OR: [
           { numero: { contains: busca, mode: 'insensitive' } },

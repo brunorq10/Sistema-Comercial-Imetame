@@ -5,6 +5,8 @@ import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { EfetivoMensalEditor } from '@/components/cenario/EfetivoMensalEditor'
+import { CLASSIFICACAO_LABEL, admiteEfetivoMensal, type ClassificacaoCenario } from '@/lib/cenario'
 import { formatDate } from '@/lib/utils'
 
 interface LancamentoItem {
@@ -14,11 +16,12 @@ interface LancamentoItem {
   cidade: string | null
   estado: string | null
   escopo: string | null
-  classificacao: 'OBRAS' | 'PARADAS'
+  classificacao: ClassificacaoCenario
   origem: 'CONTRATO' | 'PROPOSTA'
   data_inicio: string
   data_fim: string
   efetivo: number
+  efetivo_mensal: Record<string, number> | null
   observacao: string | null
 }
 
@@ -92,7 +95,7 @@ export function GerenciarLancamentosCenarioModal({ open, onClose, onSuccess, abr
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[12px] font-bold text-gray-700">{l.cliente_nome}</span>
-                    <span className="text-[9px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">{l.classificacao === 'OBRAS' ? 'Obras' : 'Paradas'}</span>
+                    <span className="text-[9px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">{CLASSIFICACAO_LABEL[l.classificacao]}</span>
                     <span
                       className="text-[9px] rounded px-1.5 py-0.5 font-bold"
                       style={{ background: l.origem === 'CONTRATO' ? '#E3F0FB' : '#FEF3E2', color: l.origem === 'CONTRATO' ? '#1565C0' : '#B45309' }}
@@ -137,10 +140,11 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
   const [cidade, setCidade] = useState(item.cidade ?? '')
   const [estado, setEstado] = useState(item.estado ?? '')
   const [escopo, setEscopo] = useState(item.escopo ?? '')
-  const [classificacao, setClassificacao] = useState<'OBRAS' | 'PARADAS'>(item.classificacao)
+  const [classificacao, setClassificacao] = useState<ClassificacaoCenario>(item.classificacao)
   const [dataInicio, setDataInicio] = useState(item.data_inicio.substring(0, 10))
   const [dataFim, setDataFim] = useState(item.data_fim.substring(0, 10))
   const [efetivo, setEfetivo] = useState(String(item.efetivo))
+  const [efetivoMensal, setEfetivoMensal] = useState<Record<string, number>>(item.efetivo_mensal ?? {})
   const [observacao, setObservacao] = useState(item.observacao ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,6 +170,7 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
           data_inicio: dataInicio,
           data_fim: dataFim,
           efetivo: Number(efetivo),
+          efetivo_mensal: admiteEfetivoMensal(classificacao) ? efetivoMensal : null,
           observacao: observacao.trim() || null,
         }),
       })
@@ -192,9 +197,10 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
         <Field label="Cidade"><Input value={cidade} onChange={(e) => setCidade(e.target.value)} /></Field>
         <Field label="UF"><Input value={estado} maxLength={2} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></Field>
         <Field label="Classificação">
-          <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value as 'OBRAS' | 'PARADAS')}>
-            <option value="OBRAS">Obras</option>
-            <option value="PARADAS">Paradas</option>
+          <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value as ClassificacaoCenario)}>
+            {Object.entries(CLASSIFICACAO_LABEL).map(([valor, label]) => (
+              <option key={valor} value={valor}>{label}</option>
+            ))}
           </Select>
         </Field>
       </div>
@@ -204,8 +210,22 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
       <div className="grid grid-cols-3 gap-2.5 mb-2.5">
         <Field label="Início previsto *"><Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></Field>
         <Field label="Fim previsto *"><Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></Field>
-        <Field label="Efetivo *"><Input type="number" min={1} value={efetivo} onChange={(e) => setEfetivo(e.target.value)} /></Field>
+        <Field label={admiteEfetivoMensal(classificacao) ? 'Efetivo (padrão) *' : 'Efetivo *'}>
+          <Input type="number" min={1} value={efetivo} onChange={(e) => setEfetivo(e.target.value)} />
+        </Field>
       </div>
+
+      {admiteEfetivoMensal(classificacao) && (
+        <div className="mb-2.5">
+          <EfetivoMensalEditor
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            efetivoBase={Number(efetivo) || 0}
+            valores={efetivoMensal}
+            onChange={setEfetivoMensal}
+          />
+        </div>
+      )}
 
       <Field label="Observação (opcional)" className="mb-4">
         <textarea

@@ -41,8 +41,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     id: l.id, proposta_comercial_id: l.proposta_comercial_id,
     cliente_nome: l.cliente_nome, cliente_final_nome: l.cliente_final_nome,
     cidade: l.cidade, estado: l.estado, escopo: l.escopo,
-    classificacao: l.classificacao as 'OBRAS' | 'PARADAS', origem: l.origem as 'CONTRATO' | 'PROPOSTA',
-    data_inicio: l.data_inicio, data_fim: l.data_fim, efetivo: l.efetivo, observacao: l.observacao,
+    classificacao: l.classificacao as 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS', origem: l.origem as 'CONTRATO' | 'PROPOSTA',
+    data_inicio: l.data_inicio, data_fim: l.data_fim, efetivo: l.efetivo, efetivo_mensal: null, observacao: l.observacao,
   }))
   const linhasAtual: CenarioLinha[] = atualRows
     .filter((r) => r.proposta_comercial.resultado !== 'PERDEU')

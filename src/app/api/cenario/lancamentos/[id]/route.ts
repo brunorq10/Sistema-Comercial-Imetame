@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/permissaoApi'
 
@@ -9,17 +10,19 @@ const schema = z.object({
   cidade: z.string().optional().nullable(),
   estado: z.string().max(2).optional().nullable(),
   escopo: z.string().optional().nullable(),
-  classificacao: z.enum(['OBRAS', 'PARADAS']).optional(),
+  classificacao: z.enum(['OBRAS', 'PARADAS', 'FABRICACOES', 'OLEO_GAS']).optional(),
   data_inicio: z.string().min(1).optional(),
   data_fim: z.string().min(1).optional(),
   efetivo: z.number().int().positive().optional(),
+  // Detalhamento mês a mês (Obras/Fabricações/Óleo e Gás) — chave "AAAA-MM".
+  efetivo_mensal: z.record(z.string(), z.number().int().nonnegative()).optional().nullable(),
   observacao: z.string().optional().nullable(),
 })
 
 const CAMPO_LABELS: Record<string, string> = {
   cliente_nome: 'Cliente', cliente_final_nome: 'Cliente Final', cidade: 'Cidade', estado: 'Estado',
   escopo: 'Escopo', classificacao: 'Classificação', data_inicio: 'Data Início', data_fim: 'Data Fim',
-  efetivo: 'Efetivo', observacao: 'Observação',
+  efetivo: 'Efetivo', efetivo_mensal: 'Efetivo mensal', observacao: 'Observação',
 }
 
 // PUT /api/cenario/lancamentos/:id — editar lançamento (Editar Cenário)
@@ -46,16 +49,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ data: null, error: 'Data de fim não pode ser anterior à data de início' }, { status: 400 })
   }
 
+  const novaClassificacao = d.classificacao ?? atual.classificacao
+
   const updateData = {
     cliente_nome: d.cliente_nome ?? atual.cliente_nome,
     cliente_final_nome: d.cliente_final_nome !== undefined ? d.cliente_final_nome : atual.cliente_final_nome,
     cidade: d.cidade !== undefined ? d.cidade : atual.cidade,
     estado: d.estado !== undefined ? d.estado : atual.estado,
     escopo: d.escopo !== undefined ? d.escopo : atual.escopo,
-    classificacao: d.classificacao ?? atual.classificacao,
+    classificacao: novaClassificacao,
     data_inicio: novaDataInicio,
     data_fim: novaDataFim,
     efetivo: d.efetivo ?? atual.efetivo,
+    // Paradas não têm detalhamento mensal — zera se a classificação mudar para Paradas.
+    efetivo_mensal: novaClassificacao === 'PARADAS'
+      ? Prisma.DbNull
+      : d.efetivo_mensal !== undefined
+        ? (d.efetivo_mensal ?? Prisma.DbNull)
+        : (atual.efetivo_mensal ?? Prisma.DbNull),
     observacao: d.observacao !== undefined ? d.observacao : atual.observacao,
     updated_by: usuario.id,
   }
@@ -63,8 +74,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const lancamento = await prisma.cenarioLancamento.update({ where: { id }, data: updateData })
 
   // Histórico — diff campo a campo
-  const fmt = (v: unknown) => v == null ? null : v instanceof Date ? v.toISOString().split('T')[0] : String(v)
-  const campos: (keyof typeof updateData)[] = ['cliente_nome', 'cliente_final_nome', 'cidade', 'estado', 'escopo', 'classificacao', 'data_inicio', 'data_fim', 'efetivo', 'observacao']
+  const fmt = (v: unknown) => v == null ? null : v instanceof Date ? v.toISOString().split('T')[0] : typeof v === 'object' ? JSON.stringify(v) : String(v)
+  const campos: (keyof typeof updateData)[] = ['cliente_nome', 'cliente_final_nome', 'cidade', 'estado', 'escopo', 'classificacao', 'data_inicio', 'data_fim', 'efetivo', 'efetivo_mensal', 'observacao']
   const historico = campos
     .filter((c) => fmt((atual as Record<string, unknown>)[c]) !== fmt(updateData[c]))
     .map((c) => ({

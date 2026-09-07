@@ -1423,6 +1423,10 @@ model CenarioLancamento {
   data_inicio            DateTime
   data_fim               DateTime
   efetivo                Int
+  // Efetivo por mês (Obras/Fabricações/Óleo e Gás) — { "AAAA-MM": efetivo }.
+  // Null para Paradas (sempre usa o valor único `efetivo`) e para lançamentos
+  // antigos sem detalhamento mensal — nesse caso todo mês do período usa `efetivo`.
+  efetivo_mensal         Json?
   observacao             String?
   created_at             DateTime      @default(now())
   updated_at             DateTime      @updatedAt

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { cn, formatDate } from '@/lib/utils'
-import { mesKey, totaisPorMes, type CenarioLinha, type MesRef, type TotalMes } from '@/lib/cenario'
+import { mesKey, mesesDoIntervalo, totaisPorMes, CLASSIFICACAO_LABEL, type CenarioLinha, type MesRef, type TotalMes } from '@/lib/cenario'
 
 const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
@@ -11,7 +11,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 // identificação rolam junto com a linha do tempo.
 const W = {
   cliente: 150, cidade: 110, escopo: 220, classificacao: 90,
-  origem: 90, inicio: 85, fim: 85, efetivo: 70,
+  origem: 90, inicio: 85, fim: 85, efetivo: 90,
 }
 const L = {
   cliente: 0,
@@ -32,7 +32,6 @@ const RODAPE_MESES_H = 22
 const MAX_HEIGHT = HEADER_H + VISIBLE_ROWS * ROW_H + RODAPE_TOTAL_H + RODAPE_CHART_H + RODAPE_MESES_H
 
 const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
-const CLASSIF_LABEL: Record<string, string> = { OBRAS: 'Obras', PARADAS: 'Paradas', FABRICACOES: 'Fabricação', OLEO_GAS: 'Óleo e Gás' }
 
 interface Props {
   linhas: CenarioLinha[]
@@ -109,12 +108,15 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
             const origemCor = l.origem === 'CONTRATO' ? '#1565C0' : '#B45309'
             const origemBg = l.origem === 'CONTRATO' ? '#E3F0FB' : '#FEF3E2'
             const rowBg = i % 2 === 1 ? '#F9FAFB' : '#FFFFFF'
-            const mesesAtivos = new Set(
-              (() => { const out: string[] = []; let a = l.data_inicio.getUTCFullYear(), m = l.data_inicio.getUTCMonth() + 1
-                const af = l.data_fim.getUTCFullYear(), mf = l.data_fim.getUTCMonth() + 1
-                while (a < af || (a === af && m <= mf)) { out.push(`${a}-${String(m).padStart(2, '0')}`); m++; if (m > 12) { m = 1; a++ } }
-                return out })(),
+            const efetivoPorMes = new Map(
+              mesesDoIntervalo(l.data_inicio, l.data_fim).map((m) => {
+                const key = mesKey(m)
+                return [key, l.efetivo_mensal?.[key] ?? l.efetivo]
+              }),
             )
+            const valoresMensais = Array.from(efetivoPorMes.values())
+            const efetivoMin = Math.min(...valoresMensais)
+            const efetivoMax = Math.max(...valoresMensais)
             return (
               <tr key={l.id} className={cn('group border-b border-gray-100 hover:bg-green-light transition-colors', i % 2 === 1 ? 'bg-gray-50' : 'bg-white')}>
                 <td className={cn(td, tdF, 'font-semibold text-gray-700')} style={{ left: L.cliente, background: rowBg }}>
@@ -127,7 +129,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                   <span className="truncate block" style={{ maxWidth: W.escopo - 16 }} title={l.escopo ?? ''}>{l.escopo ?? '—'}</span>
                 </td>
                 <td className={cn(td, 'text-gray-600')}>
-                  {CLASSIF_LABEL[l.classificacao]}
+                  {CLASSIFICACAO_LABEL[l.classificacao]}
                 </td>
                 <td className={td}>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: origemBg, color: origemCor }}>
@@ -138,7 +140,9 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                 <td className={cn(td, 'text-gray-500')}>{formatDate(l.data_fim.toISOString())}</td>
                 <td className={cn(td, 'font-bold text-right pr-3')}>
                   <div className="flex items-center justify-end gap-1">
-                    {l.efetivo.toLocaleString('pt-BR')}
+                    {efetivoMin === efetivoMax
+                      ? efetivoMin.toLocaleString('pt-BR')
+                      : `${efetivoMin.toLocaleString('pt-BR')}–${efetivoMax.toLocaleString('pt-BR')}`}
                     {editavel && (
                       <span className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 ml-1">
                         <button onClick={() => onEditar?.(l)} className="text-gray-400 hover:text-green-primary text-[10px]" title="Editar">✎</button>
@@ -148,12 +152,12 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                   </div>
                 </td>
                 {periodo.map((m) => {
-                  const ativo = mesesAtivos.has(mesKey(m))
+                  const valor = efetivoPorMes.get(mesKey(m))
                   return (
                     <td key={mesKey(m)} className="px-1 py-[5px] text-center text-[10px] border-b border-gray-100">
-                      {ativo ? (
+                      {valor != null ? (
                         <span className="inline-block px-1.5 py-0.5 rounded font-semibold" style={{ background: origemBg, color: origemCor }}>
-                          {l.efetivo}
+                          {valor}
                         </span>
                       ) : <span className="text-gray-200">—</span>}
                     </td>

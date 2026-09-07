@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { EfetivoMensalEditor } from '@/components/cenario/EfetivoMensalEditor'
+import { CLASSIFICACAO_LABEL, admiteEfetivoMensal, type ClassificacaoCenario } from '@/lib/cenario'
 import { formatDate } from '@/lib/utils'
 
 interface PropostaDisponivel {
   solicitacao_id: number
   numero: string
-  classificacao: 'OBRAS' | 'PARADAS'
+  classificacao: ClassificacaoCenario
   cliente: { id: number; nome: string }
   cliente_final: { id: number; nome: string } | null
   cidade: string | null
@@ -41,10 +43,11 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
   const [escopo, setEscopo] = useState('')
-  const [classificacao, setClassificacao] = useState<'OBRAS' | 'PARADAS'>('OBRAS')
+  const [classificacao, setClassificacao] = useState<ClassificacaoCenario>('OBRAS')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [efetivo, setEfetivo] = useState('')
+  const [efetivoMensal, setEfetivoMensal] = useState<Record<string, number>>({})
   const [observacao, setObservacao] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +81,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
     setDataInicio(p.data_prevista_inicio_execucao?.substring(0, 10) ?? '')
     setDataFim(p.data_prevista_fim_execucao?.substring(0, 10) ?? '')
     setEfetivo(p.efetivo_pico != null ? String(p.efetivo_pico) : '')
+    setEfetivoMensal({})
     setObservacao('')
     setError(null)
     setEtapa(2)
@@ -106,6 +110,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
           data_inicio: dataInicio,
           data_fim: dataFim,
           efetivo: Number(efetivo),
+          efetivo_mensal: admiteEfetivoMensal(classificacao) ? efetivoMensal : undefined,
           observacao: observacao.trim() || undefined,
         }),
       })
@@ -146,7 +151,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
           {loadingLista ? (
             <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
           ) : propostas.length === 0 ? (
-            <p className="text-center text-gray-400 py-10 text-sm">Nenhuma proposta de Obras/Paradas enviada encontrada.</p>
+            <p className="text-center text-gray-400 py-10 text-sm">Nenhuma proposta enviada encontrada.</p>
           ) : (
             <div className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-[420px] overflow-y-auto">
               {propostas.map((p) => (
@@ -160,7 +165,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[12px] font-bold text-green-dark">{p.numero}</span>
                       <span className="text-[11px] text-gray-600">{p.cliente.nome}</span>
-                      <span className="text-[9px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">{p.classificacao === 'OBRAS' ? 'Obras' : 'Paradas'}</span>
+                      <span className="text-[9px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">{CLASSIFICACAO_LABEL[p.classificacao]}</span>
                       {p.ja_lancada && <span className="text-[9px] bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 font-semibold">já lançada</span>}
                     </div>
                     <span className="text-[10px] text-gray-400">
@@ -193,9 +198,10 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
             <Field label="Cidade"><Input value={cidade} onChange={(e) => setCidade(e.target.value)} /></Field>
             <Field label="UF"><Input value={estado} maxLength={2} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></Field>
             <Field label="Classificação">
-              <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value as 'OBRAS' | 'PARADAS')}>
-                <option value="OBRAS">Obras</option>
-                <option value="PARADAS">Paradas</option>
+              <Select value={classificacao} onChange={(e) => setClassificacao(e.target.value as ClassificacaoCenario)}>
+                {Object.entries(CLASSIFICACAO_LABEL).map(([valor, label]) => (
+                  <option key={valor} value={valor}>{label}</option>
+                ))}
               </Select>
             </Field>
           </div>
@@ -205,8 +211,22 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
           <div className="grid grid-cols-3 gap-2.5 mb-2.5">
             <Field label="Início previsto *"><Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></Field>
             <Field label="Fim previsto *"><Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></Field>
-            <Field label="Efetivo *"><Input type="number" min={1} value={efetivo} onChange={(e) => setEfetivo(e.target.value)} /></Field>
+            <Field label={admiteEfetivoMensal(classificacao) ? 'Efetivo (padrão) *' : 'Efetivo *'}>
+              <Input type="number" min={1} value={efetivo} onChange={(e) => setEfetivo(e.target.value)} />
+            </Field>
           </div>
+
+          {admiteEfetivoMensal(classificacao) && (
+            <div className="mb-2.5">
+              <EfetivoMensalEditor
+                dataInicio={dataInicio}
+                dataFim={dataFim}
+                efetivoBase={Number(efetivo) || 0}
+                valores={efetivoMensal}
+                onChange={setEfetivoMensal}
+              />
+            </div>
+          )}
 
           <Field label="Observação (opcional) — motivo de algum ajuste" className="mb-1">
             <textarea
