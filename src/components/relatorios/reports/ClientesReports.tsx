@@ -73,7 +73,7 @@ export function Cli02Ficha() {
     cliente: { id: number; nome: string; cnpj: string | null; cidade: string | null; estado: string | null; ramo_atuacao: string | null; segmento: string | null; ativo: boolean }
     resumo: { total_negocios: number; taxa_conversao_historica: number | null; total_faturado: number; total_multas: number; total_ocorrencias: number; contratos_ativos: number }
     solicitacoes: Array<{ id: number; numero: string; status: string; escopo: string | null; classificacao: string | null; data: string; valor: number | null; resultado: string | null }>
-    contratos: Array<{ id: number; indice: string; status: string; classificacao: string | null; valor_contrato: number | null; data_inicio: string | null; data_fim: string | null; faturado: number; nf_ocorrencias: number; nf_multas: number; valor_multas: number }>
+    contratos: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; status: string; classificacao: string | null; valor_contrato: number | null; data_inicio: string | null; data_fim: string | null; faturado: number; nf_ocorrencias: number; nf_multas: number; valor_multas: number }>
   }
   const { data: ficha, loading } = useReportData<Ficha>(clienteIdAplicado ? `/api/relatorios/clientes/${clienteIdAplicado}` : '', {})
 
@@ -98,6 +98,8 @@ export function Cli02Ficha() {
 
   const ctrColumns: DataColumn<Ficha['contratos'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => r.classificacao ?? '—' },
     { key: 'inicio', header: 'Início', type: 'date', value: (r) => r.data_inicio ? new Date(r.data_inicio) : null },
     { key: 'faturado', header: 'Faturado', type: 'currency', value: (r) => r.faturado, totalizer: 'sum' },

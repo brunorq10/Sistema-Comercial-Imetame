@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const contratos = await prisma.contrato.findMany({
     where: { cancelled_at: null, solicitacao_id: { not: null } },
     select: {
-      id: true, indice: true, classificacao: true, created_at: true, data_inicio: true,
+      id: true, indice: true, classificacao: true, created_at: true, data_inicio: true, cidade: true, descricao: true,
       cliente: { select: { nome: true } },
       responsavel: { select: { nome: true } },
       hh_lancamentos: { orderBy: { versao: 'desc' }, take: 1, select: { meses: { select: { hh_previsto: true } } } },
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
   })
 
   type CrzRow = {
-    id: number; indice: string; cliente: string; classificacao: string | null
+    id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; classificacao: string | null
     hh_orcado: number | null; hh_realizado: number | null; desvio_hh_pct: number | null
     valor_vendido: number | null; valor_faturado: number
     rs_hh_vendido: number | null; rs_hh_realizado: number | null
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     const valorFaturado = c.subindices.reduce((a, s) => a + s.notas_fiscais.reduce((b, nf) => b + Number(nf.valor_atribuido), 0), 0)
 
     rows.push({
-      id: c.id, indice: c.indice, cliente: c.cliente.nome, classificacao: c.classificacao,
+      id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, classificacao: c.classificacao,
       hh_orcado: hhOrcado && hhOrcado > 0 ? hhOrcado : null,
       hh_realizado: hhRealizado != null && hhRealizado > 0 ? hhRealizado : null,
       desvio_hh_pct: hhOrcado && hhOrcado > 0 && hhRealizado != null ? ((hhRealizado - hhOrcado) / hhOrcado) * 100 : null,

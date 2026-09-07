@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     prisma.contrato.findMany({
       where: { cancelled_at: null },
       select: {
-        id: true, indice: true, ano_referencia: true, classificacao: true, estado: true, status: true, num_os: true,
+        id: true, indice: true, ano_referencia: true, classificacao: true, estado: true, cidade: true, descricao: true, status: true, num_os: true,
         data_inicio: true, data_fim: true, valor_contrato: true,
         cliente: { select: { id: true, nome: true } },
         responsavel: { select: { id: true, nome: true } },
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const ativos = contratos.filter((c) => c.hh_cancelado_at == null)
   const porClassif = new Map<string, { contratos: number; valor: number }>()
   const porResponsavel = new Map<string, { nome: string; contratos: number; valor: number }>()
-  const carteiraLista: Array<{ id: number; indice: string; cliente: string; responsavel: string | null; classificacao: string | null; num_os: string | null; status: string; valor: number }> = []
+  const carteiraLista: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; responsavel: string | null; classificacao: string | null; num_os: string | null; status: string; valor: number }> = []
   for (const c of ativos) {
     const valor = Number(c.valor_contrato ?? c.subindices.reduce((a, s) => a + Number(s.valor_total), 0))
     if (c.classificacao) {
@@ -68,23 +68,23 @@ export async function GET(req: NextRequest) {
     const r = porResponsavel.get(respKey) ?? { nome: respNome, contratos: 0, valor: 0 }
     r.contratos++; r.valor += valor
     porResponsavel.set(respKey, r)
-    carteiraLista.push({ id: c.id, indice: c.indice, cliente: c.cliente.nome, responsavel: c.responsavel?.nome ?? null, classificacao: c.classificacao, num_os: c.num_os, status: c.status, valor })
+    carteiraLista.push({ id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, responsavel: c.responsavel?.nome ?? null, classificacao: c.classificacao, num_os: c.num_os, status: c.status, valor })
   }
 
   // ── CTR-02: aderência de HH (Obras + Paradas) ─────────────────────────────
-  type HhRow = { id: number; indice: string; cliente: string; classificacao: string | null; previsto: number; realizado: number; desvio_pct: number | null }
+  type HhRow = { id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; classificacao: string | null; previsto: number; realizado: number; desvio_pct: number | null }
   const hhRows: HhRow[] = []
   for (const c of ativos) {
     if (c.classificacao === 'OBRAS') {
       const previsto = c.hh_lancamentos[0]?.meses.reduce((s, m) => s + (m.hh_previsto ?? 0), 0) ?? 0
       const realizado = c.hh_realizados.reduce((s, r) => s + r.hh_realizado, 0)
       if (previsto > 0 || realizado > 0) {
-        hhRows.push({ id: c.id, indice: c.indice, cliente: c.cliente.nome, classificacao: c.classificacao, previsto, realizado, desvio_pct: previsto > 0 ? ((realizado - previsto) / previsto) * 100 : null })
+        hhRows.push({ id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, classificacao: c.classificacao, previsto, realizado, desvio_pct: previsto > 0 ? ((realizado - previsto) / previsto) * 100 : null })
       }
     } else if (c.classificacao === 'PARADAS' && c.parada_hh_config) {
       const { hhTotalPrev, hhTotalReal } = calcParadaHhTotais(c.parada_hh_config)
       if (hhTotalPrev > 0 || hhTotalReal > 0) {
-        hhRows.push({ id: c.id, indice: c.indice, cliente: c.cliente.nome, classificacao: c.classificacao, previsto: hhTotalPrev, realizado: hhTotalReal, desvio_pct: hhTotalPrev > 0 ? ((hhTotalReal - hhTotalPrev) / hhTotalPrev) * 100 : null })
+        hhRows.push({ id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, classificacao: c.classificacao, previsto: hhTotalPrev, realizado: hhTotalReal, desvio_pct: hhTotalPrev > 0 ? ((hhTotalReal - hhTotalPrev) / hhTotalPrev) * 100 : null })
       }
     }
   }
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   // e o peso fica no item de Controle de HH — não há uma ligação item-a-item
   // entre os dois lados hoje, então dividir o valor do contrato pelos itens
   // daria um R$/kg artificial. Fica só o avanço físico (peso) e de HH.
-  type FabRow = { contrato_id: number; indice: string; cliente: string; item: string; hh_orcado: number; hh_previsto: number; hh_realizado: number; peso_previsto: number; peso_realizado: number; pct_avanco: number }
+  type FabRow = { contrato_id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; item: string; hh_orcado: number; hh_previsto: number; hh_realizado: number; peso_previsto: number; peso_realizado: number; pct_avanco: number }
   const fabRows: FabRow[] = []
   for (const c of ativos) {
     if (c.classificacao !== 'FABRICACOES' && c.classificacao !== 'OLEO_GAS') continue
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
       const pesoRealizado = item.realizados.reduce((a, r) => a + Number(r.peso_realizado ?? 0), 0)
       if (hhPrevisto === 0 && hhRealizado === 0 && pesoPrevisto === 0) continue
       fabRows.push({
-        contrato_id: c.id, indice: c.indice, cliente: c.cliente.nome, item: item.descricao,
+        contrato_id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, item: item.descricao,
         hh_orcado: hhOrcado, hh_previsto: hhPrevisto, hh_realizado: hhRealizado,
         peso_previsto: pesoPrevisto, peso_realizado: pesoRealizado,
         pct_avanco: pesoPrevisto > 0 ? (pesoRealizado / pesoPrevisto) * 100 : 0,
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── CTR-04: R$/HH por contrato de Parada (UCR) ────────────────────────────
-  type UcrRow = { id: number; indice: string; cliente: string; regiao: string; rs_hh: number | null; classificacao_ucr: string | null }
+  type UcrRow = { id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; regiao: string; rs_hh: number | null; classificacao_ucr: string | null }
   const ucrRows: UcrRow[] = []
   const ucrContagem: Record<string, number> = { 'Não Suficiente': 0, 'A Evoluir': 0, Bom: 0, Ótimo: 0, Esplêndido: 0 }
   for (const c of ativos) {
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
     const faixa = dataRef ? resolverVigencia(vigencias, regiao, dataRef) : null
     const classif = classificarUcr(rsHH, faixa)
     if (classif) ucrContagem[classif] = (ucrContagem[classif] ?? 0) + 1
-    ucrRows.push({ id: c.id, indice: c.indice, cliente: c.cliente.nome, regiao, rs_hh: rsHH, classificacao_ucr: classif })
+    ucrRows.push({ id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, regiao, rs_hh: rsHH, classificacao_ucr: classif })
   }
 
   // ── CTR-05: contratos encerrando (radar de renovação) ─────────────────────
@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
       janela_dias: janelaDias,
       cobertura: `${totalContratosComFim} de ${ativos.length} contratos ativos têm data de encerramento preenchida`,
       contratos: encerrando.map((c) => ({
-        id: c.id, indice: c.indice, cliente: c.cliente.nome, classificacao: c.classificacao,
+        id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, classificacao: c.classificacao,
         data_fim: c.data_fim!.toISOString(),
         dias_restantes: Math.ceil((c.data_fim!.getTime() - hoje.getTime()) / 86_400_000),
         propostas_em_andamento_mesmo_cliente: pipelineMap.get(c.cliente.id) ?? 0,

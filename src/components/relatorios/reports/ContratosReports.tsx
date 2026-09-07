@@ -14,11 +14,11 @@ const STATUS_LABELS: Record<string, string> = { A_FATURAR: 'A faturar', PARCIAL:
 
 interface ContratosData {
   filtros: { responsaveis: Array<{ id: number; nome: string }> }
-  ctr01_lista: Array<{ id: number; indice: string; cliente: string; responsavel: string | null; classificacao: string | null; num_os: string | null; status: string; valor: number }>
-  ctr02_hh: Array<{ id: number; indice: string; cliente: string; classificacao: string | null; previsto: number; realizado: number; desvio_pct: number | null }>
-  ctr03_fabricacao: Array<{ contrato_id: number; indice: string; cliente: string; item: string; hh_orcado: number; hh_previsto: number; hh_realizado: number; peso_previsto: number; peso_realizado: number; pct_avanco: number }>
-  ctr04_ucr: { contagem_por_faixa: Record<string, number>; contratos: Array<{ id: number; indice: string; cliente: string; regiao: string; rs_hh: number | null; classificacao_ucr: string | null }> }
-  ctr05_encerrando: { janela_dias: number; cobertura: string; contratos: Array<{ id: number; indice: string; cliente: string; classificacao: string | null; data_fim: string; dias_restantes: number; propostas_em_andamento_mesmo_cliente: number }> }
+  ctr01_lista: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; responsavel: string | null; classificacao: string | null; num_os: string | null; status: string; valor: number }>
+  ctr02_hh: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; classificacao: string | null; previsto: number; realizado: number; desvio_pct: number | null }>
+  ctr03_fabricacao: Array<{ contrato_id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; item: string; hh_orcado: number; hh_previsto: number; hh_realizado: number; peso_previsto: number; peso_realizado: number; pct_avanco: number }>
+  ctr04_ucr: { contagem_por_faixa: Record<string, number>; contratos: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; regiao: string; rs_hh: number | null; classificacao_ucr: string | null }> }
+  ctr05_encerrando: { janela_dias: number; cobertura: string; contratos: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; classificacao: string | null; data_fim: string; dias_restantes: number; propostas_em_andamento_mesmo_cliente: number }> }
 }
 
 export function Ctr01Carteira() {
@@ -33,6 +33,8 @@ export function Ctr01Carteira() {
 
   const columns: DataColumn<ContratosData['ctr01_lista'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'resp', header: 'Responsável', type: 'text', value: (r) => r.responsavel ?? '—' },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => CLASSIF_LABELS[r.classificacao ?? ''] ?? '—' },
@@ -75,6 +77,8 @@ export function Ctr02Hh() {
 
   const columns: DataColumn<ContratosData['ctr02_hh'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => CLASSIF_LABELS[r.classificacao ?? ''] ?? '—' },
     { key: 'previsto', header: 'HH Previsto', type: 'number', value: (r) => r.previsto, totalizer: 'sum' },
@@ -111,6 +115,8 @@ export function Ctr03Fabricacao() {
 
   const columns: DataColumn<ContratosData['ctr03_fabricacao'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'item', header: 'Item', type: 'text', value: (r) => r.item },
     { key: 'hh_orc', header: 'HH Orçado', type: 'number', value: (r) => r.hh_orcado, totalizer: 'sum' },
@@ -144,6 +150,8 @@ export function Ctr04Ucr() {
 
   const columns: DataColumn<ContratosData['ctr04_ucr']['contratos'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'regiao', header: 'Região', type: 'text', value: (r) => r.regiao },
     { key: 'rs_hh', header: 'R$/HH', type: 'currency', value: (r) => r.rs_hh },
@@ -180,6 +188,8 @@ export function Ctr05Encerrando() {
 
   const columns: DataColumn<ContratosData['ctr05_encerrando']['contratos'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => CLASSIF_LABELS[r.classificacao ?? ''] ?? '—' },
     { key: 'fim', header: 'Encerra em', type: 'date', value: (r) => new Date(r.data_fim) },

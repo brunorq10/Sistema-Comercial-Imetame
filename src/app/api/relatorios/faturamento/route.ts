@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     prisma.contrato.findMany({
       where: { cancelled_at: null },
       select: {
-        id: true, indice: true, ano_referencia: true, classificacao: true, status: true, valor_contrato: true,
+        id: true, indice: true, ano_referencia: true, classificacao: true, status: true, valor_contrato: true, cidade: true, descricao: true,
         cliente: { select: { id: true, nome: true } },
         responsavel: { select: { id: true, nome: true } },
         subindices: {
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   const faturadoPorAnoMes = new Map<number, number[]>(anosEvolucao.map((a) => [a, new Array(12).fill(0)]))
 
   // FAT-02: saldo a faturar por contrato
-  type SaldoRow = { id: number; indice: string; cliente: string; responsavel: string | null; classificacao: string | null; valor_total: number; faturado: number; saldo: number; status_faturamento: 'A_FATURAR' | 'PARCIAL' | 'FATURADO' }
+  type SaldoRow = { id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; responsavel: string | null; classificacao: string | null; valor_total: number; faturado: number; saldo: number; status_faturamento: 'A_FATURAR' | 'PARCIAL' | 'FATURADO' }
   const saldoRows: SaldoRow[] = []
 
   // FAT-04: por classificação
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   const porClassifPrevisto = new Map<string, number>()
 
   // FAT-05: aderência do mês de referência, por contrato
-  type AderenciaRow = { id: number; indice: string; cliente: string; previsto_mes: number; faturado_mes: number; desvio: number; desvio_pct: number | null }
+  type AderenciaRow = { id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; previsto_mes: number; faturado_mes: number; desvio: number; desvio_pct: number | null }
   const aderenciaRows: AderenciaRow[] = []
 
   for (const c of contratos) {
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
 
     const saldo = contratoTotal - contratoFaturadoTotal
     saldoRows.push({
-      id: c.id, indice: c.indice, cliente: c.cliente.nome, responsavel: c.responsavel?.nome ?? null,
+      id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, responsavel: c.responsavel?.nome ?? null,
       classificacao: c.classificacao, valor_total: contratoTotal, faturado: contratoFaturadoTotal, saldo,
       status_faturamento: contratoFaturadoTotal === 0 ? 'A_FATURAR' : contratoFaturadoTotal >= contratoTotal ? 'FATURADO' : 'PARCIAL',
     })
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     if (previstoMesRefContrato > 0 || faturadoMesRefContrato > 0) {
       const desvio = faturadoMesRefContrato - previstoMesRefContrato
       aderenciaRows.push({
-        id: c.id, indice: c.indice, cliente: c.cliente.nome,
+        id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome,
         previsto_mes: previstoMesRefContrato, faturado_mes: faturadoMesRefContrato, desvio,
         desvio_pct: previstoMesRefContrato > 0 ? (desvio / previstoMesRefContrato) * 100 : null,
       })
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
       where: { status_aprovacao: 'PENDENTE', deleted_at: null },
       select: {
         id: true, numero_nf: true, created_at: true,
-        subindice: { select: { contrato: { select: { indice: true, cliente: { select: { nome: true } } } } } },
+        subindice: { select: { contrato: { select: { indice: true, cidade: true, descricao: true, cliente: { select: { nome: true } } } } } },
       },
       orderBy: { created_at: 'asc' },
     }),
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
       where: { status: 'PENDENTE' },
       select: {
         id: true, numero_nf_de: true, created_at: true,
-        nf: { select: { subindice: { select: { contrato: { select: { indice: true, cliente: { select: { nome: true } } } } } } } },
+        nf: { select: { subindice: { select: { contrato: { select: { indice: true, cidade: true, descricao: true, cliente: { select: { nome: true } } } } } } } },
       },
       orderBy: { created_at: 'asc' },
     }),
@@ -144,12 +144,12 @@ export async function GET(req: NextRequest) {
   const pendencias = [
     ...nfsPendentes.map((n) => ({
       id: n.id, tipo: 'Novo lançamento' as const, numero_nf: n.numero_nf,
-      contrato: n.subindice.contrato.indice, cliente: n.subindice.contrato.cliente.nome,
+      contrato: n.subindice.contrato.indice, escopo: n.subindice.contrato.descricao, cidade: n.subindice.contrato.cidade, cliente: n.subindice.contrato.cliente.nome,
       dias_em_espera: Math.floor((now - n.created_at.getTime()) / DIA_MS),
     })),
     ...edicoesPendentes.map((e) => ({
       id: e.id, tipo: 'Edição de NF' as const, numero_nf: e.numero_nf_de,
-      contrato: e.nf.subindice.contrato.indice, cliente: e.nf.subindice.contrato.cliente.nome,
+      contrato: e.nf.subindice.contrato.indice, escopo: e.nf.subindice.contrato.descricao, cidade: e.nf.subindice.contrato.cidade, cliente: e.nf.subindice.contrato.cliente.nome,
       dias_em_espera: Math.floor((now - e.created_at.getTime()) / DIA_MS),
     })),
   ].sort((a, b) => b.dias_em_espera - a.dias_em_espera)

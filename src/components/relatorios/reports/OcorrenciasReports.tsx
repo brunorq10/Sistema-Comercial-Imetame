@@ -10,10 +10,10 @@ import { exportToExcel } from '@/lib/exportExcel'
 import { todayInput } from '@/lib/utils'
 
 interface OcorrenciasData {
-  ocm01_lista: Array<{ id: number; codigo: string; contrato: string; cliente: string; tipo: string; tipo_label: string; responsabilidade: string; responsabilidade_label: string; data: string; descricao: string }>
+  ocm01_lista: Array<{ id: number; codigo: string; contrato: string; escopo: string | null; cidade: string | null; cliente: string; tipo: string; tipo_label: string; responsabilidade: string; responsabilidade_label: string; data: string; descricao: string }>
   ocm01_por_tipo: Array<{ tipo: string; label: string; total: number }>
   ocm01_por_responsabilidade: Array<{ responsabilidade: string; label: string; total: number }>
-  ocm02_lista: Array<{ id: number; contrato: string; cliente: string; tipo: string; tipo_label: string; descricao: string; data: string; valor: number }>
+  ocm02_lista: Array<{ id: number; contrato: string; escopo: string | null; cidade: string | null; cliente: string; tipo: string; tipo_label: string; descricao: string; data: string; valor: number }>
   ocm02_total: number
   ocm02_por_tipo: Array<{ tipo: string; label: string; valor: number }>
   ocm03: Array<{ nome: string; ocorrencias: number; valor_multas: number; contratos_ativos: number; ocorrencias_por_contrato: number }>
@@ -45,6 +45,8 @@ export function Ocm01Ocorrencias() {
   const columns: DataColumn<OcorrenciasData['ocm01_lista'][number]>[] = [
     { key: 'codigo', header: 'Código', type: 'text', value: (r) => r.codigo },
     { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'tipo', header: 'Tipo', type: 'text', value: (r) => r.tipo_label },
     { key: 'resp', header: 'Responsabilidade', type: 'text', value: (r) => r.responsabilidade_label },
@@ -87,6 +89,8 @@ export function Ocm02Multas() {
 
   const columns: DataColumn<OcorrenciasData['ocm02_lista'][number]>[] = [
     { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'tipo', header: 'Tipo', type: 'text', value: (r) => r.tipo_label },
     { key: 'descricao', header: 'Descrição', type: 'text', value: (r) => r.descricao },

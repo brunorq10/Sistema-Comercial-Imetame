@@ -13,7 +13,7 @@ import { todayInput } from '@/lib/utils'
 const CLASSIF_LABELS: Record<string, string> = { OBRAS: 'Obras', PARADAS: 'Paradas', OLEO_GAS: 'Óleo e Gás', FABRICACOES: 'Fabricações' }
 
 interface CrzRow {
-  id: number; indice: string; cliente: string; classificacao: string | null
+  id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; classificacao: string | null
   hh_orcado: number | null; hh_realizado: number | null; desvio_hh_pct: number | null
   valor_vendido: number | null; valor_faturado: number
   rs_hh_vendido: number | null; rs_hh_realizado: number | null
@@ -42,6 +42,8 @@ export function Crz01OrcadoExecutado() {
 
   const columns: DataColumn<CrzRow>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => CLASSIF_LABELS[r.classificacao ?? ''] ?? '—' },
     { key: 'orcado', header: 'HH Orçado', type: 'number', value: (r) => r.hh_orcado, totalizer: 'sum' },
@@ -67,6 +69,8 @@ export function Crz02Rentabilidade() {
 
   const columns: DataColumn<CrzRow>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'vendido', header: 'R$/HH Vendido', type: 'currency', value: (r) => r.rs_hh_vendido },
     { key: 'real', header: 'R$/HH Realizado', type: 'currency', value: (r) => r.rs_hh_realizado },

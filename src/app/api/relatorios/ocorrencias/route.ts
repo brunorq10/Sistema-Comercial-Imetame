@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       where: { deleted_at: null, ...(periodo && { data: periodo }) },
       select: {
         id: true, codigo: true, tipo: true, responsabilidade: true, data: true, descricao: true,
-        contrato: { select: { id: true, indice: true, cliente: { select: { id: true, nome: true } } } },
+        contrato: { select: { id: true, indice: true, cidade: true, descricao: true, cliente: { select: { id: true, nome: true } } } },
       },
       orderBy: { data: 'desc' },
     }),
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       where: { deleted_at: null, ativa: true, ...(periodo && { data_ocorrencia: periodo }) },
       select: {
         id: true, tipo: true, descricao: true, valor_total: true, data_ocorrencia: true,
-        contrato: { select: { id: true, indice: true, cliente: { select: { id: true, nome: true } } } },
+        contrato: { select: { id: true, indice: true, cidade: true, descricao: true, cliente: { select: { id: true, nome: true } } } },
       },
       orderBy: { data_ocorrencia: 'desc' },
     }),
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
 
   const data = {
     ocm01_lista: ocorrencias.map((o) => ({
-      id: o.id, codigo: o.codigo, contrato: o.contrato.indice, cliente: o.contrato.cliente.nome,
+      id: o.id, codigo: o.codigo, contrato: o.contrato.indice, escopo: o.contrato.descricao, cidade: o.contrato.cidade, cliente: o.contrato.cliente.nome,
       tipo: o.tipo, tipo_label: TIPO_OCORRENCIA_LABELS[o.tipo] ?? o.tipo,
       responsabilidade: o.responsabilidade, responsabilidade_label: RESP_LABELS[o.responsabilidade] ?? o.responsabilidade,
       data: o.data.toISOString(), descricao: o.descricao,
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
     ocm01_por_responsabilidade: Object.entries(porResponsabilidade).map(([resp, total]) => ({ responsabilidade: resp, label: RESP_LABELS[resp] ?? resp, total })).sort((a, b) => b.total - a.total),
 
     ocm02_lista: multas.map((m) => ({
-      id: m.id, contrato: m.contrato.indice, cliente: m.contrato.cliente.nome,
+      id: m.id, contrato: m.contrato.indice, escopo: m.contrato.descricao, cidade: m.contrato.cidade, cliente: m.contrato.cliente.nome,
       tipo: m.tipo, tipo_label: TIPO_MULTA_LABELS[m.tipo] ?? m.tipo,
       descricao: m.descricao, data: m.data_ocorrencia.toISOString(), valor: Number(m.valor_total),
     })),

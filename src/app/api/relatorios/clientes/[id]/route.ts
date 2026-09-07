@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       contratos: {
         where: { cancelled_at: null },
         select: {
-          id: true, indice: true, status: true, classificacao: true, valor_contrato: true, data_inicio: true, data_fim: true,
+          id: true, indice: true, status: true, classificacao: true, valor_contrato: true, data_inicio: true, data_fim: true, cidade: true, descricao: true,
           subindices: {
             where: { deleted_at: null },
             select: { notas_fiscais: { where: { ativa: true, deleted_at: null }, select: { valor_atribuido: true, data_emissao: true } } },
@@ -63,7 +63,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     totalMultas += c.multas.reduce((a, m) => a + Number(m.valor_total), 0)
     totalOcorrencias += c.ocorrencias.length
     return {
-      id: c.id, indice: c.indice, status: c.status, classificacao: c.classificacao,
+      id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, status: c.status, classificacao: c.classificacao,
       valor_contrato: c.valor_contrato != null ? Number(c.valor_contrato) : null,
       data_inicio: c.data_inicio?.toISOString() ?? null, data_fim: c.data_fim?.toISOString() ?? null,
       faturado, nf_ocorrencias: c.ocorrencias.length, nf_multas: c.multas.length,

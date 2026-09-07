@@ -19,11 +19,11 @@ interface FaturamentoData {
   mes_ref: number
   fat01_mensal: Array<{ mes: number; label: string; previsto: number; faturado: number; percentual: number }>
   fat01_total: { previsto: number; faturado: number; percentual: number }
-  fat02_saldo: Array<{ id: number; indice: string; cliente: string; responsavel: string | null; classificacao: string | null; valor_total: number; faturado: number; saldo: number; status_faturamento: string }>
+  fat02_saldo: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; responsavel: string | null; classificacao: string | null; valor_total: number; faturado: number; saldo: number; status_faturamento: string }>
   fat03_evolucao: Array<{ ano: number; meses: number[]; total: number }>
   fat04_por_classificacao: Array<{ classificacao: string; faturado: number; previsto: number }>
-  fat05_aderencia: Array<{ id: number; indice: string; cliente: string; previsto_mes: number; faturado_mes: number; desvio: number; desvio_pct: number | null }>
-  fat06_pendencias: Array<{ id: number; tipo: string; numero_nf: string; contrato: string; cliente: string; dias_em_espera: number }>
+  fat05_aderencia: Array<{ id: number; indice: string; escopo: string | null; cidade: string | null; cliente: string; previsto_mes: number; faturado_mes: number; desvio: number; desvio_pct: number | null }>
+  fat06_pendencias: Array<{ id: number; tipo: string; numero_nf: string; contrato: string; escopo: string | null; cidade: string | null; cliente: string; dias_em_espera: number }>
 }
 
 function useAno() {
@@ -82,6 +82,8 @@ export function Fat02Saldo() {
 
   const columns: DataColumn<FaturamentoData['fat02_saldo'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'resp', header: 'Responsável', type: 'text', value: (r) => r.responsavel ?? '—' },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => CLASSIF_LABELS[r.classificacao ?? ''] ?? '—' },
@@ -173,6 +175,8 @@ export function Fat05Aderencia() {
 
   const columns: DataColumn<FaturamentoData['fat05_aderencia'][number]>[] = [
     { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'previsto', header: 'Previsto', type: 'currency', value: (r) => r.previsto_mes, totalizer: 'sum' },
     { key: 'faturado', header: 'Faturado', type: 'currency', value: (r) => r.faturado_mes, totalizer: 'sum' },
@@ -214,6 +218,8 @@ export function Fat06Pendencias() {
     { key: 'tipo', header: 'Tipo', type: 'text', value: (r) => r.tipo },
     { key: 'nf', header: 'NF', type: 'text', value: (r) => r.numero_nf },
     { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
+    { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
     { key: 'dias', header: 'Dias em Espera', type: 'number', value: (r) => r.dias_em_espera, totalizer: 'avg' },
   ]
