@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -50,6 +50,21 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
 
   // Hover temporário: quando recolhida, passar o mouse expande por cima (sem fixar)
   const [hovered, setHovered] = useState(false)
+
+  // Indicador do Painel de Alertas — some sozinho quando não há mais pendência
+  const [temAlerta, setTemAlerta] = useState(false)
+  useEffect(() => {
+    if (!session?.user) return
+    const fetchAlertas = () => {
+      fetch('/api/excecoes')
+        .then((r) => r.json())
+        .then((j) => setTemAlerta(Array.isArray(j.data) && j.data.length > 0))
+        .catch(() => {})
+    }
+    fetchAlertas()
+    const interval = setInterval(fetchAlertas, 60000)
+    return () => clearInterval(interval)
+  }, [session?.user])
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     orcamentos: pathname.startsWith('/orcamentos'),
@@ -217,11 +232,11 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
           </Link>
         )}
 
-        {/* Exceções — pendências automáticas, visível a qualquer perfil autenticado */}
+        {/* Painel de Alertas — pendências automáticas, visível a qualquer perfil autenticado */}
         <Link
           href="/excecoes"
           onClick={onClose}
-          title="Exceções"
+          title="Painel de Alertas"
           className={cn(
             'flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors',
             railMode && 'lg:justify-center lg:px-0 lg:gap-0',
@@ -230,8 +245,13 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
               : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50',
           )}
         >
-          <IconExcecoes active={pathname.startsWith('/excecoes')} />
-          <span className={hideInRail}>Exceções</span>
+          <span className="relative flex-shrink-0">
+            <IconExcecoes active={pathname.startsWith('/excecoes')} />
+            {temAlerta && (
+              <span className="absolute -top-0.5 -right-0.5 w-[7px] h-[7px] rounded-full bg-[#C62828] ring-2 ring-white" />
+            )}
+          </span>
+          <span className={hideInRail}>Painel de Alertas</span>
         </Link>
 
         {/* Cadastros — aba separada, só para quem tem acesso ao módulo */}

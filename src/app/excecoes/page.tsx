@@ -55,7 +55,7 @@ export default function ExcecoesPage() {
   return (
     <div className="h-full overflow-y-auto p-4">
       <PageHeader
-        title="Painel de Exceções"
+        title="Painel de Alertas"
         subtitle="Pendências que o sistema já identificou sozinho. Cada item fica na lista enquanto a condição continuar verdadeira e some quando for resolvido — não precisa marcar como lido."
       />
 
