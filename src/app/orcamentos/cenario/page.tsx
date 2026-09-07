@@ -48,7 +48,7 @@ export default function CenarioPage() {
   return (
     <div className="h-full overflow-y-auto p-4">
       <PageHeader
-        title="Cenário"
+        title="Cenários"
         subtitle="Projeção de atividades futuras — carga de efetivo comprometida mês a mês (contratos + propostas em orçamentação)."
         actions={
           <div className="flex items-center gap-2 flex-wrap">

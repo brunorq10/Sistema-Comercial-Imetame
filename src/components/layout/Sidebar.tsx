@@ -19,7 +19,7 @@ const NAV_SECTIONS = [
       { label: 'Solicitações',        href: '/orcamentos/solicitacoes' },
       { label: 'Propostas',           href: '/orcamentos/propostas' },
       { label: 'Indicadores Comercial', href: '/orcamentos/dashboard' },
-      { label: 'Cenário',             href: '/orcamentos/cenario', requerCenario: true },
+      { label: 'Cenários',            href: '/orcamentos/cenario', requerCenario: true },
     ],
   },
   {
