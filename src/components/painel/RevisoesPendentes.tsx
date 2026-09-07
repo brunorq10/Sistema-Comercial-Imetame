@@ -72,7 +72,7 @@ export function RevisoesPendentes({ onChanged }: Props) {
       <div className="space-y-2">
         {itens.map((r) => (
           <div key={r.id} className="bg-white border border-amber-200 rounded-md p-3">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[12px] font-bold">{r.numero}</span>
@@ -89,7 +89,7 @@ export function RevisoesPendentes({ onChanged }: Props) {
                   </p>
                 )}
               </div>
-              <div className="flex gap-1.5 flex-shrink-0">
+              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-shrink-0">
                 <Button size="sm" onClick={() => avaliar(r.id, 'APROVAR')} disabled={loadingId === r.id}>
                   {loadingId === r.id ? 'Aguarde…' : 'É revisão — Aprovar'}
                 </Button>
@@ -111,7 +111,7 @@ export function RevisoesPendentes({ onChanged }: Props) {
                   placeholder="Explique por que não se trata de uma revisão (ex.: apenas atualização/complementação de arquivos)…"
                   className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-[11px] resize-none focus:outline-none focus:border-red-400"
                 />
-                <div className="flex justify-end gap-1.5 mt-1.5">
+                <div className="grid grid-cols-2 gap-1.5 mt-1.5 sm:flex sm:justify-end">
                   <Button size="sm" variant="outline" onClick={() => { setRecusando(null); setJustificativa('') }} disabled={loadingId === r.id}>
                     Cancelar
                   </Button>

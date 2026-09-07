@@ -13,7 +13,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={cn(
           'inline-flex items-center gap-1 rounded font-semibold transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
-          size === 'sm' ? 'px-2 py-1 text-[10px]' : 'px-3 py-1.5 text-xs',
+          size === 'sm' ? 'px-3 py-2 text-[11px] lg:px-2 lg:py-1 lg:text-[10px]' : 'px-3 py-1.5 text-xs',
           variant === 'primary' && 'bg-green-primary text-white hover:bg-green-dark',
           variant === 'outline' &&
             'bg-white text-green-primary border border-green-primary hover:bg-green-light',

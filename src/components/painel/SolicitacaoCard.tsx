@@ -91,7 +91,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
       )}
     >
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-2.5 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2.5 gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[13px] font-bold">{item.numero}</span>
           <VersaoBadge versao={item.versao_atual} asSold={item.as_sold} />
@@ -112,7 +112,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
           )}
         </div>
         {/* Indicadores de envio — mantidos sem alteração */}
-        <div className="flex gap-1.5 flex-wrap justify-end">
+        <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
           {item.tecnica_nao_aplicavel ? (
             <Badge variant="gray">Técnica — N/A</Badge>
           ) : item.tecnica_enviada ? (
@@ -135,7 +135,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
       </div>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-x-4 gap-y-2 text-[11px] mb-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 text-[11px] mb-2.5">
 
         {/* Linha 1: identificação */}
         <CardField label="Cliente">{item.cliente}</CardField>
@@ -154,7 +154,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
         </CardField>
 
         {/* Linha 2: escopo + classificação */}
-        <CardField label="Escopo" className="col-span-3">
+        <CardField label="Escopo" className="col-span-1 sm:col-span-2 lg:col-span-3">
           {item.escopo ?? '—'}
         </CardField>
         <CardField label="Classificação">

@@ -40,6 +40,8 @@ export default function PainelOrcamentosPage() {
 
   const [filtroAtivo, setFiltroAtivo] = useState<FiltroIndicador>('elaboracao')
   const [subFiltro, setSubFiltro] = useState<SubFiltro>(null)
+  // Recolhida por padrão só no celular (abaixo de sm) — em tablet/desktop a barra fica sempre visível
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
 
   const [dataDe, setDataDe] = useState('')
   const [dataAte, setDataAte] = useState('')
@@ -137,6 +139,8 @@ export default function PainelOrcamentosPage() {
     setSubFiltro(null)
   }
 
+  const filtrosAtivosCount = [dataDe, dataAte, classificacao, interesse, clienteFiltro, orcamentistaFiltro].filter(Boolean).length
+
   return (
     <div className="flex flex-col h-full">
       {/* ── Zona congelada — só título e filtros ─────────────────────────── */}
@@ -146,8 +150,25 @@ export default function PainelOrcamentosPage() {
           subtitle='Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.'
         />
 
+        {/* Botão de filtros — só no celular (abaixo de sm); em tablet/desktop a barra já fica sempre visível abaixo */}
+        <button
+          type="button"
+          onClick={() => setFiltrosAbertos((v) => !v)}
+          className="sm:hidden mb-2.5 w-full flex items-center justify-between bg-white border border-gray-200 rounded-md px-3.5 py-2.5 text-[12px] font-semibold text-gray-600"
+        >
+          <span className="flex items-center gap-1.5">
+            Filtros
+            {filtrosAtivosCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-green-primary text-white text-[10px] font-bold">
+                {filtrosAtivosCount}
+              </span>
+            )}
+          </span>
+          <span className={cn('transition-transform', filtrosAbertos && 'rotate-180')}>▾</span>
+        </button>
+
         {/* Filtros de período e categoria */}
-        <div className="bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex flex-wrap gap-2.5 items-end">
+        <div className={cn('bg-white border border-gray-200 rounded-md px-3.5 py-2.5 mb-3 flex-wrap gap-2.5 items-end sm:flex', filtrosAbertos ? 'flex' : 'hidden')}>
           <Field label="Orçamentista" className="min-w-[150px] flex-1">
             <Select value={orcamentistaFiltro} onChange={(e) => setOrcamentistaFiltro(e.target.value)}>
               <option value="">Meu painel</option>
@@ -204,7 +225,7 @@ export default function PainelOrcamentosPage() {
         <RevisoesPendentes onChanged={fetchData} />
 
         {/* Indicadores filtráveis */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-3">
           <IndicadorCard
             label="Total de solicitações"
             valor={contagens.todas}
