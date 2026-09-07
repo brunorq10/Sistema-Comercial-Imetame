@@ -520,7 +520,10 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
 
   return (
     <div className="border border-gray-200 rounded-md overflow-x-auto">
-      <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
+      {/* border-separate (não collapse): com colunas congeladas, border-collapse
+          quebra o pintado das células sticky durante o scroll lateral. Ver
+          mesmo ajuste em FaturamentoContratoTable.tsx. */}
+      <table className="border-separate text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed', borderSpacing: 0 }}>
         <colgroup>
           <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.cliente_final }} /><col style={{ width: W.cidade }} /><col style={{ width: W.descricao }} />
           <col style={{ width: W.classificacao }} /><col style={{ width: W.ramo }} /><col style={{ width: W.os }} />

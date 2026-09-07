@@ -182,7 +182,12 @@ export function FaturamentoContratoTable({
 
   return (
     <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
-      <table className="border-collapse text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed' }}>
+      {/* border-separate (não collapse): com colunas congeladas, border-collapse
+          quebra o pintado das células sticky durante o scroll lateral — o
+          conteúdo que rola passa por cima/por baixo da coluna fixa em vez de
+          ficar sempre atrás dela. As bordas já são declaradas por célula/linha
+          (border-b), então não há fusão de borda para perder trocando o modo. */}
+      <table className="border-separate text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed', borderSpacing: 0 }}>
         <colgroup>
           <col style={{ width: W.indice }} /><col style={{ width: W.cliente }} /><col style={{ width: W.cliente_final }} /><col style={{ width: W.cidade }} /><col style={{ width: W.descricao }} />
           <col style={{ width: W.classificacao }} /><col style={{ width: W.ramo }} /><col style={{ width: W.os }} />

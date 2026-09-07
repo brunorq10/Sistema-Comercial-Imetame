@@ -472,27 +472,21 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         </div>
       </Field>
 
-      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
-        <Field label="Nº OS">
-          <Input placeholder="Ex: 0798.02.003" value={numOs} onChange={(e) => setNumOs(maskOS(e.target.value))} />
-        </Field>
-        <Field label="Nº Acordo">
-          <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
-        </Field>
-        <Field label="Nº Proposta *">
-          {numPropostaManual ? (
-            <>
-              <Input placeholder="Ex: SOL-0053" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} />
-              <button
-                type="button"
-                onClick={() => { setNumPropostaManual(false); setNumProposta('') }}
-                className="mt-1 text-[10px] text-green-primary hover:underline"
-              >
-                Buscar na lista de solicitações
-              </button>
-            </>
-          ) : (
-            <>
+      <Field label="Nº Proposta *" className="mb-2.5">
+        {numPropostaManual ? (
+          <div className="flex items-center gap-2.5">
+            <Input placeholder="Ex: SOL-0053" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} className="flex-1" />
+            <button
+              type="button"
+              onClick={() => { setNumPropostaManual(false); setNumProposta('') }}
+              className="text-[10px] text-green-primary hover:underline whitespace-nowrap flex-shrink-0"
+            >
+              Buscar na lista de solicitações
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <div className="flex-1">
               <SearchableSelect
                 value={solicitacaoId}
                 onChange={(v) => { setSolicitacaoId(v); setNumProposta(propostasDisponiveis.find((p) => String(p.id) === v)?.numero ?? '') }}
@@ -500,15 +494,24 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
                 placeholder="Buscar por número ou cliente..."
                 emptyLabel="Nenhuma selecionada"
               />
-              <button
-                type="button"
-                onClick={() => { setNumPropostaManual(true); setSolicitacaoId('') }}
-                className="mt-1 text-[10px] text-gray-400 hover:text-gray-600 hover:underline"
-              >
-                Não encontro na lista — digitar manualmente
-              </button>
-            </>
-          )}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setNumPropostaManual(true); setSolicitacaoId('') }}
+              className="text-[10px] text-gray-400 hover:text-gray-600 hover:underline whitespace-nowrap flex-shrink-0"
+            >
+              Não encontro na lista — digitar manualmente
+            </button>
+          </div>
+        )}
+      </Field>
+
+      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+        <Field label="Nº OS">
+          <Input placeholder="Ex: 0798.02.003" value={numOs} onChange={(e) => setNumOs(maskOS(e.target.value))} />
+        </Field>
+        <Field label="Nº Acordo">
+          <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
         <Field label="Valor total do contrato (R$)">
           <CurrencyInput value={valorContrato} onChange={setValorContrato} />
