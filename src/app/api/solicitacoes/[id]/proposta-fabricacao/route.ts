@@ -22,7 +22,23 @@ const schemaPost = z.object({
   valor_montagem: z.number().min(0).optional(),
   data_base: z.string().optional(),
   data_envio: z.string().min(1),
+  // Previsão de execução caso a proposta seja ganha — obrigatória no envio
+  // (POST), validado no handler; opcional na edição (PUT) para não travar
+  // propostas antigas.
+  data_prevista_inicio_execucao: z.string().optional(),
+  data_prevista_fim_execucao: z.string().optional(),
 })
+
+// Previsão de execução — obrigatória no envio (não bloqueia edição de
+// propostas antigas via PUT, só a criação/reenvio via POST).
+function validarPrevisaoExecucao(d: { data_prevista_inicio_execucao?: string; data_prevista_fim_execucao?: string }): string | null {
+  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da execução é obrigatória'
+  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da execução é obrigatória'
+  if (new Date(d.data_prevista_fim_execucao) < new Date(d.data_prevista_inicio_execucao)) {
+    return 'Data prevista de fim da execução não pode ser anterior à data de início'
+  }
+  return null
+}
 
 const schemaPatch = z.object({
   resultado: z.enum(['AGUARDANDO', 'GANHOU', 'PERDEU']),
@@ -116,6 +132,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 400 },
     )
   }
+  const erroExecucao = validarPrevisaoExecucao(parsed.data)
+  if (erroExecucao) return NextResponse.json({ data: null, error: erroExecucao }, { status: 400 })
 
   const sol = await prisma.solicitacao.findUnique({
     where: { id },
@@ -148,6 +166,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           valor_total: valorTotal,
           data_base: d.data_base ? new Date(d.data_base) : null,
           data_envio: new Date(d.data_envio),
+          data_prevista_inicio_execucao: new Date(d.data_prevista_inicio_execucao!),
+          data_prevista_fim_execucao: new Date(d.data_prevista_fim_execucao!),
           created_by: Number(session.user.id),
           equipamentos: {
             create: d.equipamentos.map((e, i) => ({
@@ -205,6 +225,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const valorMontPut = d.possui_montagem ? (d.valor_montagem ?? 0) : 0
   const valorTotal = valorEquipamentos + valorTestes + valorMontPut
 
+  // Previsão de execução: não exige preenchimento ao editar uma proposta antiga
+  // (só é obrigatória no envio, via POST) — mas se ambas as datas resultarem
+  // preenchidas após o merge, a ordem ainda precisa ser válida.
+  const novaDataInicioExec = d.data_prevista_inicio_execucao !== undefined
+    ? (d.data_prevista_inicio_execucao ? new Date(d.data_prevista_inicio_execucao) : null)
+    : latest.data_prevista_inicio_execucao
+  const novaDataFimExec = d.data_prevista_fim_execucao !== undefined
+    ? (d.data_prevista_fim_execucao ? new Date(d.data_prevista_fim_execucao) : null)
+    : latest.data_prevista_fim_execucao
+  if (novaDataInicioExec && novaDataFimExec && novaDataFimExec < novaDataInicioExec) {
+    return NextResponse.json({ data: null, error: 'Data prevista de fim da execução não pode ser anterior à data de início' }, { status: 400 })
+  }
+
   const proposta = await prisma.$transaction(async (tx) => {
     return tx.propostaFabricacao.update({
       where: { id: latest.id },
@@ -218,6 +251,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         valor_total: valorTotal,
         data_base: d.data_base ? new Date(d.data_base) : latest.data_base,
         data_envio: new Date(d.data_envio),
+        data_prevista_inicio_execucao: novaDataInicioExec,
+        data_prevista_fim_execucao: novaDataFimExec,
         equipamentos: {
           deleteMany: {},
           create: d.equipamentos.map((e, i) => ({
@@ -252,6 +287,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Montagem`, valor_de: fmtV(latest.valor_montagem ? Number(latest.valor_montagem) : null), valor_para: fmtV(valorMontPut), created_by: userId })
   if ((latest.data_envio?.toISOString().split('T')[0] ?? null) !== d.data_envio)
     fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Data Envio`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio, created_by: userId })
+  {
+    const antesInicio = latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null
+    const depoisInicio = novaDataInicioExec?.toISOString().split('T')[0] ?? null
+    if (antesInicio !== depoisInicio)
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Início Execução`, valor_de: antesInicio, valor_para: depoisInicio, created_by: userId })
+    const antesFim = latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null
+    const depoisFim = novaDataFimExec?.toISOString().split('T')[0] ?? null
+    if (antesFim !== depoisFim)
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Fim Execução`, valor_de: antesFim, valor_para: depoisFim, created_by: userId })
+  }
 
   if (fabHistEntries.length > 0) {
     await prisma.historicoSolicitacao.createMany({ data: fabHistEntries })

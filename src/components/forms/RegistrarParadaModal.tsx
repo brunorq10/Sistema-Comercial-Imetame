@@ -51,6 +51,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   const [turno, setTurno] = useState('')
   const [finaisDeSemana, setFinaisDeSemana] = useState(false)
   const [dataEnvio, setDataEnvio] = useState(todayInput())
+  const [dataPrevistaInicio, setDataPrevistaInicio] = useState('')
+  const [dataPrevistaFim, setDataPrevistaFim] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +68,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       if (hhIndireto === '') { setError('Informe o HH Indireto (pode ser 0)'); return }
       if (!efetivoPico || parseInt(efetivoPico) <= 0) { setError('Informe o Efetivo Pico'); return }
       if (!diasParada || parseInt(diasParada) <= 0) { setError('Informe os Dias de Parada'); return }
+      if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da execução são obrigatórias'); return }
+      if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da execução não pode ser anterior à data de início'); return }
     }
 
     setLoading(true)
@@ -73,6 +77,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
     try {
       const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_envio: dataEnvio }
       if (!naoAplicavel) {
+        body.data_prevista_inicio_execucao = dataPrevistaInicio
+        body.data_prevista_fim_execucao = dataPrevistaFim
         body.hh_direto = numHhDireto
         body.hh_indireto = numHhIndireto
         body.efetivo_pico = Number(efetivoPico)
@@ -179,11 +185,19 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
           </div>
 
           <ModalSection>3. Datas</ModalSection>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Data de envio — técnica">
               <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
             </Field>
             <div />
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label="Previsão de execução — início *">
+              <Input type="date" value={dataPrevistaInicio} onChange={(e) => setDataPrevistaInicio(e.target.value)} />
+            </Field>
+            <Field label="Previsão de execução — fim *">
+              <Input type="date" value={dataPrevistaFim} onChange={(e) => setDataPrevistaFim(e.target.value)} />
+            </Field>
           </div>
         </>
       )}

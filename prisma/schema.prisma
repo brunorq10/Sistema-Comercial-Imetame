@@ -355,6 +355,9 @@ model PropostaTecnica {
   nao_aplicavel      Boolean  @default(false)
   data_base          DateTime?
   data_envio         DateTime?
+  // Previsão de execução caso a proposta seja ganha (não é prazo de envio nem data base)
+  data_prevista_inicio_execucao DateTime?
+  data_prevista_fim_execucao    DateTime?
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
   created_by       Int
@@ -417,6 +420,9 @@ model PropostaFabricacao {
   valor_total      Decimal                @db.Decimal(15, 2)
   data_base        DateTime?
   data_envio       DateTime?
+  // Previsão de execução caso a proposta seja ganha (não é prazo de envio nem data base)
+  data_prevista_inicio_execucao DateTime?
+  data_prevista_fim_execucao    DateTime?
   resultado        String?
   motivo_perda     MotivoPerda?
   created_at       DateTime               @default(now())

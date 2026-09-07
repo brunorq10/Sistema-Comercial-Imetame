@@ -92,6 +92,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
   })
   const [hhTotal, setHhTotal] = useState('')
   const [dataEnvio, setDataEnvio] = useState(today())
+  const [dataPrevistaInicio, setDataPrevistaInicio] = useState('')
+  const [dataPrevistaFim, setDataPrevistaFim] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -108,12 +110,16 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       if (pesoTotal <= 0) { setError('Informe o peso de ao menos uma categoria'); return }
       if (!hhTotal || numHh <= 0) { setError('Informe o HH Total'); return }
       if (!dataEnvio) { setError('Informe a data de envio'); return }
+      if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da execução são obrigatórias'); return }
+      if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da execução não pode ser anterior à data de início'); return }
     }
 
     setLoading(true); setError(null)
     try {
       const body: Record<string, unknown> = { nao_aplicavel: naoAplicavel, data_envio: dataEnvio }
       if (!naoAplicavel) {
+        body.data_prevista_inicio_execucao = dataPrevistaInicio
+        body.data_prevista_fim_execucao = dataPrevistaFim
         body.hh_total = numHh
         body.peso_montagem = pesoTotal
         const numEq = Number(pesos.equipamentos) || 0
@@ -211,11 +217,19 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
           </div>
 
           <ModalSection>Datas</ModalSection>
-          <div className="grid grid-cols-2 gap-2.5 mb-5">
+          <div className="grid grid-cols-2 gap-2.5 mb-2.5">
             <Field label="Data de envio — técnica">
               <Input type="date" value={dataEnvio} onChange={(e) => setDataEnvio(e.target.value)} />
             </Field>
             <div />
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            <Field label="Previsão de execução — início *">
+              <Input type="date" value={dataPrevistaInicio} onChange={(e) => setDataPrevistaInicio(e.target.value)} />
+            </Field>
+            <Field label="Previsão de execução — fim *">
+              <Input type="date" value={dataPrevistaFim} onChange={(e) => setDataPrevistaFim(e.target.value)} />
+            </Field>
           </div>
         </>
       )}

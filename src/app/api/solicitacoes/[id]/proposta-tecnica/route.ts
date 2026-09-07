@@ -15,6 +15,9 @@ const schema = z.object({
   hh_total: z.number().int().positive().optional(), // entrada direta para Obras
   peso_montagem: z.number().positive().optional(),
   data_envio: z.string().optional(),
+  // Previsão de execução caso a proposta seja ganha — obrigatória no envio (validado no handler)
+  data_prevista_inicio_execucao: z.string().optional(),
+  data_prevista_fim_execucao: z.string().optional(),
   // Campos exclusivos Paradas
   efetivo_pico: z.number().int().positive().optional(),
   dias_parada: z.number().int().positive().optional(),
@@ -41,6 +44,17 @@ function validarObrigatoriosParada(d: z.infer<typeof schema>): string | null {
   if (d.hh_indireto === undefined) return 'HH Indireto é obrigatório'
   if (d.efetivo_pico === undefined) return 'Efetivo Pico é obrigatório'
   if (d.dias_parada === undefined) return 'Dias de Parada é obrigatório'
+  return null
+}
+
+// Previsão de execução — obrigatória no envio (não bloqueia edição de propostas
+// antigas via PUT, só a criação/reenvio via POST).
+function validarPrevisaoExecucao(d: z.infer<typeof schema>): string | null {
+  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da execução é obrigatória'
+  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da execução é obrigatória'
+  if (new Date(d.data_prevista_fim_execucao) < new Date(d.data_prevista_inicio_execucao)) {
+    return 'Data prevista de fim da execução não pode ser anterior à data de início'
+  }
   return null
 }
 
@@ -94,6 +108,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const erroParada = validarObrigatoriosParada(d)
       if (erroParada) return NextResponse.json({ data: null, error: erroParada }, { status: 400 })
     }
+    const erroExecucao = validarPrevisaoExecucao(d)
+    if (erroExecucao) return NextResponse.json({ data: null, error: erroExecucao }, { status: 400 })
   }
 
   const maxVersaoTecnica = sol.propostas_tecnicas[0]?.versao ?? 0
@@ -119,6 +135,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     finais_de_semana: naoAplicavel ? null : (d.finais_de_semana ?? null),
     data_base: d.data_base ? new Date(d.data_base) : null,
     data_envio: d.data_envio ? new Date(d.data_envio) : new Date(),
+    data_prevista_inicio_execucao: naoAplicavel ? null : (d.data_prevista_inicio_execucao ? new Date(d.data_prevista_inicio_execucao) : null),
+    data_prevista_fim_execucao: naoAplicavel ? null : (d.data_prevista_fim_execucao ? new Date(d.data_prevista_fim_execucao) : null),
   }
 
   try {
@@ -193,6 +211,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (erroParada) return NextResponse.json({ data: null, error: erroParada }, { status: 400 })
   }
 
+  // Previsão de execução: não exige preenchimento ao editar uma proposta antiga
+  // (só é obrigatória no envio, via POST) — mas se ambas as datas resultarem
+  // preenchidas após o merge, a ordem ainda precisa ser válida.
+  const novaDataInicioExec = d.data_prevista_inicio_execucao !== undefined
+    ? (d.data_prevista_inicio_execucao ? new Date(d.data_prevista_inicio_execucao) : null)
+    : latest.data_prevista_inicio_execucao
+  const novaDataFimExec = d.data_prevista_fim_execucao !== undefined
+    ? (d.data_prevista_fim_execucao ? new Date(d.data_prevista_fim_execucao) : null)
+    : latest.data_prevista_fim_execucao
+  if (novaDataInicioExec && novaDataFimExec && novaDataFimExec < novaDataInicioExec) {
+    return NextResponse.json({ data: null, error: 'Data prevista de fim da execução não pode ser anterior à data de início' }, { status: 400 })
+  }
+
   const proposta = await prisma.propostaTecnica.update({
     where: { id: latest.id },
     data: {
@@ -210,6 +241,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       finais_de_semana: d.finais_de_semana ?? null,
       data_base: d.data_base ? new Date(d.data_base) : latest.data_base,
       data_envio: d.data_envio ? new Date(d.data_envio) : latest.data_envio,
+      data_prevista_inicio_execucao: novaDataInicioExec,
+      data_prevista_fim_execucao: novaDataFimExec,
     },
   })
 
@@ -232,6 +265,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const strFields: StrField[] = [
     { label: 'Turno', before: latest.turno, after: d.turno ?? null },
     { label: 'Data Envio Tec.', before: latest.data_envio?.toISOString().split('T')[0] ?? null, after: d.data_envio ?? null },
+    { label: 'Previsão Início Execução', before: latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null, after: novaDataInicioExec?.toISOString().split('T')[0] ?? null },
+    { label: 'Previsão Fim Execução', before: latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null, after: novaDataFimExec?.toISOString().split('T')[0] ?? null },
   ]
   const boolFields: BoolField[] = [
     { label: 'Finais de Semana', before: latest.finais_de_semana, after: d.finais_de_semana ?? null },

@@ -19,6 +19,8 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
   const [hhIndireto, setHhIndireto] = useState('')
   const [pesoMontagem, setPesoMontagem] = useState('')
   const [dataEnvio, setDataEnvio] = useState(todayInput())
+  const [dataPrevistaInicio, setDataPrevistaInicio] = useState('')
+  const [dataPrevistaFim, setDataPrevistaFim] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,6 +35,14 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       setError('HH Direto e HH Indireto são obrigatórios')
       return
     }
+    if (!dataPrevistaInicio || !dataPrevistaFim) {
+      setError('Data prevista de início e de fim da execução são obrigatórias')
+      return
+    }
+    if (dataPrevistaFim < dataPrevistaInicio) {
+      setError('Data prevista de fim da execução não pode ser anterior à data de início')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -44,13 +54,15 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
           hh_indireto: Number(hhIndireto),
           peso_montagem: pesoMontagem ? Number(pesoMontagem) : undefined,
           data_envio: dataEnvio,
+          data_prevista_inicio_execucao: dataPrevistaInicio,
+          data_prevista_fim_execucao: dataPrevistaFim,
         }),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao registrar'); return }
 
       setHhDireto(''); setHhIndireto(''); setPesoMontagem('')
-      setDataEnvio(todayInput())
+      setDataEnvio(todayInput()); setDataPrevistaInicio(''); setDataPrevistaFim('')
       onSuccess()
       onClose()
     } catch (err) {
@@ -106,13 +118,32 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
         <div />
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5 mb-2.5">
         <div />
         <Field label="Data de envio — técnica">
           <input
             type="date"
             value={dataEnvio}
             onChange={(e) => setDataEnvio(e.target.value)}
+            className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <Field label="Previsão de execução — início *">
+          <input
+            type="date"
+            value={dataPrevistaInicio}
+            onChange={(e) => setDataPrevistaInicio(e.target.value)}
+            className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
+          />
+        </Field>
+        <Field label="Previsão de execução — fim *">
+          <input
+            type="date"
+            value={dataPrevistaFim}
+            onChange={(e) => setDataPrevistaFim(e.target.value)}
             className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
           />
         </Field>

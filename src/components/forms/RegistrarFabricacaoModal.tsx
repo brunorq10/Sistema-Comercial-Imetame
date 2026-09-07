@@ -51,6 +51,8 @@ export function RegistrarFabricacaoModal({
   const [valorMontagem, setValorMontagem] = useState('')
   const [dataEnvio, setDataEnvio] = useState(todayInput())
   const [dataBase, setDataBase] = useState('')
+  const [dataPrevistaInicio, setDataPrevistaInicio] = useState('')
+  const [dataPrevistaFim, setDataPrevistaFim] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -91,6 +93,8 @@ export function RegistrarFabricacaoModal({
     setValorMontagem('')
     setDataEnvio(todayInput())
     setDataBase('')
+    setDataPrevistaInicio('')
+    setDataPrevistaFim('')
     setError(null)
   }
 
@@ -99,6 +103,8 @@ export function RegistrarFabricacaoModal({
     if (equipsValidos.length === 0) { setError('Adicione ao menos um equipamento com descrição e peso'); return }
     if (!dataBase) { setError('Informe a Data base do contrato'); return }
     if (!dataEnvio) { setError('Data de envio é obrigatória'); return }
+    if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da execução são obrigatórias'); return }
+    if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da execução não pode ser anterior à data de início'); return }
 
     setLoading(true)
     setError(null)
@@ -115,6 +121,8 @@ export function RegistrarFabricacaoModal({
         possui_montagem: possuiMontagem,
         data_base: dataBase,
         data_envio: dataEnvio,
+        data_prevista_inicio_execucao: dataPrevistaInicio,
+        data_prevista_fim_execucao: dataPrevistaFim,
       }
       if (possuiTestes) {
         if (descricaoTestes.trim()) body.descricao_testes = descricaoTestes.trim()
@@ -393,8 +401,20 @@ export function RegistrarFabricacaoModal({
         <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
       </Field>
 
-      {/* ── Seção 6: Data de envio ────────────────────────────────── */}
-      <ModalSection>6. Data de envio</ModalSection>
+      {/* ── Seção 6: Previsão de execução ─────────────────────────── */}
+      <ModalSection>6. Previsão de execução</ModalSection>
+      <p className="text-[11px] text-gray-500 mb-2.5">Período em que o serviço/fabricação seria executado, caso a proposta seja ganha.</p>
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        <Field label="Previsão de execução — início *">
+          <Input type="date" value={dataPrevistaInicio} onChange={(e) => setDataPrevistaInicio(e.target.value)} />
+        </Field>
+        <Field label="Previsão de execução — fim *">
+          <Input type="date" value={dataPrevistaFim} onChange={(e) => setDataPrevistaFim(e.target.value)} />
+        </Field>
+      </div>
+
+      {/* ── Seção 7: Data de envio ────────────────────────────────── */}
+      <ModalSection>7. Data de envio</ModalSection>
       <Field label="Data de envio da proposta">
         <Input
           type="date"
