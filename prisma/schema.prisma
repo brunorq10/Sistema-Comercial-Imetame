@@ -103,16 +103,6 @@ enum RamoAtuacao {
   OUTROS
 }
 
-// Painel "Probabilidade de fechamento" — Budget não é um nível de probabilidade
-// mais baixo, é uma natureza diferente de proposta (orçamento sem intenção
-// imediata de compra); tratado como valor à parte, não como extremo da escala.
-enum NivelProbabilidade {
-  ALTA
-  MEDIA
-  BAIXA
-  BUDGET
-}
-
 // ─── Modelos ─────────────────────────────────────────────────────────────────
 
 model User {
@@ -178,10 +168,6 @@ model User {
   cenario_lancamentos_atualizados CenarioLancamento[]         @relation("CenarioLancAtualizador")
   cenario_lancamentos_historico   CenarioLancamentoHistorico[] @relation("CenarioLancHistCriador")
   cenario_retratos_criados    CenarioRetrato[]                @relation("CenarioRetratoCriador")
-  painel_probabilidade_criados    PainelProbabilidade[]           @relation("PainelProbCriador")
-  painel_probabilidade_atualizados PainelProbabilidade[]          @relation("PainelProbAtualizador")
-  painel_probabilidade_revisados   PainelProbabilidade[]          @relation("PainelProbRevisor")
-  painel_probabilidade_historico   PainelProbabilidadeHistorico[] @relation("PainelProbHistCriador")
 
   @@map("users")
 }
@@ -295,7 +281,6 @@ model Solicitacao {
   historico            HistoricoSolicitacao[]
   revisoes_pendentes   RevisaoPendente[]
   relatorio_os         RelatorioOS?
-  painel_probabilidade PainelProbabilidade?
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -1517,51 +1502,4 @@ model CenarioRetratoLancamento {
   @@index([retrato_id])
   @@index([proposta_comercial_id])
   @@map("cenario_retratos_lancamentos")
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Painel "Probabilidade de fechamento" (módulo Comercial, aba de Propostas) —
-// classificação manual de propostas comerciais enviadas e em aberto pela
-// chance de conversão. Um registro só existe para uma Solicitacao depois que
-// ela é classificada pela primeira vez OU removida do painel — enquanto isso
-// não acontecer, a proposta aparece automaticamente em "Não classificadas"
-// (calculado, não é um estado gravado).
-model PainelProbabilidade {
-  id             Int                 @id @default(autoincrement())
-  solicitacao_id Int                 @unique
-  nivel          NivelProbabilidade?
-  created_at     DateTime            @default(now())
-  updated_at     DateTime            @updatedAt
-  created_by     Int
-  updated_by     Int?
-  // Data/autor da última classificação OU revisão (confirmação sem mudar de nível) — alimenta a etiqueta "revisada há X dias".
-  revisado_em    DateTime?
-  revisado_por   Int?
-  // RN-18: "remover do painel" não exclui nada — soft-cancel; a proposta de origem não é afetada.
-  cancelled_at   DateTime?
-  cancel_reason  String?
-
-  solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id])
-  criador     User        @relation("PainelProbCriador", fields: [created_by], references: [id])
-  atualizador User?       @relation("PainelProbAtualizador", fields: [updated_by], references: [id])
-  revisor     User?       @relation("PainelProbRevisor", fields: [revisado_por], references: [id])
-  historico   PainelProbabilidadeHistorico[]
-
-  @@index([cancelled_at])
-  @@map("painel_probabilidade")
-}
-
-model PainelProbabilidadeHistorico {
-  id         Int                 @id @default(autoincrement())
-  painel_id  Int
-  nivel_de   NivelProbabilidade?
-  nivel_para NivelProbabilidade?
-  created_at DateTime            @default(now())
-  created_by Int
-
-  painel  PainelProbabilidade @relation(fields: [painel_id], references: [id], onDelete: Cascade)
-  usuario User                @relation("PainelProbHistCriador", fields: [created_by], references: [id])
-
-  @@index([painel_id])
-  @@map("painel_probabilidade_historico")
 }

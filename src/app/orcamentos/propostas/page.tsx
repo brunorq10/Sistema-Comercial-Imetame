@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as XLSX from 'xlsx'
-import { cn, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { Pagination } from '@/components/ui/Pagination'
 import { PropostasTable } from '@/components/tables/PropostasTable'
 import { EditarPropostaModal } from '@/components/forms/EditarPropostaModal'
@@ -14,7 +14,6 @@ import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { ProbabilidadeFechamentoTab } from '@/components/probabilidade/ProbabilidadeFechamentoTab'
 import { filtrarOpcoes, type LinhaCascata } from '@/lib/cascata'
 import type { PropostasItem } from '@/types'
 
@@ -34,8 +33,6 @@ export default function PropostasPage() {
   const router = useRouter()
   const { canRegistrarTecnica, canRegistrarComercial, canCancelSolicitacao } = usePermissions()
   const canEditar = canRegistrarTecnica || canRegistrarComercial
-
-  const [aba, setAba] = useState<'lista' | 'probabilidade'>('lista')
 
   const [items, setItems]     = useState<PropostasItem[]>([])
   const [total, setTotal]     = useState(0)
@@ -198,34 +195,7 @@ export default function PropostasPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 px-4 pt-4">
-        <div className="flex gap-1 border-b border-gray-200 mb-3">
-          <button
-            onClick={() => setAba('lista')}
-            className={cn(
-              'px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors',
-              aba === 'lista' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
-            )}
-          >
-            Lista
-          </button>
-          <button
-            onClick={() => setAba('probabilidade')}
-            className={cn(
-              'px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors',
-              aba === 'probabilidade' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
-            )}
-          >
-            Probabilidade de fechamento
-          </button>
-        </div>
-      </div>
-
-      {aba === 'probabilidade' ? (
-        <ProbabilidadeFechamentoTab />
-      ) : (
-      <>
-      <div className="flex-shrink-0 px-4 pb-2">
+      <div className="flex-shrink-0 px-4 pt-4 pb-2">
         <PageHeader
           title="Propostas"
           actions={
@@ -353,8 +323,6 @@ export default function PropostasPage() {
           itemId={modalHistAlteracoes.id}
           titulo={modalHistAlteracoes.numero}
         />
-      )}
-      </>
       )}
     </div>
   )
