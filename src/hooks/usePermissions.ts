@@ -74,5 +74,9 @@ export function usePermissions() {
     // Cenário (módulo Comercial)
     canAcessarCenario: pode('cenario.ver'),
     canEditarCenario: pode('cenario.editar'),
+
+    // Probabilidade de Fechamento (aba de Propostas)
+    canVerProbabilidade: pode('probabilidade.ver'),
+    canEditarProbabilidade: pode('probabilidade.editar'),
   }
 }

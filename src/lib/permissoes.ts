@@ -124,6 +124,13 @@ export const CATALOGO = {
   // Lançar/editar/excluir lançamentos, editar capacidade, tirar/excluir retratos
   // — restrito ao Analista Crítico (flag); demais perfis com acesso são só leitura.
   'cenario.editar': { perfis: [], analista: true },
+
+  // ─────────── Probabilidade de Fechamento (aba dentro de Propostas) ───────────
+  // Visualização: mesma regra de Propostas — todo perfil com acesso a Orçamentos.
+  'probabilidade.ver':    { perfis: ['ADM_COMERCIAL', 'GESTAO_COMERCIAL', 'ORCAMENTISTA', 'GESTAO_ACORDOS', 'ACORDOS'], analista: true },
+  // Classificar, revisar, remover do painel e reincluir proposta — restrito ao
+  // Analista Crítico (flag); demais perfis com acesso são só leitura.
+  'probabilidade.editar': { perfis: [], analista: true },
 } satisfies Record<string, Entrada>
 
 export type Permissao = keyof typeof CATALOGO

@@ -8,9 +8,10 @@ import type {
   MotivoPerda,
   Segmento,
   MotivoReprovacao,
+  NivelProbabilidade,
 } from '@prisma/client'
 
-export type { Perfil, StatusSolicitacao, StatusAnalise, Classificacao, Interesse, Origem, MotivoPerda, Segmento, MotivoReprovacao }
+export type { Perfil, StatusSolicitacao, StatusAnalise, Classificacao, Interesse, Origem, MotivoPerda, Segmento, MotivoReprovacao, NivelProbabilidade }
 
 // ─── Labels de exibição ───────────────────────────────────────────────────────
 
