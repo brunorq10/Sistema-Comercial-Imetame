@@ -70,6 +70,8 @@ function GraficoMensal({ porMes }: { porMes: number[] }) {
       datalabels: {
         anchor: 'end' as const,
         align: 'end' as const,
+        offset: 2,
+        clamp: true,
         color: '#374151',
         font: { size: 10, weight: 'bold' as const },
         formatter: (v: number) => v > 0 ? v : '',
@@ -77,14 +79,14 @@ function GraficoMensal({ porMes }: { porMes: number[] }) {
     },
     scales: {
       x: { ...dashboardXScale },
-      y: { display: false },
+      y: { beginAtZero: true, grace: '12%', ticks: { font: { size: 10 }, color: '#9CA3AF', precision: 0 }, grid: { color: '#F3F4F6' } },
     },
-    layout: { padding: { top: 16 } },
+    layout: { padding: { top: 28 } },
   } as const
 
   return (
     <ChartCard title="Solicitações Recebidas por Mês">
-      <div style={{ height: 160, position: 'relative' }}>
+      <div style={{ height: 220, position: 'relative' }}>
         <Bar data={chartData} options={options} />
       </div>
     </ChartCard>

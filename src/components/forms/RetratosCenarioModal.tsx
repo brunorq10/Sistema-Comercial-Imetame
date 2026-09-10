@@ -5,9 +5,10 @@ import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Field, Input } from '@/components/ui/Input'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { CenarioCards } from '@/components/cenario/CenarioCards'
 import { CenarioGanttTable } from '@/components/cenario/CenarioGanttTable'
+import { CenarioResumoTable } from '@/components/cenario/CenarioResumoTable'
 import type { CenarioLinha, IndicadoresCenario, MesRef, TotalMes } from '@/lib/cenario'
 
 interface RetratoResumo {
@@ -48,6 +49,7 @@ type Modo = 'lista' | 'novo' | 'ver' | 'comparar'
 
 export function RetratosCenarioModal({ open, onClose, editavel }: Props) {
   const [modo, setModo] = useState<Modo>('lista')
+  const [abaRetrato, setAbaRetrato] = useState<'detalhamento' | 'resumo'>('detalhamento')
   const [lista, setLista] = useState<RetratoResumo[]>([])
   const [loadingLista, setLoadingLista] = useState(false)
   const [retratoAtivo, setRetratoAtivo] = useState<RetratoDetalhe | null>(null)
@@ -74,7 +76,7 @@ export function RetratosCenarioModal({ open, onClose, editavel }: Props) {
   }, [open])
 
   const abrirRetrato = (id: number) => {
-    fetch(`/api/cenario/retratos/${id}`).then((r) => r.json()).then((j) => { setRetratoAtivo(j.data); setModo('ver') })
+    fetch(`/api/cenario/retratos/${id}`).then((r) => r.json()).then((j) => { setRetratoAtivo(j.data); setAbaRetrato('detalhamento'); setModo('ver') })
   }
 
   const abrirComparacao = () => {
@@ -205,12 +207,42 @@ export function RetratosCenarioModal({ open, onClose, editavel }: Props) {
               </div>
             </div>
             <CenarioCards ind={retratoAtivo.indicadores} />
-            <CenarioGanttTable
-              linhas={toLinhas(retratoAtivo.lancamentos)}
-              periodo={retratoAtivo.periodo}
-              totais={retratoAtivo.totais}
-              editavel={false}
-            />
+
+            <div className="flex gap-1 border-b border-gray-200 mb-3">
+              <button
+                onClick={() => setAbaRetrato('detalhamento')}
+                className={cn(
+                  'px-3 py-1.5 text-[11px] font-semibold border-b-2 -mb-px transition-colors',
+                  abaRetrato === 'detalhamento' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
+                )}
+              >
+                Detalhamento
+              </button>
+              <button
+                onClick={() => setAbaRetrato('resumo')}
+                className={cn(
+                  'px-3 py-1.5 text-[11px] font-semibold border-b-2 -mb-px transition-colors',
+                  abaRetrato === 'resumo' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
+                )}
+              >
+                Resumo
+              </button>
+            </div>
+
+            {abaRetrato === 'detalhamento' ? (
+              <CenarioGanttTable
+                linhas={toLinhas(retratoAtivo.lancamentos)}
+                periodo={retratoAtivo.periodo}
+                totais={retratoAtivo.totais}
+                editavel={false}
+              />
+            ) : (
+              <CenarioResumoTable
+                linhas={toLinhas(retratoAtivo.lancamentos)}
+                periodo={retratoAtivo.periodo}
+                totais={retratoAtivo.totais}
+              />
+            )}
           </div>
         )}
 

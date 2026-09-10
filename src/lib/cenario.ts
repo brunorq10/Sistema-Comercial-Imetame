@@ -52,12 +52,19 @@ export function mesesDoIntervalo(inicio: Date, fim: Date): MesRef[] {
   return out
 }
 
-/** Período contínuo (todo mês entre o menor início e o maior fim dos lançamentos). */
+/**
+ * Período contínuo: do menor início ao maior fim dos lançamentos, mas nunca
+ * menor que 2 anos a partir do primeiro mês previsto — mesmo sem nenhum
+ * lançamento cobrindo esse horizonte, o relatório sempre mostra essa janela
+ * mínima (ex.: primeiro previsto em jul/2026 → colunas até jul/2028).
+ */
 export function periodoCenario(linhas: CenarioLinha[]): MesRef[] {
   if (linhas.length === 0) return []
   const inicioMin = new Date(Math.min(...linhas.map((l) => l.data_inicio.getTime())))
   const fimMax = new Date(Math.max(...linhas.map((l) => l.data_fim.getTime())))
-  return mesesDoIntervalo(inicioMin, fimMax)
+  const fimMinimo = new Date(Date.UTC(inicioMin.getUTCFullYear() + 2, inicioMin.getUTCMonth(), 1))
+  const fimEfetivo = fimMax.getTime() > fimMinimo.getTime() ? fimMax : fimMinimo
+  return mesesDoIntervalo(inicioMin, fimEfetivo)
 }
 
 /**
@@ -131,6 +138,40 @@ export function calcularIndicadores(linhas: CenarioLinha[], capacidade: number):
     saldoNoPico: pico.total > 0 ? capacidade - pico.total : capacidade,
     mesesAcimaCapacidade: totais.filter((t) => t.acimaCapacidade).length,
   }
+}
+
+export interface ResumoLinha {
+  classificacao: ClassificacaoCenario
+  origem: OrigemCenario
+  totais: Map<string, number> // mesKey -> efetivo somado
+}
+
+const CLASSIFICACOES_ORDEM: ClassificacaoCenario[] = ['OBRAS', 'PARADAS', 'FABRICACOES', 'OLEO_GAS']
+const ORIGENS_ORDEM: OrigemCenario[] = ['CONTRATO', 'PROPOSTA']
+
+/**
+ * Consolida o efetivo por mês de cada combinação Classificação × Origem — a
+ * aba Resumo do Cenário. Sempre retorna as 4 classificações × 2 origens (8
+ * linhas), zeradas quando não há lançamento — mesma lógica de `efetivoPorMes`
+ * usada no detalhamento, só que somada por grupo em vez de por lançamento.
+ */
+export function resumoPorClassificacaoOrigem(linhas: CenarioLinha[], periodo: MesRef[]): ResumoLinha[] {
+  const resumo: ResumoLinha[] = []
+  for (const classificacao of CLASSIFICACOES_ORDEM) {
+    for (const origem of ORIGENS_ORDEM) {
+      const totais = new Map<string, number>()
+      for (const m of periodo) totais.set(mesKey(m), 0)
+      for (const l of linhas) {
+        if (l.classificacao !== classificacao || l.origem !== origem) continue
+        for (const [key, v] of Array.from(efetivoPorMes(l))) {
+          if (!totais.has(key)) continue
+          totais.set(key, (totais.get(key) ?? 0) + v)
+        }
+      }
+      resumo.push({ classificacao, origem, totais })
+    }
+  }
+  return resumo
 }
 
 /** GANHOU -> CONTRATO; qualquer outro resultado (AGUARDANDO/PERDEU/null) -> PROPOSTA. */

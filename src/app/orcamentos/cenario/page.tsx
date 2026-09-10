@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { CenarioCards } from '@/components/cenario/CenarioCards'
 import { CenarioGanttTable } from '@/components/cenario/CenarioGanttTable'
+import { CenarioResumoTable } from '@/components/cenario/CenarioResumoTable'
 import { NovoLancamentoCenarioModal } from '@/components/forms/NovoLancamentoCenarioModal'
 import { GerenciarLancamentosCenarioModal } from '@/components/forms/GerenciarLancamentosCenarioModal'
 import { RetratosCenarioModal } from '@/components/forms/RetratosCenarioModal'
@@ -32,6 +34,7 @@ export default function CenarioPage() {
   const { canEditarCenario, isLoading } = usePermissions()
   const [data, setData] = useState<CenarioData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [aba, setAba] = useState<'detalhamento' | 'resumo'>('detalhamento')
 
   const [modalNovo, setModalNovo] = useState(false)
   const [modalGerenciar, setModalGerenciar] = useState(false)
@@ -53,7 +56,7 @@ export default function CenarioPage() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setModalRetratos(true)}>Retratos</Button>
-            {canEditarCenario && (
+            {canEditarCenario && aba === 'detalhamento' && (
               <>
                 <Button size="sm" variant="outline" onClick={() => { setGerenciarFocoId(null); setModalGerenciar(true) }}>Editar cenário</Button>
                 <Button size="sm" onClick={() => setModalNovo(true)}>+ Novo lançamento</Button>
@@ -62,6 +65,27 @@ export default function CenarioPage() {
           </div>
         }
       />
+
+      <div className="flex gap-1 border-b border-gray-200 mb-3">
+        <button
+          onClick={() => setAba('detalhamento')}
+          className={cn(
+            'px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors',
+            aba === 'detalhamento' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
+          )}
+        >
+          Detalhamento
+        </button>
+        <button
+          onClick={() => setAba('resumo')}
+          className={cn(
+            'px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors',
+            aba === 'resumo' ? 'border-green-primary text-green-dark' : 'border-transparent text-gray-400 hover:text-gray-600',
+          )}
+        >
+          Resumo
+        </button>
+      </div>
 
       {loading || isLoading ? (
         <p className="text-center text-gray-400 py-14 text-sm">Carregando...</p>
@@ -81,14 +105,18 @@ export default function CenarioPage() {
       ) : (
         <>
           <CenarioCards ind={data.indicadores} />
-          <CenarioGanttTable
-            linhas={toLinhas(data.lancamentos)}
-            periodo={data.periodo}
-            totais={data.totais}
-            editavel={canEditarCenario}
-            onEditar={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
-            onExcluir={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
-          />
+          {aba === 'detalhamento' ? (
+            <CenarioGanttTable
+              linhas={toLinhas(data.lancamentos)}
+              periodo={data.periodo}
+              totais={data.totais}
+              editavel={canEditarCenario}
+              onEditar={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
+              onExcluir={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
+            />
+          ) : (
+            <CenarioResumoTable linhas={toLinhas(data.lancamentos)} periodo={data.periodo} totais={data.totais} />
+          )}
         </>
       )}
 

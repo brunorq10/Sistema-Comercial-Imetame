@@ -194,14 +194,14 @@ export function RealizadoDiarioObras({ contratoId, mesesContrato, mesesPlano, on
             className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed">›</button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className={cnLoading(loadingDias, 'flex-1 min-w-0')}>
-            <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        <div className="flex flex-col lg:flex-row gap-4 lg:justify-center">
+          <div className={cnLoading(loadingDias, 'w-full max-w-[720px] mx-auto')}>
+            <div className="grid grid-cols-7 gap-2 mb-2">
               {DIAS_SEMANA.map(d => (
-                <div key={d} className="text-[9px] font-semibold text-gray-400 uppercase text-center">{d}</div>
+                <div key={d} className="text-[10px] font-semibold text-gray-400 uppercase text-center">{d}</div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-2">
               {celulas.map((dia, i) => {
                 if (dia == null) return <div key={i} />
                 const iso = isoDate(anoSel, mesSel, dia)
@@ -210,22 +210,22 @@ export function RealizadoDiarioObras({ contratoId, mesesContrato, mesesPlano, on
                 return (
                   <button key={iso} onClick={() => abrirDia(iso)}
                     className={cn(
-                      'h-16 border rounded-md p-1 flex flex-col text-left transition-colors',
-                      ativo ? 'border-green-400 bg-green-50/60 ring-1 ring-green-300' : 'border-slate-100 hover:border-green-300 hover:bg-green-50/30',
+                      'aspect-square border rounded-md p-1.5 flex flex-col text-left transition-colors overflow-hidden',
+                      ativo ? 'border-green-400 bg-green-50/60 ring-1 ring-green-300' : 'border-slate-200 hover:border-green-300 hover:bg-green-50/30',
                     )}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-gray-400">{dia}</span>
-                      {info && <span className="text-[11px] font-bold text-green-700">{fmtHoras(info.hh_total)}</span>}
+                    <div className="flex items-center justify-between px-0.5 flex-shrink-0">
+                      <span className="text-[12px] text-gray-400 font-medium">{dia}</span>
+                      {info && <span className="text-[14px] font-bold text-green-700 leading-none">{fmtHoras(info.hh_total)}</span>}
                     </div>
                     {info ? (
-                      <div className="mt-auto grid grid-cols-2 gap-1 text-[8px] leading-tight">
-                        <div className="text-[#185FA5]">
-                          <div>{info.efetivo_normal ?? 0}p</div>
-                          <div>{fmtHoras(info.horas_normais ?? 0)}h</div>
+                      <div className="mt-auto grid grid-cols-2 rounded overflow-hidden border-t border-slate-200">
+                        <div className="bg-blue-50 px-1.5 py-1.5 flex flex-col justify-center gap-0.5 border-r border-slate-200/80">
+                          <span className="text-[13px] font-bold text-[#185FA5] leading-none">{info.efetivo_normal ?? 0}p</span>
+                          <span className="text-[10px] text-[#185FA5]/80 leading-none">{fmtHoras(info.horas_normais ?? 0)}h</span>
                         </div>
-                        <div className="text-[#BA7517] text-right">
-                          <div>{info.efetivo_extra ?? 0}p</div>
-                          <div>{fmtHoras(info.horas_extras ?? 0)}h</div>
+                        <div className="bg-amber-50 px-1.5 py-1.5 flex flex-col justify-center items-end gap-0.5">
+                          <span className="text-[13px] font-bold text-[#BA7517] leading-none">{info.efetivo_extra ?? 0}p</span>
+                          <span className="text-[10px] text-[#BA7517]/80 leading-none">{fmtHoras(info.horas_extras ?? 0)}h</span>
                         </div>
                       </div>
                     ) : <div className="flex-1" />}

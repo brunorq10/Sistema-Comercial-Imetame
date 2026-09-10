@@ -21,15 +21,13 @@ const L = {
 const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio + W.fim + W.efetivo
 const MES_W = 74
 
-// ── Limite de altura: cabeçalho + 10 linhas de lançamento + rodapé de totais/gráfico.
+// ── Limite de altura: cabeçalho + 10 linhas de lançamento + rodapé de totais.
 // Acima de 10 lançamentos, o wrapper passa a rolar verticalmente (barra de rolagem).
 const HEADER_H = 44
 const ROW_H = 26
 const VISIBLE_ROWS = 10
 const RODAPE_TOTAL_H = 26
-const RODAPE_CHART_H = 138
-const RODAPE_MESES_H = 22
-const MAX_HEIGHT = HEADER_H + VISIBLE_ROWS * ROW_H + RODAPE_TOTAL_H + RODAPE_CHART_H + RODAPE_MESES_H
+const MAX_HEIGHT = HEADER_H + VISIBLE_ROWS * ROW_H + RODAPE_TOTAL_H
 
 const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
 
@@ -52,8 +50,6 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
     }
     return grupos
   }, [periodo])
-
-  const maxTotal = useMemo(() => Math.max(...totais.map((t) => t.total), 1), [totais])
 
   if (linhas.length === 0) {
     return (
@@ -176,48 +172,6 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
             {totais.map((t) => (
               <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700 border-t-2 border-t-gray-300">
                 {t.total.toLocaleString('pt-BR')}
-              </td>
-            ))}
-          </tr>
-
-          {/* ── Gráfico de barras (mesma grade, mesmo scroll) ── */}
-          <tr>
-            <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.cliente }} colSpan={3}>
-              <div className="flex items-center gap-3 py-1">
-                <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Contratos</span>
-                <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#B45309' }} />Propostas</span>
-              </div>
-            </td>
-            <td className="bg-white align-bottom" colSpan={5} />
-            {totais.map((t) => {
-              const hMax = 110
-              const hContratos = Math.round((t.contratos / maxTotal) * hMax)
-              const hPropostas = Math.round((t.propostas / maxTotal) * hMax)
-              return (
-                <td key={mesKey(t)} className="px-1 py-1 align-bottom relative" style={{ height: hMax + 28 }}>
-                  <div className="relative mx-auto" style={{ width: MES_W - 16, height: hMax }}>
-                    <div className="absolute left-0 right-0 flex flex-col justify-end" style={{ bottom: 0, height: hMax }}>
-                      {t.propostas > 0 && <div style={{ height: hPropostas, background: '#E8A838' }} title={`Propostas: ${t.propostas}`} />}
-                      {t.contratos > 0 && <div style={{ height: hContratos, background: '#2D7DD2' }} title={`Contratos: ${t.contratos}`} />}
-                    </div>
-                  </div>
-                  {t.total > 0 && (
-                    <p className="text-center text-[9px] font-bold mt-0.5 text-gray-600">
-                      {t.total.toLocaleString('pt-BR')}
-                    </p>
-                  )}
-                </td>
-              )
-            })}
-          </tr>
-
-          {/* ── Rótulos dos meses ── */}
-          <tr>
-            <td className={cn(td, tdF, 'bg-white')} style={{ left: L.cliente }} colSpan={3} />
-            <td className="bg-white" colSpan={5} />
-            {periodo.map((m) => (
-              <td key={mesKey(m)} className="px-1 py-[4px] text-center text-[9px] text-gray-500 font-semibold border-t border-gray-100">
-                {MESES_ABREV[m.mes - 1]}/{String(m.ano).slice(2)}
               </td>
             ))}
           </tr>
