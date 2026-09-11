@@ -30,10 +30,27 @@ interface RealizadoDiarioObrasProps {
 
 const MESES_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
-const HORAS_NORMAL_DIA = 8.8
 
 function isoDate(ano: number, mes: number, dia: number): string {
   return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+}
+
+/** Dia da semana (0=Dom..6=Sáb) de uma data ISO "AAAA-MM-DD", sem conversão de fuso. */
+function diaDaSemanaIso(iso: string): number {
+  return new Date(iso + 'T00:00:00.000Z').getUTCDay()
+}
+function ehFimDeSemana(iso: string): boolean {
+  const dow = diaDaSemanaIso(iso)
+  return dow === 0 || dow === 6
+}
+// Horas normais por pessoa: 8,8h em dias úteis; 8h aos sábados e domingos.
+// Horas extras: mesmo valor livre, mas o padrão pré-preenchido também muda
+// no fim de semana — 1h em dias úteis, 8h aos sábados/domingos.
+function horasNormalPorDia(iso: string): number {
+  return ehFimDeSemana(iso) ? 8 : 8.8
+}
+function horasExtraPadrao(iso: string): number {
+  return ehFimDeSemana(iso) ? 8 : 1
 }
 
 function diasNoMes(ano: number, mes: number): number {
@@ -105,15 +122,17 @@ export function RealizadoDiarioObras({ contratoId, mesesContrato, mesesPlano, on
     setDiaSelecionado(iso)
     setFormEfetivoNormal(d?.efetivo_normal != null ? String(d.efetivo_normal) : '')
     setFormEfetivoExtra(d?.efetivo_extra != null ? String(d.efetivo_extra) : '')
-    setFormHorasExtraValor(d?.horas_extra_valor != null ? String(d.horas_extra_valor).replace('.', ',') : '1')
+    const padraoExtra = horasExtraPadrao(iso)
+    setFormHorasExtraValor(d?.horas_extra_valor != null ? String(d.horas_extra_valor).replace('.', ',') : String(padraoExtra).replace('.', ','))
     setErroDia(null)
   }
 
+  const horasNormalDiaSel = diaSelecionado ? horasNormalPorDia(diaSelecionado) : 8.8
   const efetivoNormalNum = Number(formEfetivoNormal) || 0
-  const horasNormaisCalc = efetivoNormalNum * HORAS_NORMAL_DIA
+  const horasNormaisCalc = efetivoNormalNum * horasNormalDiaSel
   const efetivoExtraNum = Number(formEfetivoExtra) || 0
   const horasExtraValorNum = (() => {
-    if (formHorasExtraValor === '') return 1
+    if (formHorasExtraValor === '') return diaSelecionado ? horasExtraPadrao(diaSelecionado) : 1
     const n = parseFloat(formHorasExtraValor.replace(',', '.'))
     return isNaN(n) ? 0 : n
   })()
@@ -247,7 +266,7 @@ export function RealizadoDiarioObras({ contratoId, mesesContrato, mesesPlano, on
                   <label className="block text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Efetivo</label>
                   <IntegerInput value={formEfetivoNormal} onChange={setFormEfetivoNormal}
                     className="w-full border border-blue-200 rounded-md px-2.5 py-1.5 text-[12px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-300" />
-                  <p className="text-[10px] text-gray-500 mt-2">{efetivoNormalNum} × 8,8h = <span className="font-bold text-[#185FA5]">{fmtHoras(horasNormaisCalc)}h</span></p>
+                  <p className="text-[10px] text-gray-500 mt-2">{efetivoNormalNum} × {loc(horasNormalDiaSel)}h = <span className="font-bold text-[#185FA5]">{fmtHoras(horasNormaisCalc)}h</span></p>
                 </div>
 
                 <div className="border border-amber-100 bg-amber-50/40 rounded-lg p-3 mb-3">

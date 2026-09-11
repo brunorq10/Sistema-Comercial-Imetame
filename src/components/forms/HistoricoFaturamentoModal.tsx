@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { formatDate } from '@/lib/utils'
 
 interface HistoricoEntry {
-  id: number
+  id: number | string
   campo: string
   valor_de: string | null
   valor_para: string | null
@@ -13,7 +13,7 @@ interface HistoricoEntry {
   alterado_por: string
 }
 
-type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada'
+type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada' | 'obras' | 'fabricacao'
 
 interface Props {
   open: boolean
@@ -39,6 +39,10 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
       ? `/api/solicitacoes/${itemId}/historico`
       : tipo === 'parada'
       ? `/api/acordos/hh/paradas/${itemId}/historico`
+      : tipo === 'obras'
+      ? `/api/acordos/hh/${itemId}/historico`
+      : tipo === 'fabricacao'
+      ? `/api/acordos/hh/fabricacoes/historico?contrato_id=${itemId}`
       : `/api/faturamento/contratos/${itemId}/historico`
     fetch(endpoint)
       .then((r) => r.json())

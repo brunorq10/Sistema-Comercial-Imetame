@@ -4,7 +4,17 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { exigirTitularContrato } from '@/lib/permissaoApi'
 
-const HORAS_NORMAL_DIA = 8.8
+// Horas normais por pessoa: 8,8h em dias úteis; 8h aos sábados e domingos.
+// Horas extras: valor por pessoa livre, mas o PADRÃO (quando não informado)
+// também muda no fim de semana — 1h em dias úteis, 8h aos sábados/domingos.
+function horasNormalPorDia(data: Date): number {
+  const dow = data.getUTCDay() // 0 = domingo, 6 = sábado
+  return dow === 0 || dow === 6 ? 8 : 8.8
+}
+function horasExtraPadrao(data: Date): number {
+  const dow = data.getUTCDay()
+  return dow === 0 || dow === 6 ? 8 : 1
+}
 
 // GET — dias lançados de um mês/ano para o calendário de HH Realizado de Obras.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -60,6 +70,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (isNaN(contratoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
   { const _n = await exigirTitularContrato(session, contratoId, 'acordos.obras.hh.lancar'); if (_n) return _n }
 
+  const contratoCheck = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { hh_fechada_em: true } })
+  if (contratoCheck?.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Obra está fechada — reabra antes de editar.' }, { status: 403 })
+
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
@@ -76,8 +89,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Recalcula sempre no servidor — nunca confia no HH vindo do cliente.
   const efetivoNormal = d.efetivo_normal ?? 0
   const efetivoExtra = d.efetivo_extra ?? 0
-  const horasExtraValor = d.horas_extra_valor ?? 1
-  const horasNormais = efetivoNormal * HORAS_NORMAL_DIA
+  const horasExtraValor = d.horas_extra_valor ?? horasExtraPadrao(dataDia)
+  const horasNormais = efetivoNormal * horasNormalPorDia(dataDia)
   const horasExtras = efetivoExtra * horasExtraValor
   const hhTotal = horasNormais + horasExtras
 

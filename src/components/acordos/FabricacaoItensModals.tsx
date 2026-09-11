@@ -21,7 +21,11 @@ interface ItemForm {
   meses: Record<string, { orcado: string; previsto: string; pesoPrev: string }>
 }
 
-const parsePeso = (v: string) => v ? Number(v.replace(/\./g, '').replace(',', '.')) : null
+// CurrencyInput já entrega/recebe string numérica em formato JS (ponto decimal,
+// ex.: "18.5") — não em texto digitado livremente em pt-BR. Não usar parser de
+// vírgula/milhar aqui (isso causava "18,50" virar "185,00" — o "." era removido
+// como se fosse separador de milhar).
+const parsePeso = (v: string) => v ? Number(v) : null
 
 // Soma/subtrai um mês de uma data YYYY-MM-DD, sempre retornando o dia 01 do mês
 // alvo (mesesEntre só compara ano/mês, o dia não afeta quais meses aparecem).
@@ -42,13 +46,13 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
         _key: String(it.id),
         id: it.id,
         descricao: it.descricao,
-        peso_total: it.peso_total != null ? String(it.peso_total).replace('.', ',') : '',
+        peso_total: it.peso_total != null ? String(it.peso_total) : '',
         data_inicio: it.data_inicio.slice(0, 10),
         data_fim: it.data_fim.slice(0, 10),
         meses: Object.fromEntries(it.meses.map((m) => [key(m.ano, m.mes), {
           orcado: m.hh_orcado != null ? String(m.hh_orcado) : '',
           previsto: m.hh_previsto != null ? String(m.hh_previsto) : '',
-          pesoPrev: m.peso_previsto != null ? String(m.peso_previsto).replace('.', ',') : '',
+          pesoPrev: m.peso_previsto != null ? String(m.peso_previsto) : '',
         }])),
       }))
     : [{ _key: 'novo-0', id: null, descricao: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }]
@@ -265,7 +269,7 @@ export function LancamentoModal({ contrato, onClose, onSuccess }: {
     for (const r of it.realizados) {
       initial[it.id][key(r.ano, r.mes)] = {
         hh: r.hh_realizado != null ? String(r.hh_realizado) : '',
-        pesoReal: r.peso_realizado != null ? String(r.peso_realizado).replace('.', ',') : '',
+        pesoReal: r.peso_realizado != null ? String(r.peso_realizado) : '',
       }
     }
   }

@@ -59,6 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const contrato = await prisma.contrato.findUnique({ where: { id } })
   if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Obra está fechada — reabra antes de editar.' }, { status: 403 })
 
   const d = parsed.data
 

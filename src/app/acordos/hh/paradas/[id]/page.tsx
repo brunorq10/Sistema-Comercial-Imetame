@@ -24,6 +24,17 @@ interface DiaState {
   hh_real: string
 }
 
+// Uma linha de Folga = um grupo de pessoas com os mesmos dias (ver ParadaFolgaLinha).
+// O total de HH de Folga é a soma de pessoas×dias×HH_DIA de CADA linha — não dá
+// pra agregar num único par dias/pessoas sem perder informação (ver schema).
+interface FolgaLinha {
+  pessoas_prev: string; pessoas_real: string
+  dias_prev: string; dias_real: string
+}
+function emptyFolgaLinha(): FolgaLinha {
+  return { pessoas_prev: '', pessoas_real: '', dias_prev: '', dias_real: '' }
+}
+
 // Padrão de horas/dia: 9,8 só na fase Parada; Preparativo e Pós Parada usam 8,8
 // (mesmo valor já usado para os adicionais de mob./desmob./integ./folga — ver HH_DIA).
 // Vale apenas como sugestão inicial da célula vazia — o usuário pode ajustar livremente.
@@ -145,10 +156,10 @@ function fmtCellHH(v: number): string {
   return v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-// Serializa cfg + dias para detectar alterações não salvas (comparação simples
-// de snapshot — página não tem volume de dado que justifique algo mais fino).
-function snapshot(cfg: ConfigState, dias: Map<string, DiaState>): string {
-  return JSON.stringify({ cfg, dias: Array.from(dias.entries()).sort(([a], [b]) => a.localeCompare(b)) })
+// Serializa cfg + dias + folgas para detectar alterações não salvas (comparação
+// simples de snapshot — página não tem volume de dado que justifique algo mais fino).
+function snapshot(cfg: ConfigState, dias: Map<string, DiaState>, folgaLinhas: FolgaLinha[]): string {
+  return JSON.stringify({ cfg, dias: Array.from(dias.entries()).sort(([a], [b]) => a.localeCompare(b)), folgaLinhas })
 }
 
 function defaultConfig(): ConfigState {
@@ -243,8 +254,9 @@ export default function ParadaHhPage() {
   const [fechamento, setFechamento] = useState<FechamentoInfo>({ fechada_em: null, fechada_por_nome: null })
   const [cfg, setCfg] = useState<ConfigState>(defaultConfig())
   const [dias, setDias] = useState<Map<string, DiaState>>(new Map())
+  const [folgaLinhas, setFolgaLinhas] = useState<FolgaLinha[]>([])
   const [vigenciasUcr, setVigenciasUcr] = useState<UcrVigencia[]>([])
-  const savedSnapshotRef = useRef<string>(snapshot(defaultConfig(), new Map()))
+  const savedSnapshotRef = useRef<string>(snapshot(defaultConfig(), new Map(), []))
   const [avisoPendente, setAvisoPendente] = useState(false)
   const [showHistorico, setShowHistorico] = useState(false)
 
@@ -256,7 +268,7 @@ export default function ParadaHhPage() {
   const [reabrirErro, setReabrirErro] = useState<string | null>(null)
 
   const fechada = fechamento.fechada_em != null
-  const dirty = snapshot(cfg, dias) !== savedSnapshotRef.current
+  const dirty = snapshot(cfg, dias, folgaLinhas) !== savedSnapshotRef.current
   const podeEditar = pode('acordos.paradas.controlehh.editar', {
     ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel_id } : null, 'contrato'),
   })
@@ -315,7 +327,30 @@ export default function ParadaHhPage() {
           })
         }
         setDias(map)
-        savedSnapshotRef.current = snapshot(newCfg, map)
+
+        // Linhas de Folga — se ainda não houver nenhuma linha nova cadastrada mas
+        // existir dado legado (folga_pessoas_prev/real ou dias_prev/real no formato
+        // antigo, um único par escalar), migra visualmente para uma linha inicial.
+        const folgasApi = (json.data.config.folgas ?? []) as Array<{
+          pessoas_prev: number | null; pessoas_real: number | null
+          dias_prev: number | string | null; dias_real: number | string | null
+        }>
+        const sBr2 = (v: number | string | null) => v != null ? String(v).replace('.', ',') : ''
+        let novasFolgas: FolgaLinha[] = folgasApi.map((f) => ({
+          pessoas_prev: f.pessoas_prev != null ? String(f.pessoas_prev) : '',
+          pessoas_real: f.pessoas_real != null ? String(f.pessoas_real) : '',
+          dias_prev: sBr2(f.dias_prev),
+          dias_real: sBr2(f.dias_real),
+        }))
+        if (novasFolgas.length === 0 && (newCfg.folga_pessoas_prev || newCfg.folga_pessoas_real || newCfg.folga_dias_prev || newCfg.folga_dias_real)) {
+          novasFolgas = [{
+            pessoas_prev: newCfg.folga_pessoas_prev, pessoas_real: newCfg.folga_pessoas_real,
+            dias_prev: newCfg.folga_dias_prev, dias_real: newCfg.folga_dias_real,
+          }]
+        }
+        setFolgaLinhas(novasFolgas)
+
+        savedSnapshotRef.current = snapshot(newCfg, map, novasFolgas)
       }
     } finally { setLoading(false) }
   }, [id])
@@ -391,7 +426,10 @@ export default function ParadaHhPage() {
   const HH_DIA = 8.8
   const adicionais = useMemo(() => {
     const calc = (ativo: boolean, pico: number, dias: string) => ativo ? pico * n(dias) * HH_DIA : 0
-    const calcFolga = (ativo: boolean, pessoas: string, dias: string) => ativo ? n(pessoas) * n(dias) * HH_DIA : 0
+    // Folga: soma de pessoas×dias×HH_DIA de CADA linha — não é (Σpessoas)×(Σdias),
+    // pois grupos com dias diferentes não são intercambiáveis (ver schema/plano).
+    const folgaSoma = (campoPessoas: 'pessoas_prev' | 'pessoas_real', campoDias: 'dias_prev' | 'dias_real') =>
+      cfg.folga_ativo ? folgaLinhas.reduce((s, l) => s + n(l[campoPessoas]) * n(l[campoDias]) * HH_DIA, 0) : 0
     return {
       mob_prev:   calc(cfg.mob_ativo,   picoEfetivoPrev, cfg.mob_dias_prev),
       mob_real:   calc(cfg.mob_ativo,   picoEfetivoReal, cfg.mob_dias_real),
@@ -399,10 +437,10 @@ export default function ParadaHhPage() {
       desmob_real: calc(cfg.desmob_ativo, picoEfetivoReal, cfg.desmob_dias_real),
       integ_prev:  calc(cfg.integ_ativo,  picoEfetivoPrev, cfg.integ_dias_prev),
       integ_real:  calc(cfg.integ_ativo,  picoEfetivoReal, cfg.integ_dias_real),
-      folga_prev:  calcFolga(cfg.folga_ativo, cfg.folga_pessoas_prev, cfg.folga_dias_prev),
-      folga_real:  calcFolga(cfg.folga_ativo, cfg.folga_pessoas_real, cfg.folga_dias_real),
+      folga_prev:  folgaSoma('pessoas_prev', 'dias_prev'),
+      folga_real:  folgaSoma('pessoas_real', 'dias_real'),
     }
-  }, [cfg, picoEfetivoPrev, picoEfetivoReal])
+  }, [cfg, picoEfetivoPrev, picoEfetivoReal, folgaLinhas])
 
   const adicTotalPrev = adicionais.mob_prev + adicionais.desmob_prev + adicionais.integ_prev + adicionais.folga_prev
   const adicTotalReal = adicionais.mob_real + adicionais.desmob_real + adicionais.integ_real + adicionais.folga_real
@@ -441,10 +479,12 @@ export default function ParadaHhPage() {
         integ_dias_prev: cfg.integ_dias_prev ? n(cfg.integ_dias_prev) : null,
         integ_dias_real: cfg.integ_dias_real ? n(cfg.integ_dias_real) : null,
         folga_ativo: cfg.folga_ativo,
-        folga_dias_prev: cfg.folga_dias_prev ? n(cfg.folga_dias_prev) : null,
-        folga_dias_real: cfg.folga_dias_real ? n(cfg.folga_dias_real) : null,
-        folga_pessoas_prev: cfg.folga_pessoas_prev ? parseInt(cfg.folga_pessoas_prev) : null,
-        folga_pessoas_real: cfg.folga_pessoas_real ? parseInt(cfg.folga_pessoas_real) : null,
+        folgas: folgaLinhas.map((l) => ({
+          pessoas_prev: l.pessoas_prev ? parseInt(l.pessoas_prev) : null,
+          pessoas_real: l.pessoas_real ? parseInt(l.pessoas_real) : null,
+          dias_prev: l.dias_prev ? n(l.dias_prev) : null,
+          dias_real: l.dias_real ? n(l.dias_real) : null,
+        })),
         fin_prev_valor_servico: cfg.fin_prev_valor_servico ? n(cfg.fin_prev_valor_servico) : null,
         fin_prev_ase: cfg.fin_prev_ase ? n(cfg.fin_prev_ase) : null,
         dias: Array.from(dias.entries()).map(([key, val]) => {
@@ -464,7 +504,7 @@ export default function ParadaHhPage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
       if (res.ok) {
-        savedSnapshotRef.current = snapshot(cfg, dias)
+        savedSnapshotRef.current = snapshot(cfg, dias, folgaLinhas)
         setAvisoPendente(false)
       }
     } finally { setSaving(false) }
@@ -685,25 +725,38 @@ export default function ParadaHhPage() {
                   )
                 })}
 
-                {/* Folga */}
+                {/* Folga — múltiplas linhas: cada uma é um grupo de pessoas com os
+                    mesmos dias. O total é a soma de pessoas×dias×HH_DIA de cada linha. */}
                 {(() => {
                   const ativo = cfg.folga_ativo
-                  return (
-                    <tr className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2.5 font-medium text-gray-700">Folga</td>
+                  const linhas = ativo && folgaLinhas.length === 0 ? [emptyFolgaLinha()] : folgaLinhas
+                  const updLinha = (i: number, patch: Partial<FolgaLinha>) =>
+                    setFolgaLinhas((prev) => prev.map((l, idx) => idx === i ? { ...l, ...patch } : l))
+                  const addLinha = () => setFolgaLinhas((prev) => [...prev, emptyFolgaLinha()])
+                  const rmLinha = (i: number) => setFolgaLinhas((prev) => prev.filter((_, idx) => idx !== i))
+                  return linhas.map((linha, i) => (
+                    <tr key={i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2.5 font-medium text-gray-700">
+                        {i === 0 ? 'Folga' : <span className="text-gray-400 text-xs pl-2">+ folga</span>}
+                      </td>
                       <td className="px-4 py-2.5 text-center">
-                        <Toggle value={ativo} disabled={fechada} onChange={(v) => setCfg((p) => ({ ...p, folga_ativo: v }))} />
+                        {i === 0 && (
+                          <Toggle value={ativo} disabled={fechada} onChange={(v) => {
+                            setCfg((p) => ({ ...p, folga_ativo: v }))
+                            if (v && folgaLinhas.length === 0) setFolgaLinhas([emptyFolgaLinha()])
+                          }} />
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
-                          value={cfg.folga_dias_prev}
-                          onChange={(e) => setCfg((p) => ({ ...p, folga_dias_prev: e.target.value }))}
+                          value={linha.dias_prev}
+                          onChange={(e) => updLinha(i, { dias_prev: e.target.value })}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         <input type="number" min={0} step={0.1} disabled={!ativo || fechada}
-                          value={cfg.folga_dias_real}
-                          onChange={(e) => setCfg((p) => ({ ...p, folga_dias_real: e.target.value }))}
+                          value={linha.dias_real}
+                          onChange={(e) => updLinha(i, { dias_real: e.target.value })}
                           className="w-20 rounded border border-gray-300 px-2 py-0.5 text-center text-sm disabled:cursor-not-allowed disabled:bg-gray-100" />
                       </td>
                       {/* Pessoas em vez de pico */}
@@ -712,27 +765,41 @@ export default function ParadaHhPage() {
                           <div className="flex items-center gap-1 justify-center">
                             <span className="text-blue-600 w-10">Prev:</span>
                             <input type="number" min={0} disabled={!ativo || fechada}
-                              value={cfg.folga_pessoas_prev}
-                              onChange={(e) => setCfg((p) => ({ ...p, folga_pessoas_prev: e.target.value }))}
+                              value={linha.pessoas_prev}
+                              onChange={(e) => updLinha(i, { pessoas_prev: e.target.value })}
                               className="w-16 rounded border border-gray-300 px-1 py-0.5 text-center text-xs disabled:cursor-not-allowed disabled:bg-gray-100" />
                           </div>
                           <div className="flex items-center gap-1 justify-center">
                             <span className="text-green-600 w-10">Real:</span>
                             <input type="number" min={0} disabled={!ativo || fechada}
-                              value={cfg.folga_pessoas_real}
-                              onChange={(e) => setCfg((p) => ({ ...p, folga_pessoas_real: e.target.value }))}
+                              value={linha.pessoas_real}
+                              onChange={(e) => updLinha(i, { pessoas_real: e.target.value })}
                               className="w-16 rounded border border-gray-300 px-1 py-0.5 text-center text-xs disabled:cursor-not-allowed disabled:bg-gray-100" />
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-center font-semibold text-blue-700">
-                        {ativo && adicionais.folga_prev > 0 ? fmtHH(adicionais.folga_prev) : '–'}
+                        {i === 0 ? (ativo && adicionais.folga_prev > 0 ? fmtHH(adicionais.folga_prev) : '–') : ''}
                       </td>
                       <td className="px-4 py-2.5 text-center font-semibold text-green-700">
-                        {ativo && adicionais.folga_real > 0 ? fmtHH(adicionais.folga_real) : '–'}
+                        <div className="flex items-center justify-center gap-2">
+                          {i === 0 ? (ativo && adicionais.folga_real > 0 ? fmtHH(adicionais.folga_real) : '–') : ''}
+                          {ativo && !fechada && (
+                            <div className="flex items-center gap-1">
+                              {i === linhas.length - 1 && (
+                                <button type="button" onClick={addLinha} title="Adicionar outra folga"
+                                  className="text-green-600 hover:text-green-800 text-xs font-bold border border-green-300 rounded-full w-5 h-5 flex items-center justify-center">+</button>
+                              )}
+                              {linhas.length > 1 && (
+                                <button type="button" onClick={() => rmLinha(i)} title="Excluir esta folga"
+                                  className="text-red-400 hover:text-red-600 text-xs font-bold border border-red-200 rounded-full w-5 h-5 flex items-center justify-center">×</button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  )
+                  ))
                 })()}
               </tbody>
               <tfoot>
@@ -974,6 +1041,15 @@ interface DailyGridProps {
 
 function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabled }: DailyGridProps) {
   const noData = diasPrep.length === 0 && diasParada.length === 0 && diasAcomp.length === 0
+  // Cada etapa pode ser recolhida individualmente — só afeta a apresentação:
+  // quando recolhida, a etapa inteira vira 1 única coluna com os totais dela,
+  // mas o acumulado contínuo (acum_plan/acum_real) continua somando dia a dia
+  // por baixo dos panos, sem reiniciar (ver comentário mais abaixo).
+  const [etapasAbertas, setEtapasAbertas] = useState<Record<Etapa, boolean>>({
+    PREPARATIVO: true, PARADA: true, ACOMP_DESMOB: true,
+  })
+  const toggleEtapa = (etapa: Etapa) => setEtapasAbertas((p) => ({ ...p, [etapa]: !p[etapa] }))
+
   if (noData) {
     return (
       <div className="rounded-lg border bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
@@ -987,6 +1063,10 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabl
     { etapa: 'PARADA',       label: 'Parada',            dias: diasParada },
     { etapa: 'ACOMP_DESMOB', label: 'Pós Parada', dias: diasAcomp },
   ]
+  // "Largura" efetiva de cada etapa nas colunas da tabela: os dias reais quando
+  // aberta, 1 coluna-resumo quando recolhida — colgroup/cabeçalho/corpo usam
+  // sempre esta mesma contagem, para as colunas ficarem alinhadas.
+  const larguraEtapa = (etapa: Etapa, dias: string[]) => (etapasAbertas[etapa] ? dias.length : 1)
 
   const ROWS: Array<{ key: string; label: string; bg?: string; bold?: boolean }> = [
     { key: 'efetivo_plan',   label: 'Efetivo plan.',    bg: '#EEF7EE' },
@@ -1013,32 +1093,44 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabl
         <table className="border-collapse" style={{ tableLayout: 'fixed', fontSize: '11px' }}>
           <colgroup>
             <col style={{ width: STICKY_W, minWidth: STICKY_W }} />
-            {etapaSections.flatMap(({ dias }) =>
-              dias.map((_, i) => <col key={i} style={{ width: COL_W, minWidth: COL_W }} />)
+            {etapaSections.flatMap(({ etapa, dias }) =>
+              Array.from({ length: larguraEtapa(etapa, dias) }).map((_, i) =>
+                <col key={i} style={{ width: etapasAbertas[etapa] ? COL_W : COL_W * 1.6, minWidth: etapasAbertas[etapa] ? COL_W : COL_W * 1.6 }} />)
             )}
           </colgroup>
 
           <thead>
-            {/* Row 1 – etapa headers */}
+            {/* Row 1 – etapa headers (clicável para expandir/recolher) */}
             <tr>
               <th className="border border-gray-300 bg-gray-100 px-2 py-1"
                 style={{ position: 'sticky', left: 0, zIndex: 3, width: STICKY_W }} />
               {etapaSections.map(({ etapa, label, dias }) => (
                 <th key={etapa}
-                  colSpan={dias.length}
-                  className="border border-gray-300 bg-green-700 py-1 text-center text-xs font-bold text-white"
-                  style={{ borderLeft: '2px solid #1B5E20' }}>
-                  {label} ({dias.length} dias)
+                  colSpan={larguraEtapa(etapa, dias)}
+                  className="border border-gray-300 bg-green-700 py-1 text-center text-xs font-bold text-white cursor-pointer select-none hover:bg-green-800"
+                  style={{ borderLeft: '2px solid #1B5E20' }}
+                  onClick={() => toggleEtapa(etapa)}
+                  title={etapasAbertas[etapa] ? 'Clique para recolher' : 'Clique para expandir e ver todos os dias'}>
+                  {etapasAbertas[etapa] ? '▾' : '▸'} {label} ({dias.length} dias)
                 </th>
               ))}
             </tr>
 
-            {/* Row 2 – date headers */}
+            {/* Row 2 – date headers (ou 1 coluna-resumo, se a etapa estiver recolhida) */}
             <tr>
               <th className="border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-left"
                 style={{ position: 'sticky', left: 0, zIndex: 3, background: '#F3F4F6' }}>Linha</th>
-              {etapaSections.flatMap(({ etapa, dias }) =>
-                dias.map((d) => (
+              {etapaSections.flatMap(({ etapa, dias }) => {
+                if (!etapasAbertas[etapa]) {
+                  return [
+                    <th key={`${etapa}_resumo`}
+                      className="border border-gray-300 py-0.5 text-center text-xs font-medium text-gray-500"
+                      style={{ background: '#F9FAFB', borderLeft: etapa !== 'PREPARATIVO' ? '2px solid #1B5E20' : undefined }}>
+                      Total
+                    </th>,
+                  ]
+                }
+                return dias.map((d) => (
                   <th key={`${etapa}_${d}`}
                     className="border border-gray-300 py-0.5 text-center text-xs font-medium"
                     style={{
@@ -1050,7 +1142,7 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabl
                     {dayLabel(d).split('\n').map((line, i) => <div key={i}>{line}</div>)}
                   </th>
                 ))
-              )}
+              })}
             </tr>
           </thead>
 
@@ -1073,6 +1165,33 @@ function DailyGrid({ diasPrep, diasParada, diasAcomp, getDia, setDiaProp, disabl
                 </td>
 
                 {etapaSections.flatMap(({ etapa, dias }) => {
+                  if (!etapasAbertas[etapa]) {
+                    // Etapa recolhida: 1 única coluna-resumo. Para as linhas de
+                    // acumulado, o "acum" continua avançando com a soma de TODOS
+                    // os dias ocultos (mesma regra de não reiniciar por seção).
+                    let sumPlan = 0, sumReal = 0
+                    for (const d of dias) { const dia = getDia(etapa, d); sumPlan += n(dia.hh_plan); sumReal += n(dia.hh_real) }
+                    const cellStyle = { background: bg ?? '#fff', minWidth: COL_W * 1.6, width: COL_W * 1.6, textAlign: 'center' as const }
+
+                    if (key === 'hh_plan') return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={cellStyle}>{sumPlan > 0 ? fmtCellHH(sumPlan) : ''}</td>]
+                    if (key === 'hh_real') return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={cellStyle}>{sumReal > 0 ? fmtCellHH(sumReal) : ''}</td>]
+                    if (key === 'acum_plan') { acum += sumPlan; return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={{ ...cellStyle, background: '#DCEDC8', fontWeight: 700 }}>{acum > 0 ? fmtCellHH(acum) : ''}</td>] }
+                    if (key === 'acum_real') { acum += sumReal; return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={{ ...cellStyle, background: '#E3F2FD', fontWeight: 700 }}>{acum > 0 ? fmtCellHH(acum) : ''}</td>] }
+                    if (key === 'desvio_hh') {
+                      const dev = sumReal - sumPlan
+                      const hasData = sumPlan > 0 || sumReal > 0
+                      return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={{ ...cellStyle, background: hasData ? (dev < 0 ? '#c8e6c9' : dev > 0 ? '#ffcdd2' : '#fff') : '#fff' }}>{hasData ? fmtCellHH(dev) : ''}</td>]
+                    }
+                    if (key === 'desvio_pct') {
+                      const dev = sumReal - sumPlan
+                      const hasData = sumPlan > 0 || sumReal > 0
+                      const pct = sumPlan > 0 ? dev / sumPlan : null
+                      return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={{ ...cellStyle, background: hasData && pct != null ? (pct < 0 ? '#c8e6c9' : pct > 0 ? '#ffcdd2' : '#fff') : '#fff' }}>{hasData && pct != null ? `${(pct * 100).toFixed(1)}%` : ''}</td>]
+                    }
+                    // efetivo_plan/real e horas_dia_plan/real não têm soma com sentido por etapa
+                    return [<td key={`${etapa}_resumo`} className="border border-gray-200" style={cellStyle} />]
+                  }
+
                   return dias.map((d) => {
                     const dia = getDia(etapa, d)
                     const weekend = isWeekend(d)

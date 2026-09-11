@@ -10,13 +10,13 @@ import { Modal, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Input'
 import { cn, formatDate } from '@/lib/utils'
-import { barColors } from '@/lib/hh'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { useFilterOptions, HhFilters as Filters, applyFilters, type FilterState } from '@/components/acordos/HhFilters'
 import {
   MESES_LABELS, mesesEntre, key, pesoPrevItem, pesoRealItem, pctAvanco, fmtHh, fmtPeso, fmtPct,
   type ContratoFab,
 } from '@/lib/fabricacoes'
+import { IndicadorCard, ICONS } from '@/components/acordos/FabricacaoCards'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
@@ -247,8 +247,8 @@ function PickerModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c:
 }
 
 // ── Histórico de alterações do contrato (todos os itens) ─────────────────────
-interface HistEntry { id: number; item: string; campo: string; valor_de: string | null; valor_para: string | null; alterado_em: string; alterado_por: string }
-function HistoricoFabModal({ contrato, onClose }: { contrato: ContratoFab; onClose: () => void }) {
+interface HistEntry { id: string; item: string | null; campo: string; valor_de: string | null; valor_para: string | null; alterado_em: string; alterado_por: string }
+export function HistoricoFabModal({ contrato, onClose }: { contrato: ContratoFab; onClose: () => void }) {
   const [hist, setHist] = useState<HistEntry[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
@@ -286,7 +286,7 @@ function HistoricoFabModal({ contrato, onClose }: { contrato: ContratoFab; onClo
                 return (
                   <tr key={h.id} className={cn('border-b border-gray-100', idx % 2 ? 'bg-gray-50' : 'bg-white')}>
                     <td className="px-3 py-[6px] whitespace-nowrap text-gray-500">{dataHora}</td>
-                    <td className="px-3 py-[6px] whitespace-nowrap text-gray-700">{h.item}</td>
+                    <td className="px-3 py-[6px] whitespace-nowrap text-gray-700">{h.item ?? '—'}</td>
                     <td className="px-3 py-[6px] whitespace-nowrap font-semibold text-gray-700">{h.campo}</td>
                     <td className="px-3 py-[6px]"><span className="text-red-500 bg-red-50 rounded px-1.5 py-0.5 whitespace-nowrap">{h.valor_de ?? '—'}</span></td>
                     <td className="px-3 py-[6px]"><span className="text-green-700 bg-green-50 rounded px-1.5 py-0.5 whitespace-nowrap">{h.valor_para ?? '—'}</span></td>
@@ -340,50 +340,15 @@ function Legenda({ series }: { series: [string, string, 'solid' | 'dashed'][] })
   )
 }
 
-// Card estilo Obras com barras de progresso
-function AvancoCard({ label, value, color, bgIcon, sub, bars }: {
-  label: string; value: string; color: string; bgIcon: string; sub: string
-  bars?: { titulo: string; pct: number }[]
-}) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
-      <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bgIcon }}>
-        <svg className="w-6 h-6" fill="none" stroke={color} strokeWidth={1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-normal text-gray-500 mb-1">{label}</p>
-        <p className="text-[30px] font-bold leading-none tracking-tight" style={{ color }}>{value}</p>
-        <p className="text-[11px] text-gray-400 mt-1.5">{sub}</p>
-        {bars && bars.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
-            {bars.map((b) => (
-              <div key={b.titulo}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{b.titulo}</span>
-                  <span className="text-[11px] font-bold" style={{ color: barColors(b.pct).text }}>{b.pct.toFixed(1)}%</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(b.pct, 100)}%`, backgroundColor: barColors(b.pct).bg }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
   const [expandido, setExpandido] = useState<Set<number>>(new Set())
+  const [metrica, setMetrica] = useState<'hh' | 'peso'>('hh')
   const toggle = (id: number) => setExpandido((prev) => {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
   })
 
   const itens = useMemo(
-    () => contratos.flatMap((c) => c.itens.map((it) => ({ ...it, contrato: c.indice }))),
+    () => contratos.flatMap((c) => c.itens.map((it) => ({ ...it, contrato: c.indice, cliente: c.cliente.nome, clienteFinal: c.cliente_final?.nome ?? null }))),
     [contratos],
   )
 
@@ -398,6 +363,8 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
     }
     return { orc, prev, real, pesoPrev, pesoReal }
   }, [itens])
+  const hhPorTonPrev = totals.pesoPrev > 0 ? totals.prev / totals.pesoPrev : null
+  const hhPorTonReal = totals.pesoReal > 0 ? totals.real / totals.pesoReal : null
 
   // Série mensal agregada (ordenada por ano/mês)
   const serie = useMemo(() => {
@@ -418,18 +385,13 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
     return <p className="text-center text-gray-400 py-10 text-sm">Sem itens cadastrados para resumir.</p>
   }
 
-  const pctHhOrc = pctAvanco(totals.orc, totals.real)
   const pctHhPrev = pctAvanco(totals.prev, totals.real)
-  const pctPrevOrc = pctAvanco(totals.orc, totals.prev)
   const pctPeso = pctAvanco(totals.pesoPrev, totals.pesoReal)
 
   const labels = serie.map((s) => `${MESES_LABELS[s.mes]}/${String(s.ano).slice(2)}`)
   const acumular = (arr: number[]) => arr.reduce<number[]>((acc, v) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + v] }, [])
-  const orcArr = serie.map((s) => s.orc)
-  const prevArr = serie.map((s) => s.prev)
-  const realArr = serie.map((s) => s.real)
-  const pesoPrevArr = serie.map((s) => s.pesoPrev)
-  const pesoRealArr = serie.map((s) => s.pesoReal)
+  const prevArr = metrica === 'hh' ? serie.map((s) => s.prev) : serie.map((s) => s.pesoPrev)
+  const realArr = metrica === 'hh' ? serie.map((s) => s.real) : serie.map((s) => s.pesoReal)
 
   const lineDS = (label: string, data: number[], color: string, dashed: boolean) => ({
     label, data, borderColor: color, backgroundColor: 'transparent',
@@ -437,60 +399,55 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
     pointRadius: 2.5, pointBackgroundColor: color, spanGaps: true,
   })
 
-  const hhMensal = { labels, datasets: [lineDS('Orçado', orcArr, COR.orcado, true), lineDS('Previsto', prevArr, COR.previsto, true), lineDS('Realizado', realArr, COR.realizado, false)] }
-  const hhAcum = { labels, datasets: [lineDS('Orçado', acumular(orcArr), COR.orcado, true), lineDS('Previsto', acumular(prevArr), COR.previsto, true), lineDS('Realizado', acumular(realArr), COR.realizado, false)] }
-  const pesoMensal = { labels, datasets: [lineDS('Previsto', pesoPrevArr, COR.previsto, true), lineDS('Realizado', pesoRealArr, COR.realizado, false)] }
-  const pesoAcum = { labels, datasets: [lineDS('Previsto', acumular(pesoPrevArr), COR.previsto, true), lineDS('Realizado', acumular(pesoRealArr), COR.realizado, false)] }
-
-  const optsHh = chartOptsFactory(fmtHh)
-  const optsPeso = chartOptsFactory(fmtPeso)
-  const legHh: [string, string, 'solid' | 'dashed'][] = [[COR.orcado, 'Orçado', 'dashed'], [COR.previsto, 'Previsto', 'dashed'], [COR.realizado, 'Realizado', 'solid']]
-  const legPeso: [string, string, 'solid' | 'dashed'][] = [[COR.previsto, 'Previsto', 'dashed'], [COR.realizado, 'Realizado', 'solid']]
+  // Único gráfico — Acumulado do Contrato, Previsto x Realizado (sem Orçado,
+  // que fica só no card), com toggle HH/Peso (mesmo padrão da página do contrato).
+  const acumuladoChart = { labels, datasets: [lineDS('Previsto', acumular(prevArr), COR.previsto, true), lineDS('Realizado', acumular(realArr), COR.realizado, false)] }
+  const fmtMetrica = metrica === 'hh' ? fmtHh : fmtPeso
+  const optsAcumulado = chartOptsFactory(fmtMetrica)
+  const legAcumulado: [string, string, 'solid' | 'dashed'][] = [[COR.previsto, 'Previsto', 'dashed'], [COR.realizado, 'Realizado', 'solid']]
 
   return (
     <div className="space-y-4">
-      {/* Cards de avanço — estilo Obras */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <AvancoCard label="HH Orçado" value={fmtHh(totals.orc)} color={COR.orcado} bgIcon="#FEF3C7" sub="total orçado dos itens" />
-        <AvancoCard label="HH Previsto" value={fmtHh(totals.prev)} color={COR.previsto} bgIcon="#DBEAFE" sub="distribuído nos meses"
-          bars={[{ titulo: '% do Orçado', pct: pctPrevOrc }]} />
-        <AvancoCard label="HH Realizado" value={fmtHh(totals.real)} color={COR.realizado} bgIcon="#DCFCE7" sub="acumulado lançado"
-          bars={[{ titulo: '% do Orçado', pct: pctHhOrc }, { titulo: '% do Previsto', pct: pctHhPrev }]} />
+      {/* Cards — idênticos aos da página do contrato individual (fileira Peso, depois HH) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <IndicadorCard label="Peso Previsto" value={`${fmtPeso(totals.pesoPrev)} t`} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="todos os contratos" />
+        <IndicadorCard label="Peso Realizado" value={`${fmtPeso(totals.pesoReal)} t`} color="#16A34A" bg="#DCFCE7" iconPath={ICONS.trend} sub="acumulado lançado"
+          bar={{ titulo: '% do Previsto', pct: pctPeso }} />
+        <IndicadorCard label="% Avanço do Contrato" value={fmtPct(pctPeso)} color="#7C3AED" bg="#EDE9FE" iconPath={ICONS.target} sub="peso realizado ÷ previsto" />
+        <IndicadorCard label="Itens" value={String(itens.length)} color="#334155" bg="#F1F5F9" iconPath={ICONS.list}
+          sub={`em ${contratos.length} contrato(s)`} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <IndicadorCard label="HH Orçado" value={fmtHh(totals.orc)} color="#6B7280" bg="#F3F4F6" iconPath={ICONS.doc} sub="base do orçamento" />
+        <IndicadorCard label="HH Previsto" value={fmtHh(totals.prev)} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="distribuído nos itens" />
+        <IndicadorCard label="HH Realizado" value={fmtHh(totals.real)} color="#16A34A" bg="#DCFCE7" iconPath={ICONS.trend} sub="acumulado lançado"
+          bar={{ titulo: '% do Previsto', pct: pctHhPrev }} />
+        <IndicadorCard label="HH / ton" value={hhPorTonPrev != null ? `${hhPorTonPrev.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} HH/t` : '—'}
+          color="#BA7517" bg="#FEF3C7" iconPath={ICONS.bolt} sub="produtividade prevista"
+          extra={<p className="text-[10px] text-gray-400 mt-1.5">Realizado: {hhPorTonReal != null ? `${hhPorTonReal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} HH/t` : '—'}</p>} />
       </div>
 
-      {/* KPIs de peso e avanço */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
-        <KpiCard label="Peso Previsto (t)" value={fmtPeso(totals.pesoPrev)} color="text-[#185FA5]" />
-        <KpiCard label="Peso Realizado (t)" value={fmtPeso(totals.pesoReal)} color="text-green-dark" />
-        <KpiCard label="% Avanço (peso)" value={fmtPct(pctPeso)} color="text-[#1565C0]" />
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Mensal</p>
-          <p className="text-[11px] text-gray-400 mb-3">Comparativo mês a mês — Orçado, Previsto e Realizado</p>
-          <Legenda series={legHh} />
-          <div style={{ height: 230 }}><Line data={hhMensal} options={optsHh} /></div>
+      {/* Gráfico único — Acumulado, com toggle HH/Peso (mesmo padrão da página do contrato) */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-0.5 flex-wrap gap-2">
+          <div>
+            <p className="text-[13px] font-bold text-gray-700">Acumulado</p>
+            <p className="text-[11px] text-gray-400">
+              {metrica === 'hh' ? 'Progressão acumulada de HH — Previsto x Realizado' : 'Progressão acumulada de peso (t) — Previsto x Realizado'}
+            </p>
+          </div>
+          <div className="inline-flex bg-gray-100 rounded-full p-0.5 flex-shrink-0">
+            {(['hh', 'peso'] as const).map((m) => (
+              <button key={m} onClick={() => setMetrica(m)}
+                className={cn('px-3 py-1 text-[10px] font-semibold rounded-full transition-colors',
+                  metrica === m ? 'bg-white text-green-dark shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                {m === 'hh' ? 'HH' : 'Peso (t)'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <p className="text-[13px] font-bold text-gray-700 mb-0.5">HH Acumulado</p>
-          <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada dos três indicadores</p>
-          <Legenda series={legHh} />
-          <div style={{ height: 230 }}><Line data={hhAcum} options={optsHh} /></div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <p className="text-[13px] font-bold text-gray-700 mb-0.5">Peso Mensal (t)</p>
-          <p className="text-[11px] text-gray-400 mb-3">Previsto x Realizado mês a mês</p>
-          <Legenda series={legPeso} />
-          <div style={{ height: 230 }}><Line data={pesoMensal} options={optsPeso} /></div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <p className="text-[13px] font-bold text-gray-700 mb-0.5">Peso Acumulado (t)</p>
-          <p className="text-[11px] text-gray-400 mb-3">Progressão acumulada Previsto x Realizado</p>
-          <Legenda series={legPeso} />
-          <div style={{ height: 230 }}><Line data={pesoAcum} options={optsPeso} /></div>
-        </div>
+        <Legenda series={legAcumulado} />
+        <div style={{ height: 260 }}><Line data={acumuladoChart} options={optsAcumulado} /></div>
       </div>
 
       {/* Tabela por item (clique para ver mês a mês) */}
@@ -500,6 +457,8 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
             <tr className="bg-green-primary text-white text-[10px] uppercase tracking-wide">
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-6"></th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Contrato</th>
+              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente</th>
+              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente Final</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Item</th>
               <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">HH Orçado</th>
               <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">HH Previsto</th>
@@ -526,6 +485,8 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
                     className={cn('border-b border-gray-100 cursor-pointer hover:bg-green-light/40', i % 2 ? 'bg-gray-50' : 'bg-white')}>
                     <td className="px-2 py-1.5 text-center text-gray-400 select-none">{aberto ? '▾' : '▸'}</td>
                     <td className="px-2 py-1.5 font-semibold text-green-dark whitespace-nowrap">{it.contrato}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap text-gray-600">{it.cliente}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{it.clienteFinal ?? '—'}</td>
                     <td className="px-2 py-1.5">{it.descricao}</td>
                     <td className="px-2 py-1.5 text-right">{fmtHh(orc)}</td>
                     <td className="px-2 py-1.5 text-right">{fmtHh(prev)}</td>
@@ -543,7 +504,7 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
                     return (
                       <tr key={`${it.id}-${k}`} className="bg-slate-50/70 border-b border-gray-100 text-[10px] text-gray-600">
                         <td className="bg-slate-50/70"></td>
-                        <td colSpan={2} className="px-2 py-1 pl-8 text-gray-500 whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</td>
+                        <td colSpan={4} className="px-2 py-1 pl-8 text-gray-500 whitespace-nowrap">{MESES_LABELS[mes]}/{String(ano).slice(2)}</td>
                         <td className="px-2 py-1 text-right">{fmtNumOrDash(mPlan?.hh_orcado)}</td>
                         <td className="px-2 py-1 text-right">{fmtNumOrDash(mPlan?.hh_previsto)}</td>
                         <td className="px-2 py-1 text-right">{fmtNumOrDash(mReal?.hh_realizado)}</td>
@@ -565,12 +526,3 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
 
 const fmtNumOrDash = (v: number | null | undefined) => (v == null ? '—' : fmtHh(v))
 const fmtPesoOrDash = (v: number | null | undefined) => (v == null ? '—' : fmtPeso(v))
-
-function KpiCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className={cn('text-[20px] font-bold', color)}>{value}</p>
-    </div>
-  )
-}

@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
   // Titularidade: o contrato do item determina quem pode lançar realizado
   { const _n = await exigirTitularFabItem(session, lancamentos[0].item_id, 'acordos.fab.realizado.lancar'); if (_n) return _n }
 
+  const itemRef = await prisma.fabricacaoItem.findUnique({ where: { id: lancamentos[0].item_id }, select: { contrato: { select: { hh_fechada_em: true } } } })
+  if (itemRef?.contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Fabricação está fechada — reabra antes de editar.' }, { status: 403 })
+
   // Estado atual para diff do histórico
   const itemIds = Array.from(new Set(lancamentos.map((l) => l.item_id)))
   const atuais = await prisma.fabricacaoRealizado.findMany({ where: { item_id: { in: itemIds } } })

@@ -15,6 +15,13 @@ const DiaSchema = z.object({
   hh_real: z.number().nonnegative().nullable().optional(),
 })
 
+const FolgaLinhaSchema = z.object({
+  pessoas_prev: z.number().int().nullable().optional(),
+  pessoas_real: z.number().int().nullable().optional(),
+  dias_prev: z.number().nullable().optional(),
+  dias_real: z.number().nullable().optional(),
+})
+
 const BodySchema = z.object({
   prep_inicio: z.string().nullable().optional(),
   prep_fim: z.string().nullable().optional(),
@@ -40,6 +47,11 @@ const BodySchema = z.object({
   folga_dias_real: z.number().nullable().optional(),
   folga_pessoas_prev: z.number().int().nullable().optional(),
   folga_pessoas_real: z.number().int().nullable().optional(),
+  // Múltiplas linhas de Folga (grupos com dias/efetivo diferentes) — substitui
+  // por completo as linhas existentes a cada save (mesmo padrão já usado para
+  // os meses de FabricacaoItem). Os campos escalares folga_dias_prev/real e
+  // folga_pessoas_prev/real acima ficam legados (não mais escritos).
+  folgas: z.array(FolgaLinhaSchema).optional(),
 
   fin_prev_valor_servico: z.number().nullable().optional(),
   fin_prev_ase: z.number().nullable().optional(),
@@ -63,6 +75,7 @@ export async function GET(
       parada_hh_config: {
         include: {
           dias: { orderBy: [{ etapa: 'asc' }, { data: 'asc' }] },
+          folgas: { orderBy: { ordem: 'asc' } },
           quemFechou: { select: { nome: true } },
         },
       },
@@ -128,7 +141,7 @@ export async function PUT(
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { dias, ...configData } = parsed.data
+  const { dias, folgas, ...configData } = parsed.data
   const userId = Number(session.user.id)
 
   const toDecimal = (v: number | null | undefined) => v != null ? v : null
@@ -270,11 +283,34 @@ export async function PUT(
     )
   }
 
+  if (folgas !== undefined) {
+    await prisma.$transaction([
+      prisma.paradaFolgaLinha.deleteMany({ where: { config_id: config.id } }),
+      ...(folgas.length > 0
+        ? [prisma.paradaFolgaLinha.createMany({
+            data: folgas.map((f, i) => ({
+              config_id: config.id,
+              ordem: i,
+              pessoas_prev: f.pessoas_prev ?? null,
+              pessoas_real: f.pessoas_real ?? null,
+              dias_prev: f.dias_prev ?? null,
+              dias_real: f.dias_real ?? null,
+              created_by: userId,
+            })),
+          })]
+        : []),
+    ])
+  }
+
   if (hist.length > 0) {
     await prisma.paradaHhConfigHistorico.createMany({
       data: hist.map((h) => ({ ...h, config_id: config.id })),
     })
   }
 
-  return NextResponse.json({ data: { config } })
+  const folgasFinais = folgas !== undefined
+    ? await prisma.paradaFolgaLinha.findMany({ where: { config_id: config.id }, orderBy: { ordem: 'asc' } })
+    : undefined
+
+  return NextResponse.json({ data: { config: { ...config, folgas: folgasFinais } } })
 }

@@ -102,7 +102,8 @@ export function ParadasResumoView() {
   const pctAseFat = agg.faturado > 0 ? (agg.ase / agg.faturado) * 100 : null
   const desvCor = (v: number) => (v <= 0 ? '#16A34A' : '#DC2626')
 
-  // Índice mensal = HH Realizado / HH Orçado (%), com meta fixa de 80%.
+  // Índice mensal = HH Realizado / HH Orçado (%), com limite (meta) de 80%:
+  // acima do limite é vermelho (estourou o orçado), até o limite é verde.
   const pctPorMes = agg.meses.map((m) => m.prev > 0 ? (m.real / m.prev) * 100 : 0)
   const indiceChartData = {
     labels: agg.meses.map((m) => `${MESES_LABELS[m.mes]}/${String(m.ano).slice(2)}`),
@@ -111,7 +112,7 @@ export function ParadasResumoView() {
         type: 'bar' as const,
         label: 'Índice (Realizado/Orçado)',
         data: pctPorMes,
-        backgroundColor: pctPorMes.map((p) => p >= META_HH_INDICE ? '#22C55E' : '#F87171'),
+        backgroundColor: pctPorMes.map((p) => p <= META_HH_INDICE ? '#22C55E' : '#F87171'),
         borderRadius: 3,
         order: 2,
         datalabels: {
@@ -202,7 +203,7 @@ export function ParadasResumoView() {
                 </thead>
                 <tbody>
                   <tr className="border-b border-gray-100">
-                    <td className="px-3 py-2 font-medium text-gray-600 sticky left-0 bg-white whitespace-nowrap">Meta (&gt;= {META_HH_INDICE}%)</td>
+                    <td className="px-3 py-2 font-medium text-gray-600 sticky left-0 bg-white whitespace-nowrap">Meta (&lt;= {META_HH_INDICE}%)</td>
                     {agg.meses.map((m) => <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center text-gray-500">{META_HH_INDICE}%</td>)}
                     <td className="px-3 py-2 text-center font-semibold text-gray-700 bg-slate-50">{META_HH_INDICE}%</td>
                   </tr>
@@ -222,7 +223,7 @@ export function ParadasResumoView() {
                       const pct = pctPorMes[i]
                       return (
                         <td key={`${m.ano}-${m.mes}`} className="px-3 py-2 text-center font-semibold"
-                          style={{ color: pct >= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
+                          style={{ color: pct <= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
                           {Math.round(pct)}%
                         </td>
                       )
@@ -230,7 +231,7 @@ export function ParadasResumoView() {
                     {(() => {
                       const pctTotal = agg.hhPrev > 0 ? (agg.hhReal / agg.hhPrev) * 100 : 0
                       return (
-                        <td className="px-3 py-2 text-center font-bold bg-slate-50" style={{ color: pctTotal >= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
+                        <td className="px-3 py-2 text-center font-bold bg-slate-50" style={{ color: pctTotal <= META_HH_INDICE ? '#16A34A' : '#DC2626' }}>
                           {Math.round(pctTotal)}%
                         </td>
                       )

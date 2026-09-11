@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
   }
   const { contrato_id, itens } = parsed.data
 
+  const contratoCheck = await prisma.contrato.findUnique({ where: { id: contrato_id }, select: { hh_fechada_em: true } })
+  if (contratoCheck?.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Fabricação está fechada — reabra antes de editar.' }, { status: 403 })
+
   const existentesAntes = await prisma.fabricacaoItem.findMany({
     where: { contrato_id, deleted_at: null },
     select: { id: true },

@@ -90,6 +90,8 @@ export const CATALOGO = {
   'acordos.obras.hh.lancar':          { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   'acordos.obras.remover':            { perfis: ['GESTAO_ACORDOS'] },
   'acordos.obras.novo':               { perfis: ['GESTAO_ACORDOS'] },
+  // Reabrir Obra fechada — restrito (fechar usa a mesma permissão de hh.lancar)
+  'acordos.obras.reabrir':            { perfis: ['GESTAO_ACORDOS'], analista: true },
   // HH — Paradas
   'acordos.paradas.cadastrais.editar':{ perfis: ['GESTAO_ACORDOS'] },
   'acordos.paradas.controlehh.editar':{ todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
@@ -104,6 +106,8 @@ export const CATALOGO = {
   'acordos.fab.excluir':              { perfis: ['GESTAO_ACORDOS'] },
   'acordos.fab.realizado.lancar':     { todos: ['GESTAO_ACORDOS'], proprio: ['ACORDOS'] },
   'acordos.fab.novo':                 { perfis: ['GESTAO_ACORDOS'] },
+  // Reabrir Fabricação fechada — restrito (fechar usa a mesma permissão de realizado.lancar)
+  'acordos.fab.reabrir':              { perfis: ['GESTAO_ACORDOS'], analista: true },
 
   // ─────────── Cadastro ───────────
   'cadastro.cliente.criar':    { perfis: ['ADM_COMERCIAL'], analista: true },

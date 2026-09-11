@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, History } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { IndicadorCard, ICONS } from '@/components/acordos/FabricacaoCards'
 import {
   Chart as ChartJS, CategoryScale, LinearScale,
   PointElement, LineElement, Tooltip, Filler,
@@ -45,48 +48,6 @@ const verticalLinePlugin: Plugin<'line'> = {
 
 const loc = (n: number) => n.toLocaleString('pt-BR')
 
-// ── Card de indicador (mesmo padrão visual dos cards de Obras/ResumoFab) ──────
-function IndicadorCard({ label, value, color, bg, iconPath, sub, extra, bar }: {
-  label: string; value: string; color: string; bg: string; iconPath: string; sub?: string
-  extra?: React.ReactNode
-  bar?: { titulo: string; pct: number }
-}) {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
-      <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-        <svg className="w-6 h-6" fill="none" stroke={color} strokeWidth={1.8} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-normal text-gray-500 mb-1">{label}</p>
-        <p className="text-[30px] font-bold leading-none tracking-tight" style={{ color }}>{value}</p>
-        {sub && <p className="text-[11px] text-gray-400 mt-1.5">{sub}</p>}
-        {extra}
-        {bar && (
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{bar.titulo}</span>
-              <span className="text-[11px] font-bold" style={{ color: barColors(bar.pct).text }}>{bar.pct.toFixed(1)}%</span>
-            </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${Math.min(bar.pct, 100)}%`, backgroundColor: barColors(bar.pct).bg }} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const ICONS = {
-  doc:    'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-  trend:  'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6',
-  target: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-  list:   'M4 6h16M4 12h16M4 18h16',
-  bolt:   'M13 10V3L4 14h7v7l9-11h-7z',
-}
-
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export default function ContratoFabricacaoPage() {
@@ -102,6 +63,15 @@ export default function ContratoFabricacaoPage() {
   const [expandedItem, setExpandedItem] = useState<number | null>(null)
   const [metrica, setMetrica] = useState<'hh' | 'peso'>('hh')
   const [autoAbriuNovo, setAutoAbriuNovo] = useState(false)
+
+  // ── Fechar / Reabrir / Histórico (mesmo padrão de Paradas) ──
+  const [showHistorico, setShowHistorico] = useState(false)
+  const [confirmFechar, setConfirmFechar] = useState(false)
+  const [fecharLoading, setFecharLoading] = useState(false)
+  const [fecharErro, setFecharErro] = useState<string | null>(null)
+  const [confirmReabrir, setConfirmReabrir] = useState(false)
+  const [reabrirLoading, setReabrirLoading] = useState(false)
+  const [reabrirErro, setReabrirErro] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -125,10 +95,39 @@ export default function ContratoFabricacaoPage() {
 
   const itens: ItemFab[] = contrato?.itens ?? []
 
-  const podeEditarItens = pode('acordos.fab.itens.editar')
-  const podeLancarRealizado = pode('acordos.fab.realizado.lancar', {
+  const fechada = contrato?.hh_fechada_em != null
+  const podeEditarItens = !fechada && pode('acordos.fab.itens.editar')
+  const podeLancarRealizado = !fechada && pode('acordos.fab.realizado.lancar', {
     ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
   })
+  const podeFechar = pode('acordos.fab.realizado.lancar', {
+    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
+  })
+  const podeReabrir = pode('acordos.fab.reabrir')
+
+  async function handleFechar() {
+    setFecharLoading(true); setFecharErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/fabricacoes/${id}/fechar`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || json.error) { setFecharErro(json.error ?? 'Erro ao fechar a Fabricação'); return }
+      setConfirmFechar(false)
+      await fetchData()
+    } finally { setFecharLoading(false) }
+  }
+
+  async function handleReabrir(motivo: string) {
+    setReabrirLoading(true); setReabrirErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/fabricacoes/${id}/reabrir`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivo }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setReabrirErro(json.error ?? 'Erro ao reabrir a Fabricação'); return }
+      setConfirmReabrir(false)
+      await fetchData()
+    } finally { setReabrirLoading(false) }
+  }
 
   // ── Período contínuo do contrato (união das datas de todos os itens) ────────
   const periodo = useMemo(() => {
@@ -268,8 +267,36 @@ export default function ContratoFabricacaoPage() {
               Lançar Realizado
             </button>
           )}
+          <button onClick={() => setShowHistorico(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-[11px] font-medium text-gray-600 hover:bg-gray-100">
+            <History size={14} />
+            Histórico
+          </button>
+          {!fechada && podeFechar && (
+            <button onClick={() => setConfirmFechar(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-[11px] font-medium text-gray-600 hover:bg-gray-100">
+              Fechar Fabricação
+            </button>
+          )}
+          {fechada && podeReabrir && (
+            <button onClick={() => { setReabrirErro(null); setConfirmReabrir(true) }}
+              className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-[11px] font-semibold text-white hover:bg-amber-700">
+              Reabrir Fabricação
+            </button>
+          )}
         </div>
       </div>
+
+      {fechada && (
+        <div className="mx-6 mt-3 rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-[11px] text-gray-700 flex items-center gap-2">
+          <span className="font-semibold">Fabricação fechada</span>
+          <span>
+            em {contrato?.hh_fechada_em ? new Date(contrato.hh_fechada_em).toLocaleDateString('pt-BR') : '–'}
+            {contrato?.hh_fechada_por_nome ? ` por ${contrato.hh_fechada_por_nome}` : ''} — os lançamentos estão consolidados e não podem mais ser ajustados.
+            {podeReabrir ? ' Use "Reabrir Fabricação" para editar novamente.' : ''}
+          </span>
+        </div>
+      )}
 
       {/* ── Conteúdo ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -505,6 +532,41 @@ export default function ContratoFabricacaoPage() {
       {modalLancar && contrato && (
         <LancamentoModal contrato={contrato} onClose={() => setModalLancar(false)} onSuccess={handleSucessoLancar} />
       )}
+
+      {confirmFechar && (
+        <ConfirmDialog
+          open
+          title="Fechar Fabricação"
+          message="Isso consolida os lançamentos desta Fabricação — nenhum ajuste poderá ser feito até que ela seja reaberta. Confirmar o fechamento?"
+          variant="warning"
+          confirmLabel="Fechar Fabricação"
+          loading={fecharLoading}
+          error={fecharErro}
+          onConfirm={handleFechar}
+          onClose={() => setConfirmFechar(false)}
+        />
+      )}
+      {confirmReabrir && (
+        <ConfirmDialog
+          open
+          title="Reabrir Fabricação"
+          message="Explique o motivo da reabertura — ficará registrado no histórico."
+          variant="warning"
+          confirmLabel="Reabrir Fabricação"
+          input={{ label: 'Justificativa', placeholder: 'Motivo da reabertura...', required: true, multiline: true }}
+          loading={reabrirLoading}
+          error={reabrirErro}
+          onConfirm={handleReabrir}
+          onClose={() => setConfirmReabrir(false)}
+        />
+      )}
+      <HistoricoFaturamentoModal
+        open={showHistorico}
+        onClose={() => setShowHistorico(false)}
+        tipo="fabricacao"
+        itemId={Number(id)}
+        titulo={`Fabricação ${contrato?.indice ?? ''}`}
+      />
     </div>
   )
 }

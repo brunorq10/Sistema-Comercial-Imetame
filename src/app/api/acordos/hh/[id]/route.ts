@@ -20,6 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       cliente:       { select: { id: true, nome: true } },
       cliente_final: { select: { id: true, nome: true } },
       responsavel:   { select: { id: true, nome: true } },
+      quemFechouHh:  { select: { nome: true } },
       hh_realizados: { orderBy: [{ ano: 'asc' }, { mes: 'asc' }] },
     },
   })
@@ -34,6 +35,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       cidade: contrato.cidade, estado: contrato.estado,
       data_inicio: contrato.data_inicio?.toISOString() ?? null,
       data_fim:    contrato.data_fim?.toISOString()    ?? null,
+      hh_fechada_em: contrato.hh_fechada_em?.toISOString() ?? null,
+      hh_fechada_por_nome: contrato.quemFechouHh?.nome ?? null,
       realizados: contrato.hh_realizados.map(r => ({
         id: r.id, mes: r.mes, ano: r.ano, hh_realizado: r.hh_realizado,
         horas_normais: r.horas_normais != null ? Number(r.horas_normais) : null,

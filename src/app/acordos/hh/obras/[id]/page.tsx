@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { barColors } from '@/lib/hh'
 import { RealizadoDiarioObras } from '@/components/acordos/RealizadoDiarioObras'
 import { HhComportamentoChart } from '@/components/acordos/HhComportamentoChart'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ interface ContratoInfo {
   descricao: string | null; responsavel: { id: number; nome: string } | null
   cidade: string | null; estado: string | null
   data_inicio: string | null; data_fim: string | null
+  hh_fechada_em: string | null; hh_fechada_por_nome: string | null
   realizados: Realizado[]
 }
 
@@ -95,6 +98,15 @@ export default function ContratoObrasHhPage() {
   const [savingPP, setSavingPP] = useState(false)
   const [erroPP, setErroPP] = useState<string | null>(null)
 
+  // ── Fechar / Reabrir / Histórico (mesmo padrão de Paradas) ──
+  const [showHistorico, setShowHistorico] = useState(false)
+  const [confirmFechar, setConfirmFechar] = useState(false)
+  const [fecharLoading, setFecharLoading] = useState(false)
+  const [fecharErro, setFecharErro] = useState<string | null>(null)
+  const [confirmReabrir, setConfirmReabrir] = useState(false)
+  const [reabrirLoading, setReabrirLoading] = useState(false)
+  const [reabrirErro, setReabrirErro] = useState<string | null>(null)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
@@ -117,9 +129,38 @@ export default function ContratoObrasHhPage() {
   const lancSelecionado = lancamentos.find(l => l.id === revisaoId) ?? lancAtual
   const isRevisaoAtual = lancamentos.length === 0 || revisaoId === lancAtual?.id
 
-  const podeEditar = pode('acordos.obras.hh.lancar', {
+  const fechada = contrato?.hh_fechada_em != null
+  const podeEditar = !fechada && pode('acordos.obras.hh.lancar', {
     ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
   })
+  const podeFechar = pode('acordos.obras.hh.lancar', {
+    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
+  })
+  const podeReabrir = pode('acordos.obras.reabrir')
+
+  async function handleFechar() {
+    setFecharLoading(true); setFecharErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/${id}/fechar`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || json.error) { setFecharErro(json.error ?? 'Erro ao fechar a Obra'); return }
+      setConfirmFechar(false)
+      await fetchData()
+    } finally { setFecharLoading(false) }
+  }
+
+  async function handleReabrir(motivo: string) {
+    setReabrirLoading(true); setReabrirErro(null)
+    try {
+      const res = await fetch(`/api/acordos/hh/${id}/reabrir`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motivo }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setReabrirErro(json.error ?? 'Erro ao reabrir a Obra'); return }
+      setConfirmReabrir(false)
+      await fetchData()
+    } finally { setReabrirLoading(false) }
+  }
 
   const realizadosMap = useMemo(
     () => new Map((contrato?.realizados ?? []).map(r => [`${r.ano}-${r.mes}`, r.hh_realizado])),
@@ -243,7 +284,11 @@ export default function ContratoObrasHhPage() {
     <div className="flex h-full flex-col overflow-hidden bg-gray-50">
       {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 border-b bg-white px-6 py-3 shadow-sm flex-wrap">
-        <button onClick={() => router.push('/acordos/hh?tab=obras')} className="flex items-center gap-1 text-gray-500 hover:text-gray-700 flex-shrink-0">
+        <button
+          onClick={() => { if (modo !== 'leitura') handleCancelarEdicao(); else router.push('/acordos/hh?tab=obras') }}
+          className="flex items-center gap-1 text-gray-500 hover:text-gray-700 flex-shrink-0"
+          title={modo !== 'leitura' ? 'Voltar ao contrato' : 'Voltar à lista'}
+        >
           <ArrowLeft size={18} />
         </button>
         <div className="min-w-0">
@@ -294,8 +339,36 @@ export default function ContratoObrasHhPage() {
               )}
             </>
           )}
+          <button onClick={() => setShowHistorico(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-[11px] font-medium text-gray-600 hover:bg-gray-100">
+            <History size={14} />
+            Histórico
+          </button>
+          {!fechada && modo === 'leitura' && podeFechar && (
+            <button onClick={() => setConfirmFechar(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-[11px] font-medium text-gray-600 hover:bg-gray-100">
+              Fechar Obra
+            </button>
+          )}
+          {fechada && podeReabrir && (
+            <button onClick={() => { setReabrirErro(null); setConfirmReabrir(true) }}
+              className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-[11px] font-semibold text-white hover:bg-amber-700">
+              Reabrir Obra
+            </button>
+          )}
         </div>
       </div>
+
+      {fechada && (
+        <div className="mx-6 mt-3 rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-[11px] text-gray-700 flex items-center gap-2">
+          <span className="font-semibold">Obra fechada</span>
+          <span>
+            em {contrato?.hh_fechada_em ? new Date(contrato.hh_fechada_em).toLocaleDateString('pt-BR') : '–'}
+            {contrato?.hh_fechada_por_nome ? ` por ${contrato.hh_fechada_por_nome}` : ''} — os lançamentos estão consolidados e não podem mais ser ajustados.
+            {podeReabrir ? ' Use "Reabrir Obra" para editar novamente.' : ''}
+          </span>
+        </div>
+      )}
 
       {/* ── Conteúdo ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -659,6 +732,41 @@ export default function ContratoObrasHhPage() {
           </div>
         )}
       </div>
+
+      {confirmFechar && (
+        <ConfirmDialog
+          open
+          title="Fechar Obra"
+          message="Isso consolida os lançamentos desta Obra — nenhum ajuste poderá ser feito até que ela seja reaberta. Confirmar o fechamento?"
+          variant="warning"
+          confirmLabel="Fechar Obra"
+          loading={fecharLoading}
+          error={fecharErro}
+          onConfirm={handleFechar}
+          onClose={() => setConfirmFechar(false)}
+        />
+      )}
+      {confirmReabrir && (
+        <ConfirmDialog
+          open
+          title="Reabrir Obra"
+          message="Explique o motivo da reabertura — ficará registrado no histórico."
+          variant="warning"
+          confirmLabel="Reabrir Obra"
+          input={{ label: 'Justificativa', placeholder: 'Motivo da reabertura...', required: true, multiline: true }}
+          loading={reabrirLoading}
+          error={reabrirErro}
+          onConfirm={handleReabrir}
+          onClose={() => setConfirmReabrir(false)}
+        />
+      )}
+      <HistoricoFaturamentoModal
+        open={showHistorico}
+        onClose={() => setShowHistorico(false)}
+        tipo="obras"
+        itemId={Number(id)}
+        titulo={`Obra ${contrato?.indice ?? ''}`}
+      />
     </div>
   )
 }

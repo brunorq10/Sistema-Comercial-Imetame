@@ -48,6 +48,8 @@ export interface ContratoFab {
   data_inicio: string | null
   data_fim: string | null
   tem_itens: boolean
+  hh_fechada_em: string | null
+  hh_fechada_por_nome: string | null
   hh_orcado: number | null
   hh_previsto: number | null
   hh_realizado: number | null
@@ -83,6 +85,7 @@ export const FAB_CONTRATO_INCLUDE = {
   cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
   cliente_final: { select: { id: true, nome: true } },
   responsavel:   { select: { id: true, nome: true } },
+  quemFechouHh:  { select: { nome: true } },
   fabricacao_itens: {
     where: { deleted_at: null },
     orderBy: { ordem: 'asc' },
@@ -133,6 +136,8 @@ export function mapContratoFab(c: ContratoComItens): ContratoFab {
     data_inicio: c.data_inicio?.toISOString() ?? null,
     data_fim:    c.data_fim?.toISOString()    ?? null,
     tem_itens: temItens,
+    hh_fechada_em: c.hh_fechada_em?.toISOString() ?? null,
+    hh_fechada_por_nome: c.quemFechouHh?.nome ?? null,
     hh_orcado:    hhOrcado    > 0 ? hhOrcado    : null,
     hh_previsto:  hhPrevisto  > 0 ? hhPrevisto  : null,
     hh_realizado: hhRealizado > 0 ? hhRealizado : null,
