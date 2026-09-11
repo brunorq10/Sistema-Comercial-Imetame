@@ -141,6 +141,8 @@ export async function GET(req: NextRequest) {
     const hhPlanejado   = lancamento ? lancamento.meses.reduce((s, m) => s + (m.hh_planejado ?? 0), 0) : null
     const hhRealizado   = c.hh_realizados.length > 0
       ? c.hh_realizados.reduce((s, r) => s + r.hh_realizado, 0) : null
+    const hhExtraRealizado = c.hh_realizados.length > 0
+      ? c.hh_realizados.reduce((s, r) => s + Number(r.horas_extras ?? 0), 0) : null
 
     const valorOrcado = c.subindices.reduce((acc, s) =>
       acc + MESES.reduce((b, m) => b + Number((s as Record<string, unknown>)[m] ?? 0), 0), 0)
@@ -161,6 +163,7 @@ export async function GET(req: NextRequest) {
       hh_previsto:  hhPrevisto,
       hh_planejado: hhPlanejado,
       hh_realizado: hhRealizado,
+      hh_extra_realizado: hhExtraRealizado,
       lancamento_atual: lancamento ? {
         id: lancamento.id, versao: lancamento.versao,
         data_inicio: lancamento.data_inicio.toISOString(),
@@ -170,7 +173,11 @@ export async function GET(req: NextRequest) {
         criador: (lancamento as typeof lancamento & { criador: { nome: string } }).criador.nome,
         meses: lancamento.meses,
       } : null,
-      realizados: c.hh_realizados,
+      realizados: c.hh_realizados.map((r) => ({
+        id: r.id, mes: r.mes, ano: r.ano, hh_realizado: r.hh_realizado, observacoes: r.observacoes,
+        horas_normais: r.horas_normais != null ? Number(r.horas_normais) : null,
+        horas_extras: r.horas_extras != null ? Number(r.horas_extras) : null,
+      })),
       parada_hh_previsto: null as number | null, parada_hh_realizado: null as number | null,
       parada_pct_real_prev: null as number | null, parada_fin_orcado_rs_hh: null as number | null,
       parada_fin_prev_rs_hh: null as number | null, parada_fin_real_rs_hh: null as number | null,

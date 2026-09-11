@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       id: true, numero: true, classificacao: true, cidade: true, estado: true, escopo: true,
       cliente: { select: { id: true, nome: true } },
       cliente_final: { select: { id: true, nome: true } },
+      orcamentista: { select: { nome: true } },
       propostas_comerciais: {
         orderBy: { versao: 'desc' },
         take: 1,
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest) {
         cidade: s.cidade,
         estado: s.estado,
         escopo: s.escopo,
+        orcamentista_nome: s.orcamentista?.nome ?? null,
         proposta_comercial_id: com.id,
         data_prevista_inicio_execucao: com.proposta_tecnica?.data_prevista_inicio_execucao?.toISOString() ?? null,
         data_prevista_fim_execucao: com.proposta_tecnica?.data_prevista_fim_execucao?.toISOString() ?? null,

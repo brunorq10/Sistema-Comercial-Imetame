@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { mesKey, resumoPorClassificacaoOrigem, CLASSIFICACAO_LABEL, type CenarioLinha, type MesRef, type TotalMes, type ClassificacaoCenario } from '@/lib/cenario'
 
@@ -37,6 +37,28 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
   const resumo = useMemo(() => resumoPorClassificacaoOrigem(linhas, periodo), [linhas, periodo])
   const maxTotal = useMemo(() => Math.max(...totais.map((t) => t.total), 1), [totais])
 
+  // Gráfico preenche a sobra de altura disponível no container — a posição da
+  // linha do gráfico independe da própria altura dele, então uma medição já
+  // converge corretamente (recalcula só quando o container muda de tamanho).
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRowRef = useRef<HTMLTableRowElement>(null)
+  const [chartH, setChartH] = useState(180)
+
+  useEffect(() => {
+    const container = containerRef.current
+    const chartRow = chartRowRef.current
+    if (!container || !chartRow) return
+    const recalc = () => {
+      const topRow = chartRow.getBoundingClientRect().top - container.getBoundingClientRect().top
+      const disponivel = container.clientHeight - topRow - 22 /* rótulos dos meses */ - 8 /* folga */
+      setChartH(Math.max(120, Math.round(disponivel)))
+    }
+    recalc()
+    const ro = new ResizeObserver(recalc)
+    ro.observe(container)
+    return () => ro.disconnect()
+  }, [])
+
   if (periodo.length === 0) {
     return (
       <div className="border border-gray-200 rounded-md p-10 text-center text-gray-400 text-[12px]">
@@ -53,7 +75,7 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
     resumo.filter((r) => r.origem === origem).reduce((s, r) => s + (r.totais.get(key) ?? 0), 0)
 
   return (
-    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: 620 }}>
+    <div ref={containerRef} className="border border-gray-200 rounded-md" style={{ overflow: 'auto', height: '100%' }}>
       <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: FROZEN_WIDTH + periodo.length * MES_W }}>
         <colgroup>
           <col style={{ width: W.classificacao }} /><col style={{ width: W.origem }} />
@@ -97,7 +119,11 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
                 {periodo.map((m) => {
                   const v = r.totais.get(mesKey(m)) ?? 0
                   return (
-                    <td key={mesKey(m)} className={cn('px-1 py-[5px] text-center text-[10px] border-b border-gray-100', v > 0 ? 'font-semibold text-gray-700' : 'text-gray-300')}>
+                    <td
+                      key={mesKey(m)}
+                      className={cn('px-1 py-[5px] text-center text-[10px] border-b border-gray-100', v > 0 ? 'font-semibold' : 'text-gray-300')}
+                      style={v > 0 ? { color: ORIGEM_COR[r.origem] } : undefined}
+                    >
                       {v > 0 ? v.toLocaleString('pt-BR') : '—'}
                     </td>
                   )
@@ -131,8 +157,8 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
             ))}
           </tr>
 
-          {/* ── Gráfico de barras (mesma grade, mesmo scroll) ── */}
-          <tr>
+          {/* ── Gráfico de barras (mesma grade, mesmo scroll) — preenche a sobra de altura ── */}
+          <tr ref={chartRowRef}>
             <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.classificacao }} colSpan={2}>
               <div className="flex flex-col gap-1 py-1">
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Contratos</span>
@@ -140,13 +166,12 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
               </div>
             </td>
             {totais.map((t) => {
-              const hMax = 110
-              const hContratos = Math.round((t.contratos / maxTotal) * hMax)
-              const hPropostas = Math.round((t.propostas / maxTotal) * hMax)
+              const hContratos = Math.round((t.contratos / maxTotal) * chartH)
+              const hPropostas = Math.round((t.propostas / maxTotal) * chartH)
               return (
-                <td key={mesKey(t)} className="px-1 py-1 align-bottom relative" style={{ height: hMax + 28 }}>
-                  <div className="relative mx-auto" style={{ width: MES_W - 16, height: hMax }}>
-                    <div className="absolute left-0 right-0 flex flex-col justify-end" style={{ bottom: 0, height: hMax }}>
+                <td key={mesKey(t)} className="px-1 py-1 align-bottom relative" style={{ height: chartH + 28 }}>
+                  <div className="relative mx-auto" style={{ width: MES_W - 16, height: chartH }}>
+                    <div className="absolute left-0 right-0 flex flex-col justify-end" style={{ bottom: 0, height: chartH }}>
                       {t.propostas > 0 && <div style={{ height: hPropostas, background: '#E8A838' }} title={`Propostas: ${t.propostas}`} />}
                       {t.contratos > 0 && <div style={{ height: hContratos, background: '#2D7DD2' }} title={`Contratos: ${t.contratos}`} />}
                     </div>

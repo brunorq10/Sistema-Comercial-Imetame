@@ -16,7 +16,7 @@ interface Lancamento {
   id: number; versao: number; data_inicio: string; data_fim: string
   motivo: string | null; created_at: string; criador: string; meses: MesLancamento[]
 }
-interface Realizado { id: number; mes: number; ano: number; hh_realizado: number }
+interface Realizado { id: number; mes: number; ano: number; hh_realizado: number; horas_normais: number | null; horas_extras: number | null }
 interface ContratoInfo {
   id: number; indice: string; num_os: string | null; classificacao: string | null
   cliente: { id: number; nome: string }; cliente_final: { id: number; nome: string } | null
@@ -125,6 +125,10 @@ export default function ContratoObrasHhPage() {
     () => new Map((contrato?.realizados ?? []).map(r => [`${r.ano}-${r.mes}`, r.hh_realizado])),
     [contrato],
   )
+  const realizadosExtraMap = useMemo(
+    () => new Map((contrato?.realizados ?? []).map(r => [`${r.ano}-${r.mes}`, r.horas_extras])),
+    [contrato],
+  )
 
   // ── Meses ativos na visão atual (persistidos ou em edição de Previsto/Planejado) ──
   const mesesAtivos = modo === 'previsto_planejado'
@@ -137,30 +141,35 @@ export default function ContratoObrasHhPage() {
     const previsto = modo === 'previsto_planejado' ? (Number(editPrevisto[key]) || 0) : (persistido?.hh_previsto ?? 0)
     const planejado = modo === 'previsto_planejado' ? (Number(editPlanejado[key]) || 0) : (persistido?.hh_planejado ?? 0)
     const realizado = realizadosMap.get(key) ?? null
-    return { mes, ano, label: fmtMes(mes, ano), previsto, planejado, realizado }
-  }), [mesesAtivos, lancSelecionado, modo, editPrevisto, editPlanejado, realizadosMap])
+    const extra = realizadosExtraMap.get(key) ?? null
+    return { mes, ano, label: fmtMes(mes, ano), previsto, planejado, realizado, extra }
+  }), [mesesAtivos, lancSelecionado, modo, editPrevisto, editPlanejado, realizadosMap, realizadosExtraMap])
 
   const totPrev = mesData.reduce((s, m) => s + m.previsto, 0)
   const totPlan = mesData.reduce((s, m) => s + m.planejado, 0)
   const totReal = mesData.some(m => m.realizado != null) ? mesData.reduce((s, m) => s + (m.realizado ?? 0), 0) : null
+  const totExtra = mesData.some(m => m.extra != null) ? mesData.reduce((s, m) => s + (m.extra ?? 0), 0) : null
 
   const pctPlanPrev = totPrev > 0 ? (totPlan / totPrev) * 100 : null
   const pctRealPrev = totPrev > 0 && totReal != null ? (totReal / totPrev) * 100 : null
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
+  const pctExtraReal = totReal != null && totReal > 0 && totExtra != null ? (totExtra / totReal) * 100 : null
 
   const cumPrev = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlan = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.planejado] }, [])
   const cumReal = mesData.reduce<(number | null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length - 1] ?? 0) : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
+  const cumExtra = mesData.reduce<(number | null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length - 1] ?? 0) : 0; return [...acc, m.extra != null ? l + m.extra : null] }, [])
 
   const tabelaRows = mesData.map((m, i) => {
     const prevAcum = cumPrev[i] ?? 0
     const planAcum = cumPlan[i] ?? 0
     const realAcum = cumReal[i] ?? null
+    const extraAcum = cumExtra[i] ?? null
     const pctRealMes  = m.previsto > 0 && m.realizado != null ? (m.realizado / m.previsto) * 100 : null
     const pctRealAcum = prevAcum > 0 && realAcum != null ? (realAcum / prevAcum) * 100 : null
     const desvPrev = m.previsto > 0 && m.realizado != null ? ((m.realizado - m.previsto)  / m.previsto)  * 100 : null
     const desvPlan = m.planejado > 0 && m.realizado != null ? ((m.realizado - m.planejado) / m.planejado) * 100 : null
-    return { ...m, prevAcum, planAcum, realAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
+    return { ...m, prevAcum, planAcum, realAcum, extraAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
   })
 
   // ── Ações: entrar/sair dos modos de edição ──────────────────────────────────
@@ -358,7 +367,7 @@ export default function ContratoObrasHhPage() {
             ) : (
               <>
                 {/* ── KPI Cards ── */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
                     <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                       <svg className="w-6 h-6" fill="none" stroke="#185FA5" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -434,6 +443,31 @@ export default function ContratoObrasHhPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Card 4 — Horas Extras */}
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6" fill="none" stroke="#EA580C" strokeWidth={1.8} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-normal text-gray-500 mb-1">Horas Extras</p>
+                      <p className="text-[30px] font-bold text-[#EA580C] leading-none tracking-tight">{totExtra != null ? loc(totExtra) : '—'}</p>
+                      <p className="text-[11px] text-gray-400 mt-1.5">{totExtra != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}</p>
+                      {pctExtraReal != null && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Realizado</span>
+                            <span className="text-[11px] font-bold text-[#EA580C]">{pctExtraReal.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-[#EA580C]" style={{ width: `${Math.min(pctExtraReal, 100)}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* ── Gráfico: Comportamento do HH ── */}
@@ -457,9 +491,11 @@ export default function ContratoObrasHhPage() {
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado</th>
+                          <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Horas Extras</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto (Acum.)</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado (Acum.)</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado (Acum.)</th>
+                          <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Horas Extras (Acum.)</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Prev. x Real)</th>
                           <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Plan. x Real)</th>
                         </tr>
@@ -500,11 +536,17 @@ export default function ContratoObrasHhPage() {
                               <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcPrev ?? '#9CA3AF' }}>
                                 {row.realizado != null ? loc(row.realizado) : <span className="text-slate-300 font-normal">—</span>}
                               </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-[#EA580C]">
+                                {row.extra != null ? loc(Math.round(row.extra)) : <span className="text-slate-300 font-normal">—</span>}
+                              </td>
 
                               <td className="px-4 py-2.5 text-right text-[#185FA5]">{loc(row.prevAcum)}</td>
                               <td className="px-4 py-2.5 text-right text-[#BA7517]">{loc(row.planAcum)}</td>
                               <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcAcum ?? '#9CA3AF' }}>
                                 {row.realAcum != null ? loc(row.realAcum) : <span className="text-slate-300 font-normal">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-[#EA580C]">
+                                {row.extraAcum != null ? loc(Math.round(row.extraAcum)) : <span className="text-slate-300 font-normal">—</span>}
                               </td>
                               <td className="px-4 py-2.5 text-right font-semibold" style={{ color: dcPrev }}>
                                 {row.desvPrev != null ? `${row.desvPrev > 0 ? '+' : ''}${row.desvPrev.toFixed(1)}%` : <span className="text-slate-300 font-normal">—</span>}
@@ -524,6 +566,8 @@ export default function ContratoObrasHhPage() {
                           <td className="px-4 py-3 text-right" style={{ color: pctRealPrev != null ? barColors(pctRealPrev).text : '#9CA3AF' }}>
                             {totReal != null ? loc(totReal) : '—'}
                           </td>
+                          <td className="px-4 py-3 text-right text-[#EA580C]">{totExtra != null ? loc(Math.round(totExtra)) : '—'}</td>
+                          <td className="px-4 py-3 text-right text-gray-400">—</td>
                           <td className="px-4 py-3 text-right text-gray-400">—</td>
                           <td className="px-4 py-3 text-right text-gray-400">—</td>
                           <td className="px-4 py-3 text-right text-gray-400">—</td>

@@ -17,6 +17,7 @@ interface PropostaDisponivel {
   cidade: string | null
   estado: string | null
   escopo: string | null
+  orcamentista_nome: string | null
   proposta_comercial_id: number
   data_prevista_inicio_execucao: string | null
   data_prevista_fim_execucao: string | null
@@ -43,6 +44,8 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
   const [escopo, setEscopo] = useState('')
+  const [orcamentistaNome, setOrcamentistaNome] = useState('')
+  const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
   const [classificacao, setClassificacao] = useState<ClassificacaoCenario>('OBRAS')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -55,6 +58,11 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
   useEffect(() => {
     if (!open) return
     setEtapa(1); setSelecionada(null); setBusca(''); setError(null)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/users/orcamentistas').then((r) => r.json()).then((j) => setOrcamentistas(j.data ?? []))
   }, [open])
 
   useEffect(() => {
@@ -77,6 +85,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
     setCidade(p.cidade ?? '')
     setEstado(p.estado ?? '')
     setEscopo(p.escopo ?? '')
+    setOrcamentistaNome(p.orcamentista_nome ?? '')
     setClassificacao(p.classificacao)
     setDataInicio(p.data_prevista_inicio_execucao?.substring(0, 10) ?? '')
     setDataFim(p.data_prevista_fim_execucao?.substring(0, 10) ?? '')
@@ -106,6 +115,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
           cidade: cidade.trim() || undefined,
           estado: estado.trim() || undefined,
           escopo: escopo.trim() || undefined,
+          orcamentista_nome: orcamentistaNome.trim() || undefined,
           classificacao,
           data_inicio: dataInicio,
           data_fim: dataFim,
@@ -194,7 +204,7 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
             <Field label="Cliente"><Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} /></Field>
             <Field label="Cliente Final"><Input value={clienteFinalNome} onChange={(e) => setClienteFinalNome(e.target.value)} /></Field>
           </div>
-          <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+          <div className="grid grid-cols-4 gap-2.5 mb-2.5">
             <Field label="Cidade"><Input value={cidade} onChange={(e) => setCidade(e.target.value)} /></Field>
             <Field label="UF"><Input value={estado} maxLength={2} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></Field>
             <Field label="Classificação">
@@ -202,6 +212,12 @@ export function NovoLancamentoCenarioModal({ open, onClose, onSuccess }: Props) 
                 {Object.entries(CLASSIFICACAO_LABEL).map(([valor, label]) => (
                   <option key={valor} value={valor}>{label}</option>
                 ))}
+              </Select>
+            </Field>
+            <Field label="Orçamentista">
+              <Select value={orcamentistaNome} onChange={(e) => setOrcamentistaNome(e.target.value)}>
+                <option value="">—</option>
+                {orcamentistas.map((o) => <option key={o.id} value={o.nome}>{o.nome}</option>)}
               </Select>
             </Field>
           </div>

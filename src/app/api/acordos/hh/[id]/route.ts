@@ -36,6 +36,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       data_fim:    contrato.data_fim?.toISOString()    ?? null,
       realizados: contrato.hh_realizados.map(r => ({
         id: r.id, mes: r.mes, ano: r.ano, hh_realizado: r.hh_realizado,
+        horas_normais: r.horas_normais != null ? Number(r.horas_normais) : null,
+        horas_extras: r.horas_extras != null ? Number(r.horas_extras) : null,
       })),
     },
     error: null,

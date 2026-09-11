@@ -40,7 +40,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const linhasRetrato: CenarioLinha[] = retrato.lancamentos.map((l) => ({
     id: l.id, proposta_comercial_id: l.proposta_comercial_id,
     cliente_nome: l.cliente_nome, cliente_final_nome: l.cliente_final_nome,
-    cidade: l.cidade, estado: l.estado, escopo: l.escopo,
+    cidade: l.cidade, estado: l.estado, escopo: l.escopo, orcamentista_nome: l.orcamentista_nome,
     classificacao: l.classificacao as 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS', origem: l.origem as 'CONTRATO' | 'PROPOSTA',
     data_inicio: l.data_inicio, data_fim: l.data_fim, efetivo: l.efetivo, efetivo_mensal: null, observacao: l.observacao,
   }))

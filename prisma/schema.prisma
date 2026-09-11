@@ -546,6 +546,9 @@ model HhRealizado {
   mes          Int
   ano          Int
   hh_realizado Int
+  // Soma do mês — mantidos em sincronia com HhRealizadoDia (mesma lógica de hh_realizado).
+  horas_normais Decimal? @db.Decimal(10, 2)
+  horas_extras  Decimal? @db.Decimal(10, 2)
   observacoes  String?
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
@@ -1419,6 +1422,7 @@ model CenarioLancamento {
   cidade                 String?
   estado                 String?       @db.VarChar(2)
   escopo                 String?
+  orcamentista_nome      String?
   classificacao          Classificacao
   data_inicio            DateTime
   data_fim               DateTime
@@ -1490,6 +1494,7 @@ model CenarioRetratoLancamento {
   cidade                String?
   estado                String?       @db.VarChar(2)
   escopo                String?
+  orcamentista_nome     String?
   classificacao         Classificacao
   origem                String        // 'CONTRATO' | 'PROPOSTA' — congelado no momento do retrato
   data_inicio           DateTime

@@ -16,6 +16,7 @@ interface LancamentoItem {
   cidade: string | null
   estado: string | null
   escopo: string | null
+  orcamentista_nome: string | null
   classificacao: ClassificacaoCenario
   origem: 'CONTRATO' | 'PROPOSTA'
   data_inicio: string
@@ -140,6 +141,8 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
   const [cidade, setCidade] = useState(item.cidade ?? '')
   const [estado, setEstado] = useState(item.estado ?? '')
   const [escopo, setEscopo] = useState(item.escopo ?? '')
+  const [orcamentistaNome, setOrcamentistaNome] = useState(item.orcamentista_nome ?? '')
+  const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
   const [classificacao, setClassificacao] = useState<ClassificacaoCenario>(item.classificacao)
   const [dataInicio, setDataInicio] = useState(item.data_inicio.substring(0, 10))
   const [dataFim, setDataFim] = useState(item.data_fim.substring(0, 10))
@@ -148,6 +151,10 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
   const [observacao, setObservacao] = useState(item.observacao ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/users/orcamentistas').then((r) => r.json()).then((j) => setOrcamentistas(j.data ?? []))
+  }, [])
 
   const handleSalvar = async () => {
     if (!clienteNome.trim()) { setError('Informe o cliente'); return }
@@ -166,6 +173,7 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
           cidade: cidade.trim() || null,
           estado: estado.trim() || null,
           escopo: escopo.trim() || null,
+          orcamentista_nome: orcamentistaNome.trim() || null,
           classificacao,
           data_inicio: dataInicio,
           data_fim: dataFim,
@@ -193,7 +201,7 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
         <Field label="Cliente"><Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} /></Field>
         <Field label="Cliente Final"><Input value={clienteFinalNome} onChange={(e) => setClienteFinalNome(e.target.value)} /></Field>
       </div>
-      <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+      <div className="grid grid-cols-4 gap-2.5 mb-2.5">
         <Field label="Cidade"><Input value={cidade} onChange={(e) => setCidade(e.target.value)} /></Field>
         <Field label="UF"><Input value={estado} maxLength={2} onChange={(e) => setEstado(e.target.value.toUpperCase())} /></Field>
         <Field label="Classificação">
@@ -201,6 +209,12 @@ function LancamentoEditForm({ item, onVoltar, onSalvo }: { item: LancamentoItem;
             {Object.entries(CLASSIFICACAO_LABEL).map(([valor, label]) => (
               <option key={valor} value={valor}>{label}</option>
             ))}
+          </Select>
+        </Field>
+        <Field label="Orçamentista">
+          <Select value={orcamentistaNome} onChange={(e) => setOrcamentistaNome(e.target.value)}>
+            <option value="">—</option>
+            {orcamentistas.map((o) => <option key={o.id} value={o.nome}>{o.nome}</option>)}
           </Select>
         </Field>
       </div>

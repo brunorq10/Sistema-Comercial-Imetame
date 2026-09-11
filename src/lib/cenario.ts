@@ -23,6 +23,7 @@ export interface CenarioLinha {
   cidade: string | null
   estado: string | null
   escopo: string | null
+  orcamentista_nome: string | null
   classificacao: ClassificacaoCenario
   origem: OrigemCenario
   data_inicio: Date
@@ -195,6 +196,7 @@ export function toLinha(l: any): CenarioLinha {
     cidade: l.cidade,
     estado: l.estado,
     escopo: l.escopo,
+    orcamentista_nome: l.orcamentista_nome ?? null,
     classificacao: l.classificacao,
     origem: computeOrigem(l.proposta_comercial.resultado),
     data_inicio: l.data_inicio,

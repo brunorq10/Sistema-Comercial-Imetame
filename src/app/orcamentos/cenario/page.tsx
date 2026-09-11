@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -11,13 +11,13 @@ import { CenarioResumoTable } from '@/components/cenario/CenarioResumoTable'
 import { NovoLancamentoCenarioModal } from '@/components/forms/NovoLancamentoCenarioModal'
 import { GerenciarLancamentosCenarioModal } from '@/components/forms/GerenciarLancamentosCenarioModal'
 import { RetratosCenarioModal } from '@/components/forms/RetratosCenarioModal'
-import type { CenarioLinha, IndicadoresCenario, MesRef, TotalMes } from '@/lib/cenario'
+import { totaisPorMes, type CenarioLinha, type ClassificacaoCenario, type IndicadoresCenario, type MesRef, type TotalMes } from '@/lib/cenario'
 
 interface CenarioData {
   capacidade: number
   lancamentos: Array<{
     id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null
-    cidade: string | null; estado: string | null; escopo: string | null
+    cidade: string | null; estado: string | null; escopo: string | null; orcamentista_nome: string | null
     classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'
     data_inicio: string; data_fim: string; efetivo: number; efetivo_mensal: Record<string, number> | null; observacao: string | null
   }>
@@ -35,6 +35,7 @@ export default function CenarioPage() {
   const [data, setData] = useState<CenarioData | null>(null)
   const [loading, setLoading] = useState(true)
   const [aba, setAba] = useState<'detalhamento' | 'resumo'>('detalhamento')
+  const [filtroClassificacao, setFiltroClassificacao] = useState<ClassificacaoCenario | null>(null)
 
   const [modalNovo, setModalNovo] = useState(false)
   const [modalGerenciar, setModalGerenciar] = useState(false)
@@ -48,11 +49,20 @@ export default function CenarioPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const linhasFiltradas = useMemo(() => {
+    const todas = data ? toLinhas(data.lancamentos) : []
+    return filtroClassificacao ? todas.filter((l) => l.classificacao === filtroClassificacao) : todas
+  }, [data, filtroClassificacao])
+
+  const totaisFiltrados = useMemo(() => {
+    if (!data) return []
+    return filtroClassificacao ? totaisPorMes(linhasFiltradas, data.periodo, data.capacidade) : data.totais
+  }, [data, filtroClassificacao, linhasFiltradas])
+
   return (
-    <div className="h-full overflow-y-auto p-4">
+    <div className="flex flex-col h-full p-4">
       <PageHeader
         title="Cenários"
-        subtitle="Projeção de atividades futuras — carga de efetivo comprometida mês a mês (contratos + propostas em orçamentação)."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setModalRetratos(true)}>Retratos</Button>
@@ -66,7 +76,7 @@ export default function CenarioPage() {
         }
       />
 
-      <div className="flex gap-1 border-b border-gray-200 mb-3">
+      <div className="flex-shrink-0 flex gap-1 border-b border-gray-200 mb-3">
         <button
           onClick={() => setAba('detalhamento')}
           className={cn(
@@ -103,21 +113,25 @@ export default function CenarioPage() {
           </div>
         </>
       ) : (
-        <>
-          <CenarioCards ind={data.indicadores} />
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-shrink-0">
+            <CenarioCards ind={data.indicadores} filtro={filtroClassificacao} onFiltroChange={setFiltroClassificacao} />
+          </div>
+          <div className="flex-1 min-h-0">
           {aba === 'detalhamento' ? (
             <CenarioGanttTable
-              linhas={toLinhas(data.lancamentos)}
+              linhas={linhasFiltradas}
               periodo={data.periodo}
-              totais={data.totais}
+              totais={totaisFiltrados}
               editavel={canEditarCenario}
               onEditar={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
               onExcluir={(l) => { setGerenciarFocoId(l.id); setModalGerenciar(true) }}
             />
           ) : (
-            <CenarioResumoTable linhas={toLinhas(data.lancamentos)} periodo={data.periodo} totais={data.totais} />
+            <CenarioResumoTable linhas={linhasFiltradas} periodo={data.periodo} totais={totaisFiltrados} />
           )}
-        </>
+          </div>
+        </div>
       )}
 
       <NovoLancamentoCenarioModal open={modalNovo} onClose={() => setModalNovo(false)} onSuccess={fetchData} />

@@ -114,21 +114,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Mantém HhRealizado (mensal) em sincronia — soma dos dias do mês,
     // arredondada à hora inteira (mesmo grão que a coluna sempre teve).
+    // Horas normais/extras são mantidas separadamente pelo mesmo mecanismo,
+    // para alimentar o indicador e as colunas de Horas Extras.
     const inicioMes = new Date(Date.UTC(ano, mes - 1, 1))
     const fimMes = new Date(Date.UTC(ano, mes, 1))
     const diasDoMes = await tx.hhRealizadoDia.findMany({
       where: { contrato_id: contratoId, data: { gte: inicioMes, lt: fimMes } },
-      select: { hh_total: true },
+      select: { hh_total: true, horas_normais: true, horas_extras: true },
     })
 
     if (diasDoMes.length === 0) {
       await tx.hhRealizado.deleteMany({ where: { contrato_id: contratoId, mes, ano } })
     } else {
       const somaMes = diasDoMes.reduce((acc, r) => acc + Number(r.hh_total), 0)
+      const somaNormais = diasDoMes.reduce((acc, r) => acc + Number(r.horas_normais ?? 0), 0)
+      const somaExtras = diasDoMes.reduce((acc, r) => acc + Number(r.horas_extras ?? 0), 0)
       await tx.hhRealizado.upsert({
         where: { contrato_id_mes_ano: { contrato_id: contratoId, mes, ano } },
-        create: { contrato_id: contratoId, mes, ano, hh_realizado: Math.round(somaMes), created_by: userId },
-        update: { hh_realizado: Math.round(somaMes) },
+        create: { contrato_id: contratoId, mes, ano, hh_realizado: Math.round(somaMes), horas_normais: somaNormais, horas_extras: somaExtras, created_by: userId },
+        update: { hh_realizado: Math.round(somaMes), horas_normais: somaNormais, horas_extras: somaExtras },
       })
     }
   })

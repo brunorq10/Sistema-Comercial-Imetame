@@ -10,7 +10,7 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 // Apenas Cliente/Cidade/Escopo ficam congeladas (sticky); as demais colunas de
 // identificação rolam junto com a linha do tempo.
 const W = {
-  cliente: 150, cidade: 110, escopo: 220, classificacao: 90,
+  cliente: 150, cidade: 110, escopo: 220, classificacao: 90, orcamentista: 130,
   origem: 90, inicio: 85, fim: 85, efetivo: 90,
 }
 const L = {
@@ -18,16 +18,11 @@ const L = {
   cidade: W.cliente,
   escopo: W.cliente + W.cidade,
 }
-const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.origem + W.inicio + W.fim + W.efetivo
+const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.orcamentista + W.origem + W.inicio + W.fim + W.efetivo
 const MES_W = 74
 
-// ── Limite de altura: cabeçalho + 10 linhas de lançamento + rodapé de totais.
-// Acima de 10 lançamentos, o wrapper passa a rolar verticalmente (barra de rolagem).
-const HEADER_H = 44
-const ROW_H = 26
-const VISIBLE_ROWS = 10
-const RODAPE_TOTAL_H = 26
-const MAX_HEIGHT = HEADER_H + VISIBLE_ROWS * ROW_H + RODAPE_TOTAL_H
+// ── Altura: acompanha a área disponível na tela (o wrapper do page.tsx já
+// reserva espaço para caber ~20 linhas de lançamento antes de precisar rolar).
 
 const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
 
@@ -64,11 +59,11 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
   const tdF = 'sticky z-[5] shadow-[2px_0_4px_rgba(0,0,0,0.05)]'
 
   return (
-    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', maxHeight: MAX_HEIGHT }}>
+    <div className="border border-gray-200 rounded-md" style={{ overflow: 'auto', height: '100%' }}>
       <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: ID_TOTAL_WIDTH + periodo.length * MES_W }}>
         <colgroup>
           <col style={{ width: W.cliente }} /><col style={{ width: W.cidade }} /><col style={{ width: W.escopo }} />
-          <col style={{ width: W.classificacao }} /><col style={{ width: W.origem }} /><col style={{ width: W.inicio }} />
+          <col style={{ width: W.classificacao }} /><col style={{ width: W.orcamentista }} /><col style={{ width: W.origem }} /><col style={{ width: W.inicio }} />
           <col style={{ width: W.fim }} /><col style={{ width: W.efetivo }} />
           {periodo.map((m) => <col key={mesKey(m)} style={{ width: MES_W }} />)}
         </colgroup>
@@ -80,6 +75,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
             <th className={cn(th, 'z-[30]')} style={{ top: 0, left: L.cidade }} rowSpan={2}>Cidade/UF</th>
             <th className={cn(th, 'z-[30] shadow-[2px_0_4px_rgba(0,0,0,0.08)]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
             <th className={th} rowSpan={2}>Classif.</th>
+            <th className={th} rowSpan={2}>Orçamentista</th>
             <th className={th} rowSpan={2}>Origem</th>
             <th className={th} rowSpan={2}>Início prev.</th>
             <th className={th} rowSpan={2}>Fim prev.</th>
@@ -127,6 +123,9 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                 <td className={cn(td, 'text-gray-600')}>
                   {CLASSIFICACAO_LABEL[l.classificacao]}
                 </td>
+                <td className={cn(td, 'text-gray-600')}>
+                  {l.orcamentista_nome ?? '—'}
+                </td>
                 <td className={td}>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: origemBg, color: origemCor }}>
                     {ORIGEM_LABEL[l.origem]}
@@ -168,7 +167,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
           {/* ── TOTAL COMPROMETIDO ── */}
           <tr>
             <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700 border-t-2 border-t-gray-300')} style={{ left: L.cliente }} colSpan={3}>TOTAL COMPROMETIDO</td>
-            <td className={cn(td, 'bg-gray-100 border-t-2 border-t-gray-300')} colSpan={5} />
+            <td className={cn(td, 'bg-gray-100 border-t-2 border-t-gray-300')} colSpan={6} />
             {totais.map((t) => (
               <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700 border-t-2 border-t-gray-300">
                 {t.total.toLocaleString('pt-BR')}

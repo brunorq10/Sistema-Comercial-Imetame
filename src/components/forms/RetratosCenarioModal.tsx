@@ -19,7 +19,7 @@ interface RetratoResumo {
 interface RetratoDetalhe {
   id: number; nome: string; observacao: string | null; created_at: string; autor: string
   capacidade: number
-  lancamentos: Array<{ id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null; cidade: string | null; estado: string | null; escopo: string | null; classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'; data_inicio: string; data_fim: string; efetivo: number; observacao: string | null }>
+  lancamentos: Array<{ id: number; proposta_comercial_id: number; cliente_nome: string; cliente_final_nome: string | null; cidade: string | null; estado: string | null; escopo: string | null; orcamentista_nome: string | null; classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'; data_inicio: string; data_fim: string; efetivo: number; observacao: string | null }>
   periodo: MesRef[]
   totais: TotalMes[]
   indicadores: IndicadoresCenario

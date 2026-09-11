@@ -37,7 +37,8 @@ export async function GET() {
       lancamentos: rows.filter((r) => r.proposta_comercial.resultado !== 'PERDEU').map((r) => ({
         id: r.id, proposta_comercial_id: r.proposta_comercial_id,
         cliente_nome: r.cliente_nome, cliente_final_nome: r.cliente_final_nome,
-        cidade: r.cidade, estado: r.estado, escopo: r.escopo, classificacao: r.classificacao,
+        cidade: r.cidade, estado: r.estado, escopo: r.escopo, orcamentista_nome: r.orcamentista_nome,
+        classificacao: r.classificacao,
         origem: computeOrigem(r.proposta_comercial.resultado),
         data_inicio: r.data_inicio.toISOString(), data_fim: r.data_fim.toISOString(),
         efetivo: r.efetivo, efetivo_mensal: (r.efetivo_mensal as Record<string, number> | null) ?? null,

@@ -25,6 +25,7 @@ interface ContratoHh {
   tem_lancamento: boolean
   valor_orcado: number | null; valor_faturado: number | null
   hh_previsto: number | null; hh_planejado: number | null; hh_realizado: number | null
+  hh_extra_realizado: number | null
   parada_hh_previsto: number | null; parada_hh_realizado: number | null
   parada_pct_real_prev: number | null
   parada_fin_orcado_rs_hh: number | null; parada_fin_prev_rs_hh: number | null; parada_fin_real_rs_hh: number | null
@@ -34,7 +35,7 @@ interface ContratoHh {
     motivo: string | null; created_at: string; criador: string
     meses: { mes: number; ano: number; hh_previsto: number | null; hh_planejado: number | null }[]
   } | null
-  realizados: { id: number; mes: number; ano: number; hh_realizado: number; observacoes: string | null }[]
+  realizados: { id: number; mes: number; ano: number; hh_realizado: number; observacoes: string | null; horas_normais: number | null; horas_extras: number | null }[]
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -563,17 +564,20 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const selecionados = applyFilters(contratos, filters)
 
   const mesData = useMemo(() => {
-    const map = new Map<string, { previsto: number; planejado: number; realizado: number | null; label: string }>()
+    const map = new Map<string, { previsto: number; planejado: number; realizado: number | null; extra: number | null; label: string }>()
     for (const c of selecionados) {
       if (!c.lancamento_atual) continue
       for (const { mes, ano } of gerarMeses(c.lancamento_atual.data_inicio.split('T')[0], c.lancamento_atual.data_fim.split('T')[0])) {
         const k = `${ano}-${String(mes).padStart(2,'0')}`
-        const ex = map.get(k) ?? { previsto: 0, planejado: 0, realizado: null, label: `${MESES_LABELS[mes-1]}/${String(ano).slice(2)}` }
+        const ex = map.get(k) ?? { previsto: 0, planejado: 0, realizado: null, extra: null, label: `${MESES_LABELS[mes-1]}/${String(ano).slice(2)}` }
         const mesL = c.lancamento_atual.meses.find(m => m.mes === mes && m.ano === ano)
         ex.previsto  += mesL?.hh_previsto  ?? 0
         ex.planejado += mesL?.hh_planejado ?? 0
         const r = c.realizados.find(r => r.mes === mes && r.ano === ano)
-        if (r) ex.realizado = (ex.realizado ?? 0) + r.hh_realizado
+        if (r) {
+          ex.realizado = (ex.realizado ?? 0) + r.hh_realizado
+          if (r.horas_extras != null) ex.extra = (ex.extra ?? 0) + r.horas_extras
+        }
         map.set(k, ex)
       }
     }
@@ -584,14 +588,18 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
   const totPlan = selecionados.reduce((s, c) => s + (c.hh_planejado ?? 0), 0)
   const totReal = selecionados.some(c => c.hh_realizado != null)
     ? selecionados.reduce((s, c) => s + (c.hh_realizado ?? 0), 0) : null
+  const totExtra = selecionados.some(c => c.hh_extra_realizado != null)
+    ? selecionados.reduce((s, c) => s + (c.hh_extra_realizado ?? 0), 0) : null
 
   const pctPlanPrev = totPrev > 0 ? (totPlan / totPrev) * 100 : null
   const pctRealPrev = totPrev > 0 && totReal != null ? (totReal / totPrev) * 100 : null
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
+  const pctExtraReal = totReal != null && totReal > 0 && totExtra != null ? (totExtra / totReal) * 100 : null
 
   const cumPrev = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlan = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length-1] : 0; return [...acc, l + m.planejado] }, [])
   const cumReal = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length-1] ?? 0) : 0; return [...acc, m.realizado != null ? l + m.realizado : null] }, [])
+  const cumExtra = mesData.reduce<(number|null)[]>((acc, m) => { const l = acc.length ? (acc[acc.length-1] ?? 0) : 0; return [...acc, m.extra != null ? l + m.extra : null] }, [])
 
   const loc = (n: number) => n.toLocaleString('pt-BR')
 
@@ -600,11 +608,12 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
     const prevAcum = cumPrev[i] ?? 0
     const planAcum = cumPlan[i] ?? 0
     const realAcum = cumReal[i] ?? null
+    const extraAcum = cumExtra[i] ?? null
     const pctRealMes  = m.previsto > 0 && m.realizado != null ? (m.realizado / m.previsto) * 100 : null
     const pctRealAcum = prevAcum > 0 && realAcum != null ? (realAcum / prevAcum) * 100 : null
     const desvPrev = m.previsto > 0 && m.realizado != null ? ((m.realizado - m.previsto)  / m.previsto)  * 100 : null
     const desvPlan = m.planejado > 0 && m.realizado != null ? ((m.realizado - m.planejado) / m.planejado) * 100 : null
-    return { ...m, prevAcum, planAcum, realAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
+    return { ...m, prevAcum, planAcum, realAcum, extraAcum, pctRealMes, pctRealAcum, desvPrev, desvPlan }
   })
 
   const hasData = selecionados.length > 0 && selecionados.some(c => c.tem_lancamento)
@@ -620,7 +629,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
       ) : (
         <>
           {/* ── KPI Cards ── */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-3">
 
             {/* Card 1 — HH Previsto */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
@@ -708,6 +717,35 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                 )}
               </div>
             </div>
+
+            {/* Card 4 — Horas Extras */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+              <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="#EA580C" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-normal text-gray-500 mb-1">Horas Extras</p>
+                <p className="text-[30px] font-bold text-[#EA580C] leading-none tracking-tight">
+                  {totExtra != null ? loc(totExtra) : '—'}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  {totExtra != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}
+                </p>
+                {pctExtraReal != null && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Realizado</span>
+                      <span className="text-[11px] font-bold text-[#EA580C]">{pctExtraReal.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-[#EA580C]" style={{ width: `${Math.min(pctExtraReal, 100)}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {mesData.length > 0 && (
@@ -727,9 +765,11 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Horas Extras</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Previsto (Acum.)</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Planejado (Acum.)</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Realizado (Acum.)</th>
+                        <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Horas Extras (Acum.)</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Prev. x Real)</th>
                         <th className="px-4 py-2 text-right font-semibold whitespace-nowrap">Desvio (Plan. x Real)</th>
                       </tr>
@@ -748,10 +788,16 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                             <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcPrev ?? '#9CA3AF' }}>
                               {row.realizado != null ? loc(row.realizado) : <span className="text-slate-300 font-normal">—</span>}
                             </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-[#EA580C]">
+                              {row.extra != null ? loc(Math.round(row.extra)) : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
                             <td className="px-4 py-2.5 text-right text-[#185FA5]">{loc(row.prevAcum)}</td>
                             <td className="px-4 py-2.5 text-right text-[#BA7517]">{loc(row.planAcum)}</td>
                             <td className="px-4 py-2.5 text-right font-bold" style={{ color: rcAcum ?? '#9CA3AF' }}>
                               {row.realAcum != null ? loc(row.realAcum) : <span className="text-slate-300 font-normal">—</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-[#EA580C]">
+                              {row.extraAcum != null ? loc(Math.round(row.extraAcum)) : <span className="text-slate-300 font-normal">—</span>}
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold" style={{ color: dcPrev }}>
                               {row.desvPrev != null
@@ -775,6 +821,8 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                         <td className="px-4 py-3 text-right" style={{ color: pctRealPrev != null ? barColors(pctRealPrev).text : '#9CA3AF' }}>
                           {totReal != null ? loc(totReal) : '—'}
                         </td>
+                        <td className="px-4 py-3 text-right text-[#EA580C]">{totExtra != null ? loc(Math.round(totExtra)) : '—'}</td>
+                        <td className="px-4 py-3 text-right text-gray-400">—</td>
                         <td className="px-4 py-3 text-right text-gray-400">—</td>
                         <td className="px-4 py-3 text-right text-gray-400">—</td>
                         <td className="px-4 py-3 text-right text-gray-400">—</td>

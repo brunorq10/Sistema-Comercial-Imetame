@@ -10,6 +10,7 @@ const schema = z.object({
   cidade: z.string().optional().nullable(),
   estado: z.string().max(2).optional().nullable(),
   escopo: z.string().optional().nullable(),
+  orcamentista_nome: z.string().optional().nullable(),
   classificacao: z.enum(['OBRAS', 'PARADAS', 'FABRICACOES', 'OLEO_GAS']).optional(),
   data_inicio: z.string().min(1).optional(),
   data_fim: z.string().min(1).optional(),
@@ -21,7 +22,7 @@ const schema = z.object({
 
 const CAMPO_LABELS: Record<string, string> = {
   cliente_nome: 'Cliente', cliente_final_nome: 'Cliente Final', cidade: 'Cidade', estado: 'Estado',
-  escopo: 'Escopo', classificacao: 'Classificação', data_inicio: 'Data Início', data_fim: 'Data Fim',
+  escopo: 'Escopo', orcamentista_nome: 'Orçamentista', classificacao: 'Classificação', data_inicio: 'Data Início', data_fim: 'Data Fim',
   efetivo: 'Efetivo', efetivo_mensal: 'Efetivo mensal', observacao: 'Observação',
 }
 
@@ -57,6 +58,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     cidade: d.cidade !== undefined ? d.cidade : atual.cidade,
     estado: d.estado !== undefined ? d.estado : atual.estado,
     escopo: d.escopo !== undefined ? d.escopo : atual.escopo,
+    orcamentista_nome: d.orcamentista_nome !== undefined ? d.orcamentista_nome : atual.orcamentista_nome,
     classificacao: novaClassificacao,
     data_inicio: novaDataInicio,
     data_fim: novaDataFim,
@@ -75,7 +77,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   // Histórico — diff campo a campo
   const fmt = (v: unknown) => v == null ? null : v instanceof Date ? v.toISOString().split('T')[0] : typeof v === 'object' ? JSON.stringify(v) : String(v)
-  const campos: (keyof typeof updateData)[] = ['cliente_nome', 'cliente_final_nome', 'cidade', 'estado', 'escopo', 'classificacao', 'data_inicio', 'data_fim', 'efetivo', 'efetivo_mensal', 'observacao']
+  const campos: (keyof typeof updateData)[] = ['cliente_nome', 'cliente_final_nome', 'cidade', 'estado', 'escopo', 'orcamentista_nome', 'classificacao', 'data_inicio', 'data_fim', 'efetivo', 'efetivo_mensal', 'observacao']
   const historico = campos
     .filter((c) => fmt((atual as Record<string, unknown>)[c]) !== fmt(updateData[c]))
     .map((c) => ({
