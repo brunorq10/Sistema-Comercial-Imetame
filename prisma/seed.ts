@@ -29,11 +29,11 @@ async function main() {
   // ── Clientes ─────────────────────────────────────────────────────────────────
   const [petrobras, vale, gerdau, csn, arcelormittal, samarco, usiminas] = await Promise.all([
     prisma.cliente.upsert({ where: { id: 1 }, update: {}, create: { id: 1, nome: 'Petrobras', cnpj: '33.000.167/0001-01', cidade: 'Vitória', estado: 'ES', ramo_atuacao: 'OLEO_GAS', created_by: 1 } }),
-    prisma.cliente.upsert({ where: { id: 2 }, update: {}, create: { id: 2, nome: 'Vale S.A.', cnpj: '33.592.510/0001-54', cidade: 'Itabira', estado: 'MG', ramo_atuacao: 'MINERACAO', created_by: 1 } }),
+    prisma.cliente.upsert({ where: { id: 2 }, update: {}, create: { id: 2, nome: 'Vale S.A.', cnpj: '33.592.510/0001-54', cidade: 'Itabira', estado: 'MG', ramo_atuacao: 'OUTROS', created_by: 1 } }),
     prisma.cliente.upsert({ where: { id: 3 }, update: {}, create: { id: 3, nome: 'Gerdau', cnpj: '92.690.783/0001-09', cidade: 'Ouro Branco', estado: 'MG', ramo_atuacao: 'SIDERURGIA', created_by: 1 } }),
     prisma.cliente.upsert({ where: { id: 4 }, update: {}, create: { id: 4, nome: 'CSN', cnpj: '33.042.730/0001-04', cidade: 'Volta Redonda', estado: 'RJ', ramo_atuacao: 'SIDERURGIA', created_by: 1 } }),
     prisma.cliente.upsert({ where: { id: 5 }, update: {}, create: { id: 5, nome: 'ArcelorMittal', cnpj: '60.543.816/0001-93', cidade: 'Serra', estado: 'ES', ramo_atuacao: 'SIDERURGIA', created_by: 1 } }),
-    prisma.cliente.upsert({ where: { id: 6 }, update: {}, create: { id: 6, nome: 'Samarco Mineração', cnpj: '16.628.281/0001-06', cidade: 'Mariana', estado: 'MG', ramo_atuacao: 'MINERACAO', created_by: 1 } }),
+    prisma.cliente.upsert({ where: { id: 6 }, update: {}, create: { id: 6, nome: 'Samarco Mineração', cnpj: '16.628.281/0001-06', cidade: 'Mariana', estado: 'MG', ramo_atuacao: 'OUTROS', created_by: 1 } }),
     prisma.cliente.upsert({ where: { id: 7 }, update: {}, create: { id: 7, nome: 'Usiminas', cnpj: '60.894.730/0001-05', cidade: 'Ipatinga', estado: 'MG', ramo_atuacao: 'SIDERURGIA', created_by: 1 } }),
   ])
 

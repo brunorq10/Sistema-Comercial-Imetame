@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { exigirPermissao } from '@/lib/permissaoApi'
 
 const RAMO_LABELS: Record<string, string> = {
-  PAPEL_CELULOSE: 'Papel e Celulose', SIDERURGIA: 'Siderurgia', MINERACAO: 'Mineração',
-  OLEO_GAS: 'Óleo e Gás', OUTROS: 'Outros',
+  PAPEL_CELULOSE_OBRAS: 'Papel e Celulose - Obras', PAPEL_CELULOSE_PARADAS: 'Papel e Celulose - Paradas',
+  SIDERURGIA: 'Siderurgia', OLEO_GAS: 'Óleo e Gás', OLEO_GAS_PETRO: 'Óleo e Gás - Petro', OUTROS: 'Outros',
 }
 const SEGMENTO_LABELS: Record<string, string> = {
   PAPEL_CELULOSE: 'Papel e Celulose', SIDERURGIA: 'Siderurgia', OLEO_GAS: 'Óleo e Gás', OUTROS: 'Outros',

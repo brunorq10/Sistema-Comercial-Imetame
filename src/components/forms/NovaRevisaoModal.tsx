@@ -101,7 +101,11 @@ export function NovaRevisaoModal({ open, onClose, onSuccess, solicitacao, canAtr
   useEffect(() => {
     if (!clienteFinal) return
     const seg = clienteFinal.segmento ?? clienteFinal.ramo_atuacao ?? ''
-    const mapped = seg === 'MINERACAO' ? 'OUTROS' : seg
+    // Sub-categorias de Mercado (Obras/Paradas/Petro) não existem em Segmento
+    // → mapear para a categoria genérica correspondente.
+    const mapped = seg === 'PAPEL_CELULOSE_OBRAS' || seg === 'PAPEL_CELULOSE_PARADAS' ? 'PAPEL_CELULOSE'
+      : seg === 'OLEO_GAS_PETRO' ? 'OLEO_GAS'
+      : seg
     if (mapped) setValue('segmento', mapped)
     // Só limpa cidade/estado se a cidade atual NÃO pertencer ao cliente final
     // (preserva o prefill vindo da última revisão)

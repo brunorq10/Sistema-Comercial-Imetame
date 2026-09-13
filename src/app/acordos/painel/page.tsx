@@ -235,8 +235,8 @@ export default function MeuPainelAcordosPage() {
       if (r && !seen.has(r)) {
         seen.add(r)
         const labels: Record<string, string> = {
-          PAPEL_CELULOSE: 'Papel e Celulose', SIDERURGIA: 'Siderurgia',
-          MINERACAO: 'Mineração', OLEO_GAS: 'Óleo e Gás', OUTROS: 'Outros',
+          PAPEL_CELULOSE_OBRAS: 'Papel e Celulose - Obras', PAPEL_CELULOSE_PARADAS: 'Papel e Celulose - Paradas',
+          SIDERURGIA: 'Siderurgia', OLEO_GAS: 'Óleo e Gás', OLEO_GAS_PETRO: 'Óleo e Gás - Petro', OUTROS: 'Outros',
         }
         opts.push({ value: r, label: labels[r] ?? r })
       }

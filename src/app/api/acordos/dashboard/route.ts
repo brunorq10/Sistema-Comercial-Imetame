@@ -13,11 +13,12 @@ function getMonthValue(sub: Record<string, unknown>, month: number): number {
 }
 
 const RAMO_LABELS: Record<string, string> = {
-  PAPEL_CELULOSE: 'Papel e Celulose',
-  SIDERURGIA:     'Siderurgia',
-  MINERACAO:      'Mineração',
-  OLEO_GAS:       'Óleo e Gás',
-  OUTROS:         'Outros',
+  PAPEL_CELULOSE_OBRAS:   'Papel e Celulose - Obras',
+  PAPEL_CELULOSE_PARADAS: 'Papel e Celulose - Paradas',
+  SIDERURGIA:             'Siderurgia',
+  OLEO_GAS:               'Óleo e Gás',
+  OLEO_GAS_PETRO:         'Óleo e Gás - Petro',
+  OUTROS:                 'Outros',
 }
 
 export async function GET(req: Request) {
@@ -288,18 +289,26 @@ export async function GET(req: Request) {
     const mes           = i + 1
     const hasConsolidado = consolidadosPorMes.has(mes)
     const valorFixado   = hasConsolidado ? (consolidadosPorMes.get(mes) ?? 0) : null
-    const previsto      = hasConsolidado ? (valorFixado ?? 0) : previstoSubPorMes[i]
+    // "previsto" mescla o valor fixado (consolidado) quando existe — usado no
+    // % Fat./Fixado, no Resultado e no acumulado do gráfico Meta x Faturado
+    // (ver percFaturadoGeral abaixo). "previsto_bruto" é sempre a soma crua dos
+    // sub-índices, sem substituição — usado só na coluna "Previsto" da tabela
+    // de detalhamento, para bater com o card "Previsão de faturamento no ano"
+    // (prevFaturamentoAno), que também é sempre bruto.
+    const previstoBruto = previstoSubPorMes[i]
+    const previsto      = hasConsolidado ? (valorFixado ?? 0) : previstoBruto
     const faturado      = faturadoPorMes[i]
     const pct           = previsto > 0 ? (faturado / previsto) * 100 : 0
     return {
       mes,
-      label:        MES_LABEL_PT[i],
+      label:          MES_LABEL_PT[i],
       previsto,
-      valor_fixado: valorFixado,
+      previsto_bruto: previstoBruto,
+      valor_fixado:   valorFixado,
       faturado,
-      percentual:   Number(pct.toFixed(1)),
-      resultado:    faturado - previsto,
-      consolidado:  hasConsolidado,
+      percentual:     Number(pct.toFixed(1)),
+      resultado:      faturado - previsto,
+      consolidado:    hasConsolidado,
     }
   })
 

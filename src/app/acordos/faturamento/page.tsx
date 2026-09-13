@@ -25,11 +25,12 @@ import { filtrarOpcoes, type LinhaCascata } from '@/lib/cascata'
 import type { ContratoItem, SubIndiceItem, NFContratoListItem, PrevisaoAlteracaoItem } from '@/types'
 
 const MERCADO_LABELS: Record<string, string> = {
-  PAPEL_CELULOSE: 'Papel e Celulose',
-  SIDERURGIA:     'Siderurgia',
-  MINERACAO:      'Mineração',
-  OLEO_GAS:       'Óleo e Gás',
-  OUTROS:         'Outros',
+  PAPEL_CELULOSE_OBRAS:   'Papel e Celulose - Obras',
+  PAPEL_CELULOSE_PARADAS: 'Papel e Celulose - Paradas',
+  SIDERURGIA:             'Siderurgia',
+  OLEO_GAS:               'Óleo e Gás',
+  OLEO_GAS_PETRO:         'Óleo e Gás - Petro',
+  OUTROS:                 'Outros',
 }
 
 type AcaoNF = { tipo: 'inativar' | 'excluir'; nf: NFContratoListItem }

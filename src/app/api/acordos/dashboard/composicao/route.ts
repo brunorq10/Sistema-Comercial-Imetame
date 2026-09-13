@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   const contratos = await prisma.contrato.findMany({
     where: whereContrato,
     select: {
-      id: true, indice: true, num_os: true, cidade: true, estado: true,
+      id: true, indice: true, num_os: true, cidade: true, estado: true, descricao: true,
       cliente: { select: { id: true, nome: true } },
       cliente_final: { select: { id: true, nome: true } },
       responsavel: { select: { id: true, nome: true } },
@@ -67,6 +67,7 @@ export async function GET(req: Request) {
   const linhas: Array<{
     id: number; indice: string; cliente: string; cliente_final: string | null
     cidade: string | null; estado: string | null; num_os: string | null; responsavel: string | null
+    escopo: string | null
     valores: Record<Tipo, number>; total: number
   }> = []
 
@@ -85,6 +86,7 @@ export async function GET(req: Request) {
     linhas.push({
       id: c.id, indice: c.indice, cliente: c.cliente.nome, cliente_final: c.cliente_final?.nome ?? null,
       cidade: c.cidade, estado: c.estado, num_os: c.num_os, responsavel: c.responsavel?.nome ?? null,
+      escopo: c.descricao,
       valores, total,
     })
   }

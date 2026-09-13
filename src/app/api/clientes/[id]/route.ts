@@ -13,7 +13,7 @@ const schema = z.object({
   contato_telefone: z.string().nullable().optional(),
   cidade: z.string().nullable().optional(),
   estado: z.string().max(2).nullable().optional(),
-  ramo_atuacao: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'MINERACAO', 'OLEO_GAS', 'OUTROS']).nullable().optional(),
+  ramo_atuacao: z.enum(['PAPEL_CELULOSE_OBRAS', 'PAPEL_CELULOSE_PARADAS', 'SIDERURGIA', 'OLEO_GAS', 'OLEO_GAS_PETRO', 'OUTROS']).nullable().optional(),
   segmento: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'OLEO_GAS', 'OUTROS']).optional(),
   ativo: z.boolean().optional(),
 })

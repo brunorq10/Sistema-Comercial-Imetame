@@ -16,10 +16,11 @@ interface Props {
 }
 
 const RAMOS = [
-  { value: 'PAPEL_CELULOSE', label: 'Papel e Celulose' },
+  { value: 'PAPEL_CELULOSE_OBRAS', label: 'Papel e Celulose - Obras' },
+  { value: 'PAPEL_CELULOSE_PARADAS', label: 'Papel e Celulose - Paradas' },
   { value: 'SIDERURGIA', label: 'Siderurgia' },
-  { value: 'MINERACAO', label: 'Mineração' },
   { value: 'OLEO_GAS', label: 'Óleo e Gás' },
+  { value: 'OLEO_GAS_PETRO', label: 'Óleo e Gás - Petro' },
   { value: 'OUTROS', label: 'Outros' },
 ]
 

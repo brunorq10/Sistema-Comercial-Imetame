@@ -9,7 +9,7 @@ import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { ComposicaoFaturamentoView } from '@/components/acordos/ComposicaoFaturamentoView'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
-import { KpiCard, KpiMiniCard } from '@/components/dashboard/KpiCard'
+import { KpiCard } from '@/components/dashboard/KpiCard'
 import { ChartCard } from '@/components/dashboard/ChartCard'
 import { SectionTitle } from '@/components/dashboard/SectionTitle'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
@@ -32,7 +32,7 @@ function fmtM(v: number) {
 }
 
 interface MesData {
-  mes: number; label: string; previsto: number; valor_fixado: number | null
+  mes: number; label: string; previsto: number; previsto_bruto: number; valor_fixado: number | null
   faturado: number; percentual: number; resultado: number; consolidado: boolean
 }
 interface DashData {
@@ -53,11 +53,12 @@ interface DashData {
 }
 
 const RAMO_OPTIONS = [
-  { value: 'PAPEL_CELULOSE', label: 'Papel e Celulose' },
-  { value: 'SIDERURGIA',     label: 'Siderurgia' },
-  { value: 'MINERACAO',      label: 'Mineração' },
-  { value: 'OLEO_GAS',       label: 'Óleo e Gás' },
-  { value: 'OUTROS',         label: 'Outros' },
+  { value: 'PAPEL_CELULOSE_OBRAS',   label: 'Papel e Celulose - Obras' },
+  { value: 'PAPEL_CELULOSE_PARADAS', label: 'Papel e Celulose - Paradas' },
+  { value: 'SIDERURGIA',             label: 'Siderurgia' },
+  { value: 'OLEO_GAS',               label: 'Óleo e Gás' },
+  { value: 'OLEO_GAS_PETRO',         label: 'Óleo e Gás - Petro' },
+  { value: 'OUTROS',                 label: 'Outros' },
 ]
 
 // ══ Gauge (velocímetro) ══
@@ -198,7 +199,6 @@ function TabelaMercadoToggle({
           </tfoot>
         </table>
       </div>
-      <p className="text-[10px] text-gray-400 mt-2.5">Barras proporcionais ao percentual de participação de cada mercado, em escala de 0 a 100%.</p>
     </div>
   )
 }
@@ -231,18 +231,9 @@ function ParticipacaoEmpresasView({ data }: { data: ClienteDatum[] }) {
     })
   })()
 
-  const total = linhas.reduce((s, l) => s + l.valor, 0)
-  const maior = linhas[0] ?? null
-  const top5Pct = linhas.slice(0, 5).reduce((s, l) => s + l.pct, 0)
-
   return (
     <ChartCard>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-        <div>
-          <p className="text-[13px] font-bold text-gray-800">Participação de cada empresa no faturamento do ano atual</p>
-          <p className="text-[20px] font-bold text-green-primary mt-1 leading-none">{fmtM(total)}</p>
-          <p className="text-[10px] text-gray-400 mt-1">{metrica === 'real' ? 'Faturado' : 'Previsto'} acumulado do período</p>
-        </div>
+      <div className="flex justify-end mb-3">
         <div className="inline-flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold flex-shrink-0">
           <button
             onClick={() => setMetrica('real')}
@@ -259,32 +250,26 @@ function ParticipacaoEmpresasView({ data }: { data: ClienteDatum[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-        <KpiMiniCard label="Maior cliente" value={maior ? `${maior.nome} — ${maior.pct.toFixed(1).replace('.', ',')}%` : '—'} />
-        <KpiMiniCard label="Top 5 clientes" value={`${top5Pct.toFixed(1).replace('.', ',')}%`} />
-        <KpiMiniCard label="Total de empresas" value={String(linhas.length)} />
-      </div>
-
       {linhas.length === 0 ? (
         <p className="text-center text-gray-400 py-8 text-[12px]">Sem dados para o período.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[420px] border border-gray-100 rounded-md">
           <table className="w-full text-[12px] border-collapse" style={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: '40px' }} />
               <col style={{ width: '22%' }} />
               <col style={{ width: '140px' }} />
               <col />
-              <col style={{ width: '80px' }} />
-              <col style={{ width: '96px' }} />
+              <col style={{ width: '90px' }} />
+              <col style={{ width: '110px' }} />
             </colgroup>
             <thead>
-              <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
+              <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200 sticky top-0 z-10 bg-white">
                 <th className="py-2 pr-2 font-semibold">#</th>
                 <th className="py-2 px-2 font-semibold">Empresa</th>
                 <th className="py-2 px-2 font-semibold text-right">Total Faturamento</th>
-                <th className="py-2 px-3 font-semibold" colSpan={2}>Representatividade</th>
-                <th className="py-2 pl-3 font-semibold text-right">Acumulado</th>
+                <th className="py-2 pr-4 font-semibold" colSpan={2}>Representatividade (%)</th>
+                <th className="py-2 pl-4 font-semibold text-right">Acumulado (%)</th>
               </tr>
             </thead>
             <tbody>
@@ -294,8 +279,8 @@ function ParticipacaoEmpresasView({ data }: { data: ClienteDatum[] }) {
                   <td className="py-2.5 px-2 text-gray-700 font-medium truncate">{l.nome}</td>
                   <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{fmtM(l.valor)}</td>
                   <td className="py-2.5 pr-2"><MercadoBar pct={l.pct} color={DASHBOARD_POSITIVO} zero={false} /></td>
-                  <td className="py-2.5 pl-2 text-right tabular-nums text-gray-600 font-semibold whitespace-nowrap">{l.pct.toFixed(1).replace('.', ',')}%</td>
-                  <td className="py-2.5 pl-3 text-right tabular-nums font-bold text-green-dark bg-green-light/50 whitespace-nowrap">{l.acumulado.toFixed(1).replace('.', ',')}%</td>
+                  <td className="py-2.5 pr-4 text-right tabular-nums text-gray-600 font-semibold whitespace-nowrap">{l.pct.toFixed(1).replace('.', ',')}%</td>
+                  <td className="py-2.5 pl-4 text-right tabular-nums font-bold text-green-dark bg-green-light/50 whitespace-nowrap">{l.acumulado.toFixed(1).replace('.', ',')}%</td>
                 </tr>
               ))}
             </tbody>
@@ -309,15 +294,13 @@ function ParticipacaoEmpresasView({ data }: { data: ClienteDatum[] }) {
 
 // ══ Tabela Previsão x Realizado por Mês ══
 function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
-  const totPrev = data.reduce((s, d) => s + d.previsto, 0)
+  const totPrev = data.reduce((s, d) => s + d.previsto_bruto, 0)
   const totFat = data.reduce((s, d) => s + d.faturado, 0)
   const totRes = data.reduce((s, d) => s + d.resultado, 0)
   const totFixed = data.reduce((s, d) => s + (d.valor_fixado ?? 0), 0)
   const totPct = totPrev > 0 ? (totFat / totPrev) * 100 : 0
   return (
-    <ChartCard
-      title={`Previsão x Realizado por Mês — ${ano}`}
-    >
+    <ChartCard>
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] border-collapse">
           <thead>
@@ -326,7 +309,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
               <th className="text-right px-4 py-2 font-semibold">Valor Fixado</th>
               <th className="text-right px-4 py-2 font-semibold">Previsto {ano}</th>
               <th className="text-right px-4 py-2 font-semibold">Valor Total Faturado {ano}</th>
-              <th className="text-right px-4 py-2 font-semibold w-32">% Fat. / Previsto</th>
+              <th className="text-right px-4 py-2 font-semibold w-32">% Fat. / Fixado</th>
               <th className="text-right px-4 py-2 font-semibold">Resultado</th>
             </tr>
           </thead>
@@ -340,7 +323,7 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
                 <td className="px-4 py-2 text-right tabular-nums">
                   {row.valor_fixado != null ? <span className="text-[#6A1B9A] font-semibold">{fmt(row.valor_fixado)}</span> : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-4 py-2 text-right text-[#1565C0] tabular-nums">{fmt(row.previsto)}</td>
+                <td className="px-4 py-2 text-right text-[#1565C0] tabular-nums">{fmt(row.previsto_bruto)}</td>
                 <td className="px-4 py-2 text-right text-gray-700 tabular-nums">{fmt(row.faturado)}</td>
                 <td className="px-4 py-2 text-right">
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${row.percentual >= 100 ? 'bg-green-100 text-green-800' : 'bg-orange-50 text-orange-700'}`}>
@@ -683,6 +666,7 @@ export default function IndicadoresAcordosPage() {
             <SectionTitle>Participação de cada empresa no faturamento do ano atual</SectionTitle>
             <ParticipacaoEmpresasView data={data.porCliente} />
 
+            <div className="mt-4">
             <SectionTitle>Composição do faturamento por tipo de lançamento</SectionTitle>
             <ComposicaoFaturamentoView
               ano={ano}
@@ -693,6 +677,7 @@ export default function IndicadoresAcordosPage() {
               cidade={cidade}
               escopo={escopo}
             />
+            </div>
           </>)}
         </>
       )}

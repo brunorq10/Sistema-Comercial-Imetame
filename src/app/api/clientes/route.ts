@@ -13,7 +13,7 @@ const schema = z.object({
   contato_telefone: z.string().optional(),
   cidade: z.string().min(1, 'Cidade obrigatória'),
   estado: z.string().length(2, 'UF obrigatória'),
-  ramo_atuacao: z.enum(['PAPEL_CELULOSE', 'SIDERURGIA', 'MINERACAO', 'OLEO_GAS', 'OUTROS'], {
+  ramo_atuacao: z.enum(['PAPEL_CELULOSE_OBRAS', 'PAPEL_CELULOSE_PARADAS', 'SIDERURGIA', 'OLEO_GAS', 'OLEO_GAS_PETRO', 'OUTROS'], {
     required_error: 'Ramo de atuação obrigatório',
     invalid_type_error: 'Ramo de atuação obrigatório',
   }),

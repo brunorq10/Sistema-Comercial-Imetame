@@ -330,13 +330,14 @@ export interface NFListItem {
   }
 }
 
-export type RamoAtuacao = 'PAPEL_CELULOSE' | 'SIDERURGIA' | 'MINERACAO' | 'OLEO_GAS' | 'OUTROS'
+export type RamoAtuacao = 'PAPEL_CELULOSE_OBRAS' | 'PAPEL_CELULOSE_PARADAS' | 'SIDERURGIA' | 'OLEO_GAS' | 'OLEO_GAS_PETRO' | 'OUTROS'
 
 export const RAMO_ATUACAO_LABELS: Record<RamoAtuacao, string> = {
-  PAPEL_CELULOSE: 'Papel e Celulose',
+  PAPEL_CELULOSE_OBRAS: 'Papel e Celulose - Obras',
+  PAPEL_CELULOSE_PARADAS: 'Papel e Celulose - Paradas',
   SIDERURGIA: 'Siderurgia',
-  MINERACAO: 'Mineração',
   OLEO_GAS: 'Óleo e Gás',
+  OLEO_GAS_PETRO: 'Óleo e Gás - Petro',
   OUTROS: 'Outros',
 }
 
