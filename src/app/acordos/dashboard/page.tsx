@@ -18,7 +18,7 @@ import { ProgressBar } from '@/components/dashboard/ProgressBar'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Avatar } from '@/components/dashboard/Avatar'
 import { DASHBOARD_POSITIVO, DASHBOARD_PREVISTO, DASHBOARD_ATENCAO } from '@/lib/dashboardColors'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import { TIPOS_MULTA } from '@/lib/multas'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
@@ -94,6 +94,23 @@ const MERCADO_COLORS = ['#16A34A', '#1565C0', '#F59E0B', '#8B5CF6', '#DC2626', '
 type MercadoDatum = { ramo: string; real: number; previsto: number }
 type Metrica = 'real' | 'previsto'
 
+// Barra de participação em escala fixa de 0-100% (não relativa ao maior valor
+// da lista) — largura mínima perceptível para valores > 0 muito pequenos;
+// trilho com hachura para linhas zeradas (zero "intencional", não "sem dado").
+function MercadoBar({ pct, color, zero }: { pct: number; color: string; zero: boolean }) {
+  const clamped = Math.min(100, Math.max(0, pct))
+  return (
+    <div
+      className="relative flex-1 h-4 rounded bg-slate-100 overflow-hidden"
+      style={zero ? { backgroundImage: 'repeating-linear-gradient(135deg, #E2E8F0 0px, #E2E8F0 4px, #F1F5F9 4px, #F1F5F9 8px)' } : undefined}
+    >
+      {!zero && clamped > 0 && (
+        <div className="h-full rounded" style={{ width: `${clamped}%`, minWidth: '6px', background: color }} />
+      )}
+    </div>
+  )
+}
+
 function TabelaMercadoToggle({
   data, formatValor, colunaBase,
 }: { data: MercadoDatum[]; formatValor: (n: number) => string; colunaBase: string }) {
@@ -101,7 +118,6 @@ function TabelaMercadoToggle({
   const valores = data.map((d) => ({ ramo: d.ramo, valor: metrica === 'real' ? d.real : d.previsto }))
   const total = valores.reduce((s, d) => s + d.valor, 0)
   const ordenado = [...valores].sort((a, b) => b.valor - a.valor)
-  const max = Math.max(...ordenado.map((d) => d.valor), 1)
   const colunaLabel = `${colunaBase} — ${metrica === 'real' ? 'Real' : 'Previsto'}`
 
   return (
@@ -135,21 +151,32 @@ function TabelaMercadoToggle({
             {ordenado.map((item, i) => {
               const color = MERCADO_COLORS[i % MERCADO_COLORS.length]
               const pct = total > 0 ? (item.valor / total) * 100 : 0
+              const zero = item.valor === 0
               return (
                 <tr key={item.ramo} className="border-b border-gray-50">
                   <td className="py-2.5 pr-3">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                      <span className="text-gray-700 font-medium">{item.ramo}</span>
+                      <span className={cn(zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-medium')}>{item.ramo}</span>
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-2">
-                      <ProgressBar pct={(item.valor / max) * 100} color={color} size="sm" className="max-w-[140px]" />
-                      <span className="text-gray-700 font-semibold whitespace-nowrap">{formatValor(item.valor)}</span>
+                    <div className="flex items-center gap-3">
+                      <MercadoBar pct={pct} color={color} zero={zero} />
+                      <span className={cn(
+                        'flex-shrink-0 text-right tabular-nums whitespace-nowrap',
+                        zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-semibold',
+                      )}>
+                        {formatValor(item.valor)}
+                      </span>
                     </div>
                   </td>
-                  <td className="py-2.5 pl-3 text-right text-gray-600 font-semibold whitespace-nowrap">{pct.toFixed(1).replace('.', ',')}%</td>
+                  <td className={cn(
+                    'py-2.5 pl-3 text-right tabular-nums whitespace-nowrap',
+                    zero ? 'text-gray-400 font-normal' : 'text-gray-600 font-semibold',
+                  )}>
+                    {pct.toFixed(1).replace('.', ',')}%
+                  </td>
                 </tr>
               )
             })}
@@ -157,12 +184,13 @@ function TabelaMercadoToggle({
           <tfoot>
             <tr className="border-t-2 border-gray-200 font-bold">
               <td className="py-2.5 pr-3 text-gray-800">Total</td>
-              <td className="py-2.5 px-3 text-gray-800 whitespace-nowrap">{formatValor(total)}</td>
-              <td className="py-2.5 pl-3 text-right text-gray-800">100%</td>
+              <td className="py-2.5 px-3 text-right tabular-nums text-gray-800 whitespace-nowrap">{formatValor(total)}</td>
+              <td className="py-2.5 pl-3 text-right tabular-nums text-gray-800">100,0%</td>
             </tr>
           </tfoot>
         </table>
       </div>
+      <p className="text-[10px] text-gray-400 mt-2.5">Barras proporcionais ao percentual de participação de cada mercado, em escala de 0 a 100%.</p>
     </div>
   )
 }
