@@ -13,6 +13,8 @@ import type { SubIndiceItem, PrevisaoAlteracaoItem, ContratoItem } from '@/types
 import { CLASSIFICACAO_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import { compareContratos, nextSort, sortIndicator, type SortState } from '@/lib/sortContratos'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+import { SubstituicaoBanner } from '@/components/painel/SubstituicaoBanner'
+import { useSubstituicoes } from '@/hooks/useSubstituicoes'
 
 const MESES_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
@@ -104,6 +106,9 @@ export default function MeuPainelAcordosPage() {
   const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { titularIds } = useSubstituicoes()
+  // 'todos' | 'proprios' | id do titular (string) — só aparece na própria visão (ACORDOS) com substituição vigente
+  const [origemFiltro, setOrigemFiltro] = useState<'todos' | 'proprios' | string>('todos')
 
   const [filtroNumOs,          setFiltroNumOs]          = useState<string[]>([])
   const [filtroClienteId,      setFiltroClienteId]      = useState<string[]>([])
@@ -135,8 +140,14 @@ export default function MeuPainelAcordosPage() {
     setLoading(true); setError(null)
     try {
       const params = new URLSearchParams()
-      if (responsavelId) params.set('responsavel_id', responsavelId)
-      else params.set('todos', '1')
+      if (responsavelId) {
+        // Na própria visão (ACORDOS), inclui também os contratos de titulares
+        // que o usuário substitui agora (Cadastros > Substituições — Tipo 1).
+        const extra = responsavelId === String(userId) ? titularIds : []
+        params.set('responsavel_id', [responsavelId, ...extra].join(','))
+      } else {
+        params.set('todos', '1')
+      }
       const res = await fetch(`/api/faturamento/painel-acordos?${params.toString()}`)
       const json = await res.json()
       if (json.error) { setError(json.error); return }
@@ -147,7 +158,7 @@ export default function MeuPainelAcordosPage() {
     } finally {
       setLoading(false)
     }
-  }, [responsavelId])
+  }, [responsavelId, userId, titularIds])
 
   useEffect(() => { fetchContratos() }, [fetchContratos])
 
@@ -167,8 +178,10 @@ export default function MeuPainelAcordosPage() {
     if (exceto !== 'clienteFinal' && filtroClienteFinalId.length && !filtroClienteFinalId.includes(String(cf?.id ?? ''))) return false
     if (exceto !== 'status' && filtroStatusFat.length && !c.subindices.some((s) => filtroStatusFat.includes(s.status_faturamento))) return false
     if (exceto !== 'ramo' && filtroRamo.length && !(c.cliente.ramo_atuacao && filtroRamo.includes(c.cliente.ramo_atuacao))) return false
+    if (origemFiltro === 'proprios' && String(c.responsavel?.id) !== String(userId)) return false
+    else if (origemFiltro !== 'todos' && origemFiltro !== 'proprios' && String(c.responsavel?.id) !== origemFiltro) return false
     return true
-  }, [filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo])
+  }, [filtroClienteId, filtroNumOs, filtroClienteFinalId, filtroStatusFat, filtroRamo, origemFiltro, userId])
 
   const clienteOptions = useMemo(() => {
     const seen = new Set<string>()
@@ -296,6 +309,25 @@ export default function MeuPainelAcordosPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] font-bold">Meu Painel — Acordos</h2>
         </div>
+
+        <SubstituicaoBanner />
+
+        {titularIds.length > 0 && responsavelId === String(userId) && (
+          <div className="flex items-center gap-1.5 mb-2.5">
+            {(['todos', 'proprios', ...titularIds.map(String)] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setOrigemFiltro(v)}
+                className={cn(
+                  'px-2.5 py-1 text-[10px] font-medium rounded-full border transition-colors',
+                  origemFiltro === v ? 'bg-green-primary text-white border-green-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50',
+                )}
+              >
+                {v === 'todos' ? 'Todos' : v === 'proprios' ? 'Meus itens' : `De: ${contratos.find((c) => String(c.responsavel?.id) === v)?.responsavel?.nome ?? v}`}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mb-3 flex gap-1.5 items-end flex-wrap">

@@ -4,8 +4,14 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
+import { formatDate } from '@/lib/utils'
 import { PERFIL_LABELS } from '@/types'
 import type { UsuarioListItem, Perfil } from '@/types'
+
+interface StatusSubstituicao {
+  substituindo: { id: number; titular: { id: number; nome: string }; ate: string }[]
+  sendoSubstituidoPor: { id: number; substituto: { id: number; nome: string }; ate: string }[]
+}
 
 const PERFIS: Perfil[] = [
   'ADM_COMERCIAL', 'GESTAO_COMERCIAL',
@@ -44,8 +50,17 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
   const [isAnalistaCritico, setIsAnalistaCritico] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [statusSubstituicao, setStatusSubstituicao] = useState<StatusSubstituicao | null>(null)
 
   useEffect(() => {
+    if (open && editando) {
+      fetch(`/api/substituicoes/status?usuarioId=${editando.id}`)
+        .then((r) => r.json())
+        .then((json) => setStatusSubstituicao(json.error ? null : json.data))
+        .catch(() => setStatusSubstituicao(null))
+    } else {
+      setStatusSubstituicao(null)
+    }
     if (open && editando) {
       setNome(editando.nome)
       setEmail(editando.email)
@@ -129,6 +144,25 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
           </Select>
         </Field>
       </div>
+
+      {isEdit && statusSubstituicao && (statusSubstituicao.sendoSubstituidoPor.length > 0 || statusSubstituicao.substituindo.length > 0) && (
+        <>
+          <ModalSection>Substituições e transferências</ModalSection>
+          <div className="space-y-1.5 mb-2.5">
+            {statusSubstituicao.sendoSubstituidoPor.map((s) => (
+              <p key={`sido-${s.id}`} className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
+                Está sendo substituído(a) por <strong>{s.substituto.nome}</strong> até {formatDate(s.ate)}.
+              </p>
+            ))}
+            {statusSubstituicao.substituindo.map((s) => (
+              <p key={`sub-${s.id}`} className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
+                Está substituindo <strong>{s.titular.nome}</strong> até {formatDate(s.ate)}.
+              </p>
+            ))}
+            <a href="/cadastros" className="text-[10px] text-green-primary hover:underline">Configurar em Cadastros → Substituições e Transferências</a>
+          </div>
+        </>
+      )}
 
       {isAdmin && (
         <>

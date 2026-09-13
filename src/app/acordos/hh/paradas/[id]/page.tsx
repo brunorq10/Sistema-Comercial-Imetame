@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { UcrFaixasTabela } from '@/components/acordos/UcrFaixasTabela'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useSubstituicoes } from '@/hooks/useSubstituicoes'
 import { regiaoPorEstado, classificarUcr, resolverVigencia, UCR_FAIXAS, UCR_REGIOES, type UcrVigencia } from '@/lib/ucr'
 import { formatCurrency } from '@/lib/utils'
 
@@ -246,6 +247,7 @@ export default function ParadaHhPage() {
   const router = useRouter()
 
   const { pode, ehDono } = usePermissions()
+  const { titularIds } = useSubstituicoes()
   const podeReabrir = pode('acordos.paradas.reabrir')
 
   const [loading, setLoading] = useState(true)
@@ -269,8 +271,11 @@ export default function ParadaHhPage() {
 
   const fechada = fechamento.fechada_em != null
   const dirty = snapshot(cfg, dias, folgaLinhas) !== savedSnapshotRef.current
+  // Substituição temporária vigente (Cadastros > Substituições): o substituto
+  // ganha, durante o período, exatamente a mesma permissão do titular.
   const podeEditar = pode('acordos.paradas.controlehh.editar', {
-    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel_id } : null, 'contrato'),
+    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel_id } : null, 'contrato')
+      || (!!contrato?.responsavel_id && titularIds.includes(contrato.responsavel_id)),
   })
 
   useEffect(() => {

@@ -106,9 +106,9 @@ enum RamoAtuacao {
 // ─── Modelos ─────────────────────────────────────────────────────────────────
 
 model User {
-  id            Int      @id @default(autoincrement())
-  nome          String
-  email         String   @unique
+  id                  Int       @id @default(autoincrement())
+  nome                String
+  email               String    @unique
   password_hash       String
   perfil              Perfil
   funcao              String?
@@ -117,60 +117,69 @@ model User {
   deactivated_at      DateTime?
   deactivated_by      Int?
   updated_by          Int?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
 
-  solicitacoes_criadas        Solicitacao[]          @relation("SolicitacaoCriador")
-  solicitacoes_atribuidas     Solicitacao[]          @relation("SolicitacaoOrcamentista")
-  propostas_tecnicas          PropostaTecnica[]
-  propostas_comerciais        PropostaComercial[]
-  propostas_fabricacao        PropostaFabricacao[]
-  solicitacoes_info           SolicitacaoInfo[]
-  acordos                     Acordo[]
-  notas_fiscais               NotaFiscal[]
-  notificacoes                Notificacao[]
-  contratos_responsavel       Contrato[]             @relation("ContratoResponsavel")
-  contratos_criados           Contrato[]             @relation("ContratoCriador")
-  hh_lancamentos              HhLancamento[]         @relation("HhLancamentoCriador")
-  hh_realizados               HhRealizado[]          @relation("HhRealizadoCriador")
-  hh_realizados_dia_criados   HhRealizadoDia[]       @relation("HhRealizadoDiaCriador")
-  fabricacao_itens_criados    FabricacaoItem[]       @relation("FabricacaoItemCriador")
-  fabricacao_realizados       FabricacaoRealizado[]  @relation("FabricacaoRealizadoCriador")
-  fabricacao_item_historico   FabricacaoItemHistorico[] @relation("FabItemHistCriador")
-  hh_acomp_historico          HhAcompanhamentoHistorico[] @relation("HhAcompHistCriador")
-  ucr_faixas_criadas          UcrFaixaVigencia[]     @relation("UcrFaixaVigenciaCriador")
-  ucr_faixas_atualizadas      UcrFaixaVigencia[]     @relation("UcrFaixaVigenciaAtualizador")
-  ucr_faixas_historico        UcrFaixaHistorico[]    @relation("UcrFaixaHistCriador")
-  parada_fechada_por          ParadaHhConfig[]       @relation("ParadaFechadaPor")
-  parada_fechamento_historico ParadaFechamentoHistorico[] @relation("ParadaFechHistCriador")
-  parada_config_historico     ParadaHhConfigHistorico[] @relation("ParadaHhConfigHistCriador")
-  parada_folga_linhas         ParadaFolgaLinha[]     @relation("ParadaFolgaLinhaCriador")
-  contratos_hh_fechados_por   Contrato[]             @relation("ContratoHhFechadaPor")
+  solicitacoes_criadas             Solicitacao[]                   @relation("SolicitacaoCriador")
+  solicitacoes_atribuidas          Solicitacao[]                   @relation("SolicitacaoOrcamentista")
+  propostas_tecnicas               PropostaTecnica[]
+  propostas_comerciais             PropostaComercial[]
+  propostas_fabricacao             PropostaFabricacao[]
+  solicitacoes_info                SolicitacaoInfo[]
+  acordos                          Acordo[]
+  notas_fiscais                    NotaFiscal[]
+  notificacoes                     Notificacao[]
+  contratos_responsavel            Contrato[]                      @relation("ContratoResponsavel")
+  contratos_criados                Contrato[]                      @relation("ContratoCriador")
+  hh_lancamentos                   HhLancamento[]                  @relation("HhLancamentoCriador")
+  hh_realizados                    HhRealizado[]                   @relation("HhRealizadoCriador")
+  hh_realizados_dia_criados        HhRealizadoDia[]                @relation("HhRealizadoDiaCriador")
+  fabricacao_itens_criados         FabricacaoItem[]                @relation("FabricacaoItemCriador")
+  fabricacao_realizados            FabricacaoRealizado[]           @relation("FabricacaoRealizadoCriador")
+  fabricacao_item_historico        FabricacaoItemHistorico[]       @relation("FabItemHistCriador")
+  hh_acomp_historico               HhAcompanhamentoHistorico[]     @relation("HhAcompHistCriador")
+  ucr_faixas_criadas               UcrFaixaVigencia[]              @relation("UcrFaixaVigenciaCriador")
+  ucr_faixas_atualizadas           UcrFaixaVigencia[]              @relation("UcrFaixaVigenciaAtualizador")
+  ucr_faixas_historico             UcrFaixaHistorico[]             @relation("UcrFaixaHistCriador")
+  parada_fechada_por               ParadaHhConfig[]                @relation("ParadaFechadaPor")
+  parada_fechamento_historico      ParadaFechamentoHistorico[]     @relation("ParadaFechHistCriador")
+  parada_config_historico          ParadaHhConfigHistorico[]       @relation("ParadaHhConfigHistCriador")
+  parada_folga_linhas              ParadaFolgaLinha[]              @relation("ParadaFolgaLinhaCriador")
+  contratos_hh_fechados_por        Contrato[]                      @relation("ContratoHhFechadaPor")
   contrato_hh_fechamento_historico ContratoHhFechamentoHistorico[] @relation("ContratoHhFechHistCriador")
-  subindices_criados          SubIndiceFaturamento[] @relation("SubIndiceCriador")
-  nfs_contratos_criadas       NotaFiscalContrato[]   @relation("NFContratoCriador")
-  consolidados_criados        ConsolidadoMes[]       @relation("ConsolidadoCriador")
-  historico_subindices        HistoricoSubIndice[]   @relation("HistSubIndiceCriador")
-  historico_contratos         HistoricoContrato[]    @relation("HistContratoCriador")
-  ocorrencias_criadas         OcorrenciaContratual[] @relation("OcorrenciaCriador")
-  multas_criadas              MultaPenalidade[]      @relation("MultaCriador")
-  historico_solicitacoes      HistoricoSolicitacao[] @relation("HistSolicitacaoCriador")
-  subindices_comentario       SubIndiceFaturamento[] @relation("SubIndiceComentarioAutor")
-  alteracoes_responsavel      PrevisaoAlteracao[]            @relation("AlteracaoResponsavel")
-  alteracoes_revisor          PrevisaoAlteracao[]            @relation("AlteracaoRevisor")
-  alteracoes_criadas          PrevisaoAlteracao[]            @relation("AlteracaoCriador")
-  analista_critico_historicos AnalistaCriticoHistorico[]     @relation("AnalistaCriticoUser")
-  analista_critico_execucoes  AnalistaCriticoHistorico[]     @relation("AnalistaCriticoExecutor")
-  relatorios_criados          RelatorioSalvo[]               @relation("RelatorioCriador")
-  relatorios_versoes          RelatorioVersao[]              @relation("RelatorioVersaoAutor")
-  revisoes_criadas            RevisaoPendente[]              @relation("RevisaoPendenteCriador")
-  relatorios_os_criados       RelatorioOS[]                  @relation("RelatorioOSCriador")
-  revisoes_avaliadas          RevisaoPendente[]              @relation("RevisaoPendenteAvaliador")
-  cenario_config_atualizacoes CenarioConfig[]                @relation("CenarioConfigAtualizador")
-  cenario_lancamentos_criados CenarioLancamento[]             @relation("CenarioLancCriador")
-  cenario_lancamentos_atualizados CenarioLancamento[]         @relation("CenarioLancAtualizador")
-  cenario_lancamentos_historico   CenarioLancamentoHistorico[] @relation("CenarioLancHistCriador")
-  cenario_retratos_criados    CenarioRetrato[]                @relation("CenarioRetratoCriador")
+  subindices_criados               SubIndiceFaturamento[]          @relation("SubIndiceCriador")
+  nfs_contratos_criadas            NotaFiscalContrato[]            @relation("NFContratoCriador")
+  consolidados_criados             ConsolidadoMes[]                @relation("ConsolidadoCriador")
+  historico_subindices             HistoricoSubIndice[]            @relation("HistSubIndiceCriador")
+  historico_contratos              HistoricoContrato[]             @relation("HistContratoCriador")
+  ocorrencias_criadas              OcorrenciaContratual[]          @relation("OcorrenciaCriador")
+  multas_criadas                   MultaPenalidade[]               @relation("MultaCriador")
+  historico_solicitacoes           HistoricoSolicitacao[]          @relation("HistSolicitacaoCriador")
+  subindices_comentario            SubIndiceFaturamento[]          @relation("SubIndiceComentarioAutor")
+  alteracoes_responsavel           PrevisaoAlteracao[]             @relation("AlteracaoResponsavel")
+  alteracoes_revisor               PrevisaoAlteracao[]             @relation("AlteracaoRevisor")
+  alteracoes_criadas               PrevisaoAlteracao[]             @relation("AlteracaoCriador")
+  analista_critico_historicos      AnalistaCriticoHistorico[]      @relation("AnalistaCriticoUser")
+  analista_critico_execucoes       AnalistaCriticoHistorico[]      @relation("AnalistaCriticoExecutor")
+  relatorios_criados               RelatorioSalvo[]                @relation("RelatorioCriador")
+  relatorios_versoes               RelatorioVersao[]               @relation("RelatorioVersaoAutor")
+  revisoes_criadas                 RevisaoPendente[]               @relation("RevisaoPendenteCriador")
+  relatorios_os_criados            RelatorioOS[]                   @relation("RelatorioOSCriador")
+  revisoes_avaliadas               RevisaoPendente[]               @relation("RevisaoPendenteAvaliador")
+  cenario_config_atualizacoes      CenarioConfig[]                 @relation("CenarioConfigAtualizador")
+  cenario_lancamentos_criados      CenarioLancamento[]             @relation("CenarioLancCriador")
+  cenario_lancamentos_atualizados  CenarioLancamento[]             @relation("CenarioLancAtualizador")
+  cenario_lancamentos_historico    CenarioLancamentoHistorico[]    @relation("CenarioLancHistCriador")
+  cenario_retratos_criados         CenarioRetrato[]                @relation("CenarioRetratoCriador")
+
+  // Substituições e transferências de responsabilidade
+  substituicoes_como_titular         SubstituicaoTemporaria[]        @relation("SubstTitular")
+  substituicoes_como_substituto      SubstituicaoTemporaria[]        @relation("SubstSubstituto")
+  substituicoes_criadas              SubstituicaoTemporaria[]        @relation("SubstCriador")
+  substituicoes_prorrogacoes_criadas SubstituicaoProrrogacao[]       @relation("SubstProrrogacaoCriador")
+  transferencias_origem              TransferenciaResponsabilidade[] @relation("TransfOrigem")
+  transferencias_destino             TransferenciaResponsabilidade[] @relation("TransfDestino")
+  transferencias_criadas             TransferenciaResponsabilidade[] @relation("TransfCriador")
 
   @@map("users")
 }
@@ -195,12 +204,12 @@ model Cliente {
   updated_at       DateTime     @updatedAt
   created_by       Int
 
-  solicitacoes            Solicitacao[] @relation("SolicitacaoCliente")
-  solicitacoes_como_final Solicitacao[] @relation("SolicitacaoClienteFinal")
-  acordos                 Acordo[]
-  contratos               Contrato[]    @relation("ContratoCliente")
-  contratos_como_final    Contrato[]    @relation("ContratoClienteFinal")
-  filiais                 Filial[]
+  solicitacoes              Solicitacao[] @relation("SolicitacaoCliente")
+  solicitacoes_como_final   Solicitacao[] @relation("SolicitacaoClienteFinal")
+  acordos                   Acordo[]
+  contratos                 Contrato[]    @relation("ContratoCliente")
+  contratos_como_final      Contrato[]    @relation("ContratoClienteFinal")
+  filiais                   Filial[]
   relatorios_os_faturamento RelatorioOS[] @relation("RelatorioOSClienteFat")
 
   @@map("clientes")
@@ -224,57 +233,57 @@ model Filial {
 }
 
 model Solicitacao {
-  id              Int               @id @default(autoincrement())
-  numero          String            @unique
-  cliente_id      Int
-  cliente_final_id             Int?
-  data_recebimento             DateTime?
-  segmento                     Segmento?
-  contato         String?
-  referencia_cliente           String?
-  comprador                    String?
-  telefone_comprador           String?
-  email_comprador              String?
-  cidade          String?
-  estado          String?           @db.VarChar(2)
-  origem          Origem?
-  escopo          String?
-  classificacao   Classificacao?
-  interesse       Interesse?
-  status          StatusSolicitacao @default(AGUARDANDO_ANALISE)
-  status_analise  StatusAnalise     @default(AGUARDANDO)
-  prazo_tecnica   DateTime?
-  prazo_tecnica_indeterminado  Boolean @default(false)
-  prazo_comercial DateTime?
-  prazo_comercial_indeterminado Boolean @default(false)
-  orcamentista_id Int?
-  visita_tecnica    Boolean           @default(false)
-  data_visita       DateTime?
+  id                            Int               @id @default(autoincrement())
+  numero                        String            @unique
+  cliente_id                    Int
+  cliente_final_id              Int?
+  data_recebimento              DateTime?
+  segmento                      Segmento?
+  contato                       String?
+  referencia_cliente            String?
+  comprador                     String?
+  telefone_comprador            String?
+  email_comprador               String?
+  cidade                        String?
+  estado                        String?           @db.VarChar(2)
+  origem                        Origem?
+  escopo                        String?
+  classificacao                 Classificacao?
+  interesse                     Interesse?
+  status                        StatusSolicitacao @default(AGUARDANDO_ANALISE)
+  status_analise                StatusAnalise     @default(AGUARDANDO)
+  prazo_tecnica                 DateTime?
+  prazo_tecnica_indeterminado   Boolean           @default(false)
+  prazo_comercial               DateTime?
+  prazo_comercial_indeterminado Boolean           @default(false)
+  orcamentista_id               Int?
+  visita_tecnica                Boolean           @default(false)
+  data_visita                   DateTime?
   // Portal: solicitação vinda de portal do cliente, com data+hora de fechamento
-  is_portal         Boolean           @default(false)
-  portal_hora       String?           @db.VarChar(5) // legado (só hora) — usar portal_fechamento
-  portal_fechamento DateTime?
-  motivo_recusa     String?
-  motivo_reprovacao            MotivoReprovacao?
-  obs_reprovacao               String?
-  revisao_esperada  Int               @default(1)
-  as_sold           Boolean           @default(false)
-  created_at        DateTime          @default(now())
-  updated_at      DateTime          @updatedAt
-  created_by      Int
-  cancelled_at    DateTime?
-  cancel_reason   String?
-  suspended_at    DateTime?
-  suspend_reason  String?
+  is_portal                     Boolean           @default(false)
+  portal_hora                   String?           @db.VarChar(5) // legado (só hora) — usar portal_fechamento
+  portal_fechamento             DateTime?
+  motivo_recusa                 String?
+  motivo_reprovacao             MotivoReprovacao?
+  obs_reprovacao                String?
+  revisao_esperada              Int               @default(1)
+  as_sold                       Boolean           @default(false)
+  created_at                    DateTime          @default(now())
+  updated_at                    DateTime          @updatedAt
+  created_by                    Int
+  cancelled_at                  DateTime?
+  cancel_reason                 String?
+  suspended_at                  DateTime?
+  suspend_reason                String?
   // Cancelamento da PROPOSTA (aba Propostas) — reversível, não afeta a solicitação
-  proposta_cancelada_at    DateTime?
-  proposta_cancel_reason   String?
-  data_atribuicao DateTime?
+  proposta_cancelada_at         DateTime?
+  proposta_cancel_reason        String?
+  data_atribuicao               DateTime?
 
-  cliente        Cliente  @relation("SolicitacaoCliente", fields: [cliente_id], references: [id])
-  cliente_final  Cliente? @relation("SolicitacaoClienteFinal", fields: [cliente_final_id], references: [id])
-  orcamentista User?    @relation("SolicitacaoOrcamentista", fields: [orcamentista_id], references: [id])
-  criador      User     @relation("SolicitacaoCriador", fields: [created_by], references: [id])
+  cliente       Cliente  @relation("SolicitacaoCliente", fields: [cliente_id], references: [id])
+  cliente_final Cliente? @relation("SolicitacaoClienteFinal", fields: [cliente_final_id], references: [id])
+  orcamentista  User?    @relation("SolicitacaoOrcamentista", fields: [orcamentista_id], references: [id])
+  criador       User     @relation("SolicitacaoCriador", fields: [created_by], references: [id])
 
   propostas_tecnicas   PropostaTecnica[]
   propostas_comerciais PropostaComercial[]
@@ -296,13 +305,17 @@ model Solicitacao {
 }
 
 model HistoricoSolicitacao {
-  id             Int      @id @default(autoincrement())
-  solicitacao_id Int
-  campo          String
-  valor_de       String?
-  valor_para     String?
-  created_at     DateTime @default(now())
-  created_by     Int
+  id               Int      @id @default(autoincrement())
+  solicitacao_id   Int
+  campo            String
+  valor_de         String?
+  valor_para       String?
+  created_at       DateTime @default(now())
+  created_by       Int
+  // Preenchido quando a ação foi feita por um substituto temporário (Cadastros
+  // > Substituições) atuando no lugar do titular — auditoria, sem relação FK
+  // (mesmo padrão de solicitado_por/revisado_por em NotaFiscalContrato).
+  substituto_de_id Int?
 
   solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
   usuario     User        @relation("HistSolicitacaoCriador", fields: [created_by], references: [id])
@@ -327,13 +340,13 @@ model SequenciaSolicitacao {
 // M11: rastreabilidade de atribuição/remoção de Analista Crítico
 model AnalistaCriticoHistorico {
   id            Int      @id @default(autoincrement())
-  user_id       Int      // usuário que recebeu/perdeu o papel
-  acao          String   // ATRIBUIDO | REMOVIDO
-  realizado_por Int      // admin que executou a mudança
+  user_id       Int // usuário que recebeu/perdeu o papel
+  acao          String // ATRIBUIDO | REMOVIDO
+  realizado_por Int // admin que executou a mudança
   created_at    DateTime @default(now())
 
-  usuario   User @relation("AnalistaCriticoUser",     fields: [user_id],       references: [id])
-  executor  User @relation("AnalistaCriticoExecutor", fields: [realizado_por], references: [id])
+  usuario  User @relation("AnalistaCriticoUser", fields: [user_id], references: [id])
+  executor User @relation("AnalistaCriticoExecutor", fields: [realizado_por], references: [id])
 
   @@index([user_id])
   @@map("analista_critico_historico")
@@ -356,32 +369,32 @@ model Notificacao {
 }
 
 model PropostaTecnica {
-  id               Int      @id @default(autoincrement())
-  solicitacao_id   Int
-  versao           Int
-  hh_direto        Int?
-  hh_indireto      Int?
-  peso_montagem    Decimal? @db.Decimal(10, 2)
+  id                            Int       @id @default(autoincrement())
+  solicitacao_id                Int
+  versao                        Int
+  hh_direto                     Int?
+  hh_indireto                   Int?
+  peso_montagem                 Decimal?  @db.Decimal(10, 2)
   // Campos exclusivos de Paradas
-  efetivo_pico     Int?
-  dias_parada      Int?
-  hh_total         Int?
-  turno            String?
-  finais_de_semana Boolean?
+  efetivo_pico                  Int?
+  dias_parada                   Int?
+  hh_total                      Int?
+  turno                         String?
+  finais_de_semana              Boolean?
   // Campos exclusivos de Obras (pesos por categoria)
-  peso_equipamentos  Decimal? @db.Decimal(10, 3)
-  peso_tubulacoes    Decimal? @db.Decimal(10, 3)
-  peso_suportes      Decimal? @db.Decimal(10, 3)
-  peso_estruturas    Decimal? @db.Decimal(10, 3)
-  nao_aplicavel      Boolean  @default(false)
-  data_base          DateTime?
-  data_envio         DateTime?
+  peso_equipamentos             Decimal?  @db.Decimal(10, 3)
+  peso_tubulacoes               Decimal?  @db.Decimal(10, 3)
+  peso_suportes                 Decimal?  @db.Decimal(10, 3)
+  peso_estruturas               Decimal?  @db.Decimal(10, 3)
+  nao_aplicavel                 Boolean   @default(false)
+  data_base                     DateTime?
+  data_envio                    DateTime?
   // Previsão de execução caso a proposta seja ganha (não é prazo de envio nem data base)
   data_prevista_inicio_execucao DateTime?
   data_prevista_fim_execucao    DateTime?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  created_by       Int
+  created_at                    DateTime  @default(now())
+  updated_at                    DateTime  @updatedAt
+  created_by                    Int
 
   solicitacao          Solicitacao         @relation(fields: [solicitacao_id], references: [id])
   criador              User                @relation(fields: [created_by], references: [id])
@@ -420,9 +433,9 @@ model PropostaComercial {
   updated_at              DateTime     @updatedAt
   created_by              Int
 
-  solicitacao      Solicitacao      @relation(fields: [solicitacao_id], references: [id])
-  proposta_tecnica PropostaTecnica? @relation(fields: [proposta_tecnica_id], references: [id])
-  criador          User             @relation(fields: [created_by], references: [id])
+  solicitacao        Solicitacao        @relation(fields: [solicitacao_id], references: [id])
+  proposta_tecnica   PropostaTecnica?   @relation(fields: [proposta_tecnica_id], references: [id])
+  criador            User               @relation(fields: [created_by], references: [id])
   cenario_lancamento CenarioLancamento?
 
   @@index([solicitacao_id])
@@ -430,29 +443,29 @@ model PropostaComercial {
 }
 
 model PropostaFabricacao {
-  id               Int                    @id @default(autoincrement())
-  solicitacao_id   Int
-  versao           Int
-  possui_testes    Boolean                @default(false)
-  descricao_testes String?
-  valor_testes     Decimal?               @db.Decimal(15, 2)
-  possui_montagem  Boolean                @default(false)
-  valor_montagem   Decimal?               @db.Decimal(15, 2)
-  peso_total       Decimal                @db.Decimal(10, 3)
-  valor_total      Decimal                @db.Decimal(15, 2)
-  data_base        DateTime?
-  data_envio       DateTime?
+  id                            Int          @id @default(autoincrement())
+  solicitacao_id                Int
+  versao                        Int
+  possui_testes                 Boolean      @default(false)
+  descricao_testes              String?
+  valor_testes                  Decimal?     @db.Decimal(15, 2)
+  possui_montagem               Boolean      @default(false)
+  valor_montagem                Decimal?     @db.Decimal(15, 2)
+  peso_total                    Decimal      @db.Decimal(10, 3)
+  valor_total                   Decimal      @db.Decimal(15, 2)
+  data_base                     DateTime?
+  data_envio                    DateTime?
   // Previsão de execução caso a proposta seja ganha (não é prazo de envio nem data base)
   data_prevista_inicio_execucao DateTime?
   data_prevista_fim_execucao    DateTime?
-  resultado        String?
-  motivo_perda     MotivoPerda?
-  created_at       DateTime               @default(now())
-  updated_at       DateTime               @updatedAt
-  created_by       Int
+  resultado                     String?
+  motivo_perda                  MotivoPerda?
+  created_at                    DateTime     @default(now())
+  updated_at                    DateTime     @updatedAt
+  created_by                    Int
 
-  solicitacao  Solicitacao            @relation(fields: [solicitacao_id], references: [id])
-  criador      User                   @relation(fields: [created_by], references: [id])
+  solicitacao  Solicitacao             @relation(fields: [solicitacao_id], references: [id])
+  criador      User                    @relation(fields: [created_by], references: [id])
   equipamentos EquipamentoFabricacao[]
 
   @@unique([solicitacao_id, versao])
@@ -461,15 +474,15 @@ model PropostaFabricacao {
 }
 
 model EquipamentoFabricacao {
-  id                     Int                @id @default(autoincrement())
+  id                     Int      @id @default(autoincrement())
   proposta_fabricacao_id Int
   ordem                  Int
   descricao              String
-  peso_ton               Decimal            @db.Decimal(10, 3)
-  valor_total            Decimal            @db.Decimal(15, 2)
+  peso_ton               Decimal  @db.Decimal(10, 3)
+  valor_total            Decimal  @db.Decimal(15, 2)
   hh_previsto            Int?
   observacoes            String?
-  created_at             DateTime           @default(now())
+  created_at             DateTime @default(now())
 
   proposta_fabricacao PropostaFabricacao @relation(fields: [proposta_fabricacao_id], references: [id], onDelete: Cascade)
 
@@ -478,28 +491,29 @@ model EquipamentoFabricacao {
 }
 
 model SolicitacaoInfo {
-  id             Int      @id @default(autoincrement())
-  solicitacao_id Int
+  id               Int       @id @default(autoincrement())
+  solicitacao_id   Int
   // Código sequencial por solicitação (INF-0001...). Nullable: registros
   // automáticos (encerramento de revisão) não recebem código.
-  codigo         String?
-  data           DateTime
-  comentario     String
+  codigo           String?
+  data             DateTime
+  comentario       String
   // Tipo da informação (REUNIAO_CALL, DEFINICAO_INTERNA, FEEDBACK_CLIENTE,
   // DEFINICAO_ESCOPO, CONCORRENCIA, OUTROS). Nullable para registros
   // automáticos (encerramento de revisão).
-  tipo           String?
+  tipo             String?
   // impacto: descontinuado (mantido só por histórico, não exibido)
-  impacto        String[]
-  versao         Int?
+  impacto          String[]
+  versao           Int?
   // Lixeira: exclusão vira soft-delete recuperável por 15 dias
-  deleted_at     DateTime?
-  deleted_by     Int?
-  created_at     DateTime @default(now())
-  created_by     Int
+  deleted_at       DateTime?
+  deleted_by       Int?
+  created_at       DateTime  @default(now())
+  created_by       Int
+  substituto_de_id Int?
 
-  solicitacao Solicitacao @relation(fields: [solicitacao_id], references: [id])
-  criador     User        @relation(fields: [created_by], references: [id])
+  solicitacao Solicitacao            @relation(fields: [solicitacao_id], references: [id])
+  criador     User                   @relation(fields: [created_by], references: [id])
   anexos      SolicitacaoInfoAnexo[]
 
   @@index([solicitacao_id])
@@ -511,8 +525,8 @@ model SolicitacaoInfoAnexo {
   id         Int      @id @default(autoincrement())
   info_id    Int
   nome       String
-  tipo       String   // mime/extensão
-  url        String   // data URL (base64) ou URL externa
+  tipo       String // mime/extensão
+  url        String // data URL (base64) ou URL externa
   tamanho    Int?
   created_at DateTime @default(now())
 
@@ -523,17 +537,18 @@ model SolicitacaoInfoAnexo {
 }
 
 model HhLancamento {
-  id          Int      @id @default(autoincrement())
-  contrato_id Int
-  versao      Int      @default(1)
-  data_inicio DateTime
-  data_fim    DateTime
-  motivo      String?
-  created_at  DateTime @default(now())
-  created_by  Int
+  id               Int      @id @default(autoincrement())
+  contrato_id      Int
+  versao           Int      @default(1)
+  data_inicio      DateTime
+  data_fim         DateTime
+  motivo           String?
+  created_at       DateTime @default(now())
+  created_by       Int
+  substituto_de_id Int?
 
-  contrato Contrato        @relation(fields: [contrato_id], references: [id])
-  criador  User            @relation("HhLancamentoCriador", fields: [created_by], references: [id])
+  contrato Contrato          @relation(fields: [contrato_id], references: [id])
+  criador  User              @relation("HhLancamentoCriador", fields: [created_by], references: [id])
   meses    HhLancamentoMes[]
 
   @@unique([contrato_id, versao])
@@ -557,18 +572,19 @@ model HhLancamentoMes {
 }
 
 model HhRealizado {
-  id           Int      @id @default(autoincrement())
-  contrato_id  Int
-  mes          Int
-  ano          Int
-  hh_realizado Int
+  id               Int      @id @default(autoincrement())
+  contrato_id      Int
+  mes              Int
+  ano              Int
+  hh_realizado     Int
   // Soma do mês — mantidos em sincronia com HhRealizadoDia (mesma lógica de hh_realizado).
-  horas_normais Decimal? @db.Decimal(10, 2)
-  horas_extras  Decimal? @db.Decimal(10, 2)
-  observacoes  String?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  created_by   Int
+  horas_normais    Decimal? @db.Decimal(10, 2)
+  horas_extras     Decimal? @db.Decimal(10, 2)
+  observacoes      String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  substituto_de_id Int?
 
   contrato Contrato @relation(fields: [contrato_id], references: [id])
   criador  User     @relation("HhRealizadoCriador", fields: [created_by], references: [id])
@@ -583,18 +599,18 @@ model HhRealizado {
 // (ver src/app/api/acordos/hh/[id]/realizado-dia/route.ts) — HhRealizado
 // continua Int de propósito, para não quebrar os consumidores existentes.
 model HhRealizadoDia {
-  id                Int      @id @default(autoincrement())
-  contrato_id       Int
-  data              DateTime @db.Date
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  data        DateTime @db.Date
 
-  efetivo_normal    Int?
-  horas_normais     Decimal? @db.Decimal(8, 2) // calculado: efetivo_normal * 8.8
+  efetivo_normal Int?
+  horas_normais  Decimal? @db.Decimal(8, 2) // calculado: efetivo_normal * 8.8
 
   efetivo_extra     Int?
   horas_extra_valor Decimal? @db.Decimal(4, 2) // horas por pessoa extra (padrão 1, editável por dia)
   horas_extras      Decimal? @db.Decimal(8, 2) // calculado: efetivo_extra * horas_extra_valor
 
-  hh_total          Decimal  @db.Decimal(8, 2) // horas_normais + horas_extras
+  hh_total Decimal @db.Decimal(8, 2) // horas_normais + horas_extras
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -611,25 +627,25 @@ model HhRealizadoDia {
 
 // ── Fabricações: HH por ITEM (descrição, peso, datas) ────────────────────────
 model FabricacaoItem {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   contrato_id Int
   descricao   String
   // OS específica deste item — opcional; alguns contratos têm uma OS por
   // equipamento em vez de uma OS única para o contrato inteiro (Contrato.num_os).
   num_os      String?
-  peso_total  Decimal? @db.Decimal(14, 2)
+  peso_total  Decimal?  @db.Decimal(14, 2)
   data_inicio DateTime
   data_fim    DateTime
-  ordem       Int      @default(0)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  ordem       Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
   created_by  Int
   // Lixeira: exclusão vira soft-delete recuperável (mesmo padrão de NF/sub-índice)
   deleted_at  DateTime?
   deleted_by  Int?
 
-  contrato   Contrato              @relation(fields: [contrato_id], references: [id])
-  criador    User                  @relation("FabricacaoItemCriador", fields: [created_by], references: [id])
+  contrato   Contrato                  @relation(fields: [contrato_id], references: [id])
+  criador    User                      @relation("FabricacaoItemCriador", fields: [created_by], references: [id])
   meses      FabricacaoItemMes[]
   realizados FabricacaoRealizado[]
   historico  FabricacaoItemHistorico[]
@@ -710,21 +726,21 @@ enum UcrRegiao {
 // cobrindo a data de início dela (ver src/lib/ucr.ts:resolverVigencia), mesmo
 // que essa vigência já tenha "vencido" quando a Parada for fechada depois.
 model UcrFaixaVigencia {
-  id                 Int       @id @default(autoincrement())
-  regiao             UcrRegiao
-  vigencia_inicio    DateTime  @db.Date
-  vigencia_fim       DateTime  @db.Date
+  id              Int       @id @default(autoincrement())
+  regiao          UcrRegiao
+  vigencia_inicio DateTime  @db.Date
+  vigencia_fim    DateTime  @db.Date
 
-  ucr_nao_suficiente Decimal   @db.Decimal(10, 2)
-  ucr_a_evoluir      Decimal   @db.Decimal(10, 2)
-  ucr_bom            Decimal   @db.Decimal(10, 2)
-  ucr_otimo          Decimal   @db.Decimal(10, 2)
-  ucr_esplendido     Decimal   @db.Decimal(10, 2)
+  ucr_nao_suficiente Decimal @db.Decimal(10, 2)
+  ucr_a_evoluir      Decimal @db.Decimal(10, 2)
+  ucr_bom            Decimal @db.Decimal(10, 2)
+  ucr_otimo          Decimal @db.Decimal(10, 2)
+  ucr_esplendido     Decimal @db.Decimal(10, 2)
 
-  created_at         DateTime  @default(now())
-  created_by         Int
-  updated_at         DateTime  @updatedAt
-  updated_by         Int?
+  created_at DateTime @default(now())
+  created_by Int
+  updated_at DateTime @updatedAt
+  updated_by Int?
 
   criador     User                @relation("UcrFaixaVigenciaCriador", fields: [created_by], references: [id])
   atualizador User?               @relation("UcrFaixaVigenciaAtualizador", fields: [updated_by], references: [id])
@@ -739,7 +755,7 @@ model UcrFaixaVigencia {
 model UcrFaixaHistorico {
   id          Int      @id @default(autoincrement())
   vigencia_id Int
-  campo       String   // ucr_* (5 valores) | vigencia_inicio | vigencia_fim
+  campo       String // ucr_* (5 valores) | vigencia_inicio | vigencia_fim
   valor_de    String?
   valor_para  String
   created_at  DateTime @default(now())
@@ -753,38 +769,38 @@ model UcrFaixaHistorico {
 }
 
 model ParadaHhConfig {
-  id                     Int      @id @default(autoincrement())
-  contrato_id            Int      @unique
+  id          Int @id @default(autoincrement())
+  contrato_id Int @unique
 
   // Datas das etapas
-  prep_inicio            DateTime?
-  prep_fim               DateTime?
-  parada_inicio          DateTime?
-  parada_fim             DateTime?
-  acomp_inicio           DateTime?
-  acomp_fim              DateTime?
+  prep_inicio   DateTime?
+  prep_fim      DateTime?
+  parada_inicio DateTime?
+  parada_fim    DateTime?
+  acomp_inicio  DateTime?
+  acomp_fim     DateTime?
 
   // Horas adicionais - pico calculado automaticamente da grade da Parada
-  mob_ativo              Boolean  @default(false)
-  mob_dias_prev          Decimal? @db.Decimal(5, 1)
-  mob_dias_real          Decimal? @db.Decimal(5, 1)
+  mob_ativo     Boolean  @default(false)
+  mob_dias_prev Decimal? @db.Decimal(5, 1)
+  mob_dias_real Decimal? @db.Decimal(5, 1)
 
-  desmob_ativo           Boolean  @default(false)
-  desmob_dias_prev       Decimal? @db.Decimal(5, 1)
-  desmob_dias_real       Decimal? @db.Decimal(5, 1)
+  desmob_ativo     Boolean  @default(false)
+  desmob_dias_prev Decimal? @db.Decimal(5, 1)
+  desmob_dias_real Decimal? @db.Decimal(5, 1)
 
-  integ_ativo            Boolean  @default(false)
-  integ_dias_prev        Decimal? @db.Decimal(5, 1)
-  integ_dias_real        Decimal? @db.Decimal(5, 1)
+  integ_ativo     Boolean  @default(false)
+  integ_dias_prev Decimal? @db.Decimal(5, 1)
+  integ_dias_real Decimal? @db.Decimal(5, 1)
 
-  folga_ativo            Boolean  @default(false)
+  folga_ativo        Boolean  @default(false)
   // Campos legados — mantidos apenas para compatibilidade com dados antigos
   // (pré-multiplas-linhas). A partir desta versão, os valores de Folga vêm
   // de ParadaFolgaLinha (uma linha por grupo de dias/efetivo), somadas.
-  folga_dias_prev        Decimal? @db.Decimal(5, 1)
-  folga_dias_real        Decimal? @db.Decimal(5, 1)
-  folga_pessoas_prev     Int?
-  folga_pessoas_real     Int?
+  folga_dias_prev    Decimal? @db.Decimal(5, 1)
+  folga_dias_real    Decimal? @db.Decimal(5, 1)
+  folga_pessoas_prev Int?
+  folga_pessoas_real Int?
 
   // Análise financeira — coluna "Previsto" (Orçado e Real vêm do faturamento)
   fin_prev_valor_servico Decimal? @db.Decimal(15, 2)
@@ -796,18 +812,18 @@ model ParadaHhConfig {
 
   // Fechamento — consolida os lançamentos; reabertura exige justificativa
   // (ver ParadaFechamentoHistorico) e é restrita a perfis específicos.
-  fechada_em             DateTime?
-  fechada_por            Int?
+  fechada_em  DateTime?
+  fechada_por Int?
 
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  contrato               Contrato         @relation(fields: [contrato_id], references: [id])
-  dias                   ParadaHhDia[]
-  fechamentos            ParadaFechamentoHistorico[]
-  historico              ParadaHhConfigHistorico[]
-  folgas                 ParadaFolgaLinha[]
-  quemFechou             User?            @relation("ParadaFechadaPor", fields: [fechada_por], references: [id])
+  contrato    Contrato                    @relation(fields: [contrato_id], references: [id])
+  dias        ParadaHhDia[]
+  fechamentos ParadaFechamentoHistorico[]
+  historico   ParadaHhConfigHistorico[]
+  folgas      ParadaFolgaLinha[]
+  quemFechou  User?                       @relation("ParadaFechadaPor", fields: [fechada_por], references: [id])
 
   @@map("parada_hh_config")
 }
@@ -817,16 +833,16 @@ model ParadaHhConfig {
 // soma de (pessoas_i * dias_i * HH_DIA) de cada linha, não uma soma agregada
 // simples de dias/pessoas (ver levantamento técnico — não é linear).
 model ParadaFolgaLinha {
-  id            Int      @id @default(autoincrement())
-  config_id     Int
-  ordem         Int      @default(0)
-  pessoas_prev  Int?
-  pessoas_real  Int?
-  dias_prev     Decimal? @db.Decimal(5, 1)
-  dias_real     Decimal? @db.Decimal(5, 1)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  created_by    Int?
+  id           Int      @id @default(autoincrement())
+  config_id    Int
+  ordem        Int      @default(0)
+  pessoas_prev Int?
+  pessoas_real Int?
+  dias_prev    Decimal? @db.Decimal(5, 1)
+  dias_real    Decimal? @db.Decimal(5, 1)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  created_by   Int?
 
   config  ParadaHhConfig @relation(fields: [config_id], references: [id], onDelete: Cascade)
   criador User?          @relation("ParadaFolgaLinhaCriador", fields: [created_by], references: [id])
@@ -858,8 +874,8 @@ model ParadaHhConfigHistorico {
 model ParadaFechamentoHistorico {
   id         Int      @id @default(autoincrement())
   config_id  Int
-  acao       String   // FECHADA | REABERTA
-  motivo     String?  // obrigatório só em REABERTA
+  acao       String // FECHADA | REABERTA
+  motivo     String? // obrigatório só em REABERTA
   created_at DateTime @default(now())
   created_by Int
 
@@ -871,17 +887,17 @@ model ParadaFechamentoHistorico {
 }
 
 model ParadaHhDia {
-  id               Int      @id @default(autoincrement())
-  config_id        Int
-  etapa            String   // PREPARATIVO | PARADA | ACOMP_DESMOB
-  data             DateTime @db.Date
+  id        Int      @id @default(autoincrement())
+  config_id Int
+  etapa     String // PREPARATIVO | PARADA | ACOMP_DESMOB
+  data      DateTime @db.Date
 
-  efetivo_plan     Int?
-  horas_dia_plan   Decimal? @db.Decimal(5, 2) @default(9.8)
-  hh_plan          Decimal? @db.Decimal(10, 2)
-  efetivo_real     Int?
-  horas_dia_real   Decimal? @db.Decimal(5, 2) @default(9.8)
-  hh_real          Decimal? @db.Decimal(10, 2)
+  efetivo_plan   Int?
+  horas_dia_plan Decimal? @default(9.8) @db.Decimal(5, 2)
+  hh_plan        Decimal? @db.Decimal(10, 2)
+  efetivo_real   Int?
+  horas_dia_real Decimal? @default(9.8) @db.Decimal(5, 2)
+  hh_real        Decimal? @db.Decimal(10, 2)
 
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -890,8 +906,9 @@ model ParadaHhDia {
   // em NotaFiscalContrato: resolvido à parte via lookup de usuário, sem relation).
   created_by       Int?
   updated_by       Int?
+  substituto_de_id Int?
 
-  config           ParadaHhConfig @relation(fields: [config_id], references: [id])
+  config ParadaHhConfig @relation(fields: [config_id], references: [id])
 
   @@unique([config_id, etapa, data])
   @@index([config_id])
@@ -900,21 +917,21 @@ model ParadaHhDia {
 }
 
 model Acordo {
-  id                      Int          @id @default(autoincrement())
-  numero                  String       @unique
-  cliente_id              Int
-  descricao               String?
-  valor_total             Decimal      @db.Decimal(15, 2)
-  ano                     Int
-  valor_anos_seguintes    Decimal?     @db.Decimal(15, 2)
-  status                  StatusAcordo @default(ATIVO)
-  data_inicio             DateTime?
-  data_fim                DateTime?
-  created_at              DateTime     @default(now())
-  updated_at              DateTime     @updatedAt
-  created_by              Int
-  cancelled_at            DateTime?
-  cancel_reason           String?
+  id                   Int          @id @default(autoincrement())
+  numero               String       @unique
+  cliente_id           Int
+  descricao            String?
+  valor_total          Decimal      @db.Decimal(15, 2)
+  ano                  Int
+  valor_anos_seguintes Decimal?     @db.Decimal(15, 2)
+  status               StatusAcordo @default(ATIVO)
+  data_inicio          DateTime?
+  data_fim             DateTime?
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  created_by           Int
+  cancelled_at         DateTime?
+  cancel_reason        String?
 
   cliente       Cliente      @relation(fields: [cliente_id], references: [id])
   criador       User         @relation(fields: [created_by], references: [id])
@@ -950,62 +967,62 @@ model NotaFiscal {
 // ─── Módulo Controle de Faturamento ──────────────────────────────────────────
 
 model Contrato {
-  id             Int               @id @default(autoincrement())
-  indice         String            @unique
-  ano_referencia Int
-  status         StatusFaturamento @default(A_FATURAR)
-  cliente_id     Int
-  num_os         String?
-  num_acordo     String?
-  num_proposta   String?
-  solicitacao_id    Int?
-  responsavel_id    Int?
-  cliente_final_id  Int?
-  cidade            String?
-  estado            String?          @db.VarChar(2)
-  data_inicio    DateTime?
-  data_fim       DateTime?
-  descricao      String?
-  classificacao  Classificacao?
-  valor_contrato Decimal?       @db.Decimal(15, 2)
-  created_at     DateTime          @default(now())
-  updated_at     DateTime          @updatedAt
-  created_by     Int
-  cancelled_at   DateTime?
-  cancel_reason  String?
-  rascunho       Boolean               @default(false)
+  id               Int               @id @default(autoincrement())
+  indice           String            @unique
+  ano_referencia   Int
+  status           StatusFaturamento @default(A_FATURAR)
+  cliente_id       Int
+  num_os           String?
+  num_acordo       String?
+  num_proposta     String?
+  solicitacao_id   Int?
+  responsavel_id   Int?
+  cliente_final_id Int?
+  cidade           String?
+  estado           String?           @db.VarChar(2)
+  data_inicio      DateTime?
+  data_fim         DateTime?
+  descricao        String?
+  classificacao    Classificacao?
+  valor_contrato   Decimal?          @db.Decimal(15, 2)
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  created_by       Int
+  cancelled_at     DateTime?
+  cancel_reason    String?
+  rascunho         Boolean           @default(false)
   // Lixeira: exclusão do Controle de Faturamento vira soft-delete restaurável por 15 dias
-  deleted_at     DateTime?
-  deleted_by     Int?
+  deleted_at       DateTime?
+  deleted_by       Int?
   // Soft-cancel do acompanhamento de HH (Obras/Paradas) — RN-18 (não exclui, cancela com motivo)
-  hh_cancelado_at   DateTime?
-  hh_cancel_motivo  String?
-  hh_cancelado_por  Int?
+  hh_cancelado_at  DateTime?
+  hh_cancel_motivo String?
+  hh_cancelado_por Int?
 
   // Fechamento do acompanhamento de HH — Obras e Fabricações (Paradas usa seu
   // próprio ParadaHhConfig.fechada_em, pois já tem um modelo de config
   // dedicado por contrato). Consolida os lançamentos; reabertura exige
   // justificativa — mesmo padrão/UX do botão "Fechar Parada".
-  hh_fechada_em     DateTime?
-  hh_fechada_por    Int?
+  hh_fechada_em  DateTime?
+  hh_fechada_por Int?
 
-  cliente        Cliente                @relation("ContratoCliente", fields: [cliente_id], references: [id])
-  cliente_final  Cliente?               @relation("ContratoClienteFinal", fields: [cliente_final_id], references: [id])
-  responsavel    User?                  @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
-  criador        User                   @relation("ContratoCriador", fields: [created_by], references: [id])
-  solicitacao    Solicitacao?           @relation(fields: [solicitacao_id], references: [id])
-  subindices     SubIndiceFaturamento[]
-  historico      HistoricoContrato[]
-  hh_lancamentos   HhLancamento[]
-  hh_realizados    HhRealizado[]
-  hh_realizados_dia HhRealizadoDia[]
+  cliente            Cliente                         @relation("ContratoCliente", fields: [cliente_id], references: [id])
+  cliente_final      Cliente?                        @relation("ContratoClienteFinal", fields: [cliente_final_id], references: [id])
+  responsavel        User?                           @relation("ContratoResponsavel", fields: [responsavel_id], references: [id])
+  criador            User                            @relation("ContratoCriador", fields: [created_by], references: [id])
+  solicitacao        Solicitacao?                    @relation(fields: [solicitacao_id], references: [id])
+  subindices         SubIndiceFaturamento[]
+  historico          HistoricoContrato[]
+  hh_lancamentos     HhLancamento[]
+  hh_realizados      HhRealizado[]
+  hh_realizados_dia  HhRealizadoDia[]
   hh_acomp_historico HhAcompanhamentoHistorico[]
-  fabricacao_itens FabricacaoItem[]
-  parada_hh_config ParadaHhConfig?
-  ocorrencias    OcorrenciaContratual[]
-  multas         MultaPenalidade[]
-  quemFechouHh   User?                  @relation("ContratoHhFechadaPor", fields: [hh_fechada_por], references: [id])
-  hh_fechamentos ContratoHhFechamentoHistorico[]
+  fabricacao_itens   FabricacaoItem[]
+  parada_hh_config   ParadaHhConfig?
+  ocorrencias        OcorrenciaContratual[]
+  multas             MultaPenalidade[]
+  quemFechouHh       User?                           @relation("ContratoHhFechadaPor", fields: [hh_fechada_por], references: [id])
+  hh_fechamentos     ContratoHhFechamentoHistorico[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -1022,7 +1039,7 @@ model Contrato {
 model HhAcompanhamentoHistorico {
   id          Int      @id @default(autoincrement())
   contrato_id Int
-  acao        String   // CANCELADO | REATIVADO
+  acao        String // CANCELADO | REATIVADO
   motivo      String?
   created_at  DateTime @default(now())
   created_by  Int
@@ -1039,8 +1056,8 @@ model HhAcompanhamentoHistorico {
 model ContratoHhFechamentoHistorico {
   id          Int      @id @default(autoincrement())
   contrato_id Int
-  acao        String   // FECHADA | REABERTA
-  motivo      String?  // obrigatório só em REABERTA
+  acao        String // FECHADA | REABERTA
+  motivo      String? // obrigatório só em REABERTA
   created_at  DateTime @default(now())
   created_by  Int
 
@@ -1052,13 +1069,14 @@ model ContratoHhFechamentoHistorico {
 }
 
 model HistoricoContrato {
-  id          Int      @id @default(autoincrement())
-  contrato_id Int
-  campo       String
-  valor_de    String?
-  valor_para  String?
-  created_at  DateTime @default(now())
-  created_by  Int
+  id               Int      @id @default(autoincrement())
+  contrato_id      Int
+  campo            String
+  valor_de         String?
+  valor_para       String?
+  created_at       DateTime @default(now())
+  created_by       Int
+  substituto_de_id Int?
 
   contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
   usuario  User     @relation("HistContratoCriador", fields: [created_by], references: [id])
@@ -1069,24 +1087,25 @@ model HistoricoContrato {
 
 // ─── Ocorrências Contratuais (gestão de acontecimentos durante o contrato) ────
 model OcorrenciaContratual {
-  id                     Int      @id @default(autoincrement())
-  contrato_id            Int
-  codigo                 String   // ex.: OC-0001 (sequencial por contrato)
-  tipo                   String   // ver TIPOS em src/lib/ocorrencias.ts
-  data                   DateTime // data do evento
-  responsabilidade       String   // CLIENTE | FORCA_MAIOR | IMETAME | TERCEIROS
-  impacto                String[] // PRAZO | CUSTO | CRONOGRAMA | MARCO_CONTRATUAL | OUTROS
-  descricao              String
+  id                       Int       @id @default(autoincrement())
+  contrato_id              Int
+  codigo                   String // ex.: OC-0001 (sequencial por contrato)
+  tipo                     String // ver TIPOS em src/lib/ocorrencias.ts
+  data                     DateTime // data do evento
+  responsabilidade         String // CLIENTE | FORCA_MAIOR | IMETAME | TERCEIROS
+  impacto                  String[] // PRAZO | CUSTO | CRONOGRAMA | MARCO_CONTRATUAL | OUTROS
+  descricao                String
   data_notificacao_cliente DateTime?
   // Lixeira: exclusão vira soft-delete recuperável por 15 dias
-  deleted_at             DateTime?
-  deleted_by             Int?
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
-  created_by             Int
+  deleted_at               DateTime?
+  deleted_by               Int?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+  created_by               Int
+  substituto_de_id         Int?
 
-  contrato Contrato            @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
-  criador  User               @relation("OcorrenciaCriador", fields: [created_by], references: [id])
+  contrato Contrato          @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador  User              @relation("OcorrenciaCriador", fields: [created_by], references: [id])
   anexos   OcorrenciaAnexo[]
 
   @@unique([contrato_id, codigo])
@@ -1098,22 +1117,23 @@ model OcorrenciaContratual {
 
 // ─── Multas / Penalidades (movimentações financeiras do contrato) ─────────────
 model MultaPenalidade {
-  id                       Int      @id @default(autoincrement())
+  id                       Int       @id @default(autoincrement())
   contrato_id              Int
-  tipo                     String   // MULTA | GLOSAS | REEMBOLSOS | OUTROS
+  tipo                     String // MULTA | GLOSAS | REEMBOLSOS | OUTROS
   descricao                String
   data_ocorrencia          DateTime
   data_notificacao_cliente DateTime?
   data_desconto            DateTime?
-  valor_total              Decimal  @db.Decimal(15, 2)
-  ativa                    Boolean  @default(true)
+  valor_total              Decimal   @db.Decimal(15, 2)
+  ativa                    Boolean   @default(true)
   motivo_inativacao        String?
   // Lixeira: exclusão vira soft-delete recuperável por 15 dias
   deleted_at               DateTime?
   deleted_by               Int?
-  created_at               DateTime @default(now())
-  updated_at               DateTime @updatedAt
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
   created_by               Int
+  substituto_de_id         Int?
 
   contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
   criador  User     @relation("MultaCriador", fields: [created_by], references: [id])
@@ -1128,9 +1148,9 @@ model OcorrenciaAnexo {
   id            Int      @id @default(autoincrement())
   ocorrencia_id Int
   nome          String
-  tipo          String   // mime/extensão (ex.: application/pdf, image/png)
+  tipo          String // mime/extensão (ex.: application/pdf, image/png)
   url           String
-  tamanho       Int?     // bytes
+  tamanho       Int? // bytes
   created_at    DateTime @default(now())
 
   ocorrencia OcorrenciaContratual @relation(fields: [ocorrencia_id], references: [id], onDelete: Cascade)
@@ -1140,43 +1160,43 @@ model OcorrenciaAnexo {
 }
 
 model SubIndiceFaturamento {
-  id          Int               @id @default(autoincrement())
-  contrato_id Int
-  ordem       Int
-  descricao   String
-  valor_total Decimal           @db.Decimal(15, 2)
-  data_inicio DateTime?
-  data_fim    DateTime?
-  num_os                   String?
-  comentarios              String?
-  comentario_updated_at    DateTime?
-  comentario_updated_by    Int?
-  jan         Decimal?          @db.Decimal(15, 2)
-  fev         Decimal?          @db.Decimal(15, 2)
-  mar         Decimal?          @db.Decimal(15, 2)
-  abr         Decimal?          @db.Decimal(15, 2)
-  mai         Decimal?          @db.Decimal(15, 2)
-  jun         Decimal?          @db.Decimal(15, 2)
-  jul         Decimal?          @db.Decimal(15, 2)
-  ago         Decimal?          @db.Decimal(15, 2)
-  set         Decimal?          @db.Decimal(15, 2) @map("set_col")
-  out         Decimal?          @db.Decimal(15, 2)
-  nov         Decimal?          @db.Decimal(15, 2)
-  dez         Decimal?          @db.Decimal(15, 2)
+  id                    Int       @id @default(autoincrement())
+  contrato_id           Int
+  ordem                 Int
+  descricao             String
+  valor_total           Decimal   @db.Decimal(15, 2)
+  data_inicio           DateTime?
+  data_fim              DateTime?
+  num_os                String?
+  comentarios           String?
+  comentario_updated_at DateTime?
+  comentario_updated_by Int?
+  jan                   Decimal?  @db.Decimal(15, 2)
+  fev                   Decimal?  @db.Decimal(15, 2)
+  mar                   Decimal?  @db.Decimal(15, 2)
+  abr                   Decimal?  @db.Decimal(15, 2)
+  mai                   Decimal?  @db.Decimal(15, 2)
+  jun                   Decimal?  @db.Decimal(15, 2)
+  jul                   Decimal?  @db.Decimal(15, 2)
+  ago                   Decimal?  @db.Decimal(15, 2)
+  set                   Decimal?  @map("set_col") @db.Decimal(15, 2)
+  out                   Decimal?  @db.Decimal(15, 2)
+  nov                   Decimal?  @db.Decimal(15, 2)
+  dez                   Decimal?  @db.Decimal(15, 2)
   // Lixeira: exclusão vira soft-delete recuperável por 15 dias
-  deleted_at  DateTime?
-  deleted_by  Int?
-  created_at  DateTime          @default(now())
-  updated_at  DateTime          @updatedAt
-  created_by  Int
+  deleted_at            DateTime?
+  deleted_by            Int?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  created_by            Int
 
-  contrato             Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
-  criador              User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
-  comentario_autor     User?                @relation("SubIndiceComentarioAutor", fields: [comentario_updated_by], references: [id])
-  notas_fiscais        NotaFiscalContrato[]
-  consolidados         ConsolidadoMesItem[]
-  historico            HistoricoSubIndice[]
-  alteracoes           PrevisaoAlteracao[]
+  contrato         Contrato             @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador          User                 @relation("SubIndiceCriador", fields: [created_by], references: [id])
+  comentario_autor User?                @relation("SubIndiceComentarioAutor", fields: [comentario_updated_by], references: [id])
+  notas_fiscais    NotaFiscalContrato[]
+  consolidados     ConsolidadoMesItem[]
+  historico        HistoricoSubIndice[]
+  alteracoes       PrevisaoAlteracao[]
 
   @@index([contrato_id])
   @@index([deleted_at])
@@ -1184,13 +1204,14 @@ model SubIndiceFaturamento {
 }
 
 model HistoricoSubIndice {
-  id           Int      @id @default(autoincrement())
-  subindice_id Int
-  campo        String
-  valor_de     String?
-  valor_para   String?
-  created_at   DateTime @default(now())
-  created_by   Int
+  id               Int      @id @default(autoincrement())
+  subindice_id     Int
+  campo            String
+  valor_de         String?
+  valor_para       String?
+  created_at       DateTime @default(now())
+  created_by       Int
+  substituto_de_id Int?
 
   subindice SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
   usuario   User                 @relation("HistSubIndiceCriador", fields: [created_by], references: [id])
@@ -1200,22 +1221,22 @@ model HistoricoSubIndice {
 }
 
 model NotaFiscalContrato {
-  id                Int      @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
   subindice_id      Int
   numero_nf         String
-  valor_total_nf    Decimal  @db.Decimal(15, 2)
-  percentual        Decimal  @db.Decimal(5, 2) @default(100)
-  valor_atribuido   Decimal  @db.Decimal(15, 2)
+  valor_total_nf    Decimal   @db.Decimal(15, 2)
+  percentual        Decimal   @default(100) @db.Decimal(5, 2)
+  valor_atribuido   Decimal   @db.Decimal(15, 2)
   data_emissao      DateTime
   data_vencimento   DateTime
-  ativa             Boolean  @default(true)
+  ativa             Boolean   @default(true)
   motivo_inativacao String?
   // Classificação do lançamento — distinta do tipo de documento (NF/Recibo/Outros).
   // Usada no indicador "Composição Faturamento".
-  tipo_lancamento   String?  @default("Normal")
-  tipo_documento    String?  @default("NF")
+  tipo_lancamento   String?   @default("Normal")
+  tipo_documento    String?   @default("NF")
   // Fluxo de aprovação de lançamento de faturamento (responsável -> coordenação)
-  status_aprovacao  String   @default("APROVADO") // APROVADO | PENDENTE | REPROVADO
+  status_aprovacao  String    @default("APROVADO") // APROVADO | PENDENTE | REPROVADO
   solicitado_por    Int?
   revisado_por      Int?
   revisado_em       DateTime?
@@ -1223,12 +1244,13 @@ model NotaFiscalContrato {
   // Lixeira: exclusão vira soft-delete recuperável por 15 dias
   deleted_at        DateTime?
   deleted_by        Int?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
   created_by        Int
+  substituto_de_id  Int?
 
-  subindice SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
-  criador   User                 @relation("NFContratoCriador", fields: [created_by], references: [id])
+  subindice  SubIndiceFaturamento  @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
+  criador    User                  @relation("NFContratoCriador", fields: [created_by], references: [id])
   alteracoes NotaFiscalAlteracao[]
 
   @@index([subindice_id])
@@ -1269,9 +1291,10 @@ model NotaFiscalAlteracao {
   subindice_id_de      Int
   subindice_id_para    Int
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  created_by Int
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  substituto_de_id Int?
 
   nf NotaFiscalContrato @relation(fields: [nf_id], references: [id], onDelete: Cascade)
 
@@ -1285,7 +1308,7 @@ model NotaFiscalAlteracao {
 
 model ConsolidadoMes {
   id           Int       @id @default(autoincrement())
-  mes          Int       // 1-12
+  mes          Int // 1-12
   ano          Int
   arquivado_at DateTime? // RN-CF-12: null = ativo; preenchido = arquivado
   created_at   DateTime  @default(now())
@@ -1331,31 +1354,31 @@ model PrevisaoAlteracao {
   revisor_id     Int?
   reviewed_at    DateTime?
 
-  jan_de   Decimal? @db.Decimal(15, 2)
-  fev_de   Decimal? @db.Decimal(15, 2)
-  mar_de   Decimal? @db.Decimal(15, 2)
-  abr_de   Decimal? @db.Decimal(15, 2)
-  mai_de   Decimal? @db.Decimal(15, 2)
-  jun_de   Decimal? @db.Decimal(15, 2)
-  jul_de   Decimal? @db.Decimal(15, 2)
-  ago_de   Decimal? @db.Decimal(15, 2)
-  set_de   Decimal? @db.Decimal(15, 2)
-  out_de   Decimal? @db.Decimal(15, 2)
-  nov_de   Decimal? @db.Decimal(15, 2)
-  dez_de   Decimal? @db.Decimal(15, 2)
+  jan_de Decimal? @db.Decimal(15, 2)
+  fev_de Decimal? @db.Decimal(15, 2)
+  mar_de Decimal? @db.Decimal(15, 2)
+  abr_de Decimal? @db.Decimal(15, 2)
+  mai_de Decimal? @db.Decimal(15, 2)
+  jun_de Decimal? @db.Decimal(15, 2)
+  jul_de Decimal? @db.Decimal(15, 2)
+  ago_de Decimal? @db.Decimal(15, 2)
+  set_de Decimal? @db.Decimal(15, 2)
+  out_de Decimal? @db.Decimal(15, 2)
+  nov_de Decimal? @db.Decimal(15, 2)
+  dez_de Decimal? @db.Decimal(15, 2)
 
-  jan_para   Decimal? @db.Decimal(15, 2)
-  fev_para   Decimal? @db.Decimal(15, 2)
-  mar_para   Decimal? @db.Decimal(15, 2)
-  abr_para   Decimal? @db.Decimal(15, 2)
-  mai_para   Decimal? @db.Decimal(15, 2)
-  jun_para   Decimal? @db.Decimal(15, 2)
-  jul_para   Decimal? @db.Decimal(15, 2)
-  ago_para   Decimal? @db.Decimal(15, 2)
-  set_para   Decimal? @db.Decimal(15, 2)
-  out_para   Decimal? @db.Decimal(15, 2)
-  nov_para   Decimal? @db.Decimal(15, 2)
-  dez_para   Decimal? @db.Decimal(15, 2)
+  jan_para Decimal? @db.Decimal(15, 2)
+  fev_para Decimal? @db.Decimal(15, 2)
+  mar_para Decimal? @db.Decimal(15, 2)
+  abr_para Decimal? @db.Decimal(15, 2)
+  mai_para Decimal? @db.Decimal(15, 2)
+  jun_para Decimal? @db.Decimal(15, 2)
+  jul_para Decimal? @db.Decimal(15, 2)
+  ago_para Decimal? @db.Decimal(15, 2)
+  set_para Decimal? @db.Decimal(15, 2)
+  out_para Decimal? @db.Decimal(15, 2)
+  nov_para Decimal? @db.Decimal(15, 2)
+  dez_para Decimal? @db.Decimal(15, 2)
 
   // Alteração do Valor Total do subíndice — mesma tabela/fluxo de aprovação da
   // previsão mensal (nullable: uma PrevisaoAlteracao pode mexer só na previsão,
@@ -1367,9 +1390,10 @@ model PrevisaoAlteracao {
   // Gestão ao reprovar. Hoje só usado quando valor_total_para != null.
   motivo           String?
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  created_by Int
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  substituto_de_id Int?
 
   subindice   SubIndiceFaturamento @relation(fields: [subindice_id], references: [id], onDelete: Cascade)
   responsavel User                 @relation("AlteracaoResponsavel", fields: [responsavel_id], references: [id])
@@ -1398,13 +1422,13 @@ model RelatorioOS {
   gestor_cliente         String
   valor_estimado         Decimal  @db.Decimal(15, 2)
   escopo                 String
-  unidade_medida         String   // KG | TON | PC | CJ
+  unidade_medida         String // KG | TON | PC | CJ
   quantidade             Decimal  @db.Decimal(12, 2)
   ncm                    String?
   pintura                Boolean
   retorno                Boolean
   memorial_calculo       Boolean
-  material               String?  // IMETAME | TERCEIROS | AMBOS
+  material               String? // IMETAME | TERCEIROS | AMBOS
   art                    Boolean
   databook               Boolean
   material_apoio         Boolean
@@ -1429,7 +1453,7 @@ model RevisaoPendente {
   solicitacao_id Int
   payload        Json
   status         String    @default("PENDENTE") // PENDENTE | APROVADA | RECUSADA
-  justificativa  String?   // preenchida pelo orçamentista na devolução
+  justificativa  String? // preenchida pelo orçamentista na devolução
   avaliado_por   Int?
   avaliado_em    DateTime?
   created_at     DateTime  @default(now())
@@ -1466,7 +1490,7 @@ model RelatorioVersao {
   id           Int      @id @default(autoincrement())
   relatorio_id Int
   versao       Int
-  config       Json     // { modulo, linhas, colunas, valores, filtros }
+  config       Json // { modulo, linhas, colunas, valores, filtros }
   created_at   DateTime @default(now())
   created_by   Int
 
@@ -1500,34 +1524,34 @@ model CenarioConfig {
 // armazenada aqui (ver src/lib/cenario.ts). Dados denormalizados de propósito:
 // podem ser ajustados no lançamento, divergindo da proposta de origem.
 model CenarioLancamento {
-  id                     Int           @id @default(autoincrement())
-  proposta_comercial_id  Int           @unique
-  cliente_nome           String
-  cliente_final_nome     String?
-  cidade                 String?
-  estado                 String?       @db.VarChar(2)
-  escopo                 String?
-  orcamentista_nome      String?
-  classificacao          Classificacao
-  data_inicio            DateTime
-  data_fim               DateTime
-  efetivo                Int
+  id                    Int           @id @default(autoincrement())
+  proposta_comercial_id Int           @unique
+  cliente_nome          String
+  cliente_final_nome    String?
+  cidade                String?
+  estado                String?       @db.VarChar(2)
+  escopo                String?
+  orcamentista_nome     String?
+  classificacao         Classificacao
+  data_inicio           DateTime
+  data_fim              DateTime
+  efetivo               Int
   // Efetivo por mês (Obras/Fabricações/Óleo e Gás) — { "AAAA-MM": efetivo }.
   // Null para Paradas (sempre usa o valor único `efetivo`) e para lançamentos
   // antigos sem detalhamento mensal — nesse caso todo mês do período usa `efetivo`.
-  efetivo_mensal         Json?
-  observacao             String?
-  created_at             DateTime      @default(now())
-  updated_at             DateTime      @updatedAt
-  created_by             Int
-  updated_by             Int?
+  efetivo_mensal        Json?
+  observacao            String?
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+  created_by            Int
+  updated_by            Int?
   // RN-18: exclusão não permitida — soft-cancel com justificativa
-  cancelled_at           DateTime?
-  cancel_reason          String?
+  cancelled_at          DateTime?
+  cancel_reason         String?
 
-  proposta_comercial PropostaComercial @relation(fields: [proposta_comercial_id], references: [id])
-  criador            User              @relation("CenarioLancCriador", fields: [created_by], references: [id])
-  atualizador        User?             @relation("CenarioLancAtualizador", fields: [updated_by], references: [id])
+  proposta_comercial PropostaComercial            @relation(fields: [proposta_comercial_id], references: [id])
+  criador            User                         @relation("CenarioLancCriador", fields: [created_by], references: [id])
+  atualizador        User?                        @relation("CenarioLancAtualizador", fields: [updated_by], references: [id])
   historico          CenarioLancamentoHistorico[]
 
   @@index([cancelled_at])
@@ -1581,7 +1605,7 @@ model CenarioRetratoLancamento {
   escopo                String?
   orcamentista_nome     String?
   classificacao         Classificacao
-  origem                String        // 'CONTRATO' | 'PROPOSTA' — congelado no momento do retrato
+  origem                String // 'CONTRATO' | 'PROPOSTA' — congelado no momento do retrato
   data_inicio           DateTime
   data_fim              DateTime
   efetivo               Int
@@ -1592,4 +1616,98 @@ model CenarioRetratoLancamento {
   @@index([retrato_id])
   @@index([proposta_comercial_id])
   @@map("cenario_retratos_lancamentos")
+}
+
+// ─── Substituições e transferências de responsabilidade ───────────────────────
+// Cadastro único válido para os dois módulos (Comercial e Acordos) — a operação
+// é sobre a PESSOA, não sobre o módulo. Titularidade só existe em dois lugares
+// no schema (Solicitacao.orcamentista_id e Contrato.responsavel_id); os demais
+// registros (propostas, NFs, HH, ocorrências) seguem automaticamente por
+// referenciarem esses dois.
+
+// Tipo 1 — Substituição temporária: titularidade NÃO muda; o substituto ganha,
+// durante o período, exatamente as mesmas permissões do titular. "Vigente" é
+// sempre calculado por data (nunca gravado) — começa e acaba sozinha.
+model SubstituicaoTemporaria {
+  id               Int       @id @default(autoincrement())
+  titular_id       Int
+  substituto_id    Int
+  data_inicio      DateTime
+  data_fim         DateTime
+  motivo_tipo      String // FERIAS | AFASTAMENTO | LICENCA | OUTRO
+  motivo_detalhe   String?
+  // Encerramento antecipado — se preenchido, a substituição deixa de valer a
+  // partir desta data mesmo que data_fim ainda não tenha chegado.
+  encerrada_em     DateTime?
+  encerrada_por    Int?
+  encerrada_motivo String?
+  created_at       DateTime  @default(now())
+  created_by       Int
+  updated_at       DateTime  @updatedAt
+
+  titular      User                      @relation("SubstTitular", fields: [titular_id], references: [id])
+  substituto   User                      @relation("SubstSubstituto", fields: [substituto_id], references: [id])
+  criador      User                      @relation("SubstCriador", fields: [created_by], references: [id])
+  prorrogacoes SubstituicaoProrrogacao[]
+
+  @@index([titular_id])
+  @@index([substituto_id])
+  @@map("substituicoes_temporarias")
+}
+
+model SubstituicaoProrrogacao {
+  id                Int      @id @default(autoincrement())
+  substituicao_id   Int
+  data_fim_anterior DateTime
+  data_fim_nova     DateTime
+  motivo            String
+  created_at        DateTime @default(now())
+  created_by        Int
+
+  substituicao SubstituicaoTemporaria @relation(fields: [substituicao_id], references: [id], onDelete: Cascade)
+  criador      User                   @relation("SubstProrrogacaoCriador", fields: [created_by], references: [id])
+
+  @@index([substituicao_id])
+  @@map("substituicoes_prorrogacoes")
+}
+
+// Tipos 2 e 3 — Transferência definitiva (A→B) e Troca definitiva (A↔B):
+// titularidade MUDA nos itens selecionados. Sem data de fim — permanente.
+// "origem"/"destino" cobrem tanto a Transferência (origem=atual, destino=novo)
+// quanto a Troca (origem=A, destino=B; os itens de B→A ficam marcados por
+// TransferenciaItem.direcao).
+model TransferenciaResponsabilidade {
+  id              Int       @id @default(autoincrement())
+  tipo            String // TRANSFERENCIA | TROCA
+  origem_id       Int
+  destino_id      Int
+  data_efetivacao DateTime
+  motivo          String
+  // Carimbado quando a troca de titularidade de fato roda (na hora, se
+  // data_efetivacao <= hoje; ou depois, pelo cron de efetivação).
+  efetivada_em    DateTime?
+  created_at      DateTime  @default(now())
+  created_by      Int
+
+  origem  User                @relation("TransfOrigem", fields: [origem_id], references: [id])
+  destino User                @relation("TransfDestino", fields: [destino_id], references: [id])
+  criador User                @relation("TransfCriador", fields: [created_by], references: [id])
+  itens   TransferenciaItem[]
+
+  @@map("transferencias_responsabilidade")
+}
+
+model TransferenciaItem {
+  id                      Int     @id @default(autoincrement())
+  transferencia_id        Int
+  tipo_item               String // SOLICITACAO | CONTRATO
+  item_id                 Int
+  direcao                 String? // TROCA: 'A_PARA_B' | 'B_PARA_A' (null na TRANSFERENCIA)
+  responsavel_anterior_id Int
+  responsavel_novo_id     Int
+
+  transferencia TransferenciaResponsabilidade @relation(fields: [transferencia_id], references: [id], onDelete: Cascade)
+
+  @@index([transferencia_id])
+  @@map("transferencias_itens")
 }

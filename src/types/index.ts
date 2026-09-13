@@ -376,6 +376,38 @@ export interface UsuarioListItem {
   created_at: string
 }
 
+export interface SubstituicaoTemporariaItem {
+  id: number
+  titular_id: number
+  substituto_id: number
+  data_inicio: string
+  data_fim: string
+  motivo_tipo: 'FERIAS' | 'AFASTAMENTO' | 'LICENCA' | 'OUTRO'
+  motivo_detalhe: string | null
+  encerrada_em: string | null
+  encerrada_por: number | null
+  encerrada_motivo: string | null
+  created_at: string
+  created_by: number
+  titular: { id: number; nome: string; perfil: Perfil }
+  substituto: { id: number; nome: string; perfil: Perfil }
+}
+
+export interface TransferenciaListItem {
+  id: number
+  tipo: 'TRANSFERENCIA' | 'TROCA'
+  origem_id: number
+  destino_id: number
+  data_efetivacao: string
+  motivo: string
+  efetivada_em: string | null
+  created_at: string
+  created_by: number
+  origem: { id: number; nome: string }
+  destino: { id: number; nome: string }
+  itens: { id: number; tipo_item: 'SOLICITACAO' | 'CONTRATO'; item_id: number; direcao: string | null }[]
+}
+
 export interface NotificacaoItem {
   id: number
   titulo: string

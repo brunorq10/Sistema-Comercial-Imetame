@@ -27,8 +27,12 @@ export default auth((req) => {
   const isAnalista = !!req.auth?.user?.is_analista_critico
 
   // Cadastros e Relatórios são módulos de gestão com acesso restrito a nível de tela.
+  // GESTAO_COMERCIAL/GESTAO_ACORDOS entraram para a aba Substituições e
+  // Transferências (a visibilidade de cada aba dentro da tela continua sendo
+  // controlada por permissão — cadastro.cliente.editar / cadastro.usuario.gerenciar
+  // / cadastro.substituicao.gerenciar — em src/app/cadastros/page.tsx).
   if (pathname.startsWith('/cadastros')) {
-    const podeCadastros = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' || isAnalista
+    const podeCadastros = perfil === 'ADM_GERAL' || perfil === 'ADM_COMERCIAL' || perfil === 'GESTAO_COMERCIAL' || perfil === 'GESTAO_ACORDOS' || isAnalista
     if (perfil && !podeCadastros) {
       return NextResponse.redirect(new URL('/orcamentos/solicitacoes', req.url))
     }

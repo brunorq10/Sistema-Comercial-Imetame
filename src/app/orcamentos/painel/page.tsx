@@ -13,6 +13,8 @@ import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
 import { EditarPrazoModal } from '@/components/forms/EditarPrazoModal'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { RevisoesPendentes } from '@/components/painel/RevisoesPendentes'
+import { SubstituicaoBanner } from '@/components/painel/SubstituicaoBanner'
+import { useSubstituicoes } from '@/hooks/useSubstituicoes'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
@@ -54,6 +56,9 @@ export default function PainelOrcamentosPage() {
   const [cidadeFiltro, setCidadeFiltro] = useState('')
   const [orcamentistaFiltro, setOrcamentistaFiltro] = useState('')   // '' = meu painel
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
+  const { titularIds } = useSubstituicoes()
+  // 'todos' | 'proprios' | id do titular (string) — só aparece quando há substituição vigente
+  const [origemFiltro, setOrigemFiltro] = useState<'todos' | 'proprios' | string>('todos')
 
   const [modalTecnica, setModalTecnica] = useState<PainelItem | null>(null)
   const [modalComercial, setModalComercial] = useState<PainelItem | null>(null)
@@ -137,6 +142,8 @@ export default function PainelOrcamentosPage() {
     if (clienteFiltro) lista = lista.filter((i) => i.cliente === clienteFiltro)
     if (clienteFinalFiltro) lista = lista.filter((i) => i.cliente_final === clienteFinalFiltro)
     if (cidadeFiltro) lista = lista.filter((i) => (i.estado ? `${i.cidade}/${i.estado}` : i.cidade) === cidadeFiltro)
+    if (origemFiltro === 'proprios') lista = lista.filter((i) => String(i.orcamentista_id) === String(userId))
+    else if (origemFiltro !== 'todos') lista = lista.filter((i) => String(i.orcamentista_id) === origemFiltro)
 
     // Ordena do mais urgente ao menos urgente:
     // prazo mais próximo (ou já vencido) primeiro; sem prazo e já enviadas vão por último
@@ -150,7 +157,7 @@ export default function PainelOrcamentosPage() {
       return deadline - now  // negativo = atrasada
     }
     return [...lista].sort((a, b) => urgency(a) - urgency(b))
-  }, [items, filtroAtivo, subFiltro, clienteFiltro, clienteFinalFiltro, cidadeFiltro])
+  }, [items, filtroAtivo, subFiltro, clienteFiltro, clienteFinalFiltro, cidadeFiltro, origemFiltro, userId])
 
   const handleSetFiltro = (f: FiltroIndicador) => {
     setFiltroAtivo(f)
@@ -167,6 +174,25 @@ export default function PainelOrcamentosPage() {
           title="Meu Painel — Orçamentos"
           subtitle='Clique nos indicadores para filtrar. Sub-filtros em "Atrasadas" permitem filtrar por tipo.'
         />
+
+        <SubstituicaoBanner />
+
+        {titularIds.length > 0 && !orcamentistaFiltro && (
+          <div className="flex items-center gap-1.5 mb-2.5">
+            {(['todos', 'proprios', ...titularIds.map(String)] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setOrigemFiltro(v)}
+                className={cn(
+                  'px-2.5 py-1 text-[10px] font-medium rounded-full border transition-colors',
+                  origemFiltro === v ? 'bg-green-primary text-white border-green-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50',
+                )}
+              >
+                {v === 'todos' ? 'Todos' : v === 'proprios' ? 'Meus itens' : `De: ${items.find((i) => String(i.orcamentista_id) === v)?.orcamentista_nome ?? v}`}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Botão de filtros — só no celular (abaixo de sm); em tablet/desktop a barra já fica sempre visível abaixo */}
         <button
@@ -348,6 +374,7 @@ export default function PainelOrcamentosPage() {
             onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico?from=/orcamentos/painel`)}
             onHistoricoAlteracoes={setModalHistAlteracoes}
             readOnly={!!orcamentistaFiltro}
+            origemLabel={!orcamentistaFiltro && String(item.orcamentista_id) !== String(userId) ? item.orcamentista_nome : null}
           />
         ))
       )}

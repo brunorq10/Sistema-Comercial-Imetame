@@ -14,6 +14,7 @@ import type { Plugin } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { cn, formatDate } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useSubstituicoes } from '@/hooks/useSubstituicoes'
 import { barColors } from '@/lib/hh'
 import {
   MESES_LABELS, mesesEntre, key, pesoPrevItem, pesoRealItem, pctAvanco, fmtHh, fmtPeso, fmtPct,
@@ -55,6 +56,7 @@ export default function ContratoFabricacaoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { pode, ehDono } = usePermissions()
+  const { titularIds } = useSubstituicoes()
 
   const [loading, setLoading] = useState(true)
   const [contrato, setContrato] = useState<ContratoFab | null>(null)
@@ -95,14 +97,15 @@ export default function ContratoFabricacaoPage() {
 
   const itens: ItemFab[] = contrato?.itens ?? []
 
+  // Substituição temporária vigente (Cadastros > Substituições): o substituto
+  // ganha, durante o período, exatamente a mesma permissão do titular.
+  const ehDonoOuSubstituto = ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato')
+    || (!!contrato?.responsavel?.id && titularIds.includes(contrato.responsavel.id))
+
   const fechada = contrato?.hh_fechada_em != null
   const podeEditarItens = !fechada && pode('acordos.fab.itens.editar')
-  const podeLancarRealizado = !fechada && pode('acordos.fab.realizado.lancar', {
-    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
-  })
-  const podeFechar = pode('acordos.fab.realizado.lancar', {
-    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
-  })
+  const podeLancarRealizado = !fechada && pode('acordos.fab.realizado.lancar', { ehDono: ehDonoOuSubstituto })
+  const podeFechar = pode('acordos.fab.realizado.lancar', { ehDono: ehDonoOuSubstituto })
   const podeReabrir = pode('acordos.fab.reabrir')
 
   async function handleFechar() {

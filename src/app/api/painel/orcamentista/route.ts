@@ -13,11 +13,26 @@ export async function GET(req: NextRequest) {
   const interesse = searchParams.get('interesse') ?? undefined
   // Permite visualizar o painel de outro orçamentista (default: o próprio usuário)
   const orcParam = searchParams.get('orcamentista_id')
-  const orcamentistaId = orcParam ? Number(orcParam) : Number(session.user.id)
+  const meuId = Number(session.user.id)
+
+  // Sem orcamentista_id explícito (visão do próprio Meu Painel): inclui também
+  // os itens de titulares que o usuário substitui agora (Cadastros >
+  // Substituições — Tipo 1), para que o substituto veja e opere sobre eles.
+  let orcamentistaIds: number[]
+  if (orcParam) {
+    orcamentistaIds = [Number(orcParam)]
+  } else {
+    const hoje = new Date()
+    const substituindo = await prisma.substituicaoTemporaria.findMany({
+      where: { substituto_id: meuId, encerrada_em: null, data_inicio: { lte: hoje }, data_fim: { gte: hoje } },
+      select: { titular_id: true },
+    })
+    orcamentistaIds = [meuId, ...substituindo.map((s) => s.titular_id)]
+  }
 
   const items = await prisma.solicitacao.findMany({
     where: {
-      orcamentista_id: orcamentistaId,
+      orcamentista_id: { in: orcamentistaIds },
       cancelled_at: null,
       status: { in: ['AGUARDANDO_ANALISE', 'EM_ELABORACAO', 'PROPOSTA_ENVIADA'] },
       ...(classificacao && { classificacao: classificacao as never }),
@@ -48,6 +63,7 @@ export async function GET(req: NextRequest) {
     include: {
       cliente:       { select: { nome: true } },
       cliente_final: { select: { nome: true } },
+      orcamentista:  { select: { id: true, nome: true } },
       propostas_tecnicas:   { orderBy: { versao: 'desc' } },
       propostas_comerciais: { orderBy: { versao: 'desc' } },
       propostas_fabricacao: { orderBy: { versao: 'desc' }, take: 1 },
@@ -85,6 +101,11 @@ export async function GET(req: NextRequest) {
     return {
       id: s.id,
       numero: s.numero,
+      // Presente para o Meu Painel destacar itens de um titular substituído
+      // (Cadastros > Substituições) — igual ao próprio usuário quando não há
+      // substituição em curso.
+      orcamentista_id: s.orcamentista_id,
+      orcamentista_nome: s.orcamentista?.nome ?? null,
       created_at: s.created_at.toISOString(),
       data_atribuicao: s.data_atribuicao?.toISOString() ?? null,
       data_recebimento: s.data_recebimento?.toISOString() ?? null,

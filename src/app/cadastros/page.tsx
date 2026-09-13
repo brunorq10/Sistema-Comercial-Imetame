@@ -6,15 +6,17 @@ import { Badge } from '@/components/ui/Badge'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ClienteModal } from '@/components/forms/ClienteModal'
 import { UsuarioModal } from '@/components/forms/UsuarioModal'
+import { SubstituicoesTab } from '@/components/cadastros/SubstituicoesTab'
 import { PERFIL_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ClienteListItem, UsuarioListItem } from '@/types'
 
-type Tab = 'clientes' | 'usuarios'
+type Tab = 'clientes' | 'usuarios' | 'substituicoes'
 
 export default function CadastrosPage() {
   const { pode } = usePermissions()
   const podeCliente = pode('cadastro.cliente.editar')   // criar/editar/inativar têm os mesmos perfis
   const podeUsuario = pode('cadastro.usuario.gerenciar')
+  const podeSubstituicao = pode('cadastro.substituicao.gerenciar')
   const [tab, setTab] = useState<Tab>('clientes')
 
   // ── Clientes ──────────────────────────────────────────────────────────────
@@ -95,7 +97,9 @@ export default function CadastrosPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
-        {(['clientes', 'usuarios'] as Tab[]).filter((t) => t === 'clientes' ? podeCliente : podeUsuario).map((t) => (
+        {(['clientes', 'usuarios', 'substituicoes'] as Tab[])
+          .filter((t) => t === 'clientes' ? podeCliente : t === 'usuarios' ? podeUsuario : podeSubstituicao)
+          .map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -105,7 +109,7 @@ export default function CadastrosPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'clientes' ? 'Clientes' : 'Usuários'}
+            {t === 'clientes' ? 'Clientes' : t === 'usuarios' ? 'Usuários' : 'Substituições e Transferências'}
           </button>
         ))}
       </div>
@@ -334,6 +338,9 @@ export default function CadastrosPage() {
           />
         </>
       )}
+
+      {/* ── SUBSTITUIÇÕES E TRANSFERÊNCIAS ──────────────────────────────────── */}
+      {tab === 'substituicoes' && <SubstituicoesTab />}
     </div>
   )
 }

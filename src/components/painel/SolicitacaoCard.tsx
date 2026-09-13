@@ -10,6 +10,10 @@ import { cn } from '@/lib/utils'
 export interface PainelItem {
   id: number
   numero: string
+  // Presentes para o Meu Painel destacar itens de um titular substituído
+  // (Cadastros > Substituições) — igual ao próprio usuário fora desse caso.
+  orcamentista_id?: number | null
+  orcamentista_nome?: string | null
   created_at: string
   data_atribuicao: string | null
   data_recebimento: string | null
@@ -78,9 +82,11 @@ interface Props {
   onHistoricoAlteracoes?: (item: PainelItem) => void
   /** Visualização do painel de outro orçamentista — sem ações de edição. */
   readOnly?: boolean
+  /** Nome do titular, quando o item não é do próprio usuário (substituição temporária vigente). */
+  origemLabel?: string | null
 }
 
-export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onEditarPrazo, onHistorico, onHistoricoAlteracoes, readOnly }: Props) {
+export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onEditarPrazo, onHistorico, onHistoricoAlteracoes, readOnly, origemLabel }: Props) {
   const isFabricacaoType = item.classificacao === 'FABRICACOES' || item.classificacao === 'OLEO_GAS'
   const isParadasType = item.classificacao === 'PARADAS'
   const isObrasType = item.classificacao === 'OBRAS'
@@ -100,6 +106,7 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
           <span className="text-[13px] font-bold">{item.numero}</span>
           <VersaoBadge versao={item.versao_atual} asSold={item.as_sold} />
           {item.classificacao && <ClassificacaoBadge value={item.classificacao} />}
+          {origemLabel && <Badge variant="purple">De: {origemLabel}</Badge>}
           {/* Status urgência */}
           {atrasado
             ? <Badge variant="red">⚠ Atrasada</Badge>

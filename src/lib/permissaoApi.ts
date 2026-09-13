@@ -2,7 +2,54 @@ import { NextResponse } from 'next/server'
 import type { Session } from 'next-auth'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { pode, ehDono, type Permissao, type Usuario } from '@/lib/permissoes'
+import { pode, ehDono, type Permissao, type Usuario, type TipoRegistro, type RegistroDono } from '@/lib/permissoes'
+
+// Substituição temporária vigente (Cadastros > Substituições) onde `usuarioId`
+// substitui `titularId` hoje — período corrente e não encerrada antecipadamente.
+async function substitutoVigentePara(usuarioId: number, titularId: number): Promise<boolean> {
+  const hoje = new Date()
+  const subst = await prisma.substituicaoTemporaria.findFirst({
+    where: {
+      titular_id: titularId,
+      substituto_id: usuarioId,
+      data_inicio: { lte: hoje },
+      data_fim: { gte: hoje },
+      encerrada_em: null,
+    },
+    select: { id: true },
+  })
+  return !!subst
+}
+
+// Como ehDono(), mas também libera quem está substituindo o titular no momento.
+// Tipo 1 (substituição temporária) não muda titularidade — só concede, durante
+// o período vigente, exatamente as mesmas permissões que o titular já tem.
+export async function ehDonoOuSubstituto(
+  usuario: Usuario | null | undefined,
+  registro: RegistroDono | null | undefined,
+  tipo: TipoRegistro,
+): Promise<boolean> {
+  if (ehDono(usuario, registro, tipo)) return true
+  if (!usuario || !registro) return false
+  const titularId = tipo === 'solicitacao' ? registro.orcamentista_id : tipo === 'contrato' ? registro.responsavel_id : null
+  if (!titularId) return false
+  return substitutoVigentePara(usuario.id, titularId)
+}
+
+// Resolve quem deve ser gravado como autor de uma ação (created_by) e, quando o
+// autor está agindo por substituição temporária, quem é o titular substituído
+// (substituto_de_id) — para as telas de histórico exibirem "por X, em
+// substituição a Y". Assume que a titularidade/substituição já foi validada
+// (ex.: via exigirTitular* acima) antes de chamar isto.
+export function resolverAutoria(
+  usuario: Usuario,
+  registro: RegistroDono | null | undefined,
+  tipo: TipoRegistro,
+): { created_by: number; substituto_de_id: number | null } {
+  if (ehDono(usuario, registro, tipo)) return { created_by: usuario.id, substituto_de_id: null }
+  const titularId = tipo === 'solicitacao' ? registro?.orcamentista_id : tipo === 'contrato' ? registro?.responsavel_id : null
+  return { created_by: usuario.id, substituto_de_id: titularId ?? null }
+}
 
 export function usuarioDaSessao(session: Session | null): Usuario | null {
   if (!session?.user) return null
@@ -42,7 +89,7 @@ export async function exigirTitularSolicitacao(
   const usuario = usuarioDaSessao(session)
   if (!usuario) return respostaNaoAutorizado()
   const sol = await prisma.solicitacao.findUnique({ where: { id: solicitacaoId }, select: { orcamentista_id: true } })
-  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, sol, 'solicitacao') })) return respostaSemPermissao()
+  if (!pode(usuario, permissao, { ehDono: await ehDonoOuSubstituto(usuario, sol, 'solicitacao') })) return respostaSemPermissao()
   return null
 }
 
@@ -55,7 +102,7 @@ export async function exigirTitularContrato(
   const usuario = usuarioDaSessao(session)
   if (!usuario) return respostaNaoAutorizado()
   const ct = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { responsavel_id: true } })
-  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, ct, 'contrato') })) return respostaSemPermissao()
+  if (!pode(usuario, permissao, { ehDono: await ehDonoOuSubstituto(usuario, ct, 'contrato') })) return respostaSemPermissao()
   return null
 }
 
@@ -71,7 +118,7 @@ export async function exigirTitularSubindice(
     where: { id: subindiceId },
     select: { contrato: { select: { responsavel_id: true } } },
   })
-  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, sub?.contrato, 'contrato') })) return respostaSemPermissao()
+  if (!pode(usuario, permissao, { ehDono: await ehDonoOuSubstituto(usuario, sub?.contrato, 'contrato') })) return respostaSemPermissao()
   return null
 }
 
@@ -87,7 +134,7 @@ export async function exigirTitularNfContrato(
     where: { id: nfId },
     select: { subindice: { select: { contrato: { select: { responsavel_id: true } } } } },
   })
-  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, nf?.subindice?.contrato, 'contrato') })) return respostaSemPermissao()
+  if (!pode(usuario, permissao, { ehDono: await ehDonoOuSubstituto(usuario, nf?.subindice?.contrato, 'contrato') })) return respostaSemPermissao()
   return null
 }
 
@@ -103,6 +150,6 @@ export async function exigirTitularFabItem(
     where: { id: itemId },
     select: { contrato: { select: { responsavel_id: true } } },
   })
-  if (!pode(usuario, permissao, { ehDono: ehDono(usuario, item?.contrato, 'contrato') })) return respostaSemPermissao()
+  if (!pode(usuario, permissao, { ehDono: await ehDonoOuSubstituto(usuario, item?.contrato, 'contrato') })) return respostaSemPermissao()
   return null
 }

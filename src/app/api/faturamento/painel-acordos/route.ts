@@ -19,19 +19,27 @@ export async function GET(req: NextRequest) {
   // VISUALIZAÇÃO é livre para qualquer usuário autenticado (inclusive de outros
   // módulos, ex.: Comercial vendo Acordos). A EDIÇÃO permanece protegida nas
   // rotas de escrita (permissão + titularidade).
-  let responsavelId: number | undefined
+  let responsavelIds: number[] | undefined
   if (todos) {
-    responsavelId = undefined // busca todos
+    responsavelIds = undefined // busca todos
   } else if (responsavelIdParam) {
-    responsavelId = Number(responsavelIdParam)
+    // Aceita uma lista separada por vírgula — usada pelo Meu Painel para incluir,
+    // junto do próprio usuário, os titulares que ele substitui agora.
+    responsavelIds = responsavelIdParam.split(',').map(Number).filter((n) => !isNaN(n))
   } else {
-    // Default: o próprio usuário
-    responsavelId = userId
+    // Default (próprio Meu Painel): inclui também os contratos de titulares que
+    // o usuário substitui agora (Cadastros > Substituições — Tipo 1).
+    const hoje = new Date()
+    const substituindo = await prisma.substituicaoTemporaria.findMany({
+      where: { substituto_id: userId, encerrada_em: null, data_inicio: { lte: hoje }, data_fim: { gte: hoje } },
+      select: { titular_id: true },
+    })
+    responsavelIds = [userId, ...substituindo.map((s) => s.titular_id)]
   }
 
   try {
-    const whereResponsavel = responsavelId !== undefined
-      ? { responsavel_id: responsavelId }
+    const whereResponsavel = responsavelIds !== undefined
+      ? { responsavel_id: { in: responsavelIds } }
       : { responsavel_id: { not: null } }
 
     const contratos = await prisma.contrato.findMany({

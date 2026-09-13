@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useSubstituicoes } from '@/hooks/useSubstituicoes'
 import { barColors } from '@/lib/hh'
 import { RealizadoDiarioObras } from '@/components/acordos/RealizadoDiarioObras'
 import { HhComportamentoChart } from '@/components/acordos/HhComportamentoChart'
@@ -80,6 +81,7 @@ export default function ContratoObrasHhPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { pode, ehDono } = usePermissions()
+  const { titularIds } = useSubstituicoes()
 
   const [loading, setLoading] = useState(true)
   const [contrato, setContrato] = useState<ContratoInfo | null>(null)
@@ -129,13 +131,14 @@ export default function ContratoObrasHhPage() {
   const lancSelecionado = lancamentos.find(l => l.id === revisaoId) ?? lancAtual
   const isRevisaoAtual = lancamentos.length === 0 || revisaoId === lancAtual?.id
 
+  // Substituição temporária vigente (Cadastros > Substituições): o substituto
+  // ganha, durante o período, exatamente a mesma permissão do titular.
+  const ehDonoOuSubstituto = ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato')
+    || (!!contrato?.responsavel?.id && titularIds.includes(contrato.responsavel.id))
+
   const fechada = contrato?.hh_fechada_em != null
-  const podeEditar = !fechada && pode('acordos.obras.hh.lancar', {
-    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
-  })
-  const podeFechar = pode('acordos.obras.hh.lancar', {
-    ehDono: ehDono(contrato ? { responsavel_id: contrato.responsavel?.id ?? null } : null, 'contrato'),
-  })
+  const podeEditar = !fechada && pode('acordos.obras.hh.lancar', { ehDono: ehDonoOuSubstituto })
+  const podeFechar = pode('acordos.obras.hh.lancar', { ehDono: ehDonoOuSubstituto })
   const podeReabrir = pode('acordos.obras.reabrir')
 
   async function handleFechar() {

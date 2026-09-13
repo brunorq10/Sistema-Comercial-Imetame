@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/efetivar-transferencias",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

@@ -118,6 +118,11 @@ export const CATALOGO = {
   'cadastro.cliente.editar':   { perfis: ['ADM_COMERCIAL'], analista: true },
   'cadastro.cliente.inativar': { perfis: ['ADM_COMERCIAL'], analista: true },
   'cadastro.usuario.gerenciar':{ perfis: [] },                        // só ADM_GERAL
+  // Substituições e transferências de responsabilidade — perfis de gestão
+  // (deliberadamente sem ADM_COMERCIAL, ao contrário das demais permissões de
+  // Cadastro acima): Gestão Comercial, Gestão de Acordos, Analista Crítico.
+  // ADM_GERAL é soberano (implícito).
+  'cadastro.substituicao.gerenciar': { perfis: ['GESTAO_COMERCIAL', 'GESTAO_ACORDOS'], analista: true },
 
   // ─────────── Relatórios gerenciais ───────────
   // Biblioteca de relatórios pré-definidos — gestão dos dois times (Comercial
@@ -160,7 +165,7 @@ export function pode(usuario: Usuario | null | undefined, permissao: Permissao, 
 // ── Titularidade ("dono") por tipo de registro ───────────────────────────────
 export type TipoRegistro = 'solicitacao' | 'contrato' | 'nf'
 
-interface RegistroDono {
+export interface RegistroDono {
   orcamentista_id?: number | null
   responsavel_id?: number | null
   created_by?: number | null
