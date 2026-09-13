@@ -10,6 +10,8 @@ import { RegistrarFabricacaoModal } from '@/components/forms/RegistrarFabricacao
 import { RegistrarParadaModal } from '@/components/forms/RegistrarParadaModal'
 import { RegistrarObraModal } from '@/components/forms/RegistrarObraModal'
 import { RegistrarInfoModal } from '@/components/forms/RegistrarInfoModal'
+import { EditarPrazoModal } from '@/components/forms/EditarPrazoModal'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { RevisoesPendentes } from '@/components/painel/RevisoesPendentes'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Field, Input, Select } from '@/components/ui/Input'
@@ -57,6 +59,8 @@ export default function PainelOrcamentosPage() {
   const [modalParada, setModalParada] = useState<{ item: PainelItem; tab: 'tecnica' | 'comercial' } | null>(null)
   const [modalObra, setModalObra] = useState<{ item: PainelItem; tab: 'tecnica' | 'comercial' } | null>(null)
   const [modalInfo, setModalInfo] = useState<PainelItem | null>(null)
+  const [modalPrazo, setModalPrazo] = useState<PainelItem | null>(null)
+  const [modalHistAlteracoes, setModalHistAlteracoes] = useState<PainelItem | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -310,7 +314,9 @@ export default function PainelOrcamentosPage() {
             onRegistrarParada={(item, tab) => setModalParada({ item, tab })}
             onRegistrarObra={(item, tab) => setModalObra({ item, tab })}
             onRegistrarInfo={setModalInfo}
+            onEditarPrazo={setModalPrazo}
             onHistorico={(item) => router.push(`/orcamentos/propostas/${item.id}/historico?from=/orcamentos/painel`)}
+            onHistoricoAlteracoes={setModalHistAlteracoes}
             readOnly={!!orcamentistaFiltro}
           />
         ))
@@ -376,6 +382,30 @@ export default function PainelOrcamentosPage() {
           onSuccess={fetchData}
           solicitacaoId={modalInfo.id}
           numero={modalInfo.numero}
+        />
+      )}
+      {modalPrazo && (
+        <EditarPrazoModal
+          open={true}
+          onClose={() => setModalPrazo(null)}
+          onSuccess={fetchData}
+          solicitacaoId={modalPrazo.id}
+          numero={modalPrazo.numero}
+          prazoTecnica={modalPrazo.prazo_tecnica}
+          prazoTecnicaIndeterminado={modalPrazo.prazo_tecnica_indeterminado}
+          tecnicaEnviada={modalPrazo.tecnica_enviada}
+          prazoComercial={modalPrazo.prazo_comercial}
+          prazoComercialIndeterminado={modalPrazo.prazo_comercial_indeterminado}
+          comercialEnviada={modalPrazo.comercial_enviada}
+        />
+      )}
+      {modalHistAlteracoes && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setModalHistAlteracoes(null)}
+          tipo="proposta"
+          itemId={modalHistAlteracoes.id}
+          titulo={modalHistAlteracoes.numero}
         />
       )}
     </div>

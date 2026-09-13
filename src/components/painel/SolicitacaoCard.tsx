@@ -21,7 +21,9 @@ export interface PainelItem {
   classificacao: Classificacao | null
   interesse: Interesse | null
   prazo_tecnica: string | null
+  prazo_tecnica_indeterminado: boolean
   prazo_comercial: string | null
+  prazo_comercial_indeterminado: boolean
   visita_tecnica: boolean
   data_visita: string | null
   is_portal: boolean
@@ -71,12 +73,14 @@ interface Props {
   onRegistrarParada: (item: PainelItem, tab: 'tecnica' | 'comercial') => void
   onRegistrarObra: (item: PainelItem, tab: 'tecnica' | 'comercial') => void
   onRegistrarInfo: (item: PainelItem) => void
+  onEditarPrazo?: (item: PainelItem) => void
   onHistorico?: (item: PainelItem) => void
+  onHistoricoAlteracoes?: (item: PainelItem) => void
   /** Visualização do painel de outro orçamentista — sem ações de edição. */
   readOnly?: boolean
 }
 
-export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onHistorico, readOnly }: Props) {
+export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial, onRegistrarFabricacao, onRegistrarParada, onRegistrarObra, onRegistrarInfo, onEditarPrazo, onHistorico, onHistoricoAlteracoes, readOnly }: Props) {
   const isFabricacaoType = item.classificacao === 'FABRICACOES' || item.classificacao === 'OLEO_GAS'
   const isParadasType = item.classificacao === 'PARADAS'
   const isObrasType = item.classificacao === 'OBRAS'
@@ -224,11 +228,21 @@ export function SolicitacaoCard({ item, onRegistrarTecnica, onRegistrarComercial
             <Button size="sm" variant="outline" onClick={() => onRegistrarInfo(item)}>
               Registrar Informação
             </Button>
+            {onEditarPrazo && !(item.tecnica_enviada && item.comercial_enviada) && (
+              <Button size="sm" variant="outline" onClick={() => onEditarPrazo(item)}>
+                Editar Prazo
+              </Button>
+            )}
           </>
         )}
         {onHistorico && item.versao_atual > 1 && (
           <Button size="sm" variant="outline" onClick={() => onHistorico(item)}>
-            Histórico
+            Histórico de Revisões
+          </Button>
+        )}
+        {onHistoricoAlteracoes && (
+          <Button size="sm" variant="outline" onClick={() => onHistoricoAlteracoes(item)}>
+            Histórico de Alterações
           </Button>
         )}
       </div>
