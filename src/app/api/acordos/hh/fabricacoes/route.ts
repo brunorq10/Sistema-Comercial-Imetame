@@ -59,6 +59,8 @@ const itemSchema = z.object({
 const bodySchema = z.object({
   contrato_id: z.number().int().positive(),
   itens: z.array(itemSchema).min(1, 'Inclua ao menos um item'),
+  // Obrigatório apenas quando a lista salva remove item(ns) existente(s)
+  motivo_remocao: z.string().optional(),
 })
 
 type Hist = { item_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
-  const { contrato_id, itens } = parsed.data
+  const { contrato_id, itens, motivo_remocao } = parsed.data
 
   const contratoCheck = await prisma.contrato.findUnique({ where: { id: contrato_id }, select: { hh_fechada_em: true } })
   if (contratoCheck?.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Fabricação está fechada — reabra antes de editar.' }, { status: 403 })
@@ -87,6 +89,9 @@ export async function POST(req: NextRequest) {
   if (haveraRemocao) {
     const { erro } = await exigirPermissao('acordos.fab.excluir')
     if (erro) return erro
+    if (!motivo_remocao || motivo_remocao.trim().length < 5) {
+      return NextResponse.json({ data: null, error: 'Informe o motivo da remoção do(s) item(ns) (mínimo 5 caracteres).' }, { status: 400 })
+    }
   }
 
   await prisma.$transaction(async (tx) => {
@@ -102,8 +107,8 @@ export async function POST(req: NextRequest) {
     // Como o histórico não é mais apagado em cascata, o rastro do item sobrevive.
     for (const ex of existentes) {
       if (!idsPayload.has(ex.id)) {
-        await tx.fabricacaoItem.update({ where: { id: ex.id }, data: { deleted_at: new Date(), deleted_by: userId } })
-        hist.push({ item_id: ex.id, campo: 'Item removido', valor_de: ex.descricao, valor_para: null, created_by: userId })
+        await tx.fabricacaoItem.update({ where: { id: ex.id }, data: { deleted_at: new Date(), deleted_by: userId, motivo_exclusao: motivo_remocao?.trim() ?? null } })
+        hist.push({ item_id: ex.id, campo: 'Item removido', valor_de: ex.descricao, valor_para: `Motivo: ${motivo_remocao?.trim()}`, created_by: userId })
       }
     }
 

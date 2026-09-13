@@ -99,10 +99,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const ano = dataDia.getUTCFullYear()
   const mes = dataDia.getUTCMonth() + 1
+  const dataFmt = d.data.split('-').reverse().join('/')
+
+  // Estado atual do dia — para registrar o diff completo (não só o último valor)
+  const diaAntes = await prisma.hhRealizadoDia.findUnique({
+    where: { contrato_id_data: { contrato_id: contratoId, data: dataDia } },
+  })
 
   await prisma.$transaction(async (tx) => {
     if (vazio) {
       await tx.hhRealizadoDia.deleteMany({ where: { contrato_id: contratoId, data: dataDia } })
+      if (diaAntes) {
+        await tx.hhRealizadoDiaHistorico.create({
+          data: {
+            contrato_id: contratoId, data: dataDia, campo: `Lançamento removido — ${dataFmt}`,
+            valor_de: `Normal: ${diaAntes.efetivo_normal ?? '—'} · Extra: ${diaAntes.efetivo_extra ?? '—'}`,
+            valor_para: null, created_by: userId,
+          },
+        })
+      }
     } else {
       await tx.hhRealizadoDia.upsert({
         where: { contrato_id_data: { contrato_id: contratoId, data: dataDia } },
@@ -128,6 +143,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           substituto_de_id: autoria.substituto_de_id,
         },
       })
+
+      // Diff completo — cada lançamento/edição vira uma linha própria, mesmo
+      // que a mesma data seja relançada várias vezes (Alto item do diagnóstico
+      // de rastreabilidade: antes só o último valor ficava visível).
+      const hist: { contrato_id: number; data: Date; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+      const camposDiff: [string, number | null | undefined, number | null | undefined][] = [
+        ['Efetivo Normal', diaAntes?.efetivo_normal ?? null, d.efetivo_normal ?? null],
+        ['Efetivo Extra', diaAntes?.efetivo_extra ?? null, d.efetivo_extra ?? null],
+      ]
+      for (const [label, antigo, novo] of camposDiff) {
+        if ((antigo ?? null) !== (novo ?? null)) {
+          hist.push({
+            contrato_id: contratoId, data: dataDia, campo: `${label} — ${dataFmt}`,
+            valor_de: antigo != null ? String(antigo) : null,
+            valor_para: novo != null ? String(novo) : null,
+            created_by: userId,
+          })
+        }
+      }
+      if (hist.length > 0) await tx.hhRealizadoDiaHistorico.createMany({ data: hist })
     }
 
     // Mantém HhRealizado (mensal) em sincronia — soma dos dias do mês,

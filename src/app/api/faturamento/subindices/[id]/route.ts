@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
 
@@ -124,6 +124,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+
+  const body = await req.json().catch(() => ({}))
+  const motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  if (motivo.length < 5) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da exclusão (mínimo 5 caracteres).' }, { status: 400 })
+  }
 
   // RN-CF-20: bloquear exclusão quando há NFs ativas vinculadas
   const nfsAtivas = await prisma.notaFiscalContrato.count({ where: { subindice_id: id, ativa: true, deleted_at: null } })
@@ -134,10 +140,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     )
   }
 
+  const autorId = Number(session.user.id)
   // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
-  await prisma.subIndiceFaturamento.update({
-    where: { id },
-    data: { deleted_at: new Date(), deleted_by: Number(session.user.id) },
-  })
+  await prisma.$transaction([
+    prisma.subIndiceFaturamento.update({
+      where: { id },
+      data: { deleted_at: new Date(), deleted_by: autorId, motivo_exclusao: motivo },
+    }),
+    prisma.historicoSubIndice.create({
+      data: { subindice_id: id, campo: 'Exclusão', valor_de: 'Ativo', valor_para: `Excluído — Motivo: ${motivo}`, created_by: autorId },
+    }),
+  ])
   return NextResponse.json({ data: null, error: null })
 }

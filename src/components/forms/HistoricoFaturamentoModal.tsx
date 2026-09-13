@@ -15,7 +15,7 @@ interface HistoricoEntry {
   substituto_de_nome?: string | null
 }
 
-type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada' | 'obras' | 'fabricacao'
+type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada' | 'obras' | 'fabricacao' | 'usuario' | 'cliente' | 'multa'
 
 interface Props {
   open: boolean
@@ -45,6 +45,12 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
       ? `/api/acordos/hh/${itemId}/historico`
       : tipo === 'fabricacao'
       ? `/api/acordos/hh/fabricacoes/historico?contrato_id=${itemId}`
+      : tipo === 'usuario'
+      ? `/api/usuarios/${itemId}/historico`
+      : tipo === 'cliente'
+      ? `/api/clientes/${itemId}/historico`
+      : tipo === 'multa'
+      ? `/api/faturamento/multas/${itemId}/historico`
       : `/api/faturamento/contratos/${itemId}/historico`
     fetch(endpoint)
       .then((r) => r.json())

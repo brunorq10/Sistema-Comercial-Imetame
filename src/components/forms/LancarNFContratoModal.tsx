@@ -51,13 +51,17 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
 
   const confirmarNfAcao = async () => {
     if (!nfAcao) return
-    if (nfAcao.tipo === 'inativar' && nfAcao.nf.ativa && nfMotivo.trim().length < 3) {
-      setNfAcaoError('Informe o motivo da inativação (mínimo 3 caracteres)'); return
+    if (((nfAcao.tipo === 'inativar' && nfAcao.nf.ativa) || nfAcao.tipo === 'excluir') && nfMotivo.trim().length < 3) {
+      setNfAcaoError(`Informe o motivo da ${nfAcao.tipo === 'excluir' ? 'exclusão' : 'inativação'} (mínimo 3 caracteres)`); return
     }
     setNfAcaoLoading(true); setNfAcaoError(null)
     try {
       if (nfAcao.tipo === 'excluir') {
-        const res = await fetch(`/api/faturamento/nfs/${nfAcao.nf.id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/faturamento/nfs/${nfAcao.nf.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ motivo: nfMotivo.trim() }),
+        })
         const json = await res.json().catch(() => ({}))
         if (!res.ok || json.error) { setNfAcaoError(json.error ?? 'Erro ao excluir'); return }
       } else {
@@ -409,7 +413,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           valorEvento={subindice.valor_total}
           onEditar={abrirEdicao}
           onInativar={canInativar ? (nf) => { setNfAcao({ tipo: 'inativar', nf }); setNfMotivo(''); setNfAcaoError(null) } : undefined}
-          onExcluir={canExcluir ? (nf) => { setNfAcao({ tipo: 'excluir', nf }); setNfAcaoError(null) } : undefined}
+          onExcluir={canExcluir ? (nf) => { setNfAcao({ tipo: 'excluir', nf }); setNfMotivo(''); setNfAcaoError(null) } : undefined}
         />
       )}
 
@@ -432,7 +436,10 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
             <div className="p-[18px]">
               {nfAcaoError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{nfAcaoError}</div>}
               {nfAcao.tipo === 'excluir' ? (
-                <p className="text-[12px] text-gray-600">A NF <strong>{nfAcao.nf.numero_nf}</strong> será excluída permanentemente. Esta ação não pode ser desfeita.</p>
+                <>
+                  <p className="text-[12px] text-gray-600 mb-3">A NF <strong>{nfAcao.nf.numero_nf}</strong> vai para a lixeira (recuperável por 15 dias) e deixa de contabilizar. Informe o motivo.</p>
+                  <textarea className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40" rows={2} placeholder="Motivo da exclusão (mínimo 3 caracteres)" value={nfMotivo} onChange={(e) => setNfMotivo(e.target.value)} />
+                </>
               ) : nfAcao.nf.ativa ? (
                 <>
                   <p className="text-[12px] text-gray-600 mb-3">A NF deixará de contabilizar no faturamento. Informe o motivo.</p>
@@ -444,7 +451,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
             </div>
             <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
               <Button variant="outline" onClick={() => { setNfAcao(null); setNfMotivo(''); setNfAcaoError(null) }} disabled={nfAcaoLoading}>Voltar</Button>
-              <Button variant={nfAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={confirmarNfAcao} disabled={nfAcaoLoading}>
+              <Button variant={nfAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={confirmarNfAcao} disabled={nfAcaoLoading || (((nfAcao.tipo === 'inativar' && nfAcao.nf.ativa) || nfAcao.tipo === 'excluir') && nfMotivo.trim().length < 3)}>
                 {nfAcaoLoading ? 'Aguarde...' : nfAcao.tipo === 'excluir' ? 'Confirmar exclusão' : nfAcao.nf.ativa ? 'Confirmar inativação' : 'Confirmar reativação'}
               </Button>
             </div>

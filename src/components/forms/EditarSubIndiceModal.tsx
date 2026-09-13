@@ -88,6 +88,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   const [loadingSiblings, setLoadingSiblings] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteMotivo, setDeleteMotivo] = useState('')
   const [showPending, setShowPending] = useState(false)
 
   const subAno = subindice.data_inicio
@@ -377,9 +378,14 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
   }
 
   const handleDelete = async () => {
+    if (deleteMotivo.trim().length < 5) { setError('Informe o motivo da exclusão (mínimo 5 caracteres)'); return }
     setLoading(true)
     try {
-      const res = await fetch(`/api/faturamento/subindices/${subindice.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/faturamento/subindices/${subindice.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: deleteMotivo.trim() }),
+      })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao excluir'); return }
       onDelete(); onClose()
@@ -666,7 +672,7 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       {!readOnly && !useApprovalFlow && <div className="border-t border-red-100 pt-3 mt-2">
         {!confirmDelete ? (
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => { setConfirmDelete(true); setDeleteMotivo('') }}
             className="text-red-500 text-[11px] hover:text-red-700 hover:underline"
           >
             🗑 Excluir este sub-índice
@@ -674,11 +680,18 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         ) : (
           <div className="bg-red-50 border border-red-200 rounded p-3">
             <p className="text-[11px] text-red-700 mb-2">
-              Confirma a exclusão de <strong>{indiceLabel}</strong>? Todas as NFs associadas também serão removidas.
+              Confirma a exclusão de <strong>{indiceLabel}</strong>? Todas as NFs associadas também serão removidas. Informe o motivo.
             </p>
+            <textarea
+              className="w-full border border-red-200 rounded px-2.5 py-1.5 text-[11px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40 mb-2"
+              rows={2}
+              placeholder="Motivo da exclusão (mínimo 5 caracteres)"
+              value={deleteMotivo}
+              onChange={(e) => setDeleteMotivo(e.target.value)}
+            />
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
-              <Button variant="danger" size="sm" onClick={handleDelete} disabled={loading}>
+              <Button variant="danger" size="sm" onClick={handleDelete} disabled={loading || deleteMotivo.trim().length < 5}>
                 {loading ? 'Excluindo...' : 'Confirmar exclusão'}
               </Button>
             </div>

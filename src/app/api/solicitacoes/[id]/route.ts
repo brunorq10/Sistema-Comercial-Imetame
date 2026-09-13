@@ -338,28 +338,38 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     )
   }
 
-  // Cancelamento sem proposta enviada = REMOÇÃO da solicitação do sistema.
-  // Regra de numeração: o número gerado é sempre MAX(numero)+1 (ver POST);
-  // assim, se existirem solicitações com numeração posterior, o número da
-  // excluída nunca é reutilizado; se ela for a última, o número volta a
-  // ficar disponível para a próxima emissão.
-  await prisma.$transaction(async (tx) => {
-    // Desvincula contratos que apontem para esta solicitação (defensivo)
-    await tx.contrato.updateMany({ where: { solicitacao_id: id }, data: { solicitacao_id: null } })
-    // Remove dependências sem cascade no schema
-    await tx.solicitacaoInfo.deleteMany({ where: { solicitacao_id: id } })
-    await tx.propostaComercial.deleteMany({ where: { solicitacao_id: id } })
-    await tx.propostaTecnica.deleteMany({ where: { solicitacao_id: id } })
-    await tx.propostaFabricacao.deleteMany({ where: { solicitacao_id: id } })
-    // historico e revisões pendentes têm onDelete: Cascade
-    await tx.solicitacao.delete({ where: { id } })
-  })
+  // Cancelamento sem proposta enviada = soft-cancel (RN-18): a solicitação sai
+  // das listagens ativas (que já filtram cancelled_at/status), mas o registro,
+  // as propostas e o histórico continuam intactos — nada é apagado. O número
+  // (@unique) nunca é reutilizado pelo simples fato de a linha continuar
+  // existindo, sem depender de nenhum cálculo de sequência.
+  const userId = Number(session.user.id)
+  await prisma.$transaction([
+    prisma.solicitacao.update({
+      where: { id },
+      data: {
+        status: 'CANCELADA',
+        cancelled_at: new Date(),
+        cancel_reason,
+        cancelled_by: userId,
+      },
+    }),
+    prisma.historicoSolicitacao.create({
+      data: {
+        solicitacao_id: id,
+        campo: 'Status',
+        valor_de: existing.status,
+        valor_para: `CANCELADA — Motivo: ${cancel_reason}`,
+        created_by: userId,
+      },
+    }),
+  ])
 
   if (existing.orcamentista) {
     createNotificacao(
       existing.orcamentista.id,
       `Solicitação cancelada — ${existing.numero}`,
-      `A solicitação ${existing.numero} foi cancelada e removida do sistema. Justificativa: ${cancel_reason}`,
+      `A solicitação ${existing.numero} foi cancelada. Justificativa: ${cancel_reason}`,
       '/orcamentos/painel',
     )
   }

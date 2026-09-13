@@ -295,7 +295,7 @@ export function Sidebar({ mobileOpen = false, onClose, collapsed = false }: Side
 
       {/* ── Sair ───────────────────────────────────────────────────────── */}
       <button
-        onClick={() => signOut({ callbackUrl: '/login' })}
+        onClick={() => { fetch('/api/auth/logout-log', { method: 'POST' }).finally(() => signOut({ callbackUrl: '/login' })) }}
         title="Sair"
         className={cn(
           'border-t border-gray-200 px-4 py-3 flex items-center gap-2 text-left text-[11px] text-gray-400 transition-colors hover:text-gray-600 hover:bg-gray-50',

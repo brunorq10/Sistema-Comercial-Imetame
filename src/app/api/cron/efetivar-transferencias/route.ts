@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { efetivarTransferenciasVencidas } from '@/lib/substituicoes'
 
+// Nunca pré-renderizar/executar esta rota em build time (Next tenta otimizar
+// GETs "estáticos" por padrão, o que chega a chamar o handler — e o banco —
+// durante `next build`). É um cron que sempre roda sob demanda.
+export const dynamic = 'force-dynamic'
+
 // GET /api/cron/efetivar-transferencias — chamado 1x/dia pelo Vercel Cron
 // (vercel.json). Efetiva as transferências/trocas "agendadas" cuja
 // data_efetivacao já chegou. Protegido pelo CRON_SECRET quando configurado

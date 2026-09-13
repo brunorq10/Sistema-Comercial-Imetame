@@ -182,7 +182,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ data: { id: nf.id }, pendente: enviarAprovacao, error: null })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
   { const { erro } = await exigirPermissao('acordos.nf.excluir'); if (erro) return erro }
@@ -190,11 +190,26 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
+  const body = await req.json().catch(() => ({}))
+  const motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  if (motivo.length < 5) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da exclusão (mínimo 5 caracteres).' }, { status: 400 })
+  }
+
+  const nfParaExcluir = await prisma.notaFiscalContrato.findUnique({ where: { id }, select: { subindice_id: true, numero_nf: true } })
+  if (!nfParaExcluir) return NextResponse.json({ data: null, error: 'NF não encontrada' }, { status: 404 })
+
+  const autorId = Number(session.user.id)
   // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
-  await prisma.notaFiscalContrato.update({
-    where: { id },
-    data: { deleted_at: new Date(), deleted_by: Number(session.user.id) },
-  })
+  await prisma.$transaction([
+    prisma.notaFiscalContrato.update({
+      where: { id },
+      data: { deleted_at: new Date(), deleted_by: autorId, motivo_exclusao: motivo },
+    }),
+    prisma.historicoSubIndice.create({
+      data: { subindice_id: nfParaExcluir.subindice_id, campo: `NF ${nfParaExcluir.numero_nf} — Exclusão`, valor_de: 'Ativa', valor_para: `Excluída — Motivo: ${motivo}`, created_by: autorId },
+    }),
+  ])
 
   return NextResponse.json({ data: { id }, error: null })
 }

@@ -37,13 +37,19 @@ export async function GET(_req: NextRequest, { params }: { params: { infoId: str
 // DELETE /api/solicitacoes/:id/informacoes/:infoId
 // Exclui uma informação. Permitido ao autor que a criou ou à supervisão
 // (Gestão Comercial / ADM Geral). Não há edição.
-export async function DELETE(_req: NextRequest, { params }: { params: { infoId: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { infoId: string } }) {
   const session = await auth()
   const usuario = usuarioDaSessao(session)
   if (!usuario) return respostaNaoAutorizado()
 
   const infoId = Number(params.infoId)
   if (isNaN(infoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+
+  const body = await req.json().catch(() => ({}))
+  const motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  if (motivo.length < 5) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da exclusão (mínimo 5 caracteres).' }, { status: 400 })
+  }
 
   const info = await prisma.solicitacaoInfo.findUnique({
     where: { id: infoId },
@@ -58,7 +64,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { infoId: 
   // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
   await prisma.solicitacaoInfo.update({
     where: { id: infoId },
-    data: { deleted_at: new Date(), deleted_by: usuario.id },
+    data: { deleted_at: new Date(), deleted_by: usuario.id, motivo_exclusao: motivo },
   })
 
   return NextResponse.json({ data: { ok: true }, error: null })

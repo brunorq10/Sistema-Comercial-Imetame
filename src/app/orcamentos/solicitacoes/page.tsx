@@ -10,6 +10,7 @@ import { NovaRevisaoModal } from '@/components/forms/NovaRevisaoModal'
 import { RelatorioOSModal } from '@/components/forms/RelatorioOSModal'
 import { AnaliseSolicitacaoModal } from '@/components/forms/AnaliseSolicitacaoModal'
 import { ClassificacaoBadge, InteresseBadge } from '@/components/ui/Badge'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Button } from '@/components/ui/Button'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SearchableSelect, SearchableMultiSelect } from '@/components/ui/SearchableSelect'
@@ -259,14 +260,18 @@ export default function SolicitacoesPage() {
     } finally { setReenviandoId(null) }
   }
 
-  const executarReativacao = async (item: SolicitacaoListItem) => {
+  const executarReativacao = async (item: SolicitacaoListItem, motivo: string) => {
     if (reativandoId) return
     setReativandoId(item.id)
-    setConfirmReativar(null)
     try {
-      const res = await fetch(`/api/solicitacoes/${item.id}/reativar`, { method: 'POST' })
+      const res = await fetch(`/api/solicitacoes/${item.id}/reativar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo }),
+      })
       const json = await res.json()
       if (!res.ok || json.error) { setPageError(json.error ?? 'Erro ao reativar solicitação'); return }
+      setConfirmReativar(null)
       fetchData()
     } finally { setReativandoId(null) }
   }
@@ -586,32 +591,22 @@ export default function SolicitacoesPage() {
       )}
 
       {/* Modal confirmação — reativar */}
-      {confirmReativar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
-            <h3 className="text-[14px] font-bold mb-1">Reativar solicitação</h3>
-            <p className="text-[12px] text-gray-600 mb-4">
-              A solicitação <strong>{confirmReativar.numero}</strong> será reativada e voltará ao andamento normal
-              {confirmReativar.status === 'SUSPENSA' ? ' (a suspensão será removida)' : ' (status anterior ao cancelamento)'}. Confirmar?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setConfirmReativar(null)}
-                className="px-3 py-1.5 text-[11px] border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => executarReativacao(confirmReativar)}
-                disabled={reativandoId === confirmReativar.id}
-                className="px-3 py-1.5 text-[11px] bg-green-primary text-white rounded hover:bg-green-dark disabled:opacity-50"
-              >
-                {reativandoId === confirmReativar.id ? 'Reativando...' : 'Confirmar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmReativar}
+        title="Reativar solicitação"
+        variant="info"
+        confirmLabel={reativandoId === confirmReativar?.id ? 'Reativando...' : 'Confirmar'}
+        loading={reativandoId === confirmReativar?.id}
+        input={{ label: 'Motivo da reativação', required: true, multiline: true }}
+        message={confirmReativar && (
+          <>
+            A solicitação <strong>{confirmReativar.numero}</strong> será reativada e voltará ao andamento normal
+            {confirmReativar.status === 'SUSPENSA' ? ' (a suspensão será removida)' : ' (status anterior ao cancelamento)'}.
+          </>
+        )}
+        onConfirm={(motivo) => confirmReativar && executarReativacao(confirmReativar, motivo)}
+        onClose={() => setConfirmReativar(null)}
+      />
 
     </div>
   )

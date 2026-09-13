@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ClienteModal } from '@/components/forms/ClienteModal'
 import { UsuarioModal } from '@/components/forms/UsuarioModal'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { SubstituicoesTab } from '@/components/cadastros/SubstituicoesTab'
 import { PERFIL_LABELS, RAMO_ATUACAO_LABELS } from '@/types'
 import type { ClienteListItem, UsuarioListItem } from '@/types'
@@ -18,6 +19,7 @@ export default function CadastrosPage() {
   const podeUsuario = pode('cadastro.usuario.gerenciar')
   const podeSubstituicao = pode('cadastro.substituicao.gerenciar')
   const [tab, setTab] = useState<Tab>('clientes')
+  const [historico, setHistorico] = useState<{ tipo: 'cliente' | 'usuario'; id: number; titulo: string } | null>(null)
 
   // ── Clientes ──────────────────────────────────────────────────────────────
   const [clientes, setClientes] = useState<ClienteListItem[]>([])
@@ -209,6 +211,12 @@ export default function CadastrosPage() {
                             Editar
                           </button>
                           <button
+                            onClick={() => setHistorico({ tipo: 'cliente', id: c.id, titulo: c.nome })}
+                            className="text-xs text-gray-500 hover:underline"
+                          >
+                            Histórico
+                          </button>
+                          <button
                             onClick={() => handleToggleClienteAtivo(c)}
                             className={`text-xs hover:underline ${c.ativo ? 'text-red-500' : 'text-green-700'}`}
                           >
@@ -315,6 +323,12 @@ export default function CadastrosPage() {
                             Editar
                           </button>
                           <button
+                            onClick={() => setHistorico({ tipo: 'usuario', id: u.id, titulo: u.nome })}
+                            className="text-xs text-gray-500 hover:underline"
+                          >
+                            Histórico
+                          </button>
+                          <button
                             onClick={() => handleToggleUsuarioAtivo(u)}
                             className={`text-xs hover:underline ${u.ativo ? 'text-red-500' : 'text-green-700'}`}
                           >
@@ -341,6 +355,16 @@ export default function CadastrosPage() {
 
       {/* ── SUBSTITUIÇÕES E TRANSFERÊNCIAS ──────────────────────────────────── */}
       {tab === 'substituicoes' && <SubstituicoesTab />}
+
+      {historico && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setHistorico(null)}
+          tipo={historico.tipo}
+          itemId={historico.id}
+          titulo={historico.titulo}
+        />
+      )}
     </div>
   )
 }

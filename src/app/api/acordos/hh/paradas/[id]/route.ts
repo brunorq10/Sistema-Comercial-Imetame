@@ -249,6 +249,9 @@ export async function PUT(
   })
 
   if (dias && dias.length > 0) {
+    const diasAntes = await prisma.paradaHhDia.findMany({ where: { config_id: config.id } })
+    const diaAntesPorChave = new Map(diasAntes.map((x) => [`${x.etapa}__${x.data.toISOString().slice(0, 10)}`, x]))
+
     await Promise.all(
       dias.map((d) =>
         prisma.paradaHhDia.upsert({
@@ -286,6 +289,33 @@ export async function PUT(
         }),
       ),
     )
+
+    // Diff completo — cada lançamento/edição de dia vira uma linha própria
+    // (Alto item do diagnóstico de rastreabilidade: antes só o último valor
+    // de cada dia ficava visível).
+    const ETAPA_LABEL: Record<string, string> = { PREPARATIVO: 'Preparativo', PARADA: 'Parada', ACOMP_DESMOB: 'Pós-Parada' }
+    const histDias: { config_id: number; etapa: string; data: Date; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+    for (const d of dias) {
+      const antes = diaAntesPorChave.get(`${d.etapa}__${d.data}`)
+      const dataFmt = d.data.split('-').reverse().join('/')
+      const etapaLbl = ETAPA_LABEL[d.etapa] ?? d.etapa
+      const camposDiff: [string, number | null | undefined, number | null | undefined][] = [
+        ['Efetivo Previsto', antes?.efetivo_plan ?? null, d.efetivo_plan ?? null],
+        ['Efetivo Real', antes?.efetivo_real ?? null, d.efetivo_real ?? null],
+      ]
+      for (const [label, antigo, novo] of camposDiff) {
+        if ((antigo ?? null) !== (novo ?? null)) {
+          histDias.push({
+            config_id: config.id, etapa: d.etapa, data: new Date(d.data),
+            campo: `${etapaLbl} — ${label} — ${dataFmt}`,
+            valor_de: antigo != null ? String(antigo) : null,
+            valor_para: novo != null ? String(novo) : null,
+            created_by: userId,
+          })
+        }
+      }
+    }
+    if (histDias.length > 0) await prisma.paradaHhDiaHistorico.createMany({ data: histDias })
   }
 
   if (folgas !== undefined) {

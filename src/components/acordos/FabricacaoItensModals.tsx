@@ -65,6 +65,11 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
   const [mesesNovos, setMesesNovos] = useState<Record<string, Set<string>>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [motivoRemocao, setMotivoRemocao] = useState('')
+
+  const idsOriginais = new Set(contrato.itens.map((it) => it.id))
+  const idsAtuais = new Set(itens.filter((it) => it.id != null).map((it) => it.id as number))
+  const haveraRemocao = Array.from(idsOriginais).some((id) => !idsAtuais.has(id))
 
   const upd = (i: number, patch: Partial<ItemForm>) =>
     setItens((prev) => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
@@ -115,10 +120,14 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
       if (!it.data_inicio || !it.data_fim) { setError(`Item ${i + 1}: datas obrigatórias`); return }
       if (it.data_inicio > it.data_fim) { setError(`Item ${i + 1}: data final antes da inicial`); return }
     }
+    if (haveraRemocao && motivoRemocao.trim().length < 5) {
+      setError('Informe o motivo da remoção do(s) item(ns) (mínimo 5 caracteres)'); return
+    }
     setLoading(true); setError(null)
     try {
       const payload = {
         contrato_id: contrato.id,
+        motivo_remocao: haveraRemocao ? motivoRemocao.trim() : undefined,
         itens: itens.map((it) => ({
           id: it.id,
           descricao: it.descricao.trim(),
@@ -157,6 +166,19 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
         </>
       }>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>}
+
+      {haveraRemocao && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-3">
+          <p className="text-[11px] text-amber-800 mb-2">Um ou mais itens existentes foram removidos desta lista. Informe o motivo para salvar.</p>
+          <textarea
+            className="w-full border border-amber-300 rounded px-2.5 py-1.5 text-[11px] resize-none focus:outline-none focus:ring-1 focus:ring-amber-400/40"
+            rows={2}
+            placeholder="Motivo da remoção (mínimo 5 caracteres)"
+            value={motivoRemocao}
+            onChange={(e) => setMotivoRemocao(e.target.value)}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         {itens.map((it, i) => {

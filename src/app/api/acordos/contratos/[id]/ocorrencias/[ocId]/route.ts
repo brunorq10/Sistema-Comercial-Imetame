@@ -7,7 +7,7 @@ import { usuarioDaSessao, respostaNaoAutorizado, respostaSemPermissao } from '@/
 // DELETE /api/acordos/contratos/:id/ocorrencias/:ocId
 // Exclui uma ocorrência. Permitido ao autor ou à supervisão
 // (Gestão Acordos / ADM Geral). Verificação no backend, não só na UI.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string; ocId: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string; ocId: string } }) {
   const session = await auth()
   const usuario = usuarioDaSessao(session)
   if (!usuario) return respostaNaoAutorizado()
@@ -15,6 +15,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const contratoId = Number(params.id)
   const ocId = Number(params.ocId)
   if (isNaN(contratoId) || isNaN(ocId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
+
+  const body = await req.json().catch(() => ({}))
+  const motivo = typeof body?.motivo === 'string' ? body.motivo.trim() : ''
+  if (motivo.length < 5) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da exclusão (mínimo 5 caracteres).' }, { status: 400 })
+  }
 
   const oc = await prisma.ocorrenciaContratual.findFirst({
     where: { id: ocId, contrato_id: contratoId },
@@ -29,7 +35,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   // Lixeira: soft-delete recuperável por 15 dias (não apaga o registro)
   await prisma.ocorrenciaContratual.update({
     where: { id: ocId },
-    data: { deleted_at: new Date(), deleted_by: usuario.id },
+    data: { deleted_at: new Date(), deleted_by: usuario.id, motivo_exclusao: motivo },
   })
 
   return NextResponse.json({ data: { ok: true }, error: null })

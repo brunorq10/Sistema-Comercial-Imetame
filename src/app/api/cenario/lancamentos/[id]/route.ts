@@ -110,7 +110,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   await prisma.cenarioLancamento.update({
     where: { id },
-    data: { cancelled_at: new Date(), cancel_reason: motivo, updated_by: usuario.id },
+    data: { cancelled_at: new Date(), cancel_reason: motivo, cancelled_by: usuario.id, updated_by: usuario.id },
   })
 
   return NextResponse.json({ data: null, error: null })

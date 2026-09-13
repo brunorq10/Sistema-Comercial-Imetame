@@ -57,7 +57,7 @@ const updateSchema = z.object({
   descricao: z.string().optional().nullable(),
   classificacao: z.enum(['OBRAS', 'PARADAS', 'OLEO_GAS', 'FABRICACOES']).optional().nullable(),
   valor_contrato: z.number().nonnegative().optional().nullable(),
-  cancel_reason: z.string().optional(),
+  cancel_reason: z.string().min(5, 'Informe o motivo do cancelamento (mínimo 5 caracteres)').optional(),
 })
 
 const SOLICITACAO_INCLUDE = {
@@ -192,6 +192,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (cancel_reason !== undefined) {
     data.cancelled_at = new Date()
     data.cancel_reason = cancel_reason
+    data.cancelled_by = Number(session.user.id)
     data.status = 'CANCELADO'
   }
   if (rest.data_inicio !== undefined) data.data_inicio = rest.data_inicio ? new Date(rest.data_inicio) : null
@@ -351,7 +352,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   await prisma.contrato.update({
     where: { id },
     data: {
-      cancelled_at: new Date(), cancel_reason: motivo, status: 'CANCELADO',
+      cancelled_at: new Date(), cancel_reason: motivo, cancelled_by: Number(session.user.id), status: 'CANCELADO',
       deleted_at: new Date(), deleted_by: Number(session.user.id),
     },
   })

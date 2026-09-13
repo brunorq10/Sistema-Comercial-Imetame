@@ -78,11 +78,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
-  // Busca estado atual antes de alterar (para log de histórico M11)
+  // Busca estado atual antes de alterar (para log de histórico M11 e diff geral)
   const usuarioAtual = await prisma.user.findUnique({
     where: { id },
-    select: { is_analista_critico: true },
+    select: { is_analista_critico: true, nome: true, email: true, funcao: true, perfil: true, ativo: true },
   })
+  if (!usuarioAtual) return NextResponse.json({ data: null, error: 'Usuário não encontrado' }, { status: 404 })
 
   // Se definido como analista crítico, remover flag dos demais e registrar remoção no histórico
   if (is_analista_critico === true) {
@@ -102,6 +103,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
+  const autorId = Number(session.user.id)
   const updateData: Record<string, unknown> = {}
   if (rest.nome !== undefined) updateData.nome = rest.nome
   if (rest.email !== undefined) updateData.email = rest.email
@@ -110,6 +112,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (rest.ativo !== undefined) updateData.ativo = rest.ativo
   if (is_analista_critico !== undefined) updateData.is_analista_critico = is_analista_critico
   if (nova_senha) updateData.password_hash = await bcrypt.hash(nova_senha, 12)
+  // RN-18/rastreabilidade: quem editou por último; ativar/desativar carimba quem e quando
+  updateData.updated_by = autorId
+  if (rest.ativo === false) { updateData.deactivated_at = new Date(); updateData.deactivated_by = autorId }
+  if (rest.ativo === true) { updateData.deactivated_at = null; updateData.deactivated_by = null }
 
   const usuario = await prisma.user.update({
     where: { id },
@@ -123,9 +129,38 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data: {
         user_id: id,
         acao: is_analista_critico ? 'ATRIBUIDO' : 'REMOVIDO',
-        realizado_por: Number(session.user.id),
+        realizado_por: autorId,
       },
     })
+  }
+
+  // Rastreabilidade — diff campo a campo (perfil, ativo, e-mail, nome, função)
+  // + evento de redefinição de senha (nunca a senha em si).
+  const PERFIL_LABELS_LOCAL: Record<string, string> = {
+    ADM_COMERCIAL: 'ADM Comercial', GESTAO_COMERCIAL: 'Gestão Comercial', ORCAMENTISTA: 'Orçamentista',
+    GESTAO_ACORDOS: 'Gestão Acordos', ACORDOS: 'Acordos', ADM_GERAL: 'ADM Geral',
+  }
+  const hist: { user_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }[] = []
+  if (rest.nome !== undefined && rest.nome !== usuarioAtual.nome) {
+    hist.push({ user_id: id, campo: 'Nome', valor_de: usuarioAtual.nome, valor_para: rest.nome, created_by: autorId })
+  }
+  if (rest.email !== undefined && rest.email !== usuarioAtual.email) {
+    hist.push({ user_id: id, campo: 'E-mail', valor_de: usuarioAtual.email, valor_para: rest.email, created_by: autorId })
+  }
+  if (rest.funcao !== undefined && rest.funcao !== usuarioAtual.funcao) {
+    hist.push({ user_id: id, campo: 'Função', valor_de: usuarioAtual.funcao, valor_para: rest.funcao, created_by: autorId })
+  }
+  if (rest.perfil !== undefined && rest.perfil !== usuarioAtual.perfil) {
+    hist.push({ user_id: id, campo: 'Perfil', valor_de: PERFIL_LABELS_LOCAL[usuarioAtual.perfil] ?? usuarioAtual.perfil, valor_para: PERFIL_LABELS_LOCAL[rest.perfil] ?? rest.perfil, created_by: autorId })
+  }
+  if (rest.ativo !== undefined && rest.ativo !== usuarioAtual.ativo) {
+    hist.push({ user_id: id, campo: 'Status', valor_de: usuarioAtual.ativo ? 'Ativo' : 'Inativo', valor_para: rest.ativo ? 'Ativo' : 'Inativo', created_by: autorId })
+  }
+  if (nova_senha) {
+    hist.push({ user_id: id, campo: 'Senha', valor_de: null, valor_para: 'Redefinida pelo administrador', created_by: autorId })
+  }
+  if (hist.length > 0) {
+    await prisma.usuarioHistorico.createMany({ data: hist })
   }
 
   return NextResponse.json({ data: usuario, error: null })

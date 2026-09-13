@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPO_MULTA_MAP } from '@/lib/multas'
 import { LancarMultaModal } from '@/components/forms/LancarMultaModal'
+import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
 import { AcoesMenu } from '@/components/ui/AcoesMenu'
 import { Button } from '@/components/ui/Button'
 import { Overlay } from '@/components/ui/Overlay'
@@ -35,6 +36,7 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
   const [multaMotivo, setMultaMotivo] = useState('')
   const [multaAcaoLoading, setMultaAcaoLoading] = useState(false)
   const [multaAcaoError, setMultaAcaoError] = useState<string | null>(null)
+  const [multaHistorico, setMultaHistorico] = useState<Multa | null>(null)
 
   const fetchMultas = useCallback(() => {
     setLoading(true)
@@ -49,14 +51,18 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
   const handleMultaAcao = async () => {
     if (!multaAcao) return
     const inativando = multaAcao.tipo === 'inativar' && multaAcao.multa.ativa
-    if (inativando && multaMotivo.trim().length < 3) {
-      setMultaAcaoError('Informe o motivo da inativação (mínimo 3 caracteres)')
+    if ((inativando || multaAcao.tipo === 'excluir') && multaMotivo.trim().length < 3) {
+      setMultaAcaoError(`Informe o motivo da ${multaAcao.tipo === 'excluir' ? 'exclusão' : 'inativação'} (mínimo 3 caracteres)`)
       return
     }
     setMultaAcaoLoading(true); setMultaAcaoError(null)
     try {
       if (multaAcao.tipo === 'excluir') {
-        const res = await fetch(`/api/faturamento/multas/${multaAcao.multa.id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/faturamento/multas/${multaAcao.multa.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ motivo: multaMotivo.trim() }),
+        })
         const json = await res.json().catch(() => ({}))
         if (!res.ok || json.error) { setMultaAcaoError(json.error ?? 'Erro ao excluir'); return }
       } else {
@@ -128,8 +134,9 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
                       <td className="px-3 py-2 text-center">
                         <AcoesMenu items={[
                           { label: 'Editar multa', icon: '✎', destaque: true, visivel: canEditar, onClick: () => setMultaEditando(m) },
+                          { label: 'Histórico', icon: '🕘', visivel: true, onClick: () => setMultaHistorico(m) },
                           { label: m.ativa ? 'Inativar' : 'Reativar', icon: m.ativa ? '⊘' : '↺', visivel: canEditar, onClick: () => { setMultaAcao({ tipo: 'inativar', multa: m }); setMultaMotivo(''); setMultaAcaoError(null) } },
-                          { label: 'Excluir', icon: '🗑', destrutiva: true, visivel: canExcluir, onClick: () => { setMultaAcao({ tipo: 'excluir', multa: m }); setMultaAcaoError(null) } },
+                          { label: 'Excluir', icon: '🗑', destrutiva: true, visivel: canExcluir, onClick: () => { setMultaAcao({ tipo: 'excluir', multa: m }); setMultaMotivo(''); setMultaAcaoError(null) } },
                         ]} />
                       </td>
                     )}
@@ -176,7 +183,16 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{multaAcaoError}</div>
               )}
               {multaAcao.tipo === 'excluir' && (
-                <p className="text-[12px] text-gray-600">Este lançamento será excluído permanentemente. Esta ação não pode ser desfeita.</p>
+                <>
+                  <p className="text-[12px] text-gray-600 mb-3">O lançamento vai para a lixeira (recuperável por 15 dias) e deixa de ser contabilizado. Informe o motivo.</p>
+                  <textarea
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40"
+                    rows={2}
+                    placeholder="Motivo da exclusão (mínimo 3 caracteres)"
+                    value={multaMotivo}
+                    onChange={(e) => setMultaMotivo(e.target.value)}
+                  />
+                </>
               )}
               {multaAcao.tipo === 'inativar' && multaAcao.multa.ativa && (
                 <>
@@ -196,13 +212,23 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
             </div>
             <div className="px-[18px] py-3 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-lg">
               <Button variant="outline" onClick={() => { setMultaAcao(null); setMultaMotivo(''); setMultaAcaoError(null) }} disabled={multaAcaoLoading}>Voltar</Button>
-              <Button variant={multaAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={handleMultaAcao} disabled={multaAcaoLoading || (multaAcao.tipo === 'inativar' && multaAcao.multa.ativa && multaMotivo.trim().length < 3)}>
+              <Button variant={multaAcao.tipo === 'excluir' ? 'danger' : 'primary'} onClick={handleMultaAcao} disabled={multaAcaoLoading || ((multaAcao.tipo === 'excluir' || (multaAcao.tipo === 'inativar' && multaAcao.multa.ativa)) && multaMotivo.trim().length < 3)}>
                 {multaAcaoLoading ? 'Aguarde...' : multaAcao.tipo === 'excluir' ? 'Confirmar exclusão' : multaAcao.multa.ativa ? 'Confirmar inativação' : 'Confirmar reativação'}
               </Button>
             </div>
           </div>
         </div>
         </Overlay>
+      )}
+
+      {multaHistorico && (
+        <HistoricoFaturamentoModal
+          open={true}
+          onClose={() => setMultaHistorico(null)}
+          tipo="multa"
+          itemId={multaHistorico.id}
+          titulo={`Multa — ${multaHistorico.descricao}`}
+        />
       )}
     </section>
   )

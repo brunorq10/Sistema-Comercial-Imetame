@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal, ModalSection, ModalCancelButton } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 import { PERFIL_LABELS } from '@/types'
 import type { UsuarioListItem, Perfil } from '@/types'
 
@@ -12,6 +12,12 @@ interface StatusSubstituicao {
   substituindo: { id: number; titular: { id: number; nome: string }; ate: string }[]
   sendoSubstituidoPor: { id: number; substituto: { id: number; nome: string }; ate: string }[]
 }
+
+const MOTIVO_LABELS: Record<string, string> = {
+  SENHA_INVALIDA: 'Senha inválida', USUARIO_INATIVO: 'Usuário inativo', BLOQUEADO: 'Bloqueado por tentativas',
+  EMAIL_NAO_ENCONTRADO: 'E-mail não encontrado', LOGOUT: 'Saiu do sistema',
+}
+interface LoginRegistro { id: number; sucesso: boolean; motivo: string | null; quando: string }
 
 const PERFIS: Perfil[] = [
   'ADM_COMERCIAL', 'GESTAO_COMERCIAL',
@@ -51,6 +57,7 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusSubstituicao, setStatusSubstituicao] = useState<StatusSubstituicao | null>(null)
+  const [loginHistorico, setLoginHistorico] = useState<LoginRegistro[]>([])
 
   useEffect(() => {
     if (open && editando) {
@@ -58,8 +65,13 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
         .then((r) => r.json())
         .then((json) => setStatusSubstituicao(json.error ? null : json.data))
         .catch(() => setStatusSubstituicao(null))
+      fetch(`/api/usuarios/${editando.id}/login-historico`)
+        .then((r) => r.json())
+        .then((json) => setLoginHistorico(json.error ? [] : json.data))
+        .catch(() => setLoginHistorico([]))
     } else {
       setStatusSubstituicao(null)
+      setLoginHistorico([])
     }
     if (open && editando) {
       setNome(editando.nome)
@@ -160,6 +172,26 @@ export function UsuarioModal({ open, onClose, onSuccess, editando, isAdmin }: Pr
               </p>
             ))}
             <a href="/cadastros" className="text-[10px] text-green-primary hover:underline">Configurar em Cadastros → Substituições e Transferências</a>
+          </div>
+        </>
+      )}
+
+      {isEdit && loginHistorico.length > 0 && (
+        <>
+          <ModalSection>Últimos acessos</ModalSection>
+          <div className="max-h-32 overflow-y-auto border border-gray-200 rounded mb-2.5">
+            <table className="w-full text-[10px]">
+              <tbody>
+                {loginHistorico.map((r) => (
+                  <tr key={r.id} className="border-b border-gray-100 last:border-0">
+                    <td className="px-2 py-1 text-gray-500 whitespace-nowrap">{formatDateTime(r.quando)}</td>
+                    <td className={`px-2 py-1 ${r.sucesso ? 'text-green-700' : 'text-red-600'}`}>
+                      {r.motivo === 'LOGOUT' ? 'Saiu do sistema' : r.sucesso ? 'Login realizado' : `Falha — ${MOTIVO_LABELS[r.motivo ?? ''] ?? r.motivo}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

@@ -112,8 +112,12 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
   const [dlgExcluir, setDlgExcluir] = useState<number | null>(null)
   const [dlgErro, setDlgErro] = useState<string | null>(null)
 
-  const excluir = async (id: number) => {
-    const res = await fetch(`/api/solicitacoes/${solicitacaoId}/informacoes/${id}`, { method: 'DELETE' })
+  const excluir = async (id: number, motivo: string) => {
+    const res = await fetch(`/api/solicitacoes/${solicitacaoId}/informacoes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo }),
+    })
     const json = await res.json().catch(() => ({}))
     if (!res.ok || json.error) { setDlgErro(json.error ?? 'Erro ao excluir'); return }
     setDlgExcluir(null); setDlgErro(null)
@@ -128,8 +132,9 @@ export function InformacoesTabela({ solicitacaoId, numero, canCreate, userId, ca
       variant="danger"
       message="A informação será movida para a Lixeira e poderá ser restaurada em até 15 dias."
       confirmLabel="Excluir"
+      input={{ label: 'Motivo da exclusão', required: true }}
       error={dlgErro}
-      onConfirm={() => dlgExcluir !== null && excluir(dlgExcluir)}
+      onConfirm={(motivo) => dlgExcluir !== null && excluir(dlgExcluir, motivo)}
       onClose={() => { setDlgExcluir(null); setDlgErro(null) }}
     />
   )

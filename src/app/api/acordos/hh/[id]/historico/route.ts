@@ -12,10 +12,9 @@ interface Evento {
 }
 
 // GET — histórico consolidado do acompanhamento de HH de uma Obra: fechamento/
-// reabertura, revisões de previsto/planejado (versões de HhLancamento) e
-// lançamentos/edições do realizado diário (HhRealizadoDia.created_by/updated_by
-// — mesmo padrão "menos preciso" documentado para Paradas: reflete quem criou/
-// alterou por último cada dia, não um diff completo de cada edição).
+// reabertura, revisões de previsto/planejado (versões de HhLancamento) e cada
+// lançamento/edição do realizado diário (HhRealizadoDiaHistorico — diff
+// completo, uma linha por alteração, não só o último valor de cada dia).
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session) return NextResponse.json({ data: null, error: 'Não autorizado' }, { status: 401 })
@@ -23,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const contratoId = parseInt(params.id, 10)
   if (isNaN(contratoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  const [fechamentos, lancamentos, dias] = await Promise.all([
+  const [fechamentos, lancamentos, diasHistorico] = await Promise.all([
     prisma.contratoHhFechamentoHistorico.findMany({
       where: { contrato_id: contratoId },
       orderBy: { created_at: 'desc' },
@@ -34,23 +33,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       orderBy: { versao: 'desc' },
       select: { id: true, versao: true, motivo: true, created_at: true, criador: { select: { nome: true } } },
     }),
-    prisma.hhRealizadoDia.findMany({
+    prisma.hhRealizadoDiaHistorico.findMany({
       where: { contrato_id: contratoId },
-      orderBy: { data: 'desc' },
-      select: {
-        id: true, data: true, efetivo_normal: true, efetivo_extra: true,
-        created_at: true, updated_at: true, updated_by: true,
-        criador: { select: { nome: true } },
-      },
+      orderBy: { created_at: 'desc' },
+      select: { id: true, campo: true, valor_de: true, valor_para: true, created_at: true, usuario: { select: { nome: true } } },
     }),
   ])
-
-  const updatedByIds = Array.from(new Set(dias.map((d) => d.updated_by).filter((v): v is number => v != null)))
-  const nomePorId = new Map<number, string>()
-  if (updatedByIds.length > 0) {
-    const usuarios = await prisma.user.findMany({ where: { id: { in: updatedByIds } }, select: { id: true, nome: true } })
-    for (const u of usuarios) nomePorId.set(u.id, u.nome)
-  }
 
   const eventos: Evento[] = []
 
@@ -76,27 +64,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     })
   }
 
-  for (const d of dias) {
-    const dataFmt = d.data.toISOString().slice(0, 10).split('-').reverse().join('/')
-    const resumo = `Efetivo normal: ${d.efetivo_normal ?? '—'} · Efetivo extra: ${d.efetivo_extra ?? '—'}`
+  for (const d of diasHistorico) {
     eventos.push({
-      id: `dia-${d.id}-criado`,
-      campo: `Lançamento realizado — ${dataFmt}`,
-      valor_de: null,
-      valor_para: resumo,
+      id: `dia-${d.id}`,
+      campo: d.campo,
+      valor_de: d.valor_de,
+      valor_para: d.valor_para,
       alterado_em: d.created_at.toISOString(),
-      alterado_por: d.criador.nome,
+      alterado_por: d.usuario.nome,
     })
-    if (d.updated_by != null && d.updated_at.getTime() !== d.created_at.getTime()) {
-      eventos.push({
-        id: `dia-${d.id}-editado`,
-        campo: `Edição do lançamento — ${dataFmt}`,
-        valor_de: null,
-        valor_para: resumo,
-        alterado_em: d.updated_at.toISOString(),
-        alterado_por: nomePorId.get(d.updated_by) ?? '—',
-      })
-    }
   }
 
   eventos.sort((a, b) => b.alterado_em.localeCompare(a.alterado_em))
