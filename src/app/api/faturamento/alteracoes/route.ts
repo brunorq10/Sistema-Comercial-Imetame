@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
 import { exigirTitularSubindice } from '@/lib/permissaoApi'
+import { formatCurrency } from '@/lib/utils'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -24,6 +25,10 @@ const postSchema = z.object({
     nov: z.number().nonnegative().nullable().optional(),
     dez: z.number().nonnegative().nullable().optional(),
   }),
+  // Alteração de Valor Total (opcional — mesma solicitação de previsão pode
+  // também mexer no valor total do subíndice). Motivo obrigatório quando vem.
+  valor_total_para: z.number().nonnegative().optional(),
+  motivo: z.string().trim().min(1).optional(),
 })
 
 // GET /api/faturamento/alteracoes
@@ -138,7 +143,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { subindice_id, valores_para } = parsed.data
+  const { subindice_id, valores_para, valor_total_para, motivo } = parsed.data
+
+  if (valor_total_para != null && !motivo) {
+    return NextResponse.json({ data: null, error: 'Informe o motivo da alteração do Valor Total' }, { status: 400 })
+  }
 
   // Solicitar alteração de previsão = editar previsão no Meu Painel (titularidade)
   { const _n = await exigirTitularSubindice(session, subindice_id, 'acordos.painel.prev.editar'); if (_n) return _n }
@@ -154,6 +163,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ data: null, error: 'Sub-índice não encontrado' }, { status: 404 })
     }
 
+    // RN: só pode haver 1 alteração de Valor Total pendente por vez para o
+    // mesmo subíndice (independente de quem solicitou) — diferente da previsão
+    // mensal, que substitui automaticamente a proposta anterior do responsável.
+    if (valor_total_para != null) {
+      const pendenteValor = await prisma.previsaoAlteracao.findFirst({
+        where: { subindice_id, status: 'PENDENTE', valor_total_para: { not: null } },
+      })
+      if (pendenteValor) {
+        return NextResponse.json({
+          data: null,
+          error: 'Já existe uma alteração de Valor Total pendente de aprovação para este subíndice. Aguarde a resolução antes de enviar uma nova.',
+        }, { status: 409 })
+      }
+    }
+
     // Captura valores atuais como "de"
     const valoresDe = Object.fromEntries(
       MESES.map((m) => [`${m}_de`, subindice[m as keyof typeof subindice] != null ? Number(subindice[m as keyof typeof subindice]) : null])
@@ -164,12 +188,21 @@ export async function POST(req: NextRequest) {
       MESES.map((m) => [`${m}_para`, valores_para[m as keyof typeof valores_para] ?? null])
     )
 
-    // Cancela alterações PENDENTES anteriores do mesmo subindice pelo mesmo responsável
+    const valorTotalAtual = Number(subindice.valor_total)
+    const valorTotalCampos = valor_total_para != null
+      ? { valor_total_de: valorTotalAtual, valor_total_para, motivo }
+      : {}
+
+    // Cancela alterações PENDENTES anteriores do mesmo subindice pelo mesmo
+    // responsável — só as de previsão (valor_total_para null), para não
+    // derrubar uma alteração de Valor Total pendente por conta de uma proposta
+    // de previsão não relacionada (ver regra acima).
     await prisma.previsaoAlteracao.updateMany({
       where: {
         subindice_id,
         responsavel_id: userId,
         status: 'PENDENTE',
+        valor_total_para: null,
       },
       data: { status: 'REPROVADO', motivo_recusa: 'Substituída por nova proposta' },
     })
@@ -182,6 +215,7 @@ export async function POST(req: NextRequest) {
         created_by: userId,
         ...valoresDe,
         ...valoresPara,
+        ...valorTotalCampos,
       },
       include: {
         subindice: {
@@ -205,6 +239,21 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Registra a solicitação no histórico do subíndice (já usado por outras
+    // edições — botão "Histórico" existente), com o valor anterior, o
+    // solicitado e o motivo informado.
+    if (valor_total_para != null) {
+      await prisma.historicoSubIndice.create({
+        data: {
+          subindice_id,
+          campo: 'Valor Total — Solicitação',
+          valor_de: formatCurrency(valorTotalAtual),
+          valor_para: `${formatCurrency(valor_total_para)} — Motivo: ${motivo}`,
+          created_by: userId,
+        },
+      })
+    }
+
     // RN-CF-40: notificar GESTAO_ACORDOS sobre nova proposta (não-bloqueante)
     const gestores = await prisma.user.findMany({
       where: { perfil: 'GESTAO_ACORDOS', ativo: true },
@@ -217,10 +266,13 @@ export async function POST(req: NextRequest) {
     const linkContrato = alteracao.subindice?.contrato?.id
       ? `/acordos/faturamento/${alteracao.subindice.contrato.id}`
       : undefined
+    const tituloNotif = valor_total_para != null
+      ? 'Nova proposta de alteração de Valor Total'
+      : 'Nova proposta de alteração de previsão'
     for (const gestor of gestores) {
       createNotificacao(
         gestor.id,
-        'Nova proposta de alteração de previsão',
+        tituloNotif,
         `${ctIndice} · ${descSub} (${nomeCliente}) — proposta enviada por ${nomeResp}.`,
         linkContrato,
       )
@@ -240,12 +292,15 @@ function serializeAlteracao(a: any) {
     subindice_id: a.subindice_id,
     responsavel_id: a.responsavel_id,
     status: a.status,
+    motivo: a.motivo ?? null,
     motivo_recusa: a.motivo_recusa,
     revisor_id: a.revisor_id,
     reviewed_at: a.reviewed_at?.toISOString() ?? null,
     created_at: a.created_at.toISOString(),
     updated_at: a.updated_at.toISOString(),
     created_by: a.created_by,
+    valor_total_de: a.valor_total_de != null ? Number(a.valor_total_de) : null,
+    valor_total_para: a.valor_total_para != null ? Number(a.valor_total_para) : null,
     ...Object.fromEntries(MESES.map((m) => [`${m}_de`, a[`${m}_de`] ? Number(a[`${m}_de`]) : null])),
     ...Object.fromEntries(MESES.map((m) => [`${m}_para`, a[`${m}_para`] ? Number(a[`${m}_para`]) : null])),
     subindice: a.subindice

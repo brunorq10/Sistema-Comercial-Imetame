@@ -490,12 +490,17 @@ export interface PrevisaoAlteracaoItem {
   subindice_id: number
   responsavel_id: number
   status: StatusAlteracaoPrevisao
+  motivo: string | null
   motivo_recusa: string | null
   revisor_id: number | null
   reviewed_at: string | null
   created_at: string
   updated_at: string
   created_by: number
+  // Alteração do Valor Total do subíndice (opcional — pode vir junto com a
+  // previsão mensal ou sozinha)
+  valor_total_de: number | null
+  valor_total_para: number | null
   // Valores DE
   jan_de: number | null; fev_de: number | null; mar_de: number | null
   abr_de: number | null; mai_de: number | null; jun_de: number | null
@@ -523,6 +528,10 @@ export interface PrevisaoAlteracaoItem {
 
 export interface SubIndiceComAlteracaoPendente extends SubIndiceItem {
   alteracao_pendente: PrevisaoAlteracaoItem | null
+  // Pendência específica de Valor Total — pode ser a MESMA linha de
+  // alteracao_pendente (se a proposta mexeu nos dois ao mesmo tempo) ou uma
+  // linha diferente (proposta de valor separada de uma proposta de previsão).
+  alteracao_valor_pendente: PrevisaoAlteracaoItem | null
 }
 
 export interface ContratoComAlteracoes extends ContratoItem {

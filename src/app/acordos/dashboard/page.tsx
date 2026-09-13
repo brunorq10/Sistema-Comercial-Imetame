@@ -205,7 +205,6 @@ function TabelaMensal({ data, ano }: { data: MesData[]; ano: number }) {
   return (
     <ChartCard
       title={`Previsão x Realizado por Mês — ${ano}`}
-      subtitle="Verde = mês com consolidado gerado · Valor Fixado = snapshot do consolidado"
     >
       <div className="overflow-x-auto">
         <table className="w-full text-[12px] border-collapse">
@@ -384,17 +383,21 @@ export default function IndicadoresAcordosPage() {
             <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent={DASHBOARD_PREVISTO} />
           </div>
 
-          {/* 2 — Faturamento por mercado */}
-          <SectionTitle>Faturamento por mercado</SectionTitle>
-          <ChartCard>
-            <TabelaMercado data={data.porRamo} />
-          </ChartCard>
-
-          {/* 3 — % faturado geral do ano */}
-          <SectionTitle>% faturado geral do ano</SectionTitle>
-          <ChartCard>
-            <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
-          </ChartCard>
+          {/* 2/3 — Faturamento por mercado (esquerda) + % faturado geral do ano (direita) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div>
+              <SectionTitle>Faturamento por mercado</SectionTitle>
+              <ChartCard>
+                <TabelaMercado data={data.porRamo} />
+              </ChartCard>
+            </div>
+            <div>
+              <SectionTitle>% faturado geral do ano</SectionTitle>
+              <ChartCard>
+                <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
+              </ChartCard>
+            </div>
+          </div>
 
           {/* 4 — Meta acumulada x Faturado acumulado (%) */}
           <SectionTitle>Meta de faturamento acumulada x faturamento real — avanço %</SectionTitle>

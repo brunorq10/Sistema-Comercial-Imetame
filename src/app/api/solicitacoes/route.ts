@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { gerarNumeroSolicitacao } from '@/lib/utils'
+import { formatarNumeroSolicitacao } from '@/lib/utils'
 import { emailNovaSolicitacao } from '@/lib/notifications'
 import { pode } from '@/lib/permissoes'
 import { usuarioDaSessao, respostaSemPermissao } from '@/lib/permissaoApi'
@@ -90,7 +90,11 @@ export async function GET(req: NextRequest) {
         ...(clienteId !== undefined && { cliente_id: clienteId }),
       },
       select: { id: true, numero: true, cliente: { select: { nome: true } } },
-      orderBy: { numero: 'asc' },
+      // Ordena por created_at, não por numero (texto): "SOL-XXXX" (legado) e
+      // "IME-O-XXXX.YY" (novo, reiniciado a cada ano) não têm uma ordenação
+      // lexicográfica coerente entre si nem entre anos diferentes — created_at
+      // é monotônico com a ordem real de emissão dos dois formatos.
+      orderBy: { created_at: 'asc' },
       take: 500,
     })
     return NextResponse.json({ data: rows.map((r) => ({ id: r.id, numero: r.numero, cliente: r.cliente.nome })), error: null })
@@ -284,55 +288,69 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Numeração: sempre MAX(numero existente) + 1. Com a remoção por cancelamento,
-  // isso garante que um número excluído só é reutilizado se não houver nenhuma
-  // solicitação com numeração posterior (mantém a sequência correta).
-  const numeros = await prisma.solicitacao.findMany({ select: { numero: true } })
-  const maxNum = numeros.reduce((max, s) => {
-    const m = /^SOL-(\d+)$/.exec(s.numero)
-    return m ? Math.max(max, parseInt(m[1], 10)) : max
-  }, 0)
-  const numero = gerarNumeroSolicitacao(maxNum + 1)
+  // Numeração — padrão da empresa (IME-O-0001.26): sequencial de 4 dígitos
+  // reiniciado a cada ano de criação. O incremento e a criação da solicitação
+  // acontecem na mesma transaction: o upsert do contador é uma única instrução
+  // atômica no Postgres (INSERT ... ON CONFLICT DO UPDATE), então duas
+  // requisições simultâneas nunca recebem o mesmo sequencial. Números antigos
+  // (SOL-XXXX) não usam este contador e não são alterados.
+  const ano = new Date().getFullYear()
+  const userId = Number(session.user.id)
 
-  const solicitacao = await prisma.solicitacao.create({
-    data: {
-      numero,
-      cliente_id: data.cliente_id,
-      cliente_final_id: data.cliente_final_id,
-      data_recebimento: data.data_recebimento ? new Date(data.data_recebimento) : undefined,
-      segmento: data.segmento as Segmento | undefined,
-      contato: data.contato,
-      referencia_cliente: data.referencia_cliente,
-      comprador: data.comprador,
-      telefone_comprador: data.telefone_comprador,
-      email_comprador: data.email_comprador,
-      cidade: cidadeAutoFill,
-      estado: estadoAutoFill,
-      origem: data.origem as Origem | undefined,
-      escopo: data.escopo,
-      classificacao: data.classificacao as Classificacao | undefined,
-      interesse: data.interesse as Interesse | undefined,
-      prazo_tecnica: data.prazo_tecnica ? new Date(data.prazo_tecnica) : undefined,
-      prazo_tecnica_indeterminado: data.prazo_tecnica_indeterminado ?? false,
-      prazo_comercial: data.prazo_comercial ? new Date(data.prazo_comercial) : undefined,
-      prazo_comercial_indeterminado: data.prazo_comercial_indeterminado ?? false,
-      orcamentista_id: data.orcamentista_id,
-      visita_tecnica: data.visita_tecnica ?? false,
-      data_visita: data.data_visita ? new Date(data.data_visita) : undefined,
-      is_portal: data.is_portal ?? false,
-      portal_fechamento: data.is_portal && data.portal_fechamento ? new Date(data.portal_fechamento) : null,
-      created_by: Number(session.user.id),
-    },
-    include: {
-      cliente: { select: { nome: true } },
-      orcamentista: { select: { email: true, nome: true } },
-    },
+  const solicitacao = await prisma.$transaction(async (tx) => {
+    const seq = await tx.sequenciaSolicitacao.upsert({
+      where: { ano },
+      create: { ano, ultimo: 1 },
+      update: { ultimo: { increment: 1 } },
+    })
+    const numero = formatarNumeroSolicitacao(seq.ultimo, ano)
+
+    const criada = await tx.solicitacao.create({
+      data: {
+        numero,
+        cliente_id: data.cliente_id,
+        cliente_final_id: data.cliente_final_id,
+        data_recebimento: data.data_recebimento ? new Date(data.data_recebimento) : undefined,
+        segmento: data.segmento as Segmento | undefined,
+        contato: data.contato,
+        referencia_cliente: data.referencia_cliente,
+        comprador: data.comprador,
+        telefone_comprador: data.telefone_comprador,
+        email_comprador: data.email_comprador,
+        cidade: cidadeAutoFill,
+        estado: estadoAutoFill,
+        origem: data.origem as Origem | undefined,
+        escopo: data.escopo,
+        classificacao: data.classificacao as Classificacao | undefined,
+        interesse: data.interesse as Interesse | undefined,
+        prazo_tecnica: data.prazo_tecnica ? new Date(data.prazo_tecnica) : undefined,
+        prazo_tecnica_indeterminado: data.prazo_tecnica_indeterminado ?? false,
+        prazo_comercial: data.prazo_comercial ? new Date(data.prazo_comercial) : undefined,
+        prazo_comercial_indeterminado: data.prazo_comercial_indeterminado ?? false,
+        orcamentista_id: data.orcamentista_id,
+        visita_tecnica: data.visita_tecnica ?? false,
+        data_visita: data.data_visita ? new Date(data.data_visita) : undefined,
+        is_portal: data.is_portal ?? false,
+        portal_fechamento: data.is_portal && data.portal_fechamento ? new Date(data.portal_fechamento) : null,
+        created_by: userId,
+      },
+      include: {
+        cliente: { select: { nome: true } },
+        orcamentista: { select: { email: true, nome: true } },
+      },
+    })
+
+    await tx.historicoSolicitacao.create({
+      data: { solicitacao_id: criada.id, campo: 'numero', valor_de: null, valor_para: numero, created_by: userId },
+    })
+
+    return criada
   })
 
   if (solicitacao.orcamentista?.email) {
     emailNovaSolicitacao(
       solicitacao.orcamentista.email,
-      numero,
+      solicitacao.numero,
       solicitacao.cliente.nome,
     )
   }

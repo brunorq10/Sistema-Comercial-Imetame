@@ -68,8 +68,13 @@ export function formatDateInput(date: Date | string | null | undefined): string 
   return d.toISOString().split('T')[0]
 }
 
-export function gerarNumeroSolicitacao(sequencial: number): string {
-  return `SOL-${String(sequencial).padStart(4, '0')}`
+// Padrão da empresa para número de solicitação/proposta: IME-O-0001.26
+// (sequencial de 4 dígitos, reiniciado a cada ano + 2 últimos dígitos do ano
+// de criação). Números antigos no formato legado "SOL-0045" continuam como
+// estão — este formatador só é usado para números novos, gerados a partir de
+// src/app/api/solicitacoes/route.ts.
+export function formatarNumeroSolicitacao(sequencial: number, ano: number): string {
+  return `IME-O-${String(sequencial).padStart(4, '0')}.${String(ano).slice(-2)}`
 }
 
 export function isAtrasado(prazo: Date | null | undefined): boolean {

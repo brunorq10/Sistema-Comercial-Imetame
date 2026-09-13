@@ -42,6 +42,7 @@ const MIN_W = FROZEN_TOTAL + W.classificacao + W.ramo + W.os + W.anoRef + W.acor
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SubIndiceComAlteracao extends SubIndiceItem {
   alteracao_pendente: PrevisaoAlteracaoItem | null
+  alteracao_valor_pendente: PrevisaoAlteracaoItem | null
 }
 
 interface ContratoComAlteracoes {

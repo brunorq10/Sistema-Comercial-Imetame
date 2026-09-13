@@ -188,10 +188,7 @@ export async function GET(req: Request) {
   // Previsto do ano = soma das colunas mensais dos subíndices (mesma base da tabela)
   prevFaturamentoAno = previstoSubPorMes.reduce((a, b) => a + b, 0)
 
-  const aFaturarAno      = Math.max(0, prevFaturamentoAno - totalFaturadoAno)
-  const percFaturadoGeral = prevFaturamentoAno > 0
-    ? Math.min(100, (totalFaturadoAno / prevFaturamentoAno) * 100)
-    : 0
+  const aFaturarAno = Math.max(0, prevFaturamentoAno - totalFaturadoAno)
 
   // Ramo
   const totalRamo = Array.from(porRamo.values()).reduce((a, b) => a + b, 0)
@@ -231,6 +228,17 @@ export async function GET(req: Request) {
       consolidado:  hasConsolidado,
     }
   })
+
+  // % faturado geral do ano — mesma base do gráfico "Meta acumulada x Faturado
+  // acumulado" (ContratoAvancoPercentualChart no dashboard): usa o previsto
+  // "mesclado" por mês (valor fixado do consolidado quando existe, sub-índice
+  // cru quando não existe), não a soma crua dos sub-índices. Sem teto em 100%,
+  // para bater exatamente com o acumulado do gráfico quando o faturado supera
+  // o previsto.
+  const totalPrevistoMesclado = porMes.reduce((a, m) => a + m.previsto, 0)
+  const percFaturadoGeral = totalPrevistoMesclado > 0
+    ? (totalFaturadoAno / totalPrevistoMesclado) * 100
+    : 0
 
   // Aderência por responsável
   const porResponsavel = Array.from(porResp.values())

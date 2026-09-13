@@ -311,6 +311,19 @@ model HistoricoSolicitacao {
   @@map("historico_solicitacoes")
 }
 
+// Contador do sequencial anual usado no número da solicitação (padrão da
+// empresa: IME-O-0001.26). Uma linha por ano; o sequencial é incrementado
+// atomicamente via upsert (INSERT ... ON CONFLICT DO UPDATE, uma única
+// instrução no Postgres) — garante que duas solicitações criadas ao mesmo
+// tempo nunca recebam o mesmo número. Números antigos (SOL-XXXX) não usam
+// este contador e continuam como estão.
+model SequenciaSolicitacao {
+  ano    Int @id
+  ultimo Int @default(0)
+
+  @@map("sequencia_solicitacao")
+}
+
 // M11: rastreabilidade de atribuição/remoção de Analista Crítico
 model AnalistaCriticoHistorico {
   id            Int      @id @default(autoincrement())
@@ -1337,6 +1350,16 @@ model PrevisaoAlteracao {
   out_para   Decimal? @db.Decimal(15, 2)
   nov_para   Decimal? @db.Decimal(15, 2)
   dez_para   Decimal? @db.Decimal(15, 2)
+
+  // Alteração do Valor Total do subíndice — mesma tabela/fluxo de aprovação da
+  // previsão mensal (nullable: uma PrevisaoAlteracao pode mexer só na previsão,
+  // só no valor total, ou nos dois ao mesmo tempo).
+  valor_total_de   Decimal? @db.Decimal(15, 2)
+  valor_total_para Decimal? @db.Decimal(15, 2)
+  // Motivo/justificativa informado pelo responsável ao propor a alteração de
+  // Valor Total (obrigatório nesse caso) — distinto de motivo_recusa, que é da
+  // Gestão ao reprovar. Hoje só usado quando valor_total_para != null.
+  motivo           String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
 import { exigirPermissao } from '@/lib/permissaoApi'
+import { formatCurrency } from '@/lib/utils'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
 
@@ -54,16 +56,19 @@ export async function PUT(
       return NextResponse.json({ data: null, error: 'Esta alteração já foi processada' }, { status: 409 })
     }
 
+    const temValorTotal = alteracao.valor_total_para != null
+
     if (acao === 'APROVAR') {
       // Aplica os valores "para" no SubIndiceFaturamento
-      const updateData = Object.fromEntries(
+      const updateData: Record<string, number | null> = Object.fromEntries(
         MESES.map((m) => {
           const val = alteracao[`${m}_para` as keyof typeof alteracao]
           return [m === 'set' ? 'set' : m, val != null ? Number(val) : null]
         })
       )
+      if (temValorTotal) updateData.valor_total = Number(alteracao.valor_total_para)
 
-      await prisma.$transaction([
+      const ops: Prisma.PrismaPromise<unknown>[] = [
         prisma.subIndiceFaturamento.update({
           where: { id: alteracao.subindice_id },
           data: updateData,
@@ -76,7 +81,19 @@ export async function PUT(
             reviewed_at: new Date(),
           },
         }),
-      ])
+      ]
+      if (temValorTotal) {
+        ops.push(prisma.historicoSubIndice.create({
+          data: {
+            subindice_id: alteracao.subindice_id,
+            campo: 'Valor Total',
+            valor_de: formatCurrency(Number(alteracao.valor_total_de)),
+            valor_para: formatCurrency(Number(alteracao.valor_total_para)),
+            created_by: revisoreId,
+          },
+        }))
+      }
+      await prisma.$transaction(ops)
     } else {
       await prisma.previsaoAlteracao.update({
         where: { id },
@@ -87,6 +104,17 @@ export async function PUT(
           reviewed_at: new Date(),
         },
       })
+      if (temValorTotal) {
+        await prisma.historicoSubIndice.create({
+          data: {
+            subindice_id: alteracao.subindice_id,
+            campo: 'Valor Total — Recusado',
+            valor_de: formatCurrency(Number(alteracao.valor_total_para)),
+            valor_para: `Motivo: ${motivo_recusa}`,
+            created_by: revisoreId,
+          },
+        })
+      }
     }
 
     const updated = await prisma.previsaoAlteracao.findUnique({
@@ -116,17 +144,18 @@ export async function PUT(
     const ctIndice  = updated?.subindice?.contrato?.indice ?? ''
     const descSub   = updated?.subindice?.descricao ?? ''
     const linkPainel = '/acordos/painel'
+    const assunto = temValorTotal ? 'Valor Total' : 'previsão'
     if (acao === 'APROVAR') {
       createNotificacao(
         alteracao.responsavel_id,
-        'Proposta de alteração aprovada',
+        `Proposta de alteração de ${assunto} aprovada`,
         `Sua proposta para ${ctIndice} · ${descSub} foi aprovada e os valores foram atualizados.`,
         linkPainel,
       )
     } else {
       createNotificacao(
         alteracao.responsavel_id,
-        'Proposta de alteração reprovada',
+        `Proposta de alteração de ${assunto} reprovada`,
         `Sua proposta para ${ctIndice} · ${descSub} foi reprovada. Motivo: ${motivo_recusa ?? '—'}`,
         linkPainel,
       )
@@ -146,12 +175,15 @@ function serializeAlteracao(a: any) {
     subindice_id: a.subindice_id,
     responsavel_id: a.responsavel_id,
     status: a.status,
+    motivo: a.motivo ?? null,
     motivo_recusa: a.motivo_recusa,
     revisor_id: a.revisor_id,
     reviewed_at: a.reviewed_at?.toISOString() ?? null,
     created_at: a.created_at.toISOString(),
     updated_at: a.updated_at.toISOString(),
     created_by: a.created_by,
+    valor_total_de: a.valor_total_de != null ? Number(a.valor_total_de) : null,
+    valor_total_para: a.valor_total_para != null ? Number(a.valor_total_para) : null,
     ...Object.fromEntries(MESES.map((m) => [`${m}_de`, a[`${m}_de`] ? Number(a[`${m}_de`]) : null])),
     ...Object.fromEntries(MESES.map((m) => [`${m}_para`, a[`${m}_para`] ? Number(a[`${m}_para`]) : null])),
     subindice: a.subindice

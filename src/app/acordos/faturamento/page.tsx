@@ -1642,7 +1642,12 @@ function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem
             {!aprovado && alteracao.motivo_recusa && (
               <span className="text-red-600">Motivo: {alteracao.motivo_recusa}</span>
             )}
-            <span className="text-amber-600">{mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}</span>
+            {mesesMudados.length > 0 && (
+              <span className="text-amber-600">{mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}</span>
+            )}
+            {alteracao.valor_total_para != null && (
+              <span className="text-purple-700 font-semibold">Valor Total alterado</span>
+            )}
           </div>
         </div>
         <button onClick={() => setExpanded((v) => !v)} className="text-[10px] text-gray-400 hover:text-gray-600 underline flex-shrink-0">
@@ -1651,6 +1656,15 @@ function AlteracaoHistoricoRow({ alteracao }: { alteracao: PrevisaoAlteracaoItem
       </div>
       {expanded && (
         <div className="border-t border-gray-100 pt-2 mt-2">
+          {alteracao.valor_total_para != null && (
+            <p className="text-[11px] mb-2">
+              <span className="text-gray-400">Valor Total: </span>
+              <span className="text-gray-500 line-through">{formatCurrency(Number(alteracao.valor_total_de ?? 0))}</span>
+              <span className="mx-1.5 text-gray-400">→</span>
+              <span className={cn('font-bold', aprovado ? 'text-green-800' : 'text-red-700')}>{formatCurrency(Number(alteracao.valor_total_para))}</span>
+              {alteracao.motivo && <span className="text-gray-400 italic ml-2">Motivo: {alteracao.motivo}</span>}
+            </p>
+          )}
           <div className="grid grid-cols-12 gap-1">
             {MESES.map((m, mi) => {
               const de = alteracao[`${m}_de` as keyof PrevisaoAlteracaoItem] as number | null
@@ -1720,9 +1734,16 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
             <span className="text-[10px] text-gray-400">
               {formatDateTime(alteracao.created_at)}
             </span>
-            <span className="text-[10px] text-amber-700">
-              {mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}
-            </span>
+            {mesesMudados.length > 0 && (
+              <span className="text-[10px] text-amber-700">
+                {mesesMudados.length} mês{mesesMudados.length !== 1 ? 'es' : ''} alterado{mesesMudados.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {alteracao.valor_total_para != null && (
+              <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
+                Valor Total alterado
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1763,6 +1784,17 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
               <strong className="text-gray-800">{alteracao.contrato?.indice ?? '—'}.{alteracao.subindice.ordem}</strong> — {alteracao.subindice.descricao}
             </p>
           </div>
+          {alteracao.valor_total_para != null && (
+            <div className="pt-1 border-t border-gray-200">
+              <p className="text-[9px] uppercase tracking-wide text-purple-500 font-semibold">Valor Total do subíndice</p>
+              <p className="text-[12px]">
+                <span className="text-gray-500 line-through">{formatCurrency(Number(alteracao.valor_total_de ?? 0))}</span>
+                <span className="mx-1.5 text-gray-400">→</span>
+                <span className="font-bold text-purple-700">{formatCurrency(Number(alteracao.valor_total_para))}</span>
+              </p>
+              {alteracao.motivo && <p className="text-[10px] text-gray-500 italic mt-0.5">Motivo: {alteracao.motivo}</p>}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2.5 flex-shrink-0 self-start">
           <div className="text-right">

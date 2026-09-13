@@ -475,7 +475,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       <Field label="Nº Proposta *" className="mb-2.5">
         {numPropostaManual ? (
           <div className="flex items-center gap-2.5">
-            <Input placeholder="Ex: SOL-0053" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} className="flex-1" />
+            <Input placeholder="Ex: IME-O-0053.26" value={numProposta} onChange={(e) => setNumProposta(e.target.value)} className="flex-1" />
             <button
               type="button"
               onClick={() => { setNumPropostaManual(false); setNumProposta('') }}

@@ -49,10 +49,14 @@ export async function GET(req: NextRequest) {
           orderBy: { ordem: 'asc' },
           include: {
             notas_fiscais: { where: { deleted_at: null } },
+            // Até 2 pendências simultâneas por subíndice: uma de previsão mensal
+            // (valor_total_para null) e uma de Valor Total — são independentes
+            // entre si (ver POST /api/faturamento/alteracoes). take:5 é folga
+            // generosa; na prática nunca passa de 2.
             alteracoes: {
               where: { status: 'PENDENTE' },
               orderBy: { created_at: 'desc' },
-              take: 1,
+              take: 5,
               include: {
                 responsavel: { select: { id: true, nome: true } },
                 revisor: { select: { id: true, nome: true } },
@@ -73,6 +77,7 @@ export async function GET(req: NextRequest) {
           : 'PARCIAL'
 
         const alteracaoPendente = s.alteracoes[0] ?? null
+        const alteracaoValorPendente = s.alteracoes.find((a) => a.valor_total_para != null) ?? null
 
         return {
           id: s.id,
@@ -112,6 +117,7 @@ export async function GET(req: NextRequest) {
             motivo_inativacao: nf.motivo_inativacao,
           })),
           alteracao_pendente: alteracaoPendente ? serializeAlteracao(alteracaoPendente) : null,
+          alteracao_valor_pendente: alteracaoValorPendente ? serializeAlteracao(alteracaoValorPendente) : null,
         }
       })
 
@@ -153,12 +159,15 @@ function serializeAlteracao(a: any) {
     subindice_id: a.subindice_id,
     responsavel_id: a.responsavel_id,
     status: a.status,
+    motivo: a.motivo ?? null,
     motivo_recusa: a.motivo_recusa,
     revisor_id: a.revisor_id,
     reviewed_at: a.reviewed_at?.toISOString() ?? null,
     created_at: a.created_at.toISOString(),
     updated_at: a.updated_at.toISOString(),
     created_by: a.created_by,
+    valor_total_de: a.valor_total_de != null ? Number(a.valor_total_de) : null,
+    valor_total_para: a.valor_total_para != null ? Number(a.valor_total_para) : null,
     ...Object.fromEntries(MESES.map((m) => [`${m}_de`, a[`${m}_de`] ? Number(a[`${m}_de`]) : null])),
     ...Object.fromEntries(MESES.map((m) => [`${m}_para`, a[`${m}_para`] ? Number(a[`${m}_para`]) : null])),
     responsavel: a.responsavel,

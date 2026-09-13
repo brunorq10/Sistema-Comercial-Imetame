@@ -100,6 +100,14 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       ? (subindice as unknown as { alteracao_pendente: PrevisaoAlteracaoItem | null }).alteracao_pendente
       : null
 
+  // Alteração de Valor Total pendente (pode ser a mesma linha de alteracaoPendente,
+  // ou uma linha separada — ver painel-acordos/route.ts)
+  const alteracaoValorPendente: PrevisaoAlteracaoItem | null =
+    useApprovalFlow && 'alteracao_valor_pendente' in subindice
+      ? (subindice as unknown as { alteracao_valor_pendente: PrevisaoAlteracaoItem | null }).alteracao_valor_pendente
+      : null
+  const valorTotalBloqueadoPorPendencia = useApprovalFlow && alteracaoValorPendente != null
+
   // RN-CF-36: detalhamento da alteração pendente (mês a mês: de → para)
   const pendingChanges = useMemo(() => {
     if (!alteracaoPendente) return [] as { label: string; de: number; para: number }[]
@@ -200,40 +208,54 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       [ano]: { ...prev[ano], meses: { ...prev[ano]?.meses, [mes]: val } },
     }))
 
-  // RN-CF-09/37: salva previsão via fluxo de aprovação (POST /alteracoes)
+  // RN-CF-09/37: salva previsão e/ou Valor Total via fluxo de aprovação (POST /alteracoes)
   const handleSaveApprovalFlow = async () => {
     const section = anos[subAno]
     if (!section) { setError('Seção de ano não encontrada'); return }
+
+    const hasMesChanges = MESES.some((m) => {
+      const current = section.meses[m] ? Number(section.meses[m]) : 0
+      const original = section.original[m] ? Number(section.original[m]) : 0
+      return Math.abs(current - original) > 0.01
+    })
+    const valorTotalChanged = !valorTotalBloqueadoPorPendencia
+      && Math.abs(Number(valorTotal || 0) - Number(subindice.valor_total)) > 0.01
+
+    if (!hasMesChanges && !valorTotalChanged) {
+      setError('Nenhuma alteração detectada. Modifique a previsão mensal ou o Valor Total antes de enviar.')
+      return
+    }
 
     if (hasPastMonthChanges && !comentarios.trim()) {
       setError('Informe o motivo da alteração em meses passados no campo "Motivo da alteração"')
       return
     }
-
-    const hasChanges = MESES.some((m) => {
-      const current = section.meses[m] ? Number(section.meses[m]) : 0
-      const original = section.original[m] ? Number(section.original[m]) : 0
-      return Math.abs(current - original) > 0.01
-    })
-
-    if (!hasChanges) {
-      setError('Nenhuma alteração detectada. Modifique ao menos um valor mensal antes de enviar.')
+    if (valorTotalChanged && !comentarios.trim()) {
+      setError('Informe o motivo da alteração do Valor Total no campo "Motivo da alteração"')
       return
     }
 
     // Mesmas regras da edição do Controle de Faturamento, aplicadas ao sub-índice
-    // específico que está sendo alterado (não ao total multi-ano):
-    // a soma dos meses não pode ultrapassar o valor do sub-índice nem ficar
-    // abaixo do já faturado daquele ano.
+    // específico que está sendo alterado (não ao total multi-ano): a soma dos
+    // meses não pode ultrapassar o Valor Total (o novo, se estiver sendo
+    // alterado na mesma proposta) nem ficar abaixo do já faturado daquele ano.
+    // Quando só o Valor Total muda (meses não tocados), não bloqueia — só avisa
+    // visualmente (ver aviso "Soma de todos os meses" logo abaixo do campo).
     const somaMeses = MESES.reduce((s, m) => s + (section.meses[m] ? Number(section.meses[m]) : 0), 0)
-    const vtNum = Number(subindice.valor_total)
-    if (somaMeses > vtNum + 0.01) {
-      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) ultrapassa o valor do sub-índice (R$ ${fmt(vtNum)})`)
+    const vtNum = valorTotalChanged ? Number(valorTotal) : Number(subindice.valor_total)
+    if (valorTotalChanged && vtNum < section.jaFaturado - 0.01) {
+      setError(`O Valor Total (R$ ${fmt(vtNum)}) não pode ser menor que o já faturado (R$ ${fmt(section.jaFaturado)})`)
       return
     }
-    if (somaMeses < section.jaFaturado - 0.01) {
-      setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) não pode ser menor que o já faturado (R$ ${fmt(section.jaFaturado)})`)
-      return
+    if (hasMesChanges) {
+      if (somaMeses > vtNum + 0.01) {
+        setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) ultrapassa o Valor Total (R$ ${fmt(vtNum)})`)
+        return
+      }
+      if (somaMeses < section.jaFaturado - 0.01) {
+        setError(`A soma da previsão mensal (R$ ${fmt(somaMeses)}) não pode ser menor que o já faturado (R$ ${fmt(section.jaFaturado)})`)
+        return
+      }
     }
 
     const valores_para = Object.fromEntries(
@@ -245,7 +267,11 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       const res = await fetch('/api/faturamento/alteracoes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subindice_id: subindice.id, valores_para }),
+        body: JSON.stringify({
+          subindice_id: subindice.id,
+          valores_para,
+          ...(valorTotalChanged ? { valor_total_para: Number(valorTotal), motivo: comentarios.trim() } : {}),
+        }),
       })
       const json = await res.json()
       if (!res.ok || json.error) { setError(json.error ?? 'Erro ao enviar proposta'); return }
@@ -256,6 +282,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
       setLoading(false)
     }
   }
+
+  // Reflexo "ao vivo" (fora do submit) de handleSaveApprovalFlow, só para
+  // controlar labels/placeholders/habilitação de campos na renderização.
+  const valorTotalChangedLive = useApprovalFlow && !valorTotalBloqueadoPorPendencia
+    && Math.abs(Number(valorTotal || 0) - Number(subindice.valor_total)) > 0.01
+  const motivoObrigatorio = hasPastMonthChanges || valorTotalChangedLive
 
   const jaFaturadoTotal = useMemo(
     () => Object.values(anos).reduce((acc, s) => acc + (s?.jaFaturado ?? 0), 0),
@@ -396,9 +428,12 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
           <div className="px-3 py-2.5 flex gap-2 items-start">
             <span className="text-[14px] leading-none mt-px">⏳</span>
             <span className="flex-1">
-              <strong>Alteração pendente de aprovação.</strong> Enviar uma nova proposta irá substituir a anterior.
+              <strong>Alteração pendente de aprovação.</strong>{' '}
+              {alteracaoValorPendente
+                ? 'Há uma proposta de Valor Total aguardando aprovação para este subíndice.'
+                : 'Enviar uma nova proposta de previsão irá substituir a anterior.'}
             </span>
-            {pendingChanges.length > 0 && (
+            {(pendingChanges.length > 0 || alteracaoValorPendente) && (
               <button
                 type="button"
                 onClick={() => setShowPending((v) => !v)}
@@ -408,29 +443,46 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
               </button>
             )}
           </div>
-          {showPending && pendingChanges.length > 0 && (
+          {showPending && (pendingChanges.length > 0 || alteracaoValorPendente) && (
             <div className="border-t border-amber-200 px-3 py-2">
-              <p className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold mb-1.5">Alteração aguardando aprovação</p>
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="text-amber-700">
-                    <th className="text-left font-semibold py-0.5">Mês</th>
-                    <th className="text-right font-semibold py-0.5">Valor atual</th>
-                    <th className="text-center font-semibold py-0.5 w-6"></th>
-                    <th className="text-right font-semibold py-0.5">Proposto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingChanges.map((c) => (
-                    <tr key={c.label} className="border-t border-amber-100">
-                      <td className="py-0.5 font-medium text-amber-900">{c.label}</td>
-                      <td className="py-0.5 text-right text-gray-500">R$ {fmt(c.de)}</td>
-                      <td className="py-0.5 text-center text-amber-500">→</td>
-                      <td className="py-0.5 text-right font-bold text-green-700">R$ {fmt(c.para)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {alteracaoValorPendente && (
+                <div className={pendingChanges.length > 0 ? 'mb-2.5 pb-2.5 border-b border-amber-200' : ''}>
+                  <p className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold mb-1">Valor Total — aguardando aprovação</p>
+                  <p className="text-[12px]">
+                    <span className="text-gray-500">R$ {fmt(Number(alteracaoValorPendente.valor_total_de ?? 0))}</span>
+                    <span className="mx-1.5 text-amber-500">→</span>
+                    <span className="font-bold text-green-700">R$ {fmt(Number(alteracaoValorPendente.valor_total_para ?? 0))}</span>
+                  </p>
+                  {alteracaoValorPendente.motivo && (
+                    <p className="text-[10px] text-amber-700 italic mt-0.5">Motivo: {alteracaoValorPendente.motivo}</p>
+                  )}
+                </div>
+              )}
+              {pendingChanges.length > 0 && (
+                <>
+                  <p className="text-[10px] uppercase tracking-wide text-amber-700 font-semibold mb-1.5">Previsão mensal — aguardando aprovação</p>
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="text-amber-700">
+                        <th className="text-left font-semibold py-0.5">Mês</th>
+                        <th className="text-right font-semibold py-0.5">Valor atual</th>
+                        <th className="text-center font-semibold py-0.5 w-6"></th>
+                        <th className="text-right font-semibold py-0.5">Proposto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingChanges.map((c) => (
+                        <tr key={c.label} className="border-t border-amber-100">
+                          <td className="py-0.5 font-medium text-amber-900">{c.label}</td>
+                          <td className="py-0.5 text-right text-gray-500">R$ {fmt(c.de)}</td>
+                          <td className="py-0.5 text-center text-amber-500">→</td>
+                          <td className="py-0.5 text-right font-bold text-green-700">R$ {fmt(c.para)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -451,13 +503,17 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
         <Field label="Nº OS">
           <Input placeholder="Ex: 0798.02.003" value={numOs} onChange={(e) => setNumOs(maskOS(e.target.value))} disabled={readOnly} />
         </Field>
-        <Field label={hasPastMonthChanges ? 'Motivo da alteração *' : 'Comentários'}>
+        <Field label={motivoObrigatorio ? 'Motivo da alteração *' : 'Comentários'}>
           <Input
-            placeholder={hasPastMonthChanges ? 'Obrigatório: informe o motivo da alteração em meses passados' : 'Obs...'}
+            placeholder={
+              valorTotalChangedLive ? 'Obrigatório: informe o motivo da alteração do Valor Total'
+              : hasPastMonthChanges ? 'Obrigatório: informe o motivo da alteração em meses passados'
+              : 'Obs...'
+            }
             value={comentarios}
             onChange={(e) => setComentarios(e.target.value)}
-            disabled={readOnly && !hasPastMonthChanges}
-            className={hasPastMonthChanges ? 'border-amber-400 focus:ring-amber-400' : ''}
+            disabled={readOnly && !motivoObrigatorio}
+            className={motivoObrigatorio ? 'border-amber-400 focus:ring-amber-400' : ''}
           />
         </Field>
         <Field label="Período — De">
@@ -488,8 +544,17 @@ export function EditarSubIndiceModal({ open, onClose, onSuccess, onDelete, subin
 
       <div className="mb-2.5">
         <Field label="Valor Total (R$) *">
-          <CurrencyInput value={valorTotal} onChange={setValorTotal} disabled={readOnly} />
+          <CurrencyInput
+            value={valorTotal}
+            onChange={setValorTotal}
+            disabled={useApprovalFlow ? valorTotalBloqueadoPorPendencia : readOnly}
+          />
         </Field>
+        {valorTotalBloqueadoPorPendencia && (
+          <p className="text-[10px] text-amber-600 mt-1">
+            Já existe uma alteração de Valor Total pendente de aprovação para este subíndice — aguarde a resolução para propor uma nova.
+          </p>
+        )}
       </div>
 
       {(() => {

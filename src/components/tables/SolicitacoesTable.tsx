@@ -61,6 +61,10 @@ export function SolicitacoesTable({
         header: 'Nº',
         cell: (info) => <span className="font-bold">{info.getValue()}</span>,
         size: 90,
+        // Ordena pela data de criação, não pelo texto do número: "SOL-XXXX"
+        // (legado) e "IME-O-XXXX.YY" (novo, reinicia a cada ano) não têm uma
+        // ordenação lexicográfica coerente entre si nem entre anos diferentes.
+        sortingFn: (a, b) => a.original.created_at.localeCompare(b.original.created_at),
       }),
       col.accessor('created_at', {
         header: 'Data criação',
