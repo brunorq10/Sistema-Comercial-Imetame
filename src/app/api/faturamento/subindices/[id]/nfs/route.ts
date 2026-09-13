@@ -12,6 +12,7 @@ const schema = z.object({
   percentual: z.number().min(0.01).max(100),
   data_emissao: z.string(),
   data_vencimento: z.string(),
+  tipo_lancamento: z.string().optional().default('Normal'),
   tipo_documento: z.string().optional().default('NF'),
 })
 
@@ -92,6 +93,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
       valor_atribuido,
       data_emissao: new Date(parsed.data.data_emissao),
       data_vencimento: new Date(parsed.data.data_vencimento),
+      tipo_lancamento: parsed.data.tipo_lancamento ?? 'Normal',
       tipo_documento: parsed.data.tipo_documento ?? 'NF',
       created_by: userId,
       status_aprovacao: isCoordenacao ? 'APROVADO' : 'PENDENTE',
@@ -142,6 +144,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
       data_emissao: nf.data_emissao.toISOString(),
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa,
+      tipo_lancamento: nf.tipo_lancamento ?? 'Normal',
       tipo_documento: nf.tipo_documento ?? 'NF',
       status_aprovacao: nf.status_aprovacao,
     },

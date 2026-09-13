@@ -163,12 +163,12 @@ export interface PropostaComercialItem {
 export interface FiltrosSolicitacao {
   ano?: string
   cliente_id?: string[]
+  cliente_final_id?: string[]
   cidade?: string[]
   classificacao?: string[]
   interesse?: string[]
   data_de?: string
   data_ate?: string
-  responsavel_id?: string[]
   status?: StatusSolicitacao | ''
   orcamentista_id?: string[]
 }
@@ -400,6 +400,7 @@ export interface NFContratoItem {
   data_vencimento: string
   ativa: boolean
   motivo_inativacao: string | null
+  tipo_lancamento?: string | null
   tipo_documento?: string | null
   status_aprovacao?: string | null   // APROVADO | PENDENTE | REPROVADO
 }

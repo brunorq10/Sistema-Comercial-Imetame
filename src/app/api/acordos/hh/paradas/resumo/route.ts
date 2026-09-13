@@ -91,6 +91,7 @@ export async function GET() {
 
     return {
       id: c.id, indice: c.indice, num_os: c.num_os, ano_referencia: c.ano_referencia,
+      cidade: c.cidade, estado: c.estado,
       cliente: c.cliente, cliente_final: c.cliente_final ?? null,
       responsavel: c.responsavel, descricao: c.descricao,
       fases, hh_prev: hhPrev, hh_real: hhReal, meses,

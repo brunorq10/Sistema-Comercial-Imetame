@@ -26,6 +26,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const anoParam       = searchParams.get('ano')
   const clienteId      = searchParams.get('clienteId')
+  const clienteFinalId = searchParams.get('clienteFinalId')
   const ramoFiltro     = searchParams.get('ramo')
   const responsavelId  = searchParams.get('responsavelId')
   const cidadeFiltro   = searchParams.get('cidade')
@@ -41,12 +42,14 @@ export async function GET(req: Request) {
 
   // Filtros multi-valor: lista separada por vírgula (ex.: clienteId=1,2,3)
   const clienteIds     = clienteId    ? clienteId.split(',').map(Number).filter((n) => !isNaN(n)) : []
+  const clienteFinalIds = clienteFinalId ? clienteFinalId.split(',').map(Number).filter((n) => !isNaN(n)) : []
   const ramos          = ramoFiltro   ? ramoFiltro.split(',').filter(Boolean) : []
   const responsavelIds = responsavelId ? responsavelId.split(',').map(Number).filter((n) => !isNaN(n)) : []
   const cidades        = cidadeFiltro ? cidadeFiltro.split(',').filter(Boolean) : []
 
   const whereContrato: Prisma.ContratoWhereInput = { cancelled_at: null }
   if (clienteIds.length)     whereContrato.cliente_id     = { in: clienteIds }
+  if (clienteFinalIds.length) whereContrato.cliente_final_id = { in: clienteFinalIds }
   if (ramos.length)          whereContrato.cliente        = { is: { ramo_atuacao: { in: ramos as RamoAtuacao[] } } }
   if (responsavelIds.length) whereContrato.responsavel_id = { in: responsavelIds }
   if (cidades.length)        whereContrato.cidade         = { in: cidades }
@@ -84,20 +87,25 @@ export async function GET(req: Request) {
     // pelos filtros já aplicados), mesmo critério já usado para `clientes` acima.
     prisma.contrato.findMany({
       where: { cancelled_at: null },
-      select: { cidade: true, responsavel: { select: { id: true, nome: true } } },
+      select: { cidade: true, responsavel: { select: { id: true, nome: true } }, cliente_final: { select: { id: true, nome: true } } },
     }),
   ])
 
   const responsaveisMap = new Map<number, string>()
   const cidadesSet = new Set<string>()
+  const clientesFinaisMap = new Map<number, string>()
   for (const c of filtroMeta) {
     if (c.responsavel) responsaveisMap.set(c.responsavel.id, c.responsavel.nome)
     if (c.cidade) cidadesSet.add(c.cidade)
+    if (c.cliente_final) clientesFinaisMap.set(c.cliente_final.id, c.cliente_final.nome)
   }
   const responsaveisOpts = Array.from(responsaveisMap.entries())
     .map(([id, nome]) => ({ id, nome }))
     .sort((a, b) => a.nome.localeCompare(b.nome))
   const cidadesOpts = Array.from(cidadesSet).sort()
+  const clientesFinaisOpts = Array.from(clientesFinaisMap.entries())
+    .map(([id, nome]) => ({ id, nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome))
 
   // Mapa mes -> previsto fixado (soma dos itens do consolidado)
   const consolidadosPorMes = new Map<number, number>()
@@ -287,6 +295,7 @@ export async function GET(req: Request) {
       anoAtual,
       mesAtual,
       clientes,
+      clientesFinais: clientesFinaisOpts,
       responsaveis: responsaveisOpts,
       cidades: cidadesOpts,
       totalFaturadoAno,

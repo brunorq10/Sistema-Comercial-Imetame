@@ -116,7 +116,7 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
 
 export function HistoricoFaturamentoModal({ open, onClose, tipo, itemId, titulo }: Props) {
   return (
-    <Modal open={open} onClose={onClose} title={`Histórico de Alterações — ${titulo}`} wide>
+    <Modal open={open} onClose={onClose} title={`Histórico de Alterações — ${titulo}`} extraWide>
       {open && <HistoricoFaturamentoLista tipo={tipo} itemId={itemId} />}
     </Modal>
   )

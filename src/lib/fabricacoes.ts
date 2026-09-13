@@ -24,6 +24,7 @@ export interface MesReal  { mes: number; ano: number; hh_realizado: number | nul
 export interface ItemFab {
   id: number
   descricao: string
+  num_os: string | null
   peso_total: number | null
   data_inicio: string
   data_fim: string
@@ -102,6 +103,7 @@ export function mapContratoFab(c: ContratoComItens): ContratoFab {
   const itens: ItemFab[] = c.fabricacao_itens.map((it) => ({
     id: it.id,
     descricao: it.descricao,
+    num_os: it.num_os ?? null,
     peso_total: it.peso_total != null ? Number(it.peso_total) : null,
     data_inicio: it.data_inicio.toISOString(),
     data_fim: it.data_fim.toISOString(),

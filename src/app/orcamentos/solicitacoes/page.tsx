@@ -69,7 +69,7 @@ export default function SolicitacoesPage() {
 
   // Opções de filtro
   const [clientes,      setClientes]      = useState<{ id: number; nome: string }[]>([])
-  const [responsaveis,  setResponsaveis]  = useState<{ id: number; nome: string }[]>([])
+  const [clientesFinais, setClientesFinais] = useState<{ id: number; nome: string }[]>([])
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
   const [cidades,       setCidades]       = useState<string[]>([])
   const [linhasFiltro,  setLinhasFiltro]  = useState<LinhaCascata[]>([])
@@ -97,7 +97,7 @@ export default function SolicitacoesPage() {
     fetch('/api/solicitacoes?modo=filtros').then(r => r.json()).then(j => {
       if (j.data) {
         setClientes(j.data.clientes ?? [])
-        setResponsaveis(j.data.responsaveis ?? [])
+        setClientesFinais(j.data.clientes_finais ?? [])
         setOrcamentistas(j.data.orcamentistas ?? [])
         setCidades(j.data.cidades ?? [])
         setLinhasFiltro(j.data.linhas ?? [])
@@ -109,11 +109,11 @@ export default function SolicitacoesPage() {
   const selecoes = useMemo(() => ({
     ano:             filtros.ano ? [filtros.ano] : [],
     cliente_id:      filtros.cliente_id ?? [],
+    cliente_final_id: filtros.cliente_final_id ?? [],
     cidade:          filtros.cidade ?? [],
     classificacao:   filtros.classificacao ?? [],
     interesse:       filtros.interesse ?? [],
     status:          filtros.status ? [filtros.status] : [],
-    responsavel_id:  filtros.responsavel_id ?? [],
     orcamentista_id: filtros.orcamentista_id ?? [],
   }), [filtros])
 
@@ -125,6 +125,9 @@ export default function SolicitacoesPage() {
   const opCliente = useMemo(() =>
     filtrarOpcoes(clientes.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoes, 'cliente_id'),
     [clientes, linhasFiltro, selecoes])
+  const opClienteFinal = useMemo(() =>
+    filtrarOpcoes(clientesFinais.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoes, 'cliente_final_id'),
+    [clientesFinais, linhasFiltro, selecoes])
   const opCidade = useMemo(() =>
     filtrarOpcoes(cidades.map((c) => ({ value: c, label: c })), linhasFiltro, selecoes, 'cidade'),
     [cidades, linhasFiltro, selecoes])
@@ -143,9 +146,6 @@ export default function SolicitacoesPage() {
       { value: 'BAIXO', label: 'Baixo' },
     ], linhasFiltro, selecoes, 'interesse'),
     [linhasFiltro, selecoes])
-  const opResponsavel = useMemo(() =>
-    filtrarOpcoes(responsaveis.map((u) => ({ value: String(u.id), label: u.nome })), linhasFiltro, selecoes, 'responsavel_id'),
-    [responsaveis, linhasFiltro, selecoes])
   const opStatus = useMemo(() =>
     filtrarOpcoes([
       { value: 'AGUARDANDO_ANALISE', label: 'Em análise' },
@@ -169,12 +169,12 @@ export default function SolicitacoesPage() {
       if (statusEfetivo) params.set('status', statusEfetivo)
       if (filtrosAplicados.ano) params.set('ano', filtrosAplicados.ano)
       if (filtrosAplicados.cliente_id?.length) params.set('cliente_id', filtrosAplicados.cliente_id.join(','))
+      if (filtrosAplicados.cliente_final_id?.length) params.set('cliente_final_id', filtrosAplicados.cliente_final_id.join(','))
       if (filtrosAplicados.cidade?.length) params.set('cidade', filtrosAplicados.cidade.join(','))
       if (filtrosAplicados.classificacao?.length) params.set('classificacao', filtrosAplicados.classificacao.join(','))
       if (filtrosAplicados.interesse?.length) params.set('interesse', filtrosAplicados.interesse.join(','))
       if (filtrosAplicados.data_de) params.set('data_de', filtrosAplicados.data_de)
       if (filtrosAplicados.data_ate) params.set('data_ate', filtrosAplicados.data_ate)
-      if (filtrosAplicados.responsavel_id?.length) params.set('responsavel_id', filtrosAplicados.responsavel_id.join(','))
       if (filtrosAplicados.orcamentista_id?.length) params.set('orcamentista_id', filtrosAplicados.orcamentista_id.join(','))
       params.set('page', String(page))
       params.set('limit', '20')
@@ -348,6 +348,14 @@ export default function SolicitacoesPage() {
                 options={opCliente}
               />
             </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className={fLbl}>Cliente Final</label>
+              <SearchableMultiSelect
+                values={filtros.cliente_final_id ?? []}
+                onChange={(v) => setFiltros((f) => ({ ...f, cliente_final_id: v }))}
+                options={opClienteFinal}
+              />
+            </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Cidade/UF</label>
               <SearchableMultiSelect
@@ -381,14 +389,6 @@ export default function SolicitacoesPage() {
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Até</label>
               <input type="date" className={fCtrl} value={filtros.data_ate ?? ''} onChange={(e) => setFiltros((f) => ({ ...f, data_ate: e.target.value }))} />
-            </div>
-            <div className="flex-1 min-w-[120px]">
-              <label className={fLbl}>Responsável</label>
-              <SearchableMultiSelect
-                values={filtros.responsavel_id ?? []}
-                onChange={(v) => setFiltros((f) => ({ ...f, responsavel_id: v }))}
-                options={opResponsavel}
-              />
             </div>
             <div className="flex-1 min-w-[120px]">
               <label className={fLbl}>Status</label>

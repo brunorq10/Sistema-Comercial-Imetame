@@ -24,6 +24,7 @@ type Aba = 'lancar' | 'multas' | 'historico'
 
 export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subindice, approvalFlow }: Props) {
   const [aba, setAba] = useState<Aba>('lancar')
+  const [tipoLancamento, setTipoLancamento] = useState<'Normal' | 'Bônus' | 'Serviço Extra' | 'Outros'>('Normal')
   const [tipoDocumento, setTipoDocumento] = useState<'NF' | 'Recibo' | 'Outros'>('NF')
   const [numeroNF, setNumeroNF] = useState('')
   const [dataEmissao, setDataEmissao] = useState('')
@@ -80,6 +81,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
   useEffect(() => {
     if (open) {
       setAba('lancar')
+      setTipoLancamento('Normal')
       setTipoDocumento('NF')
       setNumeroNF(''); setDataEmissao(''); setDataVencimento('')
       setValorTotal(''); setPercentual('100'); setError(null); setWarning(null); setNfAlocado(null); setNfValorExistente(null); setEnviadoAprovacao(false)
@@ -152,6 +154,7 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           percentual: Number(percentual),
           data_emissao: dataEmissao,
           data_vencimento: dataVencimento,
+          tipo_lancamento: tipoLancamento,
           tipo_documento: tipoDocumento,
         }),
       })
@@ -287,6 +290,25 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
           </div>
 
           <ModalSection>Dados do documento fiscal</ModalSection>
+
+          <div className="mb-3">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo de lançamento *</p>
+            <div className="flex gap-3 flex-wrap">
+              {(['Normal', 'Bônus', 'Serviço Extra', 'Outros'] as const).map((tipo) => (
+                <label key={tipo} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipo_lancamento"
+                    value={tipo}
+                    checked={tipoLancamento === tipo}
+                    onChange={() => setTipoLancamento(tipo)}
+                    className="accent-green-primary"
+                  />
+                  <span className="text-[12px] font-medium text-gray-700">{tipo}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="mb-3">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipo de documento *</p>
@@ -520,7 +542,10 @@ function NFTable({ nfs, inativa, onEditar, onInativar, onExcluir }: { nfs: NFCon
           {nfs.map((nf) => (
             <tr key={nf.id} className={inativa ? 'bg-gray-50/50' : 'hover:bg-gray-50'}>
               <td className={tdCls}>
-                <span className="text-[10px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">{nf.tipo_documento ?? 'NF'}</span>
+                <div className="flex flex-col gap-0.5 items-start">
+                  <span className="text-[10px] bg-gray-100 text-gray-600 rounded px-1 py-0.5">{nf.tipo_documento ?? 'NF'}</span>
+                  <span className="text-[9px] bg-blue-50 text-blue-700 rounded px-1 py-0.5">{nf.tipo_lancamento ?? 'Normal'}</span>
+                </div>
               </td>
               <td className={tdCls}>
                 <span className={`font-semibold ${inativa ? 'line-through text-gray-400' : 'text-green-dark'}`}>

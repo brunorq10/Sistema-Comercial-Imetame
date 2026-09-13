@@ -50,6 +50,8 @@ export default function PainelOrcamentosPage() {
   const [classificacao, setClassificacao] = useState('')
   const [interesse, setInteresse] = useState('')
   const [clienteFiltro, setClienteFiltro] = useState('')
+  const [clienteFinalFiltro, setClienteFinalFiltro] = useState('')
+  const [cidadeFiltro, setCidadeFiltro] = useState('')
   const [orcamentistaFiltro, setOrcamentistaFiltro] = useState('')   // '' = meu painel
   const [orcamentistas, setOrcamentistas] = useState<{ id: number; nome: string }[]>([])
 
@@ -101,11 +103,21 @@ export default function PainelOrcamentosPage() {
     enviadas: items.filter(isEnviadaCompleta).length,
   }), [items])
 
-  // Clientes únicos derivados dos itens carregados
+  // Clientes/Cliente Final/Cidade únicos derivados dos itens carregados
   const clientesDisponiveis = useMemo(() => {
     const map = new Map<string, string>()
     items.forEach((i) => map.set(i.cliente, i.cliente))
     return Array.from(map.keys()).sort()
+  }, [items])
+  const clientesFinaisDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    items.forEach((i) => { if (i.cliente_final) set.add(i.cliente_final) })
+    return Array.from(set).sort()
+  }, [items])
+  const cidadesDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    items.forEach((i) => { if (i.cidade) set.add(i.estado ? `${i.cidade}/${i.estado}` : i.cidade) })
+    return Array.from(set).sort()
   }, [items])
 
   // Lista filtrada pelo indicador ativo + cliente, ordenada por urgência
@@ -123,6 +135,8 @@ export default function PainelOrcamentosPage() {
       lista = items.filter(isEnviadaCompleta)
     }
     if (clienteFiltro) lista = lista.filter((i) => i.cliente === clienteFiltro)
+    if (clienteFinalFiltro) lista = lista.filter((i) => i.cliente_final === clienteFinalFiltro)
+    if (cidadeFiltro) lista = lista.filter((i) => (i.estado ? `${i.cidade}/${i.estado}` : i.cidade) === cidadeFiltro)
 
     // Ordena do mais urgente ao menos urgente:
     // prazo mais próximo (ou já vencido) primeiro; sem prazo e já enviadas vão por último
@@ -136,14 +150,14 @@ export default function PainelOrcamentosPage() {
       return deadline - now  // negativo = atrasada
     }
     return [...lista].sort((a, b) => urgency(a) - urgency(b))
-  }, [items, filtroAtivo, subFiltro, clienteFiltro])
+  }, [items, filtroAtivo, subFiltro, clienteFiltro, clienteFinalFiltro, cidadeFiltro])
 
   const handleSetFiltro = (f: FiltroIndicador) => {
     setFiltroAtivo(f)
     setSubFiltro(null)
   }
 
-  const filtrosAtivosCount = [dataDe, dataAte, classificacao, interesse, clienteFiltro, orcamentistaFiltro].filter(Boolean).length
+  const filtrosAtivosCount = [dataDe, dataAte, classificacao, interesse, clienteFiltro, clienteFinalFiltro, cidadeFiltro, orcamentistaFiltro].filter(Boolean).length
 
   return (
     <div className="flex flex-col h-full">
@@ -204,7 +218,7 @@ export default function PainelOrcamentosPage() {
               <option value="BAIXO">Baixo</option>
             </Select>
           </Field>
-          <Field label="Cliente" className="min-w-[160px] flex-1">
+          <Field label="Cliente" className="min-w-[140px] flex-1">
             <Select value={clienteFiltro} onChange={(e) => setClienteFiltro(e.target.value)}>
               <option value="">Todos</option>
               {clientesDisponiveis.map((c) => (
@@ -212,9 +226,25 @@ export default function PainelOrcamentosPage() {
               ))}
             </Select>
           </Field>
+          <Field label="Cliente Final" className="min-w-[140px] flex-1">
+            <Select value={clienteFinalFiltro} onChange={(e) => setClienteFinalFiltro(e.target.value)}>
+              <option value="">Todos</option>
+              {clientesFinaisDisponiveis.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Cidade" className="min-w-[120px] flex-1">
+            <Select value={cidadeFiltro} onChange={(e) => setCidadeFiltro(e.target.value)}>
+              <option value="">Todas</option>
+              {cidadesDisponiveis.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </Field>
           <div className="flex-shrink-0">
             <button
-              onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro(''); setOrcamentistaFiltro('') }}
+              onClick={() => { setDataDe(''); setDataAte(''); setClassificacao(''); setInteresse(''); setClienteFiltro(''); setClienteFinalFiltro(''); setCidadeFiltro(''); setOrcamentistaFiltro('') }}
               className="border border-gray-300 text-gray-500 rounded px-2.5 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors"
             >
               ✕ Limpar

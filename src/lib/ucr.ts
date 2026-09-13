@@ -14,8 +14,8 @@ export const UCR_CAMPOS: UcrCampo[] = ['ucr_nao_suficiente', 'ucr_a_evoluir', 'u
 export const UCR_FAIXAS: Array<{ campo: UcrCampo; label: string; cor: string; bg: string }> = [
   { campo: 'ucr_nao_suficiente', label: 'Não Suficiente', cor: '#D4554F', bg: '#F7D4D2' },
   { campo: 'ucr_a_evoluir',      label: 'A Evoluir',      cor: '#BE9B1E', bg: '#FAF0C4' },
-  { campo: 'ucr_bom',            label: 'Bom',            cor: '#5FA06D', bg: '#D9EBDB' },
-  { campo: 'ucr_otimo',          label: 'Ótimo',          cor: '#5E9BD2', bg: '#D7E8F6' },
+  { campo: 'ucr_bom',            label: 'Bom',            cor: '#5E9BD2', bg: '#D7E8F6' },
+  { campo: 'ucr_otimo',          label: 'Ótimo',          cor: '#5FA06D', bg: '#D9EBDB' },
   { campo: 'ucr_esplendido',     label: 'Esplêndido',     cor: '#8779C8', bg: '#E1DDF4' },
 ]
 

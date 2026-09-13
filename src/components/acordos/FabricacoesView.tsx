@@ -257,7 +257,7 @@ export function HistoricoFabModal({ contrato, onClose }: { contrato: ContratoFab
       .finally(() => setLoading(false))
   }, [contrato.id])
   return (
-    <Modal open onClose={onClose} wide title={`Histórico de Alterações — ${contrato.indice} · ${contrato.cliente.nome}`}
+    <Modal open onClose={onClose} extraWide title={`Histórico de Alterações — ${contrato.indice} · ${contrato.cliente.nome}`}
       footer={<ModalCancelButton label="Fechar" />}>
       {loading ? (
         <p className="text-center text-gray-400 py-10 text-sm">Carregando histórico...</p>

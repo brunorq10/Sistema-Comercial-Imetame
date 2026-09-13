@@ -11,9 +11,15 @@ export interface FiltravelContrato {
   responsavel: { id: number; nome: string } | null
   descricao: string | null
   ano_referencia?: number | null
+  cidade?: string | null
+  estado?: string | null
 }
 
 export type FilterState = Record<string, string[]>
+
+function cidadeLabel(c: FiltravelContrato): string | null {
+  return c.cidade ? (c.estado ? `${c.cidade}/${c.estado}` : c.cidade) : null
+}
 
 export function useFilterOptions(contratos: FiltravelContrato[]) {
   return useMemo(() => ({
@@ -23,6 +29,7 @@ export function useFilterOptions(contratos: FiltravelContrato[]) {
     oss:            Array.from(new Set(contratos.map(c => c.num_os).filter((v): v is string => v != null))).map(v => ({ value: v, label: v })),
     responsaveis:   Array.from(new Map(contratos.filter(c => c.responsavel).map(c => [c.responsavel!.id, c.responsavel!.nome])).entries()).map(([v, l]) => ({ value: String(v), label: l })),
     mercados:       Array.from(new Set(contratos.map(c => c.cliente.ramo_atuacao).filter((v): v is string => v != null && v !== ''))).map(v => ({ value: v, label: v })),
+    cidades:        Array.from(new Set(contratos.map(cidadeLabel).filter((v): v is string => v != null))).sort().map(v => ({ value: v, label: v })),
     escopos:        contratos.filter(c => c.descricao).map(c => ({ value: c.descricao!, label: c.descricao! })),
   }), [contratos])
 }
@@ -40,6 +47,7 @@ export function HhFilters({ opts, filters, onChange }: {
     { key: 'oss',            label: 'OS',            opts: opts.oss },
     { key: 'responsaveis',   label: 'Responsável',   opts: opts.responsaveis },
     { key: 'mercados',       label: 'Mercado',       opts: opts.mercados },
+    { key: 'cidades',        label: 'Cidade/UF',     opts: opts.cidades },
     { key: 'escopos',        label: 'Escopo',        opts: opts.escopos },
   ]
   const hasAny = Object.values(filters).some(v => v.length > 0)
@@ -67,6 +75,7 @@ export function applyFilters<T extends FiltravelContrato>(contratos: T[], filter
     if (filters.oss?.length            && !filters.oss.includes(c.num_os ?? ''))                          return false
     if (filters.responsaveis?.length   && !filters.responsaveis.includes(String(c.responsavel?.id)))      return false
     if (filters.mercados?.length       && !filters.mercados.includes(c.cliente.ramo_atuacao ?? ''))       return false
+    if (filters.cidades?.length        && !filters.cidades.includes(cidadeLabel(c) ?? ''))                return false
     if (filters.escopos?.length        && !filters.escopos.includes(c.descricao ?? ''))                   return false
     return true
   })

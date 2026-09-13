@@ -50,6 +50,7 @@ const mesSchema = z.object({
 const itemSchema = z.object({
   id: z.number().int().positive().nullable().optional(),
   descricao: z.string().min(1, 'Descrição obrigatória'),
+  num_os: z.string().nullable().optional(),
   peso_total: z.number().nonnegative().nullable().optional(),
   data_inicio: z.string().min(1, 'Data início obrigatória'),
   data_fim: z.string().min(1, 'Data final obrigatória'),
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
           data: {
             contrato_id,
             descricao: it.descricao,
+            num_os: it.num_os?.trim() || null,
             peso_total: it.peso_total ?? null,
             data_inicio: new Date(it.data_inicio),
             data_fim: new Date(it.data_fim),
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest) {
         if (de !== para) hist.push({ item_id: ex.id, campo, valor_de: de, valor_para: para, created_by: userId })
       }
       push('Descrição', ex.descricao, it.descricao)
+      push('OS', ex.num_os ?? '—', it.num_os?.trim() || '—')
       push('Peso total (t)', fmtPeso(ex.peso_total != null ? Number(ex.peso_total) : null), fmtPeso(it.peso_total ?? null))
       push('Data início', fmtData(ex.data_inicio.toISOString()), fmtData(it.data_inicio))
       push('Data final', fmtData(ex.data_fim.toISOString()), fmtData(it.data_fim))
@@ -150,6 +153,7 @@ export async function POST(req: NextRequest) {
         where: { id: ex.id },
         data: {
           descricao: it.descricao,
+          num_os: it.num_os?.trim() || null,
           peso_total: it.peso_total ?? null,
           data_inicio: new Date(it.data_inicio),
           data_fim: new Date(it.data_fim),

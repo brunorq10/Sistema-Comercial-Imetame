@@ -614,6 +614,9 @@ model FabricacaoItem {
   id          Int      @id @default(autoincrement())
   contrato_id Int
   descricao   String
+  // OS específica deste item — opcional; alguns contratos têm uma OS por
+  // equipamento em vez de uma OS única para o contrato inteiro (Contrato.num_os).
+  num_os      String?
   peso_total  Decimal? @db.Decimal(14, 2)
   data_inicio DateTime
   data_fim    DateTime
@@ -1207,6 +1210,9 @@ model NotaFiscalContrato {
   data_vencimento   DateTime
   ativa             Boolean  @default(true)
   motivo_inativacao String?
+  // Classificação do lançamento — distinta do tipo de documento (NF/Recibo/Outros).
+  // Usada no indicador "Composição Faturamento".
+  tipo_lancamento   String?  @default("Normal")
   tipo_documento    String?  @default("NF")
   // Fluxo de aprovação de lançamento de faturamento (responsável -> coordenação)
   status_aprovacao  String   @default("APROVADO") // APROVADO | PENDENTE | REPROVADO

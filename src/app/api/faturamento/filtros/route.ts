@@ -16,13 +16,15 @@ export async function GET() {
       num_os:       true,
       num_acordo:   true,
       num_proposta: true,
-      cliente:      { select: { id: true, nome: true, ramo_atuacao: true } },
+      cliente:       { select: { id: true, nome: true, ramo_atuacao: true } },
+      cliente_final: { select: { id: true, nome: true } },
       responsavel:  { select: { id: true, nome: true } },
     },
   })
 
   // Distinct clientes
   const clientesMap = new Map<number, string>()
+  const clientesFinaisMap = new Map<number, string>()
   // Distinct responsaveis
   const responsaveisMap = new Map<number, string>()
   // Distinct strings
@@ -33,6 +35,7 @@ export async function GET() {
 
   for (const c of contratos) {
     clientesMap.set(c.cliente.id, c.cliente.nome)
+    if (c.cliente_final) clientesFinaisMap.set(c.cliente_final.id, c.cliente_final.nome)
     if (c.responsavel) responsaveisMap.set(c.responsavel.id, c.responsavel.nome)
     if (c.num_os)            osSet.add(c.num_os)
     if (c.num_acordo)        acordoSet.add(c.num_acordo)
@@ -44,6 +47,7 @@ export async function GET() {
   const linhas = contratos.map((c) => ({
     ano:            String(c.ano_referencia),
     cliente_id:     String(c.cliente.id),
+    cliente_final_id: c.cliente_final ? String(c.cliente_final.id) : null,
     mercado:        c.cliente.ramo_atuacao ?? null,
     num_os:         c.num_os ?? null,
     num_acordo:     c.num_acordo ?? null,
@@ -55,6 +59,7 @@ export async function GET() {
   return NextResponse.json({
     data: {
       clientes:     Array.from(clientesMap.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      clientes_finais: Array.from(clientesFinaisMap.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
       responsaveis: Array.from(responsaveisMap.entries()).map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
       num_os:       Array.from(osSet).sort(),
       num_acordos:  Array.from(acordoSet).sort(),

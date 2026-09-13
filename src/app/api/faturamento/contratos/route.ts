@@ -56,12 +56,14 @@ export async function GET(req: NextRequest) {
   // Filtros multi-valor: aceitam lista separada por vírgula (ex.: cliente_id=1,2,3)
   const multi = (k: string) => { const v = searchParams.get(k); return v ? v.split(',').filter(Boolean) : [] }
   const clienteIds   = multi('cliente_id').map(Number).filter((n) => !isNaN(n))
+  const clienteFinalIds = multi('cliente_final_id').map(Number).filter((n) => !isNaN(n))
   const statusList   = multi('status')
   const responsavelIds = multi('responsavel_id').map(Number).filter((n) => !isNaN(n))
   const numOsList    = multi('num_os')
   const numAcordoList = multi('num_acordo')
   const numPropostaList = multi('num_proposta')
   const mercadoList  = multi('mercado')
+  const escopo       = searchParams.get('escopo') ?? undefined
 
   try {
     const anoNum = ano ? Number(ano) : undefined
@@ -89,6 +91,8 @@ export async function GET(req: NextRequest) {
         cancelled_at: null,
         ...whereAnual,
         ...(clienteIds.length && { cliente_id: { in: clienteIds } }),
+        ...(clienteFinalIds.length && { cliente_final_id: { in: clienteFinalIds } }),
+        ...(escopo?.trim() && { descricao: { contains: escopo.trim(), mode: 'insensitive' as const } }),
         ...(statusList.length && { status: { in: statusList as never[] } }),
         ...(responsavelIds.length && { responsavel_id: { in: responsavelIds } }),
         ...(numOsList.length && { num_os: { in: numOsList } }),
@@ -370,6 +374,7 @@ function serializeSubindice(s: any, allSubindices?: any[], anoFiltro?: number, n
       data_vencimento: nf.data_vencimento.toISOString(),
       ativa: nf.ativa,
       motivo_inativacao: nf.motivo_inativacao,
+      tipo_lancamento: nf.tipo_lancamento ?? 'Normal',
       tipo_documento: nf.tipo_documento ?? 'NF',
       status_aprovacao: nf.status_aprovacao ?? 'APROVADO',
     })) ?? [],

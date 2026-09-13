@@ -20,13 +20,15 @@ async function getFiltros() {
       status:        true,
       cidade:        true,
       estado:        true,
-      cliente:      { select: { id: true, nome: true } },
-      orcamentista: { select: { id: true, nome: true } },
-      criador:      { select: { id: true, nome: true } },
+      cliente:       { select: { id: true, nome: true } },
+      cliente_final: { select: { id: true, nome: true } },
+      orcamentista:  { select: { id: true, nome: true } },
+      criador:       { select: { id: true, nome: true } },
     },
   })
 
   const clientesMap      = new Map<number, string>()
+  const clientesFinaisMap = new Map<number, string>()
   const orcamentistasMap = new Map<number, string>()
   const responsaveisMap  = new Map<number, string>()
   const cidadesSet       = new Set<string>()
@@ -36,6 +38,7 @@ async function getFiltros() {
 
   for (const s of rows) {
     clientesMap.set(s.cliente.id, s.cliente.nome)
+    if (s.cliente_final) clientesFinaisMap.set(s.cliente_final.id, s.cliente_final.nome)
     if (s.orcamentista) orcamentistasMap.set(s.orcamentista.id, s.orcamentista.nome)
     if (s.criador)      responsaveisMap.set(s.criador.id, s.criador.nome)
     const cid = cidadeLabel(s)
@@ -47,22 +50,24 @@ async function getFiltros() {
 
   // Tuplas por solicitação para os filtros em cascata do cliente
   const linhas = rows.map((s) => ({
-    ano:             String(s.created_at.getFullYear()),
-    cliente_id:      String(s.cliente.id),
-    cidade:          cidadeLabel(s),
-    classificacao:   s.classificacao ?? null,
-    interesse:       s.interesse ?? null,
-    status:          s.status,
-    responsavel_id:  s.criador ? String(s.criador.id) : null,
-    orcamentista_id: s.orcamentista ? String(s.orcamentista.id) : null,
+    ano:               String(s.created_at.getFullYear()),
+    cliente_id:        String(s.cliente.id),
+    cliente_final_id:  s.cliente_final ? String(s.cliente_final.id) : null,
+    cidade:            cidadeLabel(s),
+    classificacao:     s.classificacao ?? null,
+    interesse:         s.interesse ?? null,
+    status:            s.status,
+    responsavel_id:    s.criador ? String(s.criador.id) : null,
+    orcamentista_id:   s.orcamentista ? String(s.orcamentista.id) : null,
   }))
 
   return NextResponse.json({
     data: {
-      clientes:      sort(clientesMap),
-      orcamentistas: sort(orcamentistasMap),
-      responsaveis:  sort(responsaveisMap),
-      cidades:       Array.from(cidadesSet).sort(),
+      clientes:       sort(clientesMap),
+      clientes_finais: sort(clientesFinaisMap),
+      orcamentistas:  sort(orcamentistasMap),
+      responsaveis:   sort(responsaveisMap),
+      cidades:        Array.from(cidadesSet).sort(),
       linhas,
     },
     error: null,
@@ -107,6 +112,7 @@ export async function GET(req: NextRequest) {
   // Filtros multi-valor: lista separada por vírgula (ex.: cliente_id=1,2,3)
   const multi = (k: string) => { const v = searchParams.get(k); return v ? v.split(',').filter(Boolean) : [] }
   const clienteIds = multi('cliente_id').map(Number).filter((n) => !isNaN(n))
+  const clienteFinalIds = multi('cliente_final_id').map(Number).filter((n) => !isNaN(n))
   // Cidade vem como "Cidade/UF" nas opções; a coluna guarda só a cidade
   const cidades = multi('cidade').map((c) => c.split('/')[0].trim()).filter(Boolean)
   const classificacoes = multi('classificacao') as Classificacao[]
@@ -134,6 +140,7 @@ export async function GET(req: NextRequest) {
       },
     }),
     ...(clienteIds.length && { cliente_id: { in: clienteIds } }),
+    ...(clienteFinalIds.length && { cliente_final_id: { in: clienteFinalIds } }),
     ...(cidades.length && { cidade: { in: cidades } }),
     ...(classificacoes.length && { classificacao: { in: classificacoes } }),
     ...(interesses.length && { interesse: { in: interesses } }),

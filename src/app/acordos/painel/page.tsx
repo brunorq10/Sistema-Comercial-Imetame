@@ -345,10 +345,8 @@ export default function MeuPainelAcordosPage() {
         )}
       </div>
 
-      {/* ── Área rolável — cards + tabela ─────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
-
-        {/* Indicadores — Visão consolidada do ano */}
+      {/* ── Indicadores — não rolam junto com a tabela ──────────────────────── */}
+      <div className="flex-shrink-0 px-4">
         <div className="flex flex-col gap-3 mb-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard label={`Total faturado no ano (${indicators.anoAtual})`} value={fmtM(indicators.fatAnoAtual)} accent="#16A34A"
@@ -370,7 +368,10 @@ export default function MeuPainelAcordosPage() {
             {indicators.totalContratos} contrato{indicators.totalContratos !== 1 ? 's' : ''} · {indicators.totalSubindices} sub-índice{indicators.totalSubindices !== 1 ? 's' : ''}
           </p>
         )}
+      </div>
 
+      {/* ── Tabela — área própria de scroll, cabeçalho fixo (mesmo padrão do Controle de Faturamento) ── */}
+      <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4">
         {loading && contratos.length === 0 ? (
           <p className="text-center text-gray-400 py-10 text-sm">Carregando...</p>
         ) : filteredContratos.length === 0 ? (
@@ -520,8 +521,11 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
   }))
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-x-auto">
-      {/* border-separate (não collapse): com colunas congeladas, border-collapse
+    <div className="border border-gray-200 rounded-md h-full" style={{ overflow: 'auto' }}>
+      {/* h-full + overflow:auto (em vez de só overflow-x-auto): sem altura
+          própria, o sticky do cabeçalho não tem uma âncora de rolagem real
+          (mesmo ajuste de FaturamentoContratoTable.tsx, que já funciona).
+          border-separate (não collapse): com colunas congeladas, border-collapse
           quebra o pintado das células sticky durante o scroll lateral. Ver
           mesmo ajuste em FaturamentoContratoTable.tsx. */}
       <table className="border-separate text-[11px]" style={{ minWidth: `${MIN_W}px`, tableLayout: 'fixed', borderSpacing: 0 }}>

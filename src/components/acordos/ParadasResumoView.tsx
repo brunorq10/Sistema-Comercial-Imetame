@@ -34,6 +34,8 @@ interface ParadaResumo {
   indice: string
   num_os: string | null
   ano_referencia?: number | null
+  cidade?: string | null
+  estado?: string | null
   cliente: { id: number; nome: string; ramo_atuacao?: string | null }
   cliente_final: { id: number; nome: string } | null
   responsavel: { id: number; nome: string } | null

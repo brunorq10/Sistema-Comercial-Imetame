@@ -14,6 +14,7 @@ interface ItemForm {
   _key: string
   id: number | null
   descricao: string
+  num_os: string
   peso_total: string
   data_inicio: string
   data_fim: string
@@ -46,6 +47,7 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
         _key: String(it.id),
         id: it.id,
         descricao: it.descricao,
+        num_os: it.num_os ?? '',
         peso_total: it.peso_total != null ? String(it.peso_total) : '',
         data_inicio: it.data_inicio.slice(0, 10),
         data_fim: it.data_fim.slice(0, 10),
@@ -55,7 +57,7 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
           pesoPrev: m.peso_previsto != null ? String(m.peso_previsto) : '',
         }])),
       }))
-    : [{ _key: 'novo-0', id: null, descricao: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }]
+    : [{ _key: 'novo-0', id: null, descricao: '', num_os: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }]
 
   const [itens, setItens] = useState<ItemForm[]>(init)
   const [novoContador, setNovoContador] = useState(1)
@@ -73,7 +75,7 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
       return { ...it, meses: { ...it.meses, [k]: { ...cur, [campo]: v } } }
     }))
   const addItem = () => {
-    setItens((p) => [...p, { _key: `novo-${novoContador}`, id: null, descricao: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }])
+    setItens((p) => [...p, { _key: `novo-${novoContador}`, id: null, descricao: '', num_os: '', peso_total: '', data_inicio: '', data_fim: '', meses: {} }])
     setNovoContador((n) => n + 1)
   }
   const rmItem = (i: number) => setItens((p) => p.filter((_, idx) => idx !== i))
@@ -120,6 +122,7 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
         itens: itens.map((it) => ({
           id: it.id,
           descricao: it.descricao.trim(),
+          num_os: it.num_os.trim() || null,
           peso_total: parsePeso(it.peso_total),
           data_inicio: it.data_inicio,
           data_fim: it.data_fim,
@@ -144,7 +147,7 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
   }
 
   return (
-    <Modal open onClose={onClose} wide
+    <Modal open onClose={onClose} extraWide
       hasChanges
       title={`Itens de Fabricação — ${contrato.indice} · ${contrato.cliente.nome}`}
       footer={
@@ -168,21 +171,22 @@ export function CadastroModal({ contrato, onClose, onSuccess }: {
                   <button onClick={() => rmItem(i)} className="text-red-400 hover:text-red-600 text-sm">remover ×</button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-2.5 mb-2">
                 <Field label="Descrição *" className="sm:col-span-2">
                   <Input value={it.descricao} onChange={(e) => upd(i, { descricao: e.target.value })} placeholder="Ex: Skid de tubulação" />
+                </Field>
+                <Field label="OS">
+                  <Input value={it.num_os} onChange={(e) => upd(i, { num_os: e.target.value })} placeholder="Ex: 0798.02.003" />
                 </Field>
                 <Field label="Peso total (t)">
                   <CurrencyInput value={it.peso_total} onChange={(v) => upd(i, { peso_total: v })} placeholder="Ex: 12,50" />
                 </Field>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Início *">
-                    <Input type="date" value={it.data_inicio} onChange={(e) => upd(i, { data_inicio: e.target.value })} />
-                  </Field>
-                  <Field label="Fim *">
-                    <Input type="date" value={it.data_fim} onChange={(e) => upd(i, { data_fim: e.target.value })} />
-                  </Field>
-                </div>
+                <Field label="Início *">
+                  <Input type="date" value={it.data_inicio} onChange={(e) => upd(i, { data_inicio: e.target.value })} />
+                </Field>
+                <Field label="Fim *">
+                  <Input type="date" value={it.data_fim} onChange={(e) => upd(i, { data_fim: e.target.value })} />
+                </Field>
               </div>
 
               {meses.length === 0 ? (

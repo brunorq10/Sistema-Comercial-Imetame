@@ -112,6 +112,7 @@ export default function FaturamentoPage() {
 
   // Opções de filtro (populadas a partir dos contratos existentes)
   const [clientes,     setClientes]     = useState<{ id: number; nome: string }[]>([])
+  const [clientesFinais, setClientesFinais] = useState<{ id: number; nome: string }[]>([])
   const [responsaveis, setResponsaveis] = useState<{ id: number; nome: string }[]>([])
   const [opcoesMercado,  setOpcoesMercado]  = useState<string[]>([])
   const [opcoesOs,       setOpcoesOs]       = useState<string[]>([])
@@ -121,6 +122,8 @@ export default function FaturamentoPage() {
   // Filtros controle (Ano único; demais multi-seleção)
   const [ano,          setAno]          = useState(String(anoAtual))
   const [clienteId,    setClienteId]    = useState<string[]>([])
+  const [clienteFinalId, setClienteFinalId] = useState<string[]>([])
+  const [escopo,       setEscopo]       = useState('')
   const [mercado,      setMercado]      = useState<string[]>([])
   const [status,       setStatus]       = useState<string[]>([])
   const [responsavelId, setResponsavelId] = useState<string[]>([])
@@ -133,13 +136,16 @@ export default function FaturamentoPage() {
   // Nota: o filtro de Ano do controle também casa contratos multi-ano pelos
   // sub-índices (whereAnual), então o ano NÃO restringe as demais opções aqui.
   const selecoesCascata = useMemo(() => ({
-    cliente_id: clienteId, mercado, num_os: numOs, num_acordo: numAcordo,
+    cliente_id: clienteId, cliente_final_id: clienteFinalId, mercado, num_os: numOs, num_acordo: numAcordo,
     num_proposta: numProposta, status, responsavel_id: responsavelId,
-  }), [clienteId, mercado, numOs, numAcordo, numProposta, status, responsavelId])
+  }), [clienteId, clienteFinalId, mercado, numOs, numAcordo, numProposta, status, responsavelId])
 
   const opCliente = useMemo(() =>
     filtrarOpcoes(clientes.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoesCascata, 'cliente_id'),
     [clientes, linhasFiltro, selecoesCascata])
+  const opClienteFinal = useMemo(() =>
+    filtrarOpcoes(clientesFinais.map((c) => ({ value: String(c.id), label: c.nome })), linhasFiltro, selecoesCascata, 'cliente_final_id'),
+    [clientesFinais, linhasFiltro, selecoesCascata])
   const opMercado = useMemo(() =>
     filtrarOpcoes(opcoesMercado.map((m) => ({ value: m, label: MERCADO_LABELS[m] ?? m })), linhasFiltro, selecoesCascata, 'mercado'),
     [opcoesMercado, linhasFiltro, selecoesCascata])
@@ -238,6 +244,7 @@ export default function FaturamentoPage() {
     fetch('/api/faturamento/filtros').then((r) => r.json()).then((j) => {
       if (j.data) {
         setClientes(j.data.clientes ?? [])
+        setClientesFinais(j.data.clientes_finais ?? [])
         setResponsaveis(j.data.responsaveis ?? [])
         setOpcoesMercado(j.data.mercados ?? [])
         setOpcoesOs(j.data.num_os ?? [])
@@ -255,6 +262,8 @@ export default function FaturamentoPage() {
       const params = new URLSearchParams()
       if (ano) params.set('ano', ano)
       if (clienteId.length) params.set('cliente_id', clienteId.join(','))
+      if (clienteFinalId.length) params.set('cliente_final_id', clienteFinalId.join(','))
+      if (escopo.trim()) params.set('escopo', escopo.trim())
       if (mercado.length) params.set('mercado', mercado.join(','))
       if (status.length) params.set('status', status.join(','))
       if (responsavelId.length) params.set('responsavel_id', responsavelId.join(','))
@@ -275,7 +284,7 @@ export default function FaturamentoPage() {
     } finally {
       setLoading(false)
     }
-  }, [ano, clienteId, mercado, status, responsavelId, numOs, numAcordo, numProposta])
+  }, [ano, clienteId, clienteFinalId, escopo, mercado, status, responsavelId, numOs, numAcordo, numProposta])
 
   // ── Fetch NFs ─────────────────────────────────────────────────────────────────
   const fetchNfs = useCallback(async () => {
@@ -555,7 +564,7 @@ export default function FaturamentoPage() {
   }
 
   const limparFiltros = () => {
-    setAno(String(anoAtual)); setClienteId([]); setMercado([]); setStatus([]); setResponsavelId([])
+    setAno(String(anoAtual)); setClienteId([]); setClienteFinalId([]); setEscopo(''); setMercado([]); setStatus([]); setResponsavelId([])
     setNumOs([]); setNumAcordo([]); setNumProposta([])
   }
   const limparFiltrosNf = () => {
@@ -705,7 +714,7 @@ export default function FaturamentoPage() {
       {aba === 'controle' && (
         <>
           <div className="bg-white border border-gray-200 rounded-md px-2.5 py-2 mt-1 flex flex-wrap gap-1.5 items-end">
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[100px]">
               <label className={fLbl}>Ano referência</label>
               <SearchableSelect
                 value={ano}
@@ -714,7 +723,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todos os anos"
               />
             </div>
-            <div className="flex-[2] min-w-[160px]">
+            <div className="flex-[2] min-w-[140px]">
               <label className={fLbl}>Cliente</label>
               <SearchableMultiSelect
                 values={clienteId}
@@ -722,7 +731,15 @@ export default function FaturamentoPage() {
                 options={opCliente}
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-[2] min-w-[140px]">
+              <label className={fLbl}>Cliente Final</label>
+              <SearchableMultiSelect
+                values={clienteFinalId}
+                onChange={setClienteFinalId}
+                options={opClienteFinal}
+              />
+            </div>
+            <div className="flex-1 min-w-[110px]">
               <label className={fLbl}>Mercado</label>
               <SearchableMultiSelect
                 values={mercado}
@@ -731,7 +748,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todos"
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[100px]">
               <label className={fLbl}>Nº OS</label>
               <SearchableMultiSelect
                 values={numOs}
@@ -740,7 +757,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todas"
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[100px]">
               <label className={fLbl}>Nº Acordo</label>
               <SearchableMultiSelect
                 values={numAcordo}
@@ -748,7 +765,7 @@ export default function FaturamentoPage() {
                 options={opAcordo}
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[100px]">
               <label className={fLbl}>Nº Proposta</label>
               <SearchableMultiSelect
                 values={numProposta}
@@ -757,7 +774,7 @@ export default function FaturamentoPage() {
                 emptyLabel="Todas"
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[100px]">
               <label className={fLbl}>Status</label>
               <SearchableMultiSelect
                 values={status}
@@ -765,13 +782,17 @@ export default function FaturamentoPage() {
                 options={opStatusFat}
               />
             </div>
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[110px]">
               <label className={fLbl}>Responsável</label>
               <SearchableMultiSelect
                 values={responsavelId}
                 onChange={setResponsavelId}
                 options={opResponsavel}
               />
+            </div>
+            <div className="flex-[2] min-w-[140px]">
+              <label className={fLbl}>Escopo</label>
+              <Input type="text" placeholder="Buscar por escopo..." value={escopo} onChange={(e) => setEscopo(e.target.value)} />
             </div>
             <div className="flex-shrink-0 flex items-end">
               <button onClick={limparFiltros} className="border border-gray-300 text-gray-500 rounded px-2 py-[5px] text-[11px] cursor-pointer hover:bg-gray-100 transition-colors">✕ Limpar</button>

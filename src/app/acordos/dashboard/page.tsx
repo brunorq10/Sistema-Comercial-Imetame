@@ -6,6 +6,7 @@ import {
 } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
 import { MultasIndicador } from '@/components/acordos/MultasIndicador'
+import { ComposicaoFaturamentoView } from '@/components/acordos/ComposicaoFaturamentoView'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
 import { KpiCard } from '@/components/dashboard/KpiCard'
@@ -18,6 +19,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Avatar } from '@/components/dashboard/Avatar'
 import { DASHBOARD_POSITIVO, DASHBOARD_PREVISTO, DASHBOARD_ATENCAO } from '@/lib/dashboardColors'
 import { formatCurrency } from '@/lib/utils'
+import { TIPOS_MULTA } from '@/lib/multas'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -48,6 +50,7 @@ interface DashData {
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
   ocorrenciasPorResponsavel: { id: number; nome: string; osSobGestao: number; total: number }[]
   clientes: { id: number; nome: string }[]
+  clientesFinais: { id: number; nome: string }[]
   responsaveis: { id: number; nome: string }[]
   cidades: string[]
 }
@@ -267,17 +270,24 @@ export default function IndicadoresAcordosPage() {
   const [error, setError] = useState<string | null>(null)
   const [ano, setAno] = useState(String(ANO_ATUAL))
   const [clienteId, setClienteId] = useState<string[]>([])
+  const [clienteFinalId, setClienteFinalId] = useState<string[]>([])
   const [ramo, setRamo] = useState<string[]>([])
   const [responsavelId, setResponsavelId] = useState<string[]>([])
   const [cidade, setCidade] = useState<string[]>([])
   const [escopo, setEscopo] = useState('')
-  const [abaInd, setAbaInd] = useState<'geral' | 'responsavel'>('geral')
+  const [abaInd, setAbaInd] = useState<'geral' | 'responsavel' | 'composicao'>('geral')
+  // Filtros específicos da aba "Eventos Contratuais" (Multas) — período livre em
+  // vez de Ano, mais o tipo de multa. Vivem na barra padrão, só aparecem nessa aba.
+  const [periodoDe, setPeriodoDe] = useState('')
+  const [periodoAte, setPeriodoAte] = useState('')
+  const [multaTipo, setMultaTipo] = useState<string[]>([])
 
   const fetchData = useCallback(() => {
     setLoading(true); setError(null)
     const params = new URLSearchParams()
     if (ano && ano !== String(ANO_ATUAL)) params.set('ano', ano)
     if (clienteId.length) params.set('clienteId', clienteId.join(','))
+    if (clienteFinalId.length) params.set('clienteFinalId', clienteFinalId.join(','))
     if (ramo.length) params.set('ramo', ramo.join(','))
     if (responsavelId.length) params.set('responsavelId', responsavelId.join(','))
     if (cidade.length) params.set('cidade', cidade.join(','))
@@ -288,7 +298,7 @@ export default function IndicadoresAcordosPage() {
       .then((j) => { if (j.error) setError(j.error); else setData(j.data) })
       .catch(() => setError('Falha ao carregar dados'))
       .finally(() => setLoading(false))
-  }, [ano, clienteId, ramo, responsavelId, cidade, escopo])
+  }, [ano, clienteId, clienteFinalId, ramo, responsavelId, cidade, escopo])
   useEffect(() => { fetchData() }, [fetchData])
 
   const anoNum = parseInt(ano, 10) || ANO_ATUAL
@@ -297,6 +307,7 @@ export default function IndicadoresAcordosPage() {
   const mesAntLabel = MES_LABEL[mesAtual === 1 ? 11 : mesAtual - 2]
   const mesProxLabel = MES_LABEL[mesAtual === 12 ? 0 : mesAtual]
   const clientes = data?.clientes ?? []
+  const clientesFinais = data?.clientesFinais ?? []
   const responsaveis = data?.responsaveis ?? []
   const cidades = data?.cidades ?? []
 
@@ -328,27 +339,53 @@ export default function IndicadoresAcordosPage() {
         actions={data && <span className="text-[11px] text-gray-400">{mesLabel} / {data.anoAtual}</span>}
       />
 
-      {/* Filtros */}
+      {/* Filtros — linha única; alguns campos trocam conforme a aba ativa (Ano/Mercado/
+          Escopo em Indicadores Gerais; Período/Tipo em Eventos Contratuais) */}
       <FilterBar className="!mt-2">
-        <FilterField label="Ano" className="min-w-[90px]">
-          <select value={ano} onChange={(e) => setAno(e.target.value)} className={filterSelectClass}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
-        </FilterField>
-        <FilterField label="Responsável" className="min-w-[160px] flex-1">
+        {abaInd !== 'responsavel' ? (
+          <FilterField label="Ano" className="min-w-[90px]">
+            <select value={ano} onChange={(e) => setAno(e.target.value)} className={filterSelectClass}>{ANOS.map((a) => <option key={a} value={a}>{a}</option>)}</select>
+          </FilterField>
+        ) : (
+          <>
+            <FilterField label="Período (de)" className="min-w-[120px]">
+              <input type="date" value={periodoDe} onChange={(e) => setPeriodoDe(e.target.value)} className={filterSelectClass} />
+            </FilterField>
+            <FilterField label="Período (até)" className="min-w-[120px]">
+              <input type="date" value={periodoAte} onChange={(e) => setPeriodoAte(e.target.value)} className={filterSelectClass} />
+            </FilterField>
+          </>
+        )}
+        <FilterField label="Responsável" className="min-w-[150px] flex-1">
           <SearchableMultiSelect values={responsavelId} onChange={setResponsavelId} options={responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
         </FilterField>
-        <FilterField label="Cliente" className="min-w-[180px] flex-[2]">
+        <FilterField label="Cliente" className="min-w-[150px] flex-[2]">
           <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
         </FilterField>
-        <FilterField label="Cidade" className="min-w-[140px] flex-1">
+        <FilterField label="Cliente Final" className="min-w-[150px] flex-[2]">
+          <SearchableMultiSelect values={clienteFinalId} onChange={setClienteFinalId} options={clientesFinais.map((c) => ({ value: String(c.id), label: c.nome }))} />
+        </FilterField>
+        <FilterField label="Cidade" className="min-w-[120px] flex-1">
           <SearchableMultiSelect values={cidade} onChange={setCidade} options={cidades.map((c) => ({ value: c, label: c }))} />
         </FilterField>
-        <FilterField label="Mercado" className="min-w-[150px] flex-1">
-          <SearchableMultiSelect values={ramo} onChange={setRamo} options={RAMO_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} emptyLabel="Todos" />
-        </FilterField>
-        <FilterField label="Escopo" className="min-w-[160px] flex-1">
-          <input type="text" value={escopo} onChange={(e) => setEscopo(e.target.value)} placeholder="Buscar por escopo..." className={filterSelectClass} />
-        </FilterField>
-        <ClearFiltersButton onClick={() => { setAno(String(ANO_ATUAL)); setClienteId([]); setRamo([]); setResponsavelId([]); setCidade([]); setEscopo('') }} />
+        {abaInd !== 'responsavel' ? (
+          <>
+            <FilterField label="Mercado" className="min-w-[130px] flex-1">
+              <SearchableMultiSelect values={ramo} onChange={setRamo} options={RAMO_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} emptyLabel="Todos" />
+            </FilterField>
+            <FilterField label="Escopo" className="min-w-[140px] flex-1">
+              <input type="text" value={escopo} onChange={(e) => setEscopo(e.target.value)} placeholder="Buscar por escopo..." className={filterSelectClass} />
+            </FilterField>
+          </>
+        ) : (
+          <FilterField label="Tipo" className="min-w-[120px] flex-1">
+            <SearchableMultiSelect values={multaTipo} onChange={setMultaTipo} options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))} emptyLabel="Todos" />
+          </FilterField>
+        )}
+        <ClearFiltersButton onClick={() => {
+          setAno(String(ANO_ATUAL)); setClienteId([]); setClienteFinalId([]); setRamo([]); setResponsavelId([]); setCidade([]); setEscopo('')
+          setPeriodoDe(''); setPeriodoAte(''); setMultaTipo([])
+        }} />
       </FilterBar>
       </div>
 
@@ -362,7 +399,11 @@ export default function IndicadoresAcordosPage() {
         <>
           {/* Abas de indicadores */}
           <DashboardTabs
-            tabs={[{ key: 'geral', label: 'Indicadores Gerais' }, { key: 'responsavel', label: 'Eventos Contratuais' }]}
+            tabs={[
+              { key: 'geral', label: 'Indicadores Gerais' },
+              { key: 'responsavel', label: 'Eventos Contratuais' },
+              { key: 'composicao', label: 'Composição Faturamento' },
+            ]}
             active={abaInd}
             onChange={setAbaInd}
           />
@@ -516,8 +557,27 @@ export default function IndicadoresAcordosPage() {
           {abaInd === 'responsavel' && (<>
           {/* Multas / Penalidades recebidas */}
           <SectionTitle>Multas / Penalidades recebidas</SectionTitle>
-          <MultasIndicador />
+          <MultasIndicador
+            clienteId={clienteId}
+            cidade={cidade}
+            responsavelId={responsavelId}
+            tipo={multaTipo}
+            periodoDe={periodoDe}
+            periodoAte={periodoAte}
+          />
           </>)}
+
+          {abaInd === 'composicao' && (
+            <ComposicaoFaturamentoView
+              ano={ano}
+              clienteId={clienteId}
+              clienteFinalId={clienteFinalId}
+              ramo={ramo}
+              responsavelId={responsavelId}
+              cidade={cidade}
+              escopo={escopo}
+            />
+          )}
         </>
       )}
       </div>

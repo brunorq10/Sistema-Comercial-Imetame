@@ -4,10 +4,8 @@ import { Fragment, useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { TIPOS_MULTA, TIPO_MULTA_MAP, TIPO_MULTA_LABEL } from '@/lib/multas'
-import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { Button } from '@/components/ui/Button'
 import { KpiCard } from '@/components/dashboard/KpiCard'
-import { FilterBar, FilterField, ClearFiltersButton, filterSelectClass } from '@/components/dashboard/FilterBar'
 
 interface MultaItem {
   id: number
@@ -26,22 +24,21 @@ interface MultaItem {
   motivo_inativacao: string | null
   autor: string
 }
-interface Opcoes {
-  clientes: { id: number; nome: string }[]
-  cidades: string[]
-  responsaveis: { id: number; nome: string }[]
+
+interface Props {
+  // Filtros vêm da barra padrão do dashboard (compartilhados entre abas) —
+  // este componente não gerencia mais seu próprio filtro/estado.
+  clienteId: string[]
+  cidade: string[]
+  responsavelId: string[]
+  tipo: string[]
+  periodoDe: string
+  periodoAte: string
 }
 
-export function MultasIndicador() {
+export function MultasIndicador({ clienteId, cidade, responsavelId, tipo, periodoDe, periodoAte }: Props) {
   const [items, setItems] = useState<MultaItem[]>([])
-  const [opcoes, setOpcoes] = useState<Opcoes>({ clientes: [], cidades: [], responsaveis: [] })
   const [loading, setLoading] = useState(true)
-  const [clienteId, setClienteId] = useState<string[]>([])
-  const [cidade, setCidade] = useState<string[]>([])
-  const [responsavel, setResponsavel] = useState<string[]>([])
-  const [tipo, setTipo] = useState<string[]>([])
-  const [de, setDe] = useState('')
-  const [ate, setAte] = useState('')
   const [expandida, setExpandida] = useState<number | null>(null)
 
   useEffect(() => {
@@ -50,23 +47,21 @@ export function MultasIndicador() {
     const p = new URLSearchParams()
     if (clienteId.length) p.set('cliente_id', clienteId.join(','))
     if (cidade.length) p.set('cidade', cidade.join(','))
-    if (responsavel.length) p.set('responsavel', responsavel.join(','))
+    if (responsavelId.length) p.set('responsavel', responsavelId.join(','))
     if (tipo.length) p.set('tipo', tipo.join(','))
-    if (de) p.set('de', de)
-    if (ate) p.set('ate', ate)
+    if (periodoDe) p.set('de', periodoDe)
+    if (periodoAte) p.set('ate', periodoAte)
     fetch(`/api/faturamento/multas?${p.toString()}`)
       .then((r) => r.json())
       .then((j) => {
         if (!ativo || j.error) return
         setItems(j.data.items ?? [])
-        if (j.data.opcoes) setOpcoes(j.data.opcoes)
       })
       .finally(() => { if (ativo) setLoading(false) })
     return () => { ativo = false }
-  }, [clienteId, cidade, responsavel, tipo, de, ate])
+  }, [clienteId, cidade, responsavelId, tipo, periodoDe, periodoAte])
 
   const total = items.reduce((s, m) => s + m.valor_total, 0)
-  const limpar = () => { setClienteId([]); setCidade([]); setResponsavel([]); setTipo([]); setDe(''); setAte('') }
 
   // Resumo por tipo
   const porTipo = TIPOS_MULTA.map((t) => {
@@ -97,31 +92,11 @@ export function MultasIndicador() {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-      {/* Filtros */}
-      <FilterBar className="mb-3">
-        <FilterField label="Cliente" className="min-w-[150px] flex-1">
-          <SearchableMultiSelect values={clienteId} onChange={setClienteId} options={opcoes.clientes.map((c) => ({ value: String(c.id), label: c.nome }))} />
-        </FilterField>
-        <FilterField label="Cidade" className="min-w-[120px]">
-          <SearchableMultiSelect values={cidade} onChange={setCidade} options={opcoes.cidades.map((c) => ({ value: c, label: c }))} emptyLabel="Todas" />
-        </FilterField>
-        <FilterField label="Responsável" className="min-w-[140px]">
-          <SearchableMultiSelect values={responsavel} onChange={setResponsavel} options={opcoes.responsaveis.map((r) => ({ value: String(r.id), label: r.nome }))} />
-        </FilterField>
-        <FilterField label="Tipo" className="min-w-[120px]">
-          <SearchableMultiSelect values={tipo} onChange={setTipo} options={TIPOS_MULTA.map((t) => ({ value: t.value, label: t.label }))} emptyLabel="Todos" />
-        </FilterField>
-        <FilterField label="Período (de)" className="min-w-[120px]">
-          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className={filterSelectClass} />
-        </FilterField>
-        <FilterField label="Período (até)" className="min-w-[120px]">
-          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className={filterSelectClass} />
-        </FilterField>
-        <ClearFiltersButton onClick={limpar} />
-        <Button size="sm" variant="outline" onClick={exportarExcel} disabled={items.length === 0}>Exportar Excel</Button>
-      </FilterBar>
-
       {/* Cards de resumo por tipo + total */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] text-gray-400">Filtros na barra acima — Cliente, Cidade, Responsável, Tipo e Período</p>
+        <Button size="sm" variant="outline" onClick={exportarExcel} disabled={items.length === 0}>Exportar Excel</Button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-3">
         {porTipo.map((t) => (
           <KpiCard key={t.value} label={t.label} value={String(t.count)} sub={formatCurrency(t.valor)} accent={t.cor} />
