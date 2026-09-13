@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { withApi } from '@/lib/apiHandler'
-import { exigirTitularSubindice } from '@/lib/permissaoApi'
+import { exigirTitularSubindice, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schema = z.object({
   numero_nf: z.string().min(1),
@@ -84,6 +84,13 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
   const isCoordenacao = perfil === 'GESTAO_ACORDOS' || perfil === 'ADM_GERAL'
   const userId = Number(session.user.id)
 
+  const usuario = usuarioDaSessao(session)!
+  const subindiceContrato = await prisma.subIndiceFaturamento.findUnique({
+    where: { id: subindiceId },
+    select: { contrato: { select: { responsavel_id: true } } },
+  })
+  const autoria = resolverAutoria(usuario, subindiceContrato?.contrato, 'contrato')
+
   const nf = await prisma.notaFiscalContrato.create({
     data: {
       subindice_id: subindiceId,
@@ -95,7 +102,7 @@ export const POST = withApi(async (req: NextRequest, { params }: { params: { id:
       data_vencimento: new Date(parsed.data.data_vencimento),
       tipo_lancamento: parsed.data.tipo_lancamento ?? 'Normal',
       tipo_documento: parsed.data.tipo_documento ?? 'NF',
-      created_by: userId,
+      ...autoria,
       status_aprovacao: isCoordenacao ? 'APROVADO' : 'PENDENTE',
       ativa: isCoordenacao,
       solicitado_por: isCoordenacao ? null : userId,

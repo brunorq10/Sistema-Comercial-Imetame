@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TIPOS_OCORRENCIA, RESPONSABILIDADES, IMPACTOS_OCORRENCIA } from '@/lib/ocorrencias'
-import { exigirTitularContrato, usuarioDaSessao } from '@/lib/permissaoApi'
+import { exigirTitularContrato, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
@@ -160,6 +160,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ data: null, error: 'Anexos excedem o limite total permitido.' }, { status: 413 })
   }
 
+  const contratoTitular = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { responsavel_id: true } })
+  const autoria = resolverAutoria(usuario!, contratoTitular, 'contrato')
+
   // Gera o código com 1 retry em caso de corrida (unique [contrato_id, codigo])
   let criada
   for (let tentativa = 0; tentativa < 2; tentativa++) {
@@ -175,7 +178,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           impacto: d.impactos,
           descricao: d.descricao,
           data_notificacao_cliente: d.data_notificacao_cliente ? new Date(d.data_notificacao_cliente) : null,
-          created_by: usuario!.id,
+          ...autoria,
           anexos: d.anexos.length
             ? { create: d.anexos.map((a) => ({ nome: a.nome, tipo: a.tipo, url: a.url, tamanho: a.tamanho ?? null })) }
             : undefined,

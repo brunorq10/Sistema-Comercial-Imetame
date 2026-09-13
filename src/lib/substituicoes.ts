@@ -1,6 +1,17 @@
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 
+// Resolve nomes de titulares substituídos (substituto_de_id) para exibição nas
+// telas de histórico — "alterado por X, em substituição a Y". Usado pelas rotas
+// GET de histórico (Solicitação/Contrato/SubÍndice), que gravam só o id (coluna
+// sem relation, mesmo padrão de solicitado_por/revisado_por já usado no schema).
+export async function resolverNomesSubstituto(ids: (number | null | undefined)[]): Promise<Map<number, string>> {
+  const unicos = Array.from(new Set(ids.filter((id): id is number => id != null)))
+  if (unicos.length === 0) return new Map()
+  const usuarios = await prisma.user.findMany({ where: { id: { in: unicos } }, select: { id: true, nome: true } })
+  return new Map(usuarios.map((u) => [u.id, u.nome]))
+}
+
 // Roda a troca de titularidade de fato: atualiza Solicitacao.orcamentista_id /
 // Contrato.responsavel_id item a item, grava histórico (autor = quem efetuou a
 // operação — "ações do passado nunca mudam de autor") e notifica os envolvidos.

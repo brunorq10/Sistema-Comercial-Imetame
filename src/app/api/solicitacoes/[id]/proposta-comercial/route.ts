@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirTitularSolicitacao, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schemaPost = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -107,7 +107,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (resultado_anterior !== parsed.data.resultado) {
     const RESULTADO_LABELS: Record<string, string> = { AGUARDANDO: 'Aguardando', GANHOU: 'Ganhou', PERDEU: 'Perdeu' }
     const rev = `Rev${String(latestComercial.versao).padStart(2, '0')}`
-    const userId = Number(session.user.id)
+    const usuario = usuarioDaSessao(session)!
+    const solTitular = await prisma.solicitacao.findUnique({ where: { id }, select: { orcamentista_id: true } })
+    const autoria = resolverAutoria(usuario, solTitular, 'solicitacao')
     const just = reAlteracao && parsed.data.justificativa ? ` — Justificativa: ${parsed.data.justificativa}` : ''
     const msg = (parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
       ? `Resultado: ${RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior} → ${RESULTADO_LABELS[parsed.data.resultado]} (${parsed.data.motivo_perda})`
@@ -118,10 +120,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     await Promise.all([
       prisma.solicitacaoInfo.create({
-        data: { solicitacao_id: id, data: new Date(), comentario: `[Resultado ${rev}] ${msg}`, versao: latestComercial.versao, created_by: userId },
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Resultado ${rev}] ${msg}`, versao: latestComercial.versao, ...autoria },
       }),
       prisma.historicoSolicitacao.create({
-        data: { solicitacao_id: id, campo: `Resultado da Proposta Comercial ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, created_by: userId },
+        data: { solicitacao_id: id, campo: `Resultado da Proposta Comercial ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, ...autoria },
       }),
     ])
   }
@@ -353,22 +355,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (comDiffs.length > 0) {
     const rev = `Rev${String(latest.versao).padStart(2, '0')}`
-    const userId = Number(session.user.id)
+    const usuario = usuarioDaSessao(session)!
+    const solTitular = await prisma.solicitacao.findUnique({ where: { id }, select: { orcamentista_id: true } })
+    const autoria = resolverAutoria(usuario, solTitular, 'solicitacao')
 
-    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number; substituto_de_id: number | null }
     const histEntries: HistEntry[] = []
 
     for (const [label, before, after] of numPairs) {
       const a = before != null ? Math.round(Number(before) * 100) : null
       const b = after  != null ? Math.round(Number(after)  * 100) : null
-      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — ${label}`, valor_de: before != null ? fmtVal(before) : null, valor_para: after != null ? fmtVal(after) : null, created_by: userId })
+      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — ${label}`, valor_de: before != null ? fmtVal(before) : null, valor_para: after != null ? fmtVal(after) : null, ...autoria })
     }
     if ((latest.data_envio?.toISOString().split('T')[0] ?? '') !== (d.data_envio ?? ''))
-      histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — Data Envio Comercial`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio ?? null, created_by: userId })
+      histEntries.push({ solicitacao_id: id, campo: `Proposta Comercial ${rev} — Data Envio Comercial`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio ?? null, ...autoria })
 
     await Promise.all([
       prisma.solicitacaoInfo.create({
-        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Comercial ${rev}] ${comDiffs.join(' | ')}`, versao: latest.versao, created_by: userId },
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Comercial ${rev}] ${comDiffs.join(' | ')}`, versao: latest.versao, ...autoria },
       }),
       histEntries.length > 0 ? prisma.historicoSolicitacao.createMany({ data: histEntries }) : Promise.resolve(),
     ])

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirTitularSolicitacao, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schemaEquipamento = z.object({
   descricao: z.string().min(1),
@@ -108,8 +108,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const valorPara = (parsed.data.resultado === 'PERDEU' && parsed.data.motivo_perda
       ? `${RESULTADO_LABELS[parsed.data.resultado]} — Motivo: ${parsed.data.motivo_perda}`
       : RESULTADO_LABELS[parsed.data.resultado]) + just
+    const usuario = usuarioDaSessao(session)!
+    const solTitular = await prisma.solicitacao.findUnique({ where: { id }, select: { orcamentista_id: true } })
+    const autoria = resolverAutoria(usuario, solTitular, 'solicitacao')
     await prisma.historicoSolicitacao.create({
-      data: { solicitacao_id: id, campo: `Resultado da Proposta de Fabricação ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, created_by: Number(session.user.id) },
+      data: { solicitacao_id: id, campo: `Resultado da Proposta de Fabricação ${rev}`, valor_de: RESULTADO_LABELS[resultado_anterior ?? ''] ?? resultado_anterior ?? '—', valor_para: valorPara, ...autoria },
     })
   }
 
@@ -270,32 +273,34 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   // Log changes in HistoricoSolicitacao
   const rev = `Rev${String(latest.versao).padStart(2, '0')}`
-  const userId = Number(session.user.id)
+  const usuario = usuarioDaSessao(session)!
+  const solTitular = await prisma.solicitacao.findUnique({ where: { id }, select: { orcamentista_id: true } })
+  const autoria = resolverAutoria(usuario, solTitular, 'solicitacao')
   const fmtV = (v: number | null | undefined) =>
     v != null ? `R$${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'
 
-  type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+  type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number; substituto_de_id: number | null }
   const fabHistEntries: HistEntry[] = []
 
   if (Math.round(Number(latest.valor_total) * 100) !== Math.round(valorTotal * 100))
-    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Total`, valor_de: fmtV(Number(latest.valor_total)), valor_para: fmtV(valorTotal), created_by: userId })
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Total`, valor_de: fmtV(Number(latest.valor_total)), valor_para: fmtV(valorTotal), ...autoria })
   if (Math.round(Number(latest.peso_total) * 1000) !== Math.round(pesoTotal * 1000))
-    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Peso Total (t)`, valor_de: latest.peso_total != null ? String(Number(latest.peso_total)) : null, valor_para: String(pesoTotal), created_by: userId })
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Peso Total (t)`, valor_de: latest.peso_total != null ? String(Number(latest.peso_total)) : null, valor_para: String(pesoTotal), ...autoria })
   if (Math.round((latest.valor_testes ? Number(latest.valor_testes) : 0) * 100) !== Math.round(valorTestes * 100))
-    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Testes`, valor_de: fmtV(latest.valor_testes ? Number(latest.valor_testes) : null), valor_para: fmtV(valorTestes), created_by: userId })
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Testes`, valor_de: fmtV(latest.valor_testes ? Number(latest.valor_testes) : null), valor_para: fmtV(valorTestes), ...autoria })
   if (Math.round((latest.valor_montagem ? Number(latest.valor_montagem) : 0) * 100) !== Math.round(valorMontPut * 100))
-    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Montagem`, valor_de: fmtV(latest.valor_montagem ? Number(latest.valor_montagem) : null), valor_para: fmtV(valorMontPut), created_by: userId })
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Valor Montagem`, valor_de: fmtV(latest.valor_montagem ? Number(latest.valor_montagem) : null), valor_para: fmtV(valorMontPut), ...autoria })
   if ((latest.data_envio?.toISOString().split('T')[0] ?? null) !== d.data_envio)
-    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Data Envio`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio, created_by: userId })
+    fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Data Envio`, valor_de: latest.data_envio?.toISOString().split('T')[0] ?? null, valor_para: d.data_envio, ...autoria })
   {
     const antesInicio = latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null
     const depoisInicio = novaDataInicioExec?.toISOString().split('T')[0] ?? null
     if (antesInicio !== depoisInicio)
-      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Início Execução`, valor_de: antesInicio, valor_para: depoisInicio, created_by: userId })
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Início Execução`, valor_de: antesInicio, valor_para: depoisInicio, ...autoria })
     const antesFim = latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null
     const depoisFim = novaDataFimExec?.toISOString().split('T')[0] ?? null
     if (antesFim !== depoisFim)
-      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Fim Execução`, valor_de: antesFim, valor_para: depoisFim, created_by: userId })
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Fim Execução`, valor_de: antesFim, valor_para: depoisFim, ...autoria })
   }
 
   if (fabHistEntries.length > 0) {

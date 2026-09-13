@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularContrato } from '@/lib/permissaoApi'
+import { exigirTitularContrato, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 // Horas normais por pessoa: 8,8h em dias úteis; 8h aos sábados e domingos.
 // Horas extras: valor por pessoa livre, mas o PADRÃO (quando não informado)
@@ -70,8 +70,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (isNaN(contratoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
   { const _n = await exigirTitularContrato(session, contratoId, 'acordos.obras.hh.lancar'); if (_n) return _n }
 
-  const contratoCheck = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { hh_fechada_em: true } })
+  const contratoCheck = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { hh_fechada_em: true, responsavel_id: true } })
   if (contratoCheck?.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Obra está fechada — reabra antes de editar.' }, { status: 403 })
+
+  const usuario = usuarioDaSessao(session)!
+  const autoria = resolverAutoria(usuario, contratoCheck, 'contrato')
 
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) {
@@ -112,6 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           horas_extras: horasExtras,
           hh_total: hhTotal,
           created_by: userId,
+          substituto_de_id: autoria.substituto_de_id,
         },
         update: {
           efetivo_normal: d.efetivo_normal ?? null,
@@ -121,6 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           horas_extras: horasExtras,
           hh_total: hhTotal,
           updated_by: userId,
+          substituto_de_id: autoria.substituto_de_id,
         },
       })
     }
@@ -144,7 +149,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const somaExtras = diasDoMes.reduce((acc, r) => acc + Number(r.horas_extras ?? 0), 0)
       await tx.hhRealizado.upsert({
         where: { contrato_id_mes_ano: { contrato_id: contratoId, mes, ano } },
-        create: { contrato_id: contratoId, mes, ano, hh_realizado: Math.round(somaMes), horas_normais: somaNormais, horas_extras: somaExtras, created_by: userId },
+        create: { contrato_id: contratoId, mes, ano, hh_realizado: Math.round(somaMes), horas_normais: somaNormais, horas_extras: somaExtras, ...autoria },
         update: { hh_realizado: Math.round(somaMes), horas_normais: somaNormais, horas_extras: somaExtras },
       })
     }

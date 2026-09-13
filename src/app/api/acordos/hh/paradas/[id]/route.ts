@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
-import { exigirTitularContrato } from '@/lib/permissaoApi'
+import { exigirTitularContrato, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const DiaSchema = z.object({
   etapa: z.enum(['PREPARATIVO', 'PARADA', 'ACOMP_DESMOB']),
@@ -143,6 +143,9 @@ export async function PUT(
 
   const { dias, folgas, ...configData } = parsed.data
   const userId = Number(session.user.id)
+  const usuario = usuarioDaSessao(session)!
+  const contratoTitular = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { responsavel_id: true } })
+  const autoria = resolverAutoria(usuario, contratoTitular, 'contrato')
 
   const toDecimal = (v: number | null | undefined) => v != null ? v : null
 
@@ -268,6 +271,7 @@ export async function PUT(
             hh_real: d.hh_real != null ? d.hh_real : null,
             created_by: userId,
             updated_by: userId,
+            substituto_de_id: autoria.substituto_de_id,
           },
           update: {
             efetivo_plan: d.efetivo_plan ?? null,
@@ -277,6 +281,7 @@ export async function PUT(
             horas_dia_real: d.horas_dia_real ?? null,
             hh_real: d.hh_real != null ? d.hh_real : null,
             updated_by: userId,
+            substituto_de_id: autoria.substituto_de_id,
           },
         }),
       ),

@@ -612,10 +612,11 @@ model HhRealizadoDia {
 
   hh_total Decimal @db.Decimal(8, 2) // horas_normais + horas_extras
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  created_by Int
-  updated_by Int?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  updated_by       Int?
+  substituto_de_id Int?
 
   contrato Contrato @relation(fields: [contrato_id], references: [id])
   criador  User     @relation("HhRealizadoDiaCriador", fields: [created_by], references: [id])
@@ -674,16 +675,17 @@ model FabricacaoItemMes {
 
 // Realizado lançado por mês: HH realizado + peso realizado (% de avanço = realizado/previsto, calculado)
 model FabricacaoRealizado {
-  id             Int      @id @default(autoincrement())
-  item_id        Int
-  mes            Int
-  ano            Int
-  hh_realizado   Int?
-  peso_realizado Decimal? @db.Decimal(14, 2)
-  observacoes    String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  created_by     Int
+  id               Int      @id @default(autoincrement())
+  item_id          Int
+  mes              Int
+  ano              Int
+  hh_realizado     Int?
+  peso_realizado   Decimal? @db.Decimal(14, 2)
+  observacoes      String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  substituto_de_id Int?
 
   item    FabricacaoItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
   criador User           @relation("FabricacaoRealizadoCriador", fields: [created_by], references: [id])

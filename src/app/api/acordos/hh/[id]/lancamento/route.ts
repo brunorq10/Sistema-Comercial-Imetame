@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularContrato } from '@/lib/permissaoApi'
+import { exigirTitularContrato, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schemaPost = z.object({
   data_inicio: z.string().min(1),
@@ -61,6 +61,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
   if (contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Obra está fechada — reabra antes de editar.' }, { status: 403 })
 
+  const usuario = usuarioDaSessao(session)!
+  const autoria = resolverAutoria(usuario, contrato, 'contrato')
   const d = parsed.data
 
   // Cálculo de versão e criação dentro da mesma transação para evitar duplicidade
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         data_inicio: new Date(d.data_inicio),
         data_fim: new Date(d.data_fim),
         motivo: novaVersao > 1 ? (d.motivo ?? null) : null,
-        created_by: Number(session.user.id),
+        ...autoria,
         meses: {
           create: d.meses.map(m => ({
             mes: m.mes, ano: m.ano,

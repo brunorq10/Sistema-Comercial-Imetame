@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirTitularSolicitacao, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 import { formatDate } from '@/lib/utils'
 
 // PATCH — altera a data de envio da proposta técnica e/ou comercial de uma
@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const sol = await prisma.solicitacao.findUnique({
     where: { id },
     select: {
-      status: true, cancelled_at: true, revisao_esperada: true,
+      status: true, cancelled_at: true, revisao_esperada: true, orcamentista_id: true,
       prazo_tecnica: true, prazo_tecnica_indeterminado: true,
       prazo_comercial: true, prazo_comercial_indeterminado: true,
       propostas_tecnicas: { select: { versao: true } },
@@ -63,9 +63,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ data: null, error: 'A proposta comercial já foi enviada nesta revisão — o prazo não pode mais ser alterado.' }, { status: 409 })
   }
 
-  const userId = Number(session.user.id)
+  const usuario = usuarioDaSessao(session)!
+  const autoria = resolverAutoria(usuario, sol, 'solicitacao')
   const updateData: { prazo_tecnica?: Date; prazo_tecnica_indeterminado?: boolean; prazo_comercial?: Date; prazo_comercial_indeterminado?: boolean } = {}
-  const hist: { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string; created_by: number }[] = []
+  const hist: { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string; created_by: number; substituto_de_id: number | null }[] = []
 
   const fmtAtual = (data: Date | null, indeterminado: boolean) => indeterminado ? 'Não Determinado' : formatDate(data)
 
@@ -78,7 +79,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       solicitacao_id: id, campo: 'Prazo Técnica',
       valor_de: fmtAtual(sol.prazo_tecnica, sol.prazo_tecnica_indeterminado),
       valor_para: `${formatDate(novaData)} — Motivo: ${motivo}`,
-      created_by: userId,
+      created_by: autoria.created_by,
+      substituto_de_id: autoria.substituto_de_id,
     })
   }
   if (parsed.data.prazo_comercial !== undefined) {
@@ -90,7 +92,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       solicitacao_id: id, campo: 'Prazo Comercial',
       valor_de: fmtAtual(sol.prazo_comercial, sol.prazo_comercial_indeterminado),
       valor_para: `${formatDate(novaData)} — Motivo: ${motivo}`,
-      created_by: userId,
+      created_by: autoria.created_by,
+      substituto_de_id: autoria.substituto_de_id,
     })
   }
 

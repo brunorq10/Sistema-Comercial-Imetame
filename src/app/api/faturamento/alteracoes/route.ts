@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
-import { exigirTitularSubindice } from '@/lib/permissaoApi'
+import { exigirTitularSubindice, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 import { formatCurrency } from '@/lib/utils'
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const
@@ -163,6 +163,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ data: null, error: 'Sub-índice não encontrado' }, { status: 404 })
     }
 
+    const usuario = usuarioDaSessao(session)!
+    const autoria = resolverAutoria(usuario, subindice.contrato, 'contrato')
+
     // RN: só pode haver 1 alteração de Valor Total pendente por vez para o
     // mesmo subíndice (independente de quem solicitou) — diferente da previsão
     // mensal, que substitui automaticamente a proposta anterior do responsável.
@@ -212,7 +215,7 @@ export async function POST(req: NextRequest) {
       data: {
         subindice_id,
         responsavel_id: userId,
-        created_by: userId,
+        ...autoria,
         ...valoresDe,
         ...valoresPara,
         ...valorTotalCampos,
@@ -249,7 +252,7 @@ export async function POST(req: NextRequest) {
           campo: 'Valor Total — Solicitação',
           valor_de: formatCurrency(valorTotalAtual),
           valor_para: `${formatCurrency(valor_total_para)} — Motivo: ${motivo}`,
-          created_by: userId,
+          ...autoria,
         },
       })
     }

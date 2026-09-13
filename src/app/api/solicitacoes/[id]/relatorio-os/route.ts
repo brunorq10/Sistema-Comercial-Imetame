@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirTitularSolicitacao, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schema = z.object({
   cliente_faturamento_id: z.number().int().positive(),
@@ -123,13 +123,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Edição fica registrada no histórico com data e justificativa
   if (existente) {
+    const usuario = usuarioDaSessao(session)!
+    const autoria = resolverAutoria(usuario, sol, 'solicitacao')
     await prisma.historicoSolicitacao.create({
       data: {
         solicitacao_id: id,
         campo: 'Relatório de OS',
         valor_de: 'Editado',
         valor_para: `Justificativa: ${d.justificativa}`,
-        created_by: Number(session.user.id),
+        ...autoria,
       },
     })
   }

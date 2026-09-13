@@ -11,6 +11,8 @@ interface HistoricoEntry {
   valor_para: string | null
   alterado_em: string
   alterado_por: string
+  /** Preenchido quando a ação foi feita por um substituto temporário (Cadastros > Substituições). */
+  substituto_de_nome?: string | null
 }
 
 type AuditTipo = 'subindice' | 'contrato' | 'proposta' | 'parada' | 'obras' | 'fabricacao'
@@ -104,7 +106,12 @@ export function HistoricoFaturamentoLista({ tipo, itemId, maxH = '480px' }: { ti
                         {h.valor_para ?? '—'}
                       </span>
                     </td>
-                    <td className="px-3 py-[6px] whitespace-nowrap text-gray-600">{h.alterado_por}</td>
+                    <td className="px-3 py-[6px] whitespace-nowrap text-gray-600">
+                      {h.alterado_por}
+                      {h.substituto_de_nome && (
+                        <span className="text-purple-600"> (em substituição a {h.substituto_de_nome})</span>
+                      )}
+                    </td>
                   </tr>
                 )
               })}

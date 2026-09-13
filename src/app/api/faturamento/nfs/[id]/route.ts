@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
-import { exigirPermissao, exigirTitularNfContrato } from '@/lib/permissaoApi'
+import { exigirPermissao, exigirTitularNfContrato, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schema = z.object({
   // inativação / reativação
@@ -42,6 +42,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // Busca NF atual para recalcular valor_atribuido se necessário
   const nfAtual = await prisma.notaFiscalContrato.findUnique({ where: { id } })
   if (!nfAtual) return NextResponse.json({ data: null, error: 'NF não encontrada' }, { status: 404 })
+
+  const usuario = usuarioDaSessao(session)!
+  const subContrato = await prisma.subIndiceFaturamento.findUnique({
+    where: { id: nfAtual.subindice_id },
+    select: { contrato: { select: { responsavel_id: true } } },
+  })
+  const autoria = resolverAutoria(usuario, subContrato?.contrato, 'contrato')
 
   // SEG-15: vencimento não pode ser anterior à emissão
   const novaEmissao = d.data_emissao ? new Date(d.data_emissao) : nfAtual.data_emissao
@@ -112,7 +119,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       data: {
         nf_id: id,
         responsavel_id: userId,
-        created_by: userId,
+        ...autoria,
         numero_nf_de: nfAtual.numero_nf,
         numero_nf_para: numeroNf,
         valor_total_nf_de: nfAtual.valor_total_nf,

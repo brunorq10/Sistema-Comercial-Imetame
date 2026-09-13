@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createNotificacao } from '@/lib/notifications'
 import { logger } from '@/lib/logger'
-import { exigirTitularSolicitacao } from '@/lib/permissaoApi'
+import { exigirTitularSolicitacao, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const schema = z.object({
   nao_aplicavel: z.boolean().optional(),
@@ -195,7 +195,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
   }
 
-  const sol = await prisma.solicitacao.findUnique({ where: { id }, select: { classificacao: true } })
+  const sol = await prisma.solicitacao.findUnique({ where: { id }, select: { classificacao: true, orcamentista_id: true } })
   const latest = await prisma.propostaTecnica.findFirst({
     where: { solicitacao_id: id },
     orderBy: { versao: 'desc' },
@@ -287,26 +287,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (diffs.length > 0) {
     const rev = `Rev${String(latest.versao).padStart(2, '0')}`
-    const userId = Number(session.user.id)
+    const usuario = usuarioDaSessao(session)!
+    const autoria = resolverAutoria(usuario, sol, 'solicitacao')
 
-    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number }
+    type HistEntry = { solicitacao_id: number; campo: string; valor_de: string | null; valor_para: string | null; created_by: number; substituto_de_id: number | null }
     const histEntries: HistEntry[] = []
 
     for (const f of numFields) {
       const a = f.before != null ? Number(f.before) : null
       const b = f.after  != null ? Number(f.after)  : null
-      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: a != null ? String(a) : null, valor_para: b != null ? String(b) : null, created_by: userId })
+      if (a !== b) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: a != null ? String(a) : null, valor_para: b != null ? String(b) : null, ...autoria })
     }
     for (const f of strFields) {
-      if ((f.before ?? '') !== (f.after ?? '')) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before, valor_para: f.after, created_by: userId })
+      if ((f.before ?? '') !== (f.after ?? '')) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before, valor_para: f.after, ...autoria })
     }
     for (const f of boolFields) {
-      if (f.before !== f.after) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before != null ? (f.before ? 'Sim' : 'Não') : null, valor_para: f.after != null ? (f.after ? 'Sim' : 'Não') : null, created_by: userId })
+      if (f.before !== f.after) histEntries.push({ solicitacao_id: id, campo: `Proposta Técnica ${rev} — ${f.label}`, valor_de: f.before != null ? (f.before ? 'Sim' : 'Não') : null, valor_para: f.after != null ? (f.after ? 'Sim' : 'Não') : null, ...autoria })
     }
 
     await Promise.all([
       prisma.solicitacaoInfo.create({
-        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Técnica ${rev}] ${diffs.join(' | ')}`, versao: latest.versao, created_by: userId },
+        data: { solicitacao_id: id, data: new Date(), comentario: `[Edição Técnica ${rev}] ${diffs.join(' | ')}`, versao: latest.versao, ...autoria },
       }),
       histEntries.length > 0 ? prisma.historicoSolicitacao.createMany({ data: histEntries }) : Promise.resolve(),
     ])

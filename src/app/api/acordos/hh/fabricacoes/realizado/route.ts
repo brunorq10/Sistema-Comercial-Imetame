@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { exigirTitularContrato, exigirTitularFabItem } from '@/lib/permissaoApi'
+import { exigirTitularContrato, exigirTitularFabItem, usuarioDaSessao, resolverAutoria } from '@/lib/permissaoApi'
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const mesLabel = (mes: number, ano: number) => `${MESES[mes]}/${String(ano).slice(2)}`
@@ -40,8 +40,11 @@ export async function POST(req: NextRequest) {
   // Titularidade: o contrato do item determina quem pode lançar realizado
   { const _n = await exigirTitularFabItem(session, lancamentos[0].item_id, 'acordos.fab.realizado.lancar'); if (_n) return _n }
 
-  const itemRef = await prisma.fabricacaoItem.findUnique({ where: { id: lancamentos[0].item_id }, select: { contrato: { select: { hh_fechada_em: true } } } })
+  const itemRef = await prisma.fabricacaoItem.findUnique({ where: { id: lancamentos[0].item_id }, select: { contrato: { select: { hh_fechada_em: true, responsavel_id: true } } } })
   if (itemRef?.contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Fabricação está fechada — reabra antes de editar.' }, { status: 403 })
+
+  const usuario = usuarioDaSessao(session)!
+  const autoria = resolverAutoria(usuario, itemRef?.contrato, 'contrato')
 
   // Estado atual para diff do histórico
   const itemIds = Array.from(new Set(lancamentos.map((l) => l.item_id)))
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
           hh_realizado: l.hh_realizado ?? null,
           peso_realizado: l.peso_realizado ?? null,
           observacoes: l.observacoes ?? null,
-          created_by: userId,
+          ...autoria,
         },
         update: {
           hh_realizado: l.hh_realizado ?? null,
