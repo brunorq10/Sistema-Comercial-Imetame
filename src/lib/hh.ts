@@ -90,7 +90,11 @@ export function bucketMesesPrevistoRealizado(
 
 // Quebra mensal do HH diário (sem os adicionais — não têm data específica).
 // `realizado` fica null em meses sem nenhum lançamento de realizado ainda.
-export function bucketParadaHhPorMes(dias: ParadaHhConfigComDias['dias']): MesHh[] {
+// Tipo do parâmetro é estrutural (só os 3 campos realmente usados) de propósito
+// — permite reaproveitar com um select() mais enxuto do que include:{dias:true}.
+export function bucketParadaHhPorMes(
+  dias: { data: Date; hh_plan: Prisma.Decimal | number | null; hh_real: Prisma.Decimal | number | null }[],
+): MesHh[] {
   const map = new Map<string, { previsto: number; realizado: number; temReal: boolean }>()
   for (const d of dias) {
     const dt = new Date(d.data)

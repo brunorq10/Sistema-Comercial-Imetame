@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Prisma, RamoAtuacao } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { bucketMesesPrevistoRealizado, bucketParadaHhPorMes } from '@/lib/hh'
 
 const MONTH_KEYS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'] as const
 
@@ -72,6 +73,18 @@ export async function GET(req: Request) {
             notas_fiscais: { where: { ativa: true, deleted_at: null }, select: { data_emissao: true, valor_atribuido: true } },
           },
         },
+        // HH previsto/realizado — mesma fonte/lógica de src/app/api/acordos/hh/[id]/resumo/route.ts,
+        // usada aqui para agregar por mercado (indicador "HH por mercado").
+        hh_lancamentos: { orderBy: { versao: 'desc' }, take: 1, select: { meses: { select: { ano: true, mes: true, hh_previsto: true } } } },
+        hh_realizados: { select: { ano: true, mes: true, hh_realizado: true } },
+        parada_hh_config: { select: { dias: { select: { data: true, etapa: true, hh_plan: true, hh_real: true } } } },
+        fabricacao_itens: {
+          where: { deleted_at: null },
+          select: {
+            meses: { select: { ano: true, mes: true, hh_previsto: true } },
+            realizados: { select: { ano: true, mes: true, hh_realizado: true } },
+          },
+        },
       },
     }),
     prisma.consolidadoMes.findMany({
@@ -122,7 +135,10 @@ export async function GET(req: Request) {
   let faturadoMesAtual       = 0
   let faturadoUltimoMes      = 0
 
-  const porRamo    = new Map<string, number>()
+  const porRamo         = new Map<string, number>()
+  const porRamoPrevisto = new Map<string, number>()
+  const porRamoHhPrevisto = new Map<string, number>()
+  const porRamoHhReal     = new Map<string, number>()
   const porCliente = new Map<number, { nome: string; valor: number }>()
   const previstoSubPorMes = new Array<number>(12).fill(0)
   const faturadoPorMes    = new Array<number>(12).fill(0)
@@ -150,6 +166,11 @@ export async function GET(req: Request) {
         prevMesAtual += getMonthValue(subRec, mesAtual)
         for (let m = 1; m <= 12; m++) previstoSubPorMes[m - 1] += getMonthValue(subRec, m)
         contratoPrevistoAno += mensalSub
+
+        // Previsto por mercado (para o toggle Previsto/Real do indicador
+        // "Faturamento por mercado") — mesmo critério de ano do faturado.
+        const ramoPrev = contrato.cliente.ramo_atuacao ?? 'OUTROS'
+        porRamoPrevisto.set(ramoPrev, (porRamoPrevisto.get(ramoPrev) ?? 0) + mensalSub)
       }
       if (anoSub > anoAtual) faturamentoProxAnos += valorSub
       if (anoSub === anoMesProx)  prevProxMes  += getMonthValue(subRec, mesProximo)
@@ -179,6 +200,33 @@ export async function GET(req: Request) {
       }
     }
 
+    // HH por mercado — mesma lógica/fonte de src/app/api/acordos/hh/[id]/resumo/route.ts
+    // (Obras: HhLancamento mais recente + HhRealizado; Paradas: grade diária;
+    // Fabricações: FabricacaoItemMes/FabricacaoRealizado), agregado por ramo e
+    // recortado pelo ano selecionado no filtro (mesmo critério do faturamento).
+    const lancamento = contrato.hh_lancamentos[0] ?? null
+    let mesesHh: { ano: number; mes: number; previsto: number; realizado: number | null }[] = []
+    if (lancamento) {
+      mesesHh = bucketMesesPrevistoRealizado(
+        lancamento.meses.map((m) => ({ ano: m.ano, mes: m.mes, valor: m.hh_previsto })),
+        contrato.hh_realizados.map((r) => ({ ano: r.ano, mes: r.mes, valor: r.hh_realizado })),
+      )
+    } else if (contrato.parada_hh_config) {
+      mesesHh = bucketParadaHhPorMes(contrato.parada_hh_config.dias)
+    } else if (contrato.fabricacao_itens.length > 0) {
+      mesesHh = bucketMesesPrevistoRealizado(
+        contrato.fabricacao_itens.flatMap((it) => it.meses.map((m) => ({ ano: m.ano, mes: m.mes, valor: m.hh_previsto }))),
+        contrato.fabricacao_itens.flatMap((it) => it.realizados.map((r) => ({ ano: r.ano, mes: r.mes, valor: r.hh_realizado }))),
+      )
+    }
+    const hhPrevistoAno = mesesHh.filter((m) => m.ano === anoAtual).reduce((s, m) => s + m.previsto, 0)
+    const hhRealizadoAno = mesesHh.filter((m) => m.ano === anoAtual).reduce((s, m) => s + (m.realizado ?? 0), 0)
+    if (hhPrevistoAno > 0 || hhRealizadoAno > 0) {
+      const ramoHh = contrato.cliente.ramo_atuacao ?? 'OUTROS'
+      porRamoHhPrevisto.set(ramoHh, (porRamoHhPrevisto.get(ramoHh) ?? 0) + hhPrevistoAno)
+      porRamoHhReal.set(ramoHh, (porRamoHhReal.get(ramoHh) ?? 0) + hhRealizadoAno)
+    }
+
     // Aderência por responsável
     const respKey = contrato.responsavel ? String(contrato.responsavel.id) : 'none'
     const respEntry = porResp.get(respKey) ?? {
@@ -199,15 +247,21 @@ export async function GET(req: Request) {
   const aFaturarAno = Math.max(0, prevFaturamentoAno - totalFaturadoAno)
 
   // Ramo
-  const totalRamo = Array.from(porRamo.values()).reduce((a, b) => a + b, 0)
-  const porRamoData = Object.keys(RAMO_LABELS)
-    .map((ramo) => ({
-      ramo:       RAMO_LABELS[ramo],
-      valor:      porRamo.get(ramo) ?? 0,
-      percentual: totalRamo > 0 ? ((porRamo.get(ramo) ?? 0) / totalRamo) * 100 : 0,
-    }))
-    .filter((r) => r.valor > 0)
-    .sort((a, b) => b.valor - a.valor)
+  // Todos os mercados aparecem sempre, mesmo sem nenhum lançamento (zerado) —
+  // ordenação por %/valor fica a cargo do front (alterna conforme o toggle
+  // Previsto/Real do card "Faturamento por mercado").
+  const porRamoData = Object.keys(RAMO_LABELS).map((ramo) => ({
+    ramo:     RAMO_LABELS[ramo],
+    real:     porRamo.get(ramo) ?? 0,
+    previsto: porRamoPrevisto.get(ramo) ?? 0,
+  }))
+
+  // HH por mercado — mesmo formato/config do "Faturamento por mercado".
+  const porRamoHhData = Object.keys(RAMO_LABELS).map((ramo) => ({
+    ramo:     RAMO_LABELS[ramo],
+    real:     porRamoHhReal.get(ramo) ?? 0,
+    previsto: porRamoHhPrevisto.get(ramo) ?? 0,
+  }))
 
   // Cliente (treemap)
   const totalCliente = Array.from(porCliente.values()).reduce((a, b) => a + b.valor, 0)
@@ -308,6 +362,7 @@ export async function GET(req: Request) {
       prevProxMes,
       percFaturadoGeral: Number(percFaturadoGeral.toFixed(1)),
       porRamo:    porRamoData,
+      porRamoHh:  porRamoHhData,
       porCliente: porClienteData,
       porMes,
       porResponsavel,

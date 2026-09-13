@@ -44,7 +44,8 @@ interface DashData {
   totalFaturadoAno: number; prevFaturamentoAno: number; aFaturarAno: number; faturamentoProxAnos: number
   prevMesAtual: number; faturadoMesAtual: number; faturadoUltimoMes: number; prevProxMes: number
   percFaturadoGeral: number
-  porRamo:    { ramo: string; valor: number; percentual: number }[]
+  porRamo:    { ramo: string; real: number; previsto: number }[]
+  porRamoHh:  { ramo: string; real: number; previsto: number }[]
   porCliente: { nome: string; valor: number; percentual: number }[]
   porMes:     MesData[]
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
@@ -64,7 +65,7 @@ const RAMO_OPTIONS = [
 ]
 
 // ══ Gauge (velocímetro) ══
-function Gauge({ percent, faturado, previsto }: { percent: number; faturado: number; previsto: number }) {
+function Gauge({ percent }: { percent: number }) {
   const p = Math.min(100, Math.max(0, percent))
   const data = {
     datasets: [{ data: [p, 100 - p], backgroundColor: [DASHBOARD_POSITIVO, '#E5E7EB'], borderWidth: 0, circumference: 180, rotation: 270 }],
@@ -78,61 +79,96 @@ function Gauge({ percent, faturado, previsto }: { percent: number; faturado: num
       <Doughnut data={data} options={opts} />
       <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
         <span className="text-[36px] font-bold text-green-primary leading-none">{percent.toFixed(1).replace('.', ',')}%</span>
-        <span className="text-[11px] text-gray-400 mt-1">{fmtM(faturado)} de {fmtM(previsto)}</span>
       </div>
     </div>
   )
 }
 
-// ══ Tabela — Faturamento por mercado (Mercado / Faturado (R$) / Participação) ══
+// ══ Tabela — Faturamento/HH por mercado, com toggle Previsto/Real ══
+// Mesmo formato/config para os dois indicadores (Faturamento por mercado e HH
+// por mercado) — só muda a formatação do valor. Todos os mercados aparecem
+// sempre (mesmo zerados); ordenação sempre do maior para o menor % conforme a
+// métrica selecionada no toggle.
 const MERCADO_COLORS = ['#16A34A', '#1565C0', '#F59E0B', '#8B5CF6', '#DC2626', '#0891B2']
 
-function TabelaMercado({ data }: { data: { ramo: string; percentual: number; valor: number }[] }) {
-  if (data.length === 0) return <p className="text-[11px] text-gray-400 py-6 text-center">Sem dados</p>
-  const max = Math.max(...data.map((d) => d.valor), 1)
-  const totalValor = data.reduce((s, d) => s + d.valor, 0)
+type MercadoDatum = { ramo: string; real: number; previsto: number }
+type Metrica = 'real' | 'previsto'
+
+function TabelaMercadoToggle({
+  data, formatValor, colunaBase,
+}: { data: MercadoDatum[]; formatValor: (n: number) => string; colunaBase: string }) {
+  const [metrica, setMetrica] = useState<Metrica>('real')
+  const valores = data.map((d) => ({ ramo: d.ramo, valor: metrica === 'real' ? d.real : d.previsto }))
+  const total = valores.reduce((s, d) => s + d.valor, 0)
+  const ordenado = [...valores].sort((a, b) => b.valor - a.valor)
+  const max = Math.max(...ordenado.map((d) => d.valor), 1)
+  const colunaLabel = `${colunaBase} — ${metrica === 'real' ? 'Real' : 'Previsto'}`
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[12px] border-collapse">
-        <thead>
-          <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
-            <th className="py-2 pr-3 font-semibold">Mercado</th>
-            <th className="py-2 px-3 font-semibold">Faturado (R$)</th>
-            <th className="py-2 pl-3 font-semibold text-right">Participação</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item, i) => {
-            const color = MERCADO_COLORS[i % MERCADO_COLORS.length]
-            return (
-              <tr key={item.ramo} className="border-b border-gray-50">
-                <td className="py-2.5 pr-3">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                    <span className="text-gray-700 font-medium">{item.ramo}</span>
-                  </span>
-                </td>
-                <td className="py-2.5 px-3">
-                  <div className="flex items-center gap-2">
-                    <ProgressBar pct={(item.valor / max) * 100} color={color} size="sm" className="max-w-[140px]" />
-                    <span className="text-gray-700 font-semibold whitespace-nowrap">{fmtM(item.valor)}</span>
-                  </div>
-                </td>
-                <td className="py-2.5 pl-3 text-right text-gray-600 font-semibold whitespace-nowrap">{item.percentual.toFixed(1).replace('.', ',')}%</td>
-              </tr>
-            )
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-gray-200 font-bold">
-            <td className="py-2.5 pr-3 text-gray-800">Total</td>
-            <td className="py-2.5 px-3 text-gray-800 whitespace-nowrap">{fmtM(totalValor)}</td>
-            <td className="py-2.5 pl-3 text-right text-gray-800">100%</td>
-          </tr>
-        </tfoot>
-      </table>
+    <div>
+      <div className="flex justify-end mb-2.5">
+        <div className="inline-flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold">
+          <button
+            onClick={() => setMetrica('real')}
+            className={`px-2.5 py-1 transition-colors ${metrica === 'real' ? 'bg-green-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+          >
+            Real
+          </button>
+          <button
+            onClick={() => setMetrica('previsto')}
+            className={`px-2.5 py-1 border-l border-gray-200 transition-colors ${metrica === 'previsto' ? 'bg-green-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+          >
+            Previsto
+          </button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px] border-collapse">
+          <thead>
+            <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
+              <th className="py-2 pr-3 font-semibold">Mercado</th>
+              <th className="py-2 px-3 font-semibold">{colunaLabel}</th>
+              <th className="py-2 pl-3 font-semibold text-right">Participação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordenado.map((item, i) => {
+              const color = MERCADO_COLORS[i % MERCADO_COLORS.length]
+              const pct = total > 0 ? (item.valor / total) * 100 : 0
+              return (
+                <tr key={item.ramo} className="border-b border-gray-50">
+                  <td className="py-2.5 pr-3">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                      <span className="text-gray-700 font-medium">{item.ramo}</span>
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-2">
+                      <ProgressBar pct={(item.valor / max) * 100} color={color} size="sm" className="max-w-[140px]" />
+                      <span className="text-gray-700 font-semibold whitespace-nowrap">{formatValor(item.valor)}</span>
+                    </div>
+                  </td>
+                  <td className="py-2.5 pl-3 text-right text-gray-600 font-semibold whitespace-nowrap">{pct.toFixed(1).replace('.', ',')}%</td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-200 font-bold">
+              <td className="py-2.5 pr-3 text-gray-800">Total</td>
+              <td className="py-2.5 px-3 text-gray-800 whitespace-nowrap">{formatValor(total)}</td>
+              <td className="py-2.5 pl-3 text-right text-gray-800">100%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   )
+}
+
+function fmtHH(v: number): string {
+  return `${Math.round(v).toLocaleString('pt-BR')} HH`
 }
 
 // ══ Treemap (squarify) ══
@@ -424,35 +460,45 @@ export default function IndicadoresAcordosPage() {
             <KpiCard label={`Previsão próximo mês (${mesProxLabel})`} value={fmtM(data.prevProxMes)} accent={DASHBOARD_PREVISTO} />
           </div>
 
-          {/* 2/3 — Faturamento por mercado (esquerda) + % faturado geral do ano (direita) */}
+          {/* 2/3 — Faturamento por mercado (esquerda) + HH por mercado (direita) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div>
               <SectionTitle>Faturamento por mercado</SectionTitle>
               <ChartCard>
-                <TabelaMercado data={data.porRamo} />
+                <TabelaMercadoToggle data={data.porRamo} formatValor={fmtM} colunaBase="Faturamento" />
+              </ChartCard>
+            </div>
+            <div>
+              <SectionTitle>HH por mercado</SectionTitle>
+              <ChartCard>
+                <TabelaMercadoToggle data={data.porRamoHh} formatValor={fmtHH} colunaBase="HH" />
+              </ChartCard>
+            </div>
+          </div>
+
+          {/* 4 — Meta acumulada x Faturado acumulado (%) (70%) + % faturado geral do ano (30%) */}
+          <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3">
+            <div>
+              <SectionTitle>Meta de faturamento acumulada x faturamento real — avanço %</SectionTitle>
+              <ChartCard>
+                <div style={{ height: 300 }}>
+                  <ContratoAvancoPercentualChart
+                    serieA={metaAcumPct} serieB={faturadoAcumPct}
+                    labelA="Meta acumulada (%)" labelB="Faturado acumulado (%)"
+                    corA={DASHBOARD_PREVISTO} corB={DASHBOARD_POSITIVO}
+                    labels={MES_LABEL}
+                    maintainAspectRatio={false}
+                  />
+                </div>
               </ChartCard>
             </div>
             <div>
               <SectionTitle>% faturado geral do ano</SectionTitle>
               <ChartCard>
-                <Gauge percent={data.percFaturadoGeral} faturado={data.totalFaturadoAno} previsto={data.prevFaturamentoAno} />
+                <Gauge percent={data.percFaturadoGeral} />
               </ChartCard>
             </div>
           </div>
-
-          {/* 4 — Meta acumulada x Faturado acumulado (%) */}
-          <SectionTitle>Meta de faturamento acumulada x faturamento real — avanço %</SectionTitle>
-          <ChartCard>
-            <div style={{ height: 300 }}>
-              <ContratoAvancoPercentualChart
-                serieA={metaAcumPct} serieB={faturadoAcumPct}
-                labelA="Meta acumulada (%)" labelB="Faturado acumulado (%)"
-                corA={DASHBOARD_PREVISTO} corB={DASHBOARD_POSITIVO}
-                labels={MES_LABEL}
-                maintainAspectRatio={false}
-              />
-            </div>
-          </ChartCard>
 
           {/* 5 — Tabela detalhada */}
           <SectionTitle>Previsão x realizado por mês — detalhamento</SectionTitle>
