@@ -67,7 +67,7 @@ export default function LixeiraPage() {
     <div className="p-4 h-full overflow-y-auto">
       <PageHeader
         title="Lixeira"
-        subtitle={`Itens excluídos ficam aqui por ${retencao} dias e podem ser restaurados. Passado o prazo: NFs, eventos de medição, multas, ocorrências e informações são apagados definitivamente; contratos e acompanhamentos de HH deixam de poder ser restaurados por aqui, mas o registro é mantido para histórico.`}
+        subtitle={`Itens excluídos ficam aqui por ${retencao} dias e podem ser restaurados. Passado o prazo: NFs, eventos de medição, multas, ocorrências e informações são apagados definitivamente; acordos e acompanhamentos de HH deixam de poder ser restaurados por aqui, mas o registro é mantido para histórico.`}
         actions={
           <>
             {tipos.length > 1 && (

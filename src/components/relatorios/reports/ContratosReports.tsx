@@ -32,7 +32,7 @@ export function Ctr01Carteira() {
   }, [data, responsavelAplicado])
 
   const columns: DataColumn<ContratosData['ctr01_lista'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -45,7 +45,7 @@ export function Ctr01Carteira() {
 
   return (
     <ReportShell
-      titulo="Carteira Ativa de Contratos" descricao="Quantos contratos tenho ativos agora, e como estão distribuídos."
+      titulo="Carteira Ativa de Acordos" descricao="Quantos acordos tenho ativos agora, e como estão distribuídos."
       onExport={() => exportToExcel(columns, rows, `carteira-ativa_${todayInput()}.xlsx`, 'Carteira')}
       exportDisabled={loading}
       filtros={
@@ -76,7 +76,7 @@ export function Ctr02Hh() {
   }, [data, classifAplicado])
 
   const columns: DataColumn<ContratosData['ctr02_hh'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -88,7 +88,7 @@ export function Ctr02Hh() {
 
   return (
     <ReportShell
-      titulo="Aderência de HH" descricao="Estamos usando mais ou menos homem-hora do que planejamos nos contratos de Obras e Paradas."
+      titulo="Aderência de HH" descricao="Estamos usando mais ou menos homem-hora do que planejamos nos acordos de Obras e Paradas."
       onExport={() => exportToExcel(columns, rows, `aderencia-hh_${todayInput()}.xlsx`, 'Aderência HH')}
       exportDisabled={loading}
       filtros={
@@ -114,7 +114,7 @@ export function Ctr03Fabricacao() {
   const rows = data?.ctr03_fabricacao ?? []
 
   const columns: DataColumn<ContratosData['ctr03_fabricacao'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -149,7 +149,7 @@ export function Ctr04Ucr() {
   }, [data, faixaAplicada])
 
   const columns: DataColumn<ContratosData['ctr04_ucr']['contratos'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -160,7 +160,7 @@ export function Ctr04Ucr() {
 
   return (
     <ReportShell
-      titulo="R$/HH por Contrato (UCR)" descricao="Qual contrato de Parada está rendendo bem, e qual está na faixa ruim da classificação UCR."
+      titulo="R$/HH por Acordo (UCR)" descricao="Qual acordo de Parada está rendendo bem, e qual está na faixa ruim da classificação UCR."
       onExport={() => exportToExcel(columns, rows, `rs-hh-ucr_${todayInput()}.xlsx`, 'UCR')}
       exportDisabled={loading}
       filtros={
@@ -187,7 +187,7 @@ export function Ctr05Encerrando() {
   const rows = data?.ctr05_encerrando.contratos ?? []
 
   const columns: DataColumn<ContratosData['ctr05_encerrando']['contratos'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -199,8 +199,8 @@ export function Ctr05Encerrando() {
 
   return (
     <ReportShell
-      titulo="Contratos Encerrando" descricao="Quais contratos terminam nos próximos meses, e existe algo no pipeline para substituir essa receita."
-      onExport={() => exportToExcel(columns, rows, `contratos-encerrando_${todayInput()}.xlsx`, 'Encerrando')}
+      titulo="Acordos Encerrando" descricao="Quais acordos terminam nos próximos meses, e existe algo no pipeline para substituir essa receita."
+      onExport={() => exportToExcel(columns, rows, `acordos-encerrando_${todayInput()}.xlsx`, 'Encerrando')}
       exportDisabled={loading}
       filtros={
         <>
@@ -216,7 +216,7 @@ export function Ctr05Encerrando() {
       }
     >
       {data && <p className="text-[11px] text-gray-500 mb-2">{data.ctr05_encerrando.cobertura}</p>}
-      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum contrato encerrando nessa janela." />}
+      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum acordo encerrando nessa janela." />}
     </ReportShell>
   )
 }

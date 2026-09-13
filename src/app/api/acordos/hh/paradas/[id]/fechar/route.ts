@@ -19,8 +19,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { id: contratoId },
     select: { estado: true, data_inicio: true, parada_hh_config: { select: { id: true, fechada_em: true, parada_inicio: true } } },
   })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
-  if (!contrato.parada_hh_config) return NextResponse.json({ data: null, error: 'Nenhum acompanhamento de HH lançado para este contrato ainda' }, { status: 400 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
+  if (!contrato.parada_hh_config) return NextResponse.json({ data: null, error: 'Nenhum acompanhamento de HH lançado para este acordo ainda' }, { status: 400 })
   if (contrato.parada_hh_config.fechada_em) return NextResponse.json({ data: null, error: 'Esta Parada já está fechada' }, { status: 409 })
 
   const dataReferencia = contrato.parada_hh_config.parada_inicio ?? contrato.data_inicio

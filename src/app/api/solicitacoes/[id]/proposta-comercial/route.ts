@@ -141,8 +141,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     for (const g of gestores) {
       createNotificacao(
         g.id,
-        `Contrato ganho — ${sol?.numero ?? id}`,
-        `Solicitação ${sol?.numero ?? id} (${sol?.cliente?.nome ?? ''}) marcada como Ganhou. Acesse Acordos para iniciar o contrato.`,
+        `Acordo ganho — ${sol?.numero ?? id}`,
+        `Solicitação ${sol?.numero ?? id} (${sol?.cliente?.nome ?? ''}) marcada como Ganhou. Acesse Acordos para iniciar o acordo.`,
         `/orcamentos/solicitacoes/${id}`,
       )
     }

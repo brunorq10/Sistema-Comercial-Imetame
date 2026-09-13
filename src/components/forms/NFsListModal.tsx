@@ -90,7 +90,7 @@ export function NFsListModal({ open, onClose, acordo, canInativar }: Props) {
           <p className="text-[14px] font-bold text-green-primary mt-0.5">{formatCurrency(totalAtivas)}</p>
         </div>
         <div className="bg-gray-50 border border-gray-200 rounded p-2.5 text-center">
-          <p className="text-[9px] text-gray-400 uppercase tracking-wider">Saldo do contrato</p>
+          <p className="text-[9px] text-gray-400 uppercase tracking-wider">Saldo do acordo</p>
           <p className={cn('text-[14px] font-bold mt-0.5', acordo.saldo < 0 ? 'text-red-600' : 'text-gray-700')}>
             {formatCurrency(acordo.saldo)}
           </p>

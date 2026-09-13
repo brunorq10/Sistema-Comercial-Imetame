@@ -66,7 +66,7 @@ export async function efetivarTransferencia(transferenciaId: number): Promise<vo
 
   const nSol = transf.itens.filter((i) => i.tipo_item === 'SOLICITACAO').length
   const nCt = transf.itens.filter((i) => i.tipo_item === 'CONTRATO').length
-  const resumo = `${nSol} solicitação(ões) e ${nCt} contrato(s).`
+  const resumo = `${nSol} solicitação(ões) e ${nCt} acordo(s).`
 
   if (transf.tipo === 'TROCA') {
     createNotificacao(transf.origem_id, 'Troca de responsabilidade efetivada', `A troca de itens entre você e ${transf.destino.nome} foi efetivada. Resumo: ${resumo}`)

@@ -490,7 +490,7 @@ function GraficoGanhosMes({ porMes }: { porMes: number[] }) {
     responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { ...dashboardTooltipPlugin, callbacks: { label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.y ?? 0} contratos` } },
+      tooltip: { ...dashboardTooltipPlugin, callbacks: { label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.y ?? 0} acordos` } },
       datalabels: { anchor: 'end' as const, align: 'end' as const, offset: 2, clamp: true, color: '#374151', font: { size: 10, weight: 'bold' as const }, formatter: (v: number) => v > 0 ? v : '' },
     },
     scales: {
@@ -499,7 +499,7 @@ function GraficoGanhosMes({ porMes }: { porMes: number[] }) {
     },
     layout: { padding: { top: 28 } },
   } as const
-  return <ChartCard title="Contratos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></ChartCard>
+  return <ChartCard title="Acordos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></ChartCard>
 }
 
 function fmtCurto(v: number): string {
@@ -523,7 +523,7 @@ function GraficoValorGanhosMes({ porMes }: { porMes: number[] }) {
     },
     layout: { padding: { top: 28 } },
   } as const
-  return <ChartCard title="Valor dos Contratos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></ChartCard>
+  return <ChartCard title="Valor dos Acordos Ganhos por Mês"><div style={{ height: 220, position: 'relative' }}><Bar data={chartData} options={options} /></div></ChartCard>
 }
 
 function pontBadge(p: number) { return p >= 80 ? { bg: '#DCFCE7', text: '#15803D' } : p >= 60 ? { bg: '#FEF3C7', text: '#B45309' } : { bg: '#FEE2E2', text: '#B91C1C' } }
@@ -592,13 +592,13 @@ function TabelaTicketTipo({ data }: { data: ResultadoDashboardData['ticket_tipo'
   const totV = rows.reduce((a, r) => a + r.valor_total, 0)
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <p className="text-[12px] font-bold text-gray-700 px-4 pt-3.5 pb-2">Valor médio dos contratos ganhos, por classificação</p>
+      <p className="text-[12px] font-bold text-gray-700 px-4 pt-3.5 pb-2">Valor médio dos acordos ganhos, por classificação</p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[12px]" style={{ minWidth: 640 }}>
           <thead>
             <tr className="bg-slate-50 text-gray-600 text-[11px] border-b border-gray-200">
               <th className="text-left px-4 py-2 font-semibold">Tipo de serviço</th>
-              <th className="text-right px-4 py-2 font-semibold">Contratos ganhos</th>
+              <th className="text-right px-4 py-2 font-semibold">Acordos ganhos</th>
               <th className="text-right px-4 py-2 font-semibold">HH total</th>
               <th className="text-right px-4 py-2 font-semibold">Valor total</th>
               <th className="text-right px-4 py-2 font-semibold">Ticket médio</th>
@@ -607,7 +607,7 @@ function TabelaTicketTipo({ data }: { data: ResultadoDashboardData['ticket_tipo'
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-2.5 text-center text-gray-400 text-[12px]">Nenhum contrato ganho no período.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-2.5 text-center text-gray-400 text-[12px]">Nenhum acordo ganho no período.</td></tr>
             ) : rows.map((r) => (
               <tr key={r.classificacao} className="border-b border-gray-100">
                 <td className="px-4 py-2.5 font-medium text-gray-700">{TIPO_LABELS[r.classificacao] ?? r.classificacao}</td>
@@ -858,18 +858,18 @@ export default function DashboardComercialPage() {
             {/* 1 — KPIs de resultado */}
             <SectionTitle>Resultado comercial do período</SectionTitle>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KpiCard label="Contratos ganhos" value={fmtInt(resultado.contratos_ganhos)} sub="no período" accent={GREEN} />
-              <KpiCard label="Valor total dos contratos" value={fmtMoneyM(resultado.valor_ganhos)} sub="contratos fechados" accent={NEUTRO} />
-              <KpiCard label="Ticket médio geral" value={fmtMoneyM(resultado.ticket_medio)} sub="por contrato ganho" accent={BLUE} />
+              <KpiCard label="Acordos ganhos" value={fmtInt(resultado.contratos_ganhos)} sub="no período" accent={GREEN} />
+              <KpiCard label="Valor total dos acordos" value={fmtMoneyM(resultado.valor_ganhos)} sub="acordos fechados" accent={NEUTRO} />
+              <KpiCard label="Ticket médio geral" value={fmtMoneyM(resultado.ticket_medio)} sub="por acordo ganho" accent={BLUE} />
               <KpiCard label="Taxa de conversão" value={`${fmtPct1(resultado.taxa_conversao)}%`} sub="ganhos ÷ enviadas" accent={AMBER} />
             </div>
 
             {/* 2 — Ganhos por mês (quantidade) */}
-            <SectionTitle>Contratos ganhos por mês</SectionTitle>
+            <SectionTitle>Acordos ganhos por mês</SectionTitle>
             <GraficoGanhosMes porMes={resultado.ganhos_por_mes} />
 
-            {/* 2b — Valor dos contratos ganhos por mês */}
-            <SectionTitle>Valor dos contratos ganhos por mês</SectionTitle>
+            {/* 2b — Valor dos acordos ganhos por mês */}
+            <SectionTitle>Valor dos acordos ganhos por mês</SectionTitle>
             <GraficoValorGanhosMes porMes={resultado.valor_ganhos_por_mes} />
 
             {/* 3 — Indicadores de propostas */}

@@ -96,7 +96,7 @@ export function MultasContratoSection({ contratoId, indice, cliente, canLancar, 
       {loading ? (
         <p className="text-center text-[11px] text-gray-400 py-6">Carregando...</p>
       ) : multas.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">Nenhuma multa/penalidade lançada para este contrato.</p>
+        <p className="text-sm text-gray-400 text-center py-6">Nenhuma multa/penalidade lançada para este acordo.</p>
       ) : (
         <div className="overflow-x-auto border border-gray-100 rounded-lg">
           <table className="w-full border-collapse text-[11px]" style={{ minWidth: 760 }}>

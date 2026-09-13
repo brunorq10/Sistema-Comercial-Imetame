@@ -60,7 +60,7 @@ export function Com01Funil() {
       { etapa: 'Aguardando análise', quantidade: fu.aguardando_analise },
       { etapa: `Em elaboração (${fu.em_elaboracao_tecnica_pendente} sem técnica)`, quantidade: fu.em_elaboracao },
       { etapa: 'Proposta enviada', quantidade: fu.proposta_enviada },
-      { etapa: 'Contrato ganho', quantidade: fu.contrato_ganho },
+      { etapa: 'Acordo ganho', quantidade: fu.contrato_ganho },
       { etapa: 'Recusada', quantidade: fu.recusada },
     ]
   }, [data])

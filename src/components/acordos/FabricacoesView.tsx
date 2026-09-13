@@ -52,7 +52,7 @@ export function FabricacoesView() {
     <div className="flex-1 min-h-0 flex flex-col">
       <div className="flex items-center justify-between mb-3 flex-shrink-0 gap-2 flex-wrap">
         <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5">
-          {([['contratos', 'Contratos'], ['resumo', 'Resumo']] as ['contratos' | 'resumo', string][]).map(([k, l]) => (
+          {([['contratos', 'Acordos'], ['resumo', 'Resumo']] as ['contratos' | 'resumo', string][]).map(([k, l]) => (
             <button key={k} onClick={() => setVisao(k)}
               className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',
                 visao === k ? 'bg-green-primary text-white shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
@@ -136,7 +136,7 @@ function ExcluirLancamentosModal({ contrato, onClose, onSuccess }: {
       }>
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{error}</div>}
       <p className="text-[12px] text-gray-600 mb-3">
-        Esta ação remove <strong>todos os lançamentos de realizado</strong> (HH e peso) dos itens deste contrato. O cadastro dos itens é mantido. Informe o motivo:
+        Esta ação remove <strong>todos os lançamentos de realizado</strong> (HH e peso) dos itens deste acordo. O cadastro dos itens é mantido. Informe o motivo:
       </p>
       <textarea
         value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3}
@@ -155,7 +155,7 @@ function ContratosFab({ contratos, onAbrir, onHistorico, onExcluir }: {
   onExcluir: (c: ContratoFab) => void
 }) {
   if (contratos.length === 0) {
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato corresponde aos filtros. Use “+ Novo Lançamento” para incluir.</p>
+    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum acordo corresponde aos filtros. Use “+ Novo Lançamento” para incluir.</p>
   }
   return (
     <div className="overflow-auto border border-gray-200 rounded-md bg-white">
@@ -197,7 +197,7 @@ function ContratosFab({ contratos, onAbrir, onHistorico, onExcluir }: {
                 <td className="px-2 py-1.5 text-right font-semibold text-[#1565C0]">{fmtPct(pctAvanco(pPrev, pReal))}</td>
                 <td className="px-2 py-1.5 text-center whitespace-nowrap w-[64px]">
                   <AcoesMenu items={[
-                    { label: 'Abrir contrato', icon: '+', destaque: true, onClick: () => onAbrir(c) },
+                    { label: 'Abrir acordo', icon: '+', destaque: true, onClick: () => onAbrir(c) },
                     { label: 'Histórico de alterações', icon: '🕘', onClick: () => onHistorico(c) },
                     { label: 'Excluir lançamentos', icon: '🗑', destrutiva: true, onClick: () => onExcluir(c) },
                   ]} />
@@ -224,7 +224,7 @@ function PickerModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c:
   const filtrada = lista.filter((c) =>
     `${c.indice} ${c.cliente.nome} ${c.descricao ?? ''}`.toLowerCase().includes(busca.toLowerCase()))
   return (
-    <Modal open onClose={onClose} title="Novo Lançamento — escolher contrato" wide
+    <Modal open onClose={onClose} title="Novo Lançamento — escolher acordo" wide
       footer={<ModalCancelButton label="Fechar" />}>
       <Field label="Buscar">
         <Input placeholder="Índice, cliente ou descrição…" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -233,7 +233,7 @@ function PickerModal({ onClose, onSelect }: { onClose: () => void; onSelect: (c:
         {loading ? (
           <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>
         ) : filtrada.length === 0 ? (
-          <p className="text-center text-gray-400 py-8 text-sm">Todos os contratos de Fabricação/Óleo e Gás já possuem itens cadastrados.</p>
+          <p className="text-center text-gray-400 py-8 text-sm">Todos os acordos de Fabricação/Óleo e Gás já possuem itens cadastrados.</p>
         ) : filtrada.map((c) => (
           <button key={c.id} onClick={() => onSelect(c)}
             className="w-full text-left px-3 py-2 hover:bg-green-light transition-colors">
@@ -410,12 +410,12 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
     <div className="space-y-4">
       {/* Cards — idênticos aos da página do contrato individual (fileira Peso, depois HH) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <IndicadorCard label="Peso Previsto" value={`${fmtPeso(totals.pesoPrev)} t`} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="todos os contratos" />
+        <IndicadorCard label="Peso Previsto" value={`${fmtPeso(totals.pesoPrev)} t`} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="todos os acordos" />
         <IndicadorCard label="Peso Realizado" value={`${fmtPeso(totals.pesoReal)} t`} color="#16A34A" bg="#DCFCE7" iconPath={ICONS.trend} sub="acumulado lançado"
           bar={{ titulo: '% do Previsto', pct: pctPeso }} />
-        <IndicadorCard label="% Avanço do Contrato" value={fmtPct(pctPeso)} color="#7C3AED" bg="#EDE9FE" iconPath={ICONS.target} sub="peso realizado ÷ previsto" />
+        <IndicadorCard label="% Avanço do Acordo" value={fmtPct(pctPeso)} color="#7C3AED" bg="#EDE9FE" iconPath={ICONS.target} sub="peso realizado ÷ previsto" />
         <IndicadorCard label="Itens" value={String(itens.length)} color="#334155" bg="#F1F5F9" iconPath={ICONS.list}
-          sub={`em ${contratos.length} contrato(s)`} />
+          sub={`em ${contratos.length} acordo(s)`} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <IndicadorCard label="HH Orçado" value={fmtHh(totals.orc)} color="#6B7280" bg="#F3F4F6" iconPath={ICONS.doc} sub="base do orçamento" />
@@ -456,7 +456,7 @@ function ResumoFab({ contratos }: { contratos: ContratoFab[] }) {
           <thead>
             <tr className="bg-green-primary text-white text-[10px] uppercase tracking-wide">
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-6"></th>
-              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Contrato</th>
+              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Acordo</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Cliente Final</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Item</th>

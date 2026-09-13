@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.data.rascunho && parsed.data.valor_contrato != null && parsed.data.subindices.length > 0) {
     const soma = parsed.data.subindices.reduce((acc, s) => acc + s.valor_total, 0)
     if (Math.abs(soma - parsed.data.valor_contrato) > 0.01) {
-      sumWarning = `Soma dos sub-índices (R$ ${soma.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) difere do Valor do Contrato (R$ ${parsed.data.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`
+      sumWarning = `Soma dos sub-índices (R$ ${soma.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) difere do Valor do Acordo (R$ ${parsed.data.valor_contrato.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`
     }
   }
 

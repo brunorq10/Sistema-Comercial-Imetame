@@ -585,7 +585,7 @@ export default function FaturamentoPage() {
 
     const cabecalho = [
       'Índice', 'Cliente', 'Descrição', 'Responsável', 'Status', 'Ano', 'Nº OS', 'Nº Acordo', 'Nº Proposta',
-      'Valor Contrato', 'Vlr. Total Sub-índice', 'Faturado', 'Saldo',
+      'Valor Acordo', 'Vlr. Total Sub-índice', 'Faturado', 'Saldo',
       ...mesesLabels.flatMap((m) => [`P ${m}`, `F ${m}`]),
     ]
 
@@ -802,14 +802,14 @@ export default function FaturamentoPage() {
           {!loading && (
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] text-gray-500">
-                {totalContratos} contrato{totalContratos !== 1 ? 's' : ''} · {totalSubindices} sub-índice{totalSubindices !== 1 ? 's' : ''}
+                {totalContratos} acordo{totalContratos !== 1 ? 's' : ''} · {totalSubindices} sub-índice{totalSubindices !== 1 ? 's' : ''}
               </p>
             </div>
           )}
 
           {!loading && ano && temAnosSeguintes && (
             <div className="bg-[#F3E5F5] border border-[#CE93D8] text-[#6A1B9A] text-[11px] px-3 py-2 rounded mb-2.5">
-              ⚡ Alguns contratos possuem datas de fim além de {ano}. A coluna <strong>Prev. anos seg.</strong> indica esses itens (RN-23).
+              ⚡ Alguns acordos possuem datas de fim além de {ano}. A coluna <strong>Prev. anos seg.</strong> indica esses itens (RN-23).
             </div>
           )}
 
@@ -1137,14 +1137,14 @@ export default function FaturamentoPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg w-[480px] max-w-[96%] shadow-2xl">
             <div className="bg-red-600 text-white px-[18px] py-[13px] font-bold text-[13px] rounded-t-lg">
-              Cancelar Contrato · {cancelando.indice}
+              Cancelar Acordo · {cancelando.indice}
             </div>
             <div className="p-[18px]">
               {cancelError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded mb-3">{cancelError}</div>
               )}
               <p className="text-[12px] text-gray-600 mb-3">
-                Esta ação cancela o contrato permanentemente. Informe a justificativa (RN-18).
+                Esta ação cancela o acordo permanentemente. Informe a justificativa (RN-18).
               </p>
               <textarea
                 className="w-full border border-gray-300 rounded px-3 py-2 text-[12px] resize-none focus:outline-none focus:ring-1 focus:ring-red-400/40"
@@ -1493,7 +1493,7 @@ function NfAprovacaoRow({ nf, loading, onAprovar, onReprovar }: {
       {/* Resumo: escopo + dados da NF */}
       <div className="bg-gray-50 border border-gray-100 rounded p-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="col-span-2">
-          <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do contrato</p>
+          <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do acordo</p>
           <p className="text-[11px] text-gray-700 truncate" title={nf.contrato?.descricao ?? ''}>{nf.contrato?.descricao ?? '—'}</p>
         </div>
         <div>
@@ -1787,14 +1787,14 @@ function AlteracaoAprovacaoRow({ alteracao, onAprovar, onReprovar }: AlteracaoAp
       <div className="bg-gray-50 border border-gray-100 rounded p-2.5 mb-1 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-center">
         <div className="min-w-0 space-y-1.5">
           <div>
-            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Contrato (item principal)</p>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Acordo (item principal)</p>
             <p className="text-[11px] text-gray-700">
               <strong className="text-green-dark">{alteracao.contrato?.indice ?? '—'}</strong>
               {alteracao.contrato?.cliente?.nome ? ` · ${alteracao.contrato.cliente.nome}` : ''}
             </p>
           </div>
           <div>
-            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do contrato</p>
+            <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">Escopo do acordo</p>
             <p className="text-[11px] text-gray-700 truncate" title={alteracao.contrato?.descricao ?? ''}>
               {alteracao.contrato?.descricao ?? '—'}
             </p>

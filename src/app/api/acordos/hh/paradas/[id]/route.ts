@@ -88,7 +88,7 @@ export async function GET(
     },
   })
 
-  if (!contrato) return NextResponse.json({ error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ error: 'Acordo não encontrado' }, { status: 404 })
 
   // Calcula valor orçado total (soma de todos os meses dos sub-índices)
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'] as const

@@ -138,7 +138,7 @@ function EditarContratoHhModal({ contrato, clientes, responsaveis, onClose, onSu
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden">
         <div className="bg-[#1B5E20] text-white px-5 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-[14px] font-bold">Editar Contrato — {contrato.indice}</h2>
+            <h2 className="text-[14px] font-bold">Editar Acordo — {contrato.indice}</h2>
             <p className="text-white/70 text-[11px] mt-0.5">Dados cadastrais do acompanhamento de HH</p>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
@@ -241,7 +241,7 @@ function NovoLancamentoModal({ onClose, onSelect, classificacao }: { onClose: ()
         <div className="bg-[#1B5E20] text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-[14px] font-bold">Novo Lançamento — Controle de HH</h2>
-            <p className="text-white/70 text-[11px] mt-0.5">Selecione o contrato a ser acompanhado</p>
+            <p className="text-white/70 text-[11px] mt-0.5">Selecione o acordo a ser acompanhado</p>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white text-[20px]">×</button>
         </div>
@@ -255,7 +255,7 @@ function NovoLancamentoModal({ onClose, onSelect, classificacao }: { onClose: ()
             <p className="text-center text-gray-400 py-8 text-sm">Carregando...</p>
           ) : filtered.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              {disponivel.length === 0 ? `Todos os contratos de ${classificacao === 'OBRAS' ? 'Obras' : 'Paradas'} já possuem lançamento de HH.` : 'Nenhum resultado encontrado.'}
+              {disponivel.length === 0 ? `Todos os acordos de ${classificacao === 'OBRAS' ? 'Obras' : 'Paradas'} já possuem lançamento de HH.` : 'Nenhum resultado encontrado.'}
             </p>
           ) : (
             <table className="w-full text-[11px]">
@@ -346,7 +346,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
   return (
     <>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] text-gray-400">{filtered.length} contrato{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-[11px] text-gray-400">{filtered.length} acordo{filtered.length !== 1 ? 's' : ''}</span>
         <button onClick={() => setNovoModal(true)}
           className="bg-green-primary text-white text-[11px] font-semibold px-3 py-1.5 rounded-md hover:bg-green-dark transition-colors">
           + Novo Lançamento
@@ -397,7 +397,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={classificacao === 'PARADAS' ? 17 : 15} className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</td></tr>
+              <tr><td colSpan={classificacao === 'PARADAS' ? 17 : 15} className="text-center text-gray-400 py-10 text-sm">Nenhum acordo encontrado.</td></tr>
             )}
             {filtered.map((c, idx) => {
               const bg = idx % 2 === 0 ? '#fff' : '#f9fafb'
@@ -489,7 +489,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
                       ]} />
                     ) : (
                       <AcoesMenu items={[
-                        { label: 'Abrir contrato', icon: '+', destaque: true, onClick: () => router.push(`/acordos/hh/obras/${c.id}`) },
+                        { label: 'Abrir acordo', icon: '+', destaque: true, onClick: () => router.push(`/acordos/hh/obras/${c.id}`) },
                         { label: 'Editar dados cadastrais', icon: '✎', onClick: () => setModalEditar(c) },
                         { label: 'Remover do acompanhamento', icon: '🗑', destrutiva: true, onClick: () => { setDeleteId(c.id); setDeleteMotivo('') } },
                       ]} />
@@ -509,7 +509,7 @@ function VisaoContratos({ contratos, opts, onRefresh, classificacao }: {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl p-5 w-[340px] max-w-full mx-4">
             <h3 className="text-sm font-semibold text-gray-800 mb-1">Remover do acompanhamento</h3>
-            <p className="text-[11px] text-gray-500 mb-3">Informe o motivo para remover este contrato do controle de HH.</p>
+            <p className="text-[11px] text-gray-500 mb-3">Informe o motivo para remover este acordo do controle de HH.</p>
             <textarea
               value={deleteMotivo}
               onChange={e => setDeleteMotivo(e.target.value)}
@@ -624,7 +624,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
 
       {!hasData ? (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-4 py-3 rounded-md">
-          Nenhum contrato com lançamento de HH corresponde aos filtros selecionados.
+          Nenhum acordo com lançamento de HH corresponde aos filtros selecionados.
         </div>
       ) : (
         <>
@@ -643,7 +643,7 @@ function VisaoResumo({ contratos, opts }: { contratos: ContratoHh[]; opts: Retur
                 <p className="text-[30px] font-bold text-[#185FA5] leading-none tracking-tight">
                   {totPrev > 0 ? loc(totPrev) : '—'}
                 </p>
-                <p className="text-[11px] text-gray-400 mt-1.5">contrato completo</p>
+                <p className="text-[11px] text-gray-400 mt-1.5">acordo completo</p>
               </div>
             </div>
 
@@ -919,8 +919,8 @@ export default function ControleHhPage() {
         {(categoria === 'obras' || categoria === 'paradas') && (
           <div className="inline-flex bg-white border border-gray-200 rounded-full p-0.5 mb-3 self-start flex-shrink-0">
             {((categoria === 'paradas'
-              ? [['contratos','Contratos'],['resumo','Resumo'],['ucr','Faixas de UCR']]
-              : [['contratos','Contratos'],['resumo','Resumo']]
+              ? [['contratos','Acordos'],['resumo','Resumo'],['ucr','Faixas de UCR']]
+              : [['contratos','Acordos'],['resumo','Resumo']]
             ) as [Visao,string][]).map(([k,l]) => (
               <button key={k} onClick={() => setVisao(k)}
                 className={cn('px-4 py-1.5 text-[11px] font-semibold rounded-full transition-colors',

@@ -111,13 +111,13 @@ export async function GET() {
     })),
     ...contratos.map((c) => ({
       tipo: 'contrato' as const, tipoLabel: TIPO_LABELS.contrato, id: c.id,
-      titulo: `Contrato ${c.indice}`,
+      titulo: `Acordo ${c.indice}`,
       contexto: `${c.cliente.nome} · Ano ${c.ano_referencia}`,
       deleted_at: c.deleted_at!.toISOString(), deleted_by_nome: nome(c.deleted_by), expira_em: expira(c.deleted_at!),
     })),
     ...hhRemovidos.map((c) => ({
       tipo: 'hh' as const, tipoLabel: TIPO_LABELS.hh, id: c.id,
-      titulo: `HH — Contrato ${c.indice}`,
+      titulo: `HH — Acordo ${c.indice}`,
       contexto: `${c.cliente.nome}${c.hh_cancel_motivo ? ` — ${c.hh_cancel_motivo.slice(0, 60)}` : ''}`,
       deleted_at: c.hh_cancelado_at!.toISOString(), deleted_by_nome: nome(c.hh_cancelado_por), expira_em: expira(c.hh_cancelado_at!),
     })),
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
     // esconde o que pertence a um contrato excluído).
     const checarContratoPai = (contrato: { deleted_at: Date | null; indice: string } | null | undefined): NextResponse | null => {
       if (contrato?.deleted_at) {
-        return NextResponse.json({ data: null, error: `Restaure primeiro o contrato ${contrato.indice}, que também está na lixeira.` }, { status: 409 })
+        return NextResponse.json({ data: null, error: `Restaure primeiro o acordo ${contrato.indice}, que também está na lixeira.` }, { status: 409 })
       }
       return null
     }

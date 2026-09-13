@@ -11,7 +11,7 @@ const L = { classificacao: 0, origem: W.classificacao }
 const FROZEN_WIDTH = W.classificacao + W.origem
 const MES_W = 74
 
-const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
+const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Acordo', PROPOSTA: 'Proposta' }
 const ORIGEM_COR: Record<string, string> = { CONTRATO: '#1565C0', PROPOSTA: '#B45309' }
 const ORIGEM_BG: Record<string, string> = { CONTRATO: '#E3F0FB', PROPOSTA: '#FEF3E2' }
 
@@ -135,7 +135,7 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
 
         <tfoot>
           <tr>
-            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700 border-t-2 border-t-gray-300')} style={{ left: L.classificacao }} colSpan={2}>Total contratos</td>
+            <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700 border-t-2 border-t-gray-300')} style={{ left: L.classificacao }} colSpan={2}>Total acordos</td>
             {periodo.map((m) => {
               const v = totalPorOrigemMes('CONTRATO', mesKey(m))
               return <td key={mesKey(m)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-[#1565C0] border-t-2 border-t-gray-300">{v > 0 ? v.toLocaleString('pt-BR') : '—'}</td>
@@ -161,7 +161,7 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
           <tr ref={chartRowRef}>
             <td className={cn(td, tdF, 'bg-white align-bottom')} style={{ left: L.classificacao }} colSpan={2}>
               <div className="flex flex-col gap-1 py-1">
-                <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Contratos</span>
+                <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#1565C0' }} />Acordos</span>
                 <span className="flex items-center gap-1 text-[9px] text-gray-500"><span className="w-2 h-2 rounded-sm inline-block" style={{ background: '#B45309' }} />Propostas</span>
               </div>
             </td>
@@ -173,7 +173,7 @@ export function CenarioResumoTable({ linhas, periodo, totais }: Props) {
                   <div className="relative mx-auto" style={{ width: MES_W - 16, height: chartH }}>
                     <div className="absolute left-0 right-0 flex flex-col justify-end" style={{ bottom: 0, height: chartH }}>
                       {t.propostas > 0 && <div style={{ height: hPropostas, background: '#E8A838' }} title={`Propostas: ${t.propostas}`} />}
-                      {t.contratos > 0 && <div style={{ height: hContratos, background: '#2D7DD2' }} title={`Contratos: ${t.contratos}`} />}
+                      {t.contratos > 0 && <div style={{ height: hContratos, background: '#2D7DD2' }} title={`Acordos: ${t.contratos}`} />}
                     </div>
                   </div>
                   {t.total > 0 && (

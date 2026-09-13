@@ -24,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       hh_realizados: { orderBy: [{ ano: 'asc' }, { mes: 'asc' }] },
     },
   })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
 
   return NextResponse.json({
     data: {
@@ -70,7 +70,7 @@ export const DELETE = withApi(async (req: NextRequest, { params }: { params: { i
   }
 
   const contrato = await prisma.contrato.findUnique({ where: { id }, select: { id: true } })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
 
   const userId = Number(session.user.id)
   await prisma.$transaction([

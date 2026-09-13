@@ -116,7 +116,7 @@ export function PrevisaoRealizadoTable({ itens }: Props) {
           {/* Totalizador geral */}
           <tr className="bg-[#C8E6C9] border-b-2 border-green-primary">
             <td colSpan={5} className="px-2 py-[4px] font-bold text-[10px] whitespace-nowrap">
-              TOTAIS · {grupos.length} contrato{grupos.length !== 1 ? 's' : ''} · {itens.length} sub-índice{itens.length !== 1 ? 's' : ''}
+              TOTAIS · {grupos.length} acordo{grupos.length !== 1 ? 's' : ''} · {itens.length} sub-índice{itens.length !== 1 ? 's' : ''}
             </td>
             <td className="px-2 py-[4px] whitespace-nowrap">
               <span className="font-bold text-[#1B5E20]">{formatCurrency(totalConsolidado)}</span>

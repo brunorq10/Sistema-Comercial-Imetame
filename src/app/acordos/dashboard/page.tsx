@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from 'chart.js'
@@ -9,7 +9,7 @@ import { MultasIndicador } from '@/components/acordos/MultasIndicador'
 import { ComposicaoFaturamentoView } from '@/components/acordos/ComposicaoFaturamentoView'
 import { SearchableMultiSelect } from '@/components/ui/SearchableSelect'
 import { ContratoAvancoPercentualChart } from '@/components/faturamento/ContratoFaturamentoChart'
-import { KpiCard } from '@/components/dashboard/KpiCard'
+import { KpiCard, KpiMiniCard } from '@/components/dashboard/KpiCard'
 import { ChartCard } from '@/components/dashboard/ChartCard'
 import { SectionTitle } from '@/components/dashboard/SectionTitle'
 import { DashboardTabs } from '@/components/dashboard/DashboardTabs'
@@ -24,10 +24,6 @@ import { TIPOS_MULTA } from '@/lib/multas'
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 const MES_LABEL = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const TREEMAP_COLORS = [
-  '#1B5E20','#1565C0','#2E7D32','#BF360C','#C62828','#607D8B',
-  '#0277BD','#4527A0','#E65100','#00695C','#F57F17','#37474F',
-]
 
 const fmt = formatCurrency
 // Valor por extenso (sem abreviação M/K) — pontos de milhar e vírgula decimal
@@ -46,7 +42,7 @@ interface DashData {
   percFaturadoGeral: number
   porRamo:    { ramo: string; real: number; previsto: number }[]
   porRamoHh:  { ramo: string; real: number; previsto: number }[]
-  porCliente: { nome: string; valor: number; percentual: number }[]
+  porCliente: { id: number; nome: string; real: number; previsto: number }[]
   porMes:     MesData[]
   porResponsavel: { id: number | null; nome: string; contratos: number; valorSobGestao: number; previsto: number; realizado: number; aderencia: number; saldo: number }[]
   ocorrenciasPorResponsavel: { id: number; nome: string; osSobGestao: number; total: number }[]
@@ -97,11 +93,14 @@ type Metrica = 'real' | 'previsto'
 // Barra de participação em escala fixa de 0-100% (não relativa ao maior valor
 // da lista) — largura mínima perceptível para valores > 0 muito pequenos;
 // trilho com hachura para linhas zeradas (zero "intencional", não "sem dado").
+// `w-full` de propósito: a coluna que a contém tem largura FIXA (colgroup),
+// então a barra sempre tem o mesmo tamanho de trilho em toda linha, mesmo com
+// valores/rótulos de larguras diferentes nas colunas vizinhas.
 function MercadoBar({ pct, color, zero }: { pct: number; color: string; zero: boolean }) {
   const clamped = Math.min(100, Math.max(0, pct))
   return (
     <div
-      className="relative flex-1 h-4 rounded bg-slate-100 overflow-hidden"
+      className="relative w-full h-4 rounded bg-slate-100 overflow-hidden"
       style={zero ? { backgroundImage: 'repeating-linear-gradient(135deg, #E2E8F0 0px, #E2E8F0 4px, #F1F5F9 4px, #F1F5F9 8px)' } : undefined}
     >
       {!zero && clamped > 0 && (
@@ -139,11 +138,22 @@ function TabelaMercadoToggle({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px] border-collapse">
+        {/* table-layout fixed + colgroup: a coluna da barra sempre tem a mesma
+            largura entre as linhas (não encolhe/expande conforme o texto do
+            valor ao lado) — é o que padroniza o tamanho de todas as barras e
+            garante que Valor/Participação terminem sempre na mesma posição,
+            inclusive nas linhas zeradas. */}
+        <table className="w-full text-[12px] border-collapse" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '32%' }} />
+            <col />
+            <col style={{ width: '112px' }} />
+            <col style={{ width: '84px' }} />
+          </colgroup>
           <thead>
             <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
               <th className="py-2 pr-3 font-semibold">Mercado</th>
-              <th className="py-2 px-3 font-semibold">{colunaLabel}</th>
+              <th className="py-2 px-3 font-semibold" colSpan={2}>{colunaLabel}</th>
               <th className="py-2 pl-3 font-semibold text-right">Participação</th>
             </tr>
           </thead>
@@ -154,22 +164,20 @@ function TabelaMercadoToggle({
               const zero = item.valor === 0
               return (
                 <tr key={item.ramo} className="border-b border-gray-50">
-                  <td className="py-2.5 pr-3">
-                    <span className="inline-flex items-center gap-2">
+                  <td className="py-2.5 pr-3 overflow-hidden">
+                    <span className="inline-flex items-center gap-2 max-w-full">
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                      <span className={cn(zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-medium')}>{item.ramo}</span>
+                      <span className={cn('truncate', zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-medium')}>{item.ramo}</span>
                     </span>
                   </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex items-center gap-3">
-                      <MercadoBar pct={pct} color={color} zero={zero} />
-                      <span className={cn(
-                        'flex-shrink-0 text-right tabular-nums whitespace-nowrap',
-                        zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-semibold',
-                      )}>
-                        {formatValor(item.valor)}
-                      </span>
-                    </div>
+                  <td className="py-2.5 pr-3">
+                    <MercadoBar pct={pct} color={color} zero={zero} />
+                  </td>
+                  <td className={cn(
+                    'py-2.5 pl-3 text-right tabular-nums whitespace-nowrap',
+                    zero ? 'text-gray-400 font-normal' : 'text-gray-700 font-semibold',
+                  )}>
+                    {formatValor(item.valor)}
                   </td>
                   <td className={cn(
                     'py-2.5 pl-3 text-right tabular-nums whitespace-nowrap',
@@ -183,8 +191,8 @@ function TabelaMercadoToggle({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-gray-200 font-bold">
-              <td className="py-2.5 pr-3 text-gray-800">Total</td>
-              <td className="py-2.5 px-3 text-right tabular-nums text-gray-800 whitespace-nowrap">{formatValor(total)}</td>
+              <td className="py-2.5 pr-3 text-gray-800" colSpan={2}>Total</td>
+              <td className="py-2.5 pl-3 text-right tabular-nums text-gray-800 whitespace-nowrap">{formatValor(total)}</td>
               <td className="py-2.5 pl-3 text-right tabular-nums text-gray-800">100,0%</td>
             </tr>
           </tfoot>
@@ -199,66 +207,103 @@ function fmtHH(v: number): string {
   return `${Math.round(v).toLocaleString('pt-BR')} HH`
 }
 
-// ══ Treemap (squarify) ══
-type TRect = { nome: string; valor: number; percentual: number; x: number; y: number; w: number; h: number }
-function worstRatio(areas: number[], rowArea: number, short: number): number {
-  const maxA = Math.max(...areas), minA = Math.min(...areas)
-  return Math.max((short * short * maxA) / (rowArea * rowArea), (rowArea * rowArea) / (short * short * minA))
-}
-function squarify(items: { nome: string; valor: number; percentual: number }[], x: number, y: number, w: number, h: number): TRect[] {
-  if (items.length === 0) return []
-  const total = items.reduce((s, i) => s + i.valor, 0)
-  const totalArea = w * h
-  const data = items.map((i) => ({ ...i, area: (i.valor / total) * totalArea }))
-  const result: TRect[] = []
-  let remaining = [...data]
-  let rx = x, ry = y, rw = w, rh = h
-  while (remaining.length > 0) {
-    if (remaining.length === 1) { const r = remaining[0]; result.push({ nome: r.nome, valor: r.valor, percentual: r.percentual, x: rx, y: ry, w: rw, h: rh }); break }
-    const short = Math.min(rw, rh)
-    let row = [remaining[0]], rowArea = remaining[0].area
-    for (let i = 1; i < remaining.length; i++) {
-      const cand = remaining[i], newRow = [...row, cand], newRowArea = rowArea + cand.area
-      const curr = worstRatio(row.map((r) => r.area), rowArea, short)
-      const next = worstRatio(newRow.map((r) => r.area), newRowArea, short)
-      if (next <= curr) { row = newRow; rowArea = newRowArea } else break
-    }
-    if (rw <= rh) {
-      const stripH = rowArea / rw; let lx = rx
-      for (const item of row) { result.push({ nome: item.nome, valor: item.valor, percentual: item.percentual, x: lx, y: ry, w: rw * (item.area / rowArea), h: stripH }); lx += rw * (item.area / rowArea) }
-      ry += stripH; rh -= stripH
-    } else {
-      const stripW = rowArea / rh; let ly = ry
-      for (const item of row) { result.push({ nome: item.nome, valor: item.valor, percentual: item.percentual, x: rx, y: ly, w: stripW, h: rh * (item.area / rowArea) }); ly += rh * (item.area / rowArea) }
-      rx += stripW; rw -= stripW
-    }
-    remaining = remaining.slice(row.length)
-  }
-  return result
-}
-function Treemap({ data }: { data: { nome: string; valor: number; percentual: number }[] }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [dims, setDims] = useState({ w: 0, h: 0 })
-  useEffect(() => {
-    const el = ref.current; if (!el) return
-    const update = () => { const r = el.getBoundingClientRect(); setDims({ w: r.width, h: r.height }) }
-    update(); const ro = new ResizeObserver(update); ro.observe(el); return () => ro.disconnect()
-  }, [])
-  if (data.length === 0) return <p className="text-[11px] text-gray-400 py-6 text-center">Sem dados</p>
-  const rects = dims.w > 0 ? squarify(data, 0, 0, dims.w, dims.h) : []
+// ══ Participação de cada empresa no faturamento do ano atual (Composição
+// Faturamento) — ranking com representatividade (%) e acumulado, toggle
+// Previsto/Real. Só entram empresas com valor > 0 na métrica ativa (não é o
+// caso "sempre mostrar todos", como em Faturamento/HH por mercado — aqui a
+// lista de participantes varia por natureza). ══
+type ClienteDatum = { id: number; nome: string; real: number; previsto: number }
+
+function ParticipacaoEmpresasView({ data }: { data: ClienteDatum[] }) {
+  const [metrica, setMetrica] = useState<Metrica>('real')
+
+  const linhas = (() => {
+    const valores = data
+      .map((d) => ({ id: d.id, nome: d.nome, valor: metrica === 'real' ? d.real : d.previsto }))
+      .filter((d) => d.valor > 0)
+      .sort((a, b) => b.valor - a.valor)
+    const total = valores.reduce((s, d) => s + d.valor, 0)
+    let acumulado = 0
+    return valores.map((v, i) => {
+      const pct = total > 0 ? (v.valor / total) * 100 : 0
+      acumulado += pct
+      return { ...v, ranking: i + 1, pct, acumulado }
+    })
+  })()
+
+  const total = linhas.reduce((s, l) => s + l.valor, 0)
+  const maior = linhas[0] ?? null
+  const top5Pct = linhas.slice(0, 5).reduce((s, l) => s + l.pct, 0)
+
   return (
-    <div ref={ref} className="relative w-full" style={{ height: 340 }}>
-      {rects.map((rect, i) => {
-        const cellW = Math.max(0, rect.w - 3), cellH = Math.max(0, rect.h - 3)
-        return (
-          <div key={rect.nome} className="absolute flex flex-col items-center justify-center rounded text-center px-1"
-            style={{ left: rect.x + 1.5, top: rect.y + 1.5, width: cellW, height: cellH, backgroundColor: TREEMAP_COLORS[i % TREEMAP_COLORS.length] }}>
-            <span className="text-white font-bold leading-tight" style={{ fontSize: cellW < 80 ? 10 : 13, textShadow: '0 1px 2px rgba(0,0,0,0.4)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{rect.nome}</span>
-            <span className="text-white font-bold mt-0.5" style={{ fontSize: cellW < 80 ? 10 : 12, textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{rect.percentual.toFixed(1).replace('.', ',')}%</span>
-          </div>
-        )
-      })}
-    </div>
+    <ChartCard>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div>
+          <p className="text-[13px] font-bold text-gray-800">Participação de cada empresa no faturamento do ano atual</p>
+          <p className="text-[20px] font-bold text-green-primary mt-1 leading-none">{fmtM(total)}</p>
+          <p className="text-[10px] text-gray-400 mt-1">{metrica === 'real' ? 'Faturado' : 'Previsto'} acumulado do período</p>
+        </div>
+        <div className="inline-flex rounded-md border border-gray-200 overflow-hidden text-[10px] font-semibold flex-shrink-0">
+          <button
+            onClick={() => setMetrica('real')}
+            className={`px-2.5 py-1 transition-colors ${metrica === 'real' ? 'bg-green-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+          >
+            Real
+          </button>
+          <button
+            onClick={() => setMetrica('previsto')}
+            className={`px-2.5 py-1 border-l border-gray-200 transition-colors ${metrica === 'previsto' ? 'bg-green-primary text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+          >
+            Previsto
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+        <KpiMiniCard label="Maior cliente" value={maior ? `${maior.nome} — ${maior.pct.toFixed(1).replace('.', ',')}%` : '—'} />
+        <KpiMiniCard label="Top 5 clientes" value={`${top5Pct.toFixed(1).replace('.', ',')}%`} />
+        <KpiMiniCard label="Total de empresas" value={String(linhas.length)} />
+      </div>
+
+      {linhas.length === 0 ? (
+        <p className="text-center text-gray-400 py-8 text-[12px]">Sem dados para o período.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px] border-collapse" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '40px' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '140px' }} />
+              <col />
+              <col style={{ width: '80px' }} />
+              <col style={{ width: '96px' }} />
+            </colgroup>
+            <thead>
+              <tr className="text-left text-[11px] text-gray-500 border-b border-gray-200">
+                <th className="py-2 pr-2 font-semibold">#</th>
+                <th className="py-2 px-2 font-semibold">Empresa</th>
+                <th className="py-2 px-2 font-semibold text-right">Total Faturamento</th>
+                <th className="py-2 px-3 font-semibold" colSpan={2}>Representatividade</th>
+                <th className="py-2 pl-3 font-semibold text-right">Acumulado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((l) => (
+                <tr key={l.id} className="border-b border-gray-50">
+                  <td className="py-2.5 pr-2 text-gray-400 font-semibold tabular-nums">{l.ranking}</td>
+                  <td className="py-2.5 px-2 text-gray-700 font-medium truncate">{l.nome}</td>
+                  <td className="py-2.5 px-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{fmtM(l.valor)}</td>
+                  <td className="py-2.5 pr-2"><MercadoBar pct={l.pct} color={DASHBOARD_POSITIVO} zero={false} /></td>
+                  <td className="py-2.5 pl-2 text-right tabular-nums text-gray-600 font-semibold whitespace-nowrap">{l.pct.toFixed(1).replace('.', ',')}%</td>
+                  <td className="py-2.5 pl-3 text-right tabular-nums font-bold text-green-dark bg-green-light/50 whitespace-nowrap">{l.acumulado.toFixed(1).replace('.', ',')}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-[10px] text-gray-400 mt-2.5">A soma das participações pode não totalizar exatamente 100% devido ao arredondamento.</p>
+    </ChartCard>
   )
 }
 
@@ -465,8 +510,8 @@ export default function IndicadoresAcordosPage() {
           <DashboardTabs
             tabs={[
               { key: 'geral', label: 'Indicadores Gerais' },
-              { key: 'responsavel', label: 'Eventos Contratuais' },
               { key: 'composicao', label: 'Composição Faturamento' },
+              { key: 'responsavel', label: 'Eventos Contratuais' },
             ]}
             active={abaInd}
             onChange={setAbaInd}
@@ -479,7 +524,7 @@ export default function IndicadoresAcordosPage() {
             <KpiCard label="Total faturado no ano" value={fmtM(data.totalFaturadoAno)} accent={DASHBOARD_POSITIVO} sub={`${data.percFaturadoGeral.toFixed(1).replace('.', ',')}% da previsão`} />
             <KpiCard label="Previsão de faturamento no ano" value={fmtM(data.prevFaturamentoAno)} accent={DASHBOARD_PREVISTO} sub="meta anual de receita" />
             <KpiCard label="Falta faturar no ano" value={fmtM(data.aFaturarAno)} accent={DASHBOARD_ATENCAO} sub="saldo até dezembro" />
-            <KpiCard label="Previsão anos seguintes" value={fmtM(data.faturamentoProxAnos)} accent="#475569" sub="contratos multi-ano" />
+            <KpiCard label="Previsão anos seguintes" value={fmtM(data.faturamentoProxAnos)} accent="#475569" sub="acordos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 !mt-3">
             <KpiCard label={`Faturado mês atual (${mesLabel})`} value={fmtM(data.faturadoMesAtual)} accent={DASHBOARD_POSITIVO} />
@@ -532,13 +577,6 @@ export default function IndicadoresAcordosPage() {
           <SectionTitle>Previsão x realizado por mês — detalhamento</SectionTitle>
           <TabelaMensal data={data.porMes} ano={anoNum} />
 
-          {/* 6 — Participação por empresa */}
-          <SectionTitle>Participação de cada empresa no faturamento do ano atual</SectionTitle>
-          <ChartCard>
-            <Treemap data={data.porCliente} />
-            <p className="text-[10px] text-gray-400 mt-2">Área de cada retalho proporcional à participação no faturamento total do ano ({fmtM(data.totalFaturadoAno)}).</p>
-          </ChartCard>
-
           {/* 7 — Aderência por responsável */}
           <SectionTitle>Aderência por responsável de Acordos</SectionTitle>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -547,7 +585,7 @@ export default function IndicadoresAcordosPage() {
                 <thead>
                   <tr className="bg-slate-50 text-gray-600 text-[11px] border-b border-gray-200">
                     <th className="text-left px-4 py-2 font-semibold">Responsável</th>
-                    <th className="text-center px-4 py-2 font-semibold">Contratos</th>
+                    <th className="text-center px-4 py-2 font-semibold">Acordos</th>
                     <th className="text-right px-4 py-2 font-semibold">Valor sob gestão</th>
                     <th className="text-right px-4 py-2 font-semibold">Previsto ano</th>
                     <th className="text-right px-4 py-2 font-semibold">Realizado ano</th>
@@ -641,7 +679,11 @@ export default function IndicadoresAcordosPage() {
           />
           </>)}
 
-          {abaInd === 'composicao' && (
+          {abaInd === 'composicao' && (<>
+            <SectionTitle>Participação de cada empresa no faturamento do ano atual</SectionTitle>
+            <ParticipacaoEmpresasView data={data.porCliente} />
+
+            <SectionTitle>Composição do faturamento por tipo de lançamento</SectionTitle>
             <ComposicaoFaturamentoView
               ano={ano}
               clienteId={clienteId}
@@ -651,7 +693,7 @@ export default function IndicadoresAcordosPage() {
               cidade={cidade}
               escopo={escopo}
             />
-          )}
+          </>)}
         </>
       )}
       </div>

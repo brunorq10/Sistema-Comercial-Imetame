@@ -81,7 +81,7 @@ export function Fat02Saldo() {
   }, [data, responsavelAplicado])
 
   const columns: DataColumn<FaturamentoData['fat02_saldo'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -95,7 +95,7 @@ export function Fat02Saldo() {
 
   return (
     <ReportShell
-      titulo="Saldo a Faturar" descricao="De cada contrato ativo, quanto já foi faturado e quanto ainda falta."
+      titulo="Saldo a Faturar" descricao="De cada acordo ativo, quanto já foi faturado e quanto ainda falta."
       onExport={() => exportToExcel(columns, rows, `saldo-a-faturar_${todayInput()}.xlsx`, 'Saldo')}
       exportDisabled={loading}
       filtros={
@@ -174,7 +174,7 @@ export function Fat05Aderencia() {
   const rows = data?.fat05_aderencia ?? []
 
   const columns: DataColumn<FaturamentoData['fat05_aderencia'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -186,7 +186,7 @@ export function Fat05Aderencia() {
 
   return (
     <ReportShell
-      titulo="Aderência da Previsão" descricao="Quais contratos ou responsáveis erram a previsão, todo mês, para cima ou para baixo."
+      titulo="Aderência da Previsão" descricao="Quais acordos ou responsáveis erram a previsão, todo mês, para cima ou para baixo."
       onExport={() => exportToExcel(columns, rows, `aderencia-previsao_${data?.ano ?? ''}-${data?.mes_ref ?? ''}.xlsx`, 'Aderência')}
       exportDisabled={loading}
       filtros={
@@ -205,7 +205,7 @@ export function Fat05Aderencia() {
         </>
       }
     >
-      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum contrato com previsto ou faturado nesse mês." />}
+      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum acordo com previsto ou faturado nesse mês." />}
     </ReportShell>
   )
 }
@@ -217,7 +217,7 @@ export function Fat06Pendencias() {
   const columns: DataColumn<FaturamentoData['fat06_pendencias'][number]>[] = [
     { key: 'tipo', header: 'Tipo', type: 'text', value: (r) => r.tipo },
     { key: 'nf', header: 'NF', type: 'text', value: (r) => r.numero_nf },
-    { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'contrato', header: 'Acordo', type: 'text', value: (r) => r.contrato },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },

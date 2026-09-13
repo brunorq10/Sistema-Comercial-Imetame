@@ -138,7 +138,7 @@ export function FaturamentoContratoTable({
     setSelectedKey((prev) => (prev === key ? null : key))
 
   if (contratos.length === 0)
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato encontrado.</p>
+    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum acordo encontrado.</p>
 
   const rowBgContract = (key: string, mismatch?: boolean, draft?: boolean) => {
     if (selectedKey === key) return '#E0E0E0'
@@ -266,7 +266,7 @@ export function FaturamentoContratoTable({
             {sh('data_inicio', 'Dt. Início')}
             {sh('data_fim', 'Dt. Fim')}
             {sh('status', 'Status Fat.')}
-            {sh('valor_total', 'Valor Total Contrato')}
+            {sh('valor_total', 'Valor Total Acordo')}
             {sh('valor_faturado', 'Valor Total Faturado')}
             {sh('saldo', 'Saldo a Faturar')}
             {sh('responsavel', 'Responsável')}
@@ -319,7 +319,7 @@ export function FaturamentoContratoTable({
                     <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
                     {contrato.indice}
                     {isDraft && <span className="text-[8px] text-gray-400 font-normal ml-1">rascunho</span>}
-                    {sumMismatch && !isDraft && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do contrato">⚠</span>}
+                    {sumMismatch && !isDraft && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do acordo">⚠</span>}
                   </button>
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>
@@ -396,9 +396,9 @@ export function FaturamentoContratoTable({
                   <div onClick={(e) => e.stopPropagation()}>
                     <AcoesMenu items={[
                       { label: 'Ver detalhes', icon: '👁', destaque: true, onClick: () => router.push(`/acordos/faturamento/${contrato.id}`) },
-                      { label: 'Editar contrato', icon: '✎', visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onEditarContrato(contrato) },
+                      { label: 'Editar acordo', icon: '✎', visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onEditarContrato(contrato) },
                       { label: 'Ver histórico', icon: '🕘', onClick: () => onHistoricoContrato(contrato) },
-                      { label: 'Cancelar contrato', icon: '🗑', destrutiva: true, visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onCancelarContrato(contrato) },
+                      { label: 'Cancelar acordo', icon: '🗑', destrutiva: true, visivel: canEditar && contrato.status !== 'CANCELADO', onClick: () => onCancelarContrato(contrato) },
                     ]} />
                   </div>
                 </td>

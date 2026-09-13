@@ -152,7 +152,7 @@ export default function SolicitacoesPage() {
       { value: 'AGUARDANDO_ANALISE', label: 'Em análise' },
       { value: 'EM_ELABORACAO',      label: 'Em elaboração' },
       { value: 'PROPOSTA_ENVIADA',   label: 'Prop. enviada' },
-      { value: 'CONTRATO_GANHO',     label: 'Contrato ganho' },
+      { value: 'CONTRATO_GANHO',     label: 'Acordo ganho' },
       { value: 'RECUSADA',           label: 'Recusada' },
       { value: 'SUSPENSA',           label: 'Suspensa' },
     ], linhasFiltro, selecoes, 'status'),

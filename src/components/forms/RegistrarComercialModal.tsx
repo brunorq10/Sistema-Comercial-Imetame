@@ -104,7 +104,7 @@ export function RegistrarComercialModal({
 
     if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
     if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor Total da Montagem Mecânica'); return }
-    if (!dataBase) { setError('Informe a Data base do contrato'); return }
+    if (!dataBase) { setError('Informe a Data base do acordo'); return }
 
     setLoading(true)
     setError(null)
@@ -317,7 +317,7 @@ export function RegistrarComercialModal({
         </div>
       )}
 
-      <Field label="Data base do contrato *" className="mt-3 max-w-[200px]">
+      <Field label="Data base do acordo *" className="mt-3 max-w-[200px]">
         <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
       </Field>
       </>

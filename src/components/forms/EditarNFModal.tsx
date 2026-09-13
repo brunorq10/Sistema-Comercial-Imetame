@@ -223,7 +223,7 @@ export function EditarNFModal({ open, onClose, onSuccess, nf }: Props) {
       )}
 
       <ModalSection>3. Sub-item de referência</ModalSection>
-      <Field label="Sub-item do contrato">
+      <Field label="Sub-item do acordo">
         {loadingSubs ? (
           <p className="text-[11px] text-gray-400 py-1">Carregando subitems...</p>
         ) : (

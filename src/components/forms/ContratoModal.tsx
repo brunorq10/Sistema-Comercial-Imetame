@@ -295,7 +295,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
     if (!anoRef) { setError('Ano de referência obrigatório'); return }
     if (numPropostaManual ? !numProposta.trim() : !solicitacaoId) { setError('Nº Proposta é obrigatório'); return }
     if (!valorContrato || isNaN(Number(valorContrato)) || Number(valorContrato) <= 0) {
-      setError('Valor total do contrato é obrigatório'); return
+      setError('Valor total do acordo é obrigatório'); return
     }
     for (let i = 0; i < subindices.length; i++) {
       const s = subindices[i]
@@ -385,13 +385,13 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
       open={open}
       onClose={handleClose}
       confirmClose
-      title={isEdit ? `Editar Contrato · ${editando!.indice}` : 'Novo Lançamento — Contrato'}
+      title={isEdit ? `Editar Acordo · ${editando!.indice}` : 'Novo Lançamento — Acordo'}
       wide
       footer={
         <>
           <ModalCancelButton disabled={loading} />
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Salvando...' : 'Salvar contrato'}
+            {loading ? 'Salvando...' : 'Salvar acordo'}
           </Button>
         </>
       }
@@ -513,7 +513,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
         <Field label="Nº Acordo">
           <Input placeholder="Ex: AC-2024-091" value={numAcordo} onChange={(e) => setNumAcordo(e.target.value)} />
         </Field>
-        <Field label="Valor total do contrato (R$)">
+        <Field label="Valor total do acordo (R$)">
           <CurrencyInput value={valorContrato} onChange={setValorContrato} />
         </Field>
       </div>
@@ -571,7 +571,7 @@ export function ContratoModal({ open, onClose, onSuccess, editando }: Props) {
           <div className={`mt-3 rounded px-3 py-2 text-[11px] flex items-center gap-3 ${ok ? 'bg-green-50 border border-green-200 text-green-700' : over ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-orange-50 border border-orange-200 text-orange-700'}`}>
             <span>Total dos eventos: <strong>R$ {fmt(totalSubs)}</strong></span>
             <span className="text-gray-300">|</span>
-            <span>Valor contrato: <strong>R$ {fmt(vc)}</strong></span>
+            <span>Valor acordo: <strong>R$ {fmt(vc)}</strong></span>
             <span className="ml-auto font-semibold">{ok ? '✓ Conferido' : over ? `Excede R$ ${fmt(diff)}` : `Faltam R$ ${fmt(-diff)}`}</span>
           </div>
         )

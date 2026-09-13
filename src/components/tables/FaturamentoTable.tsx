@@ -106,7 +106,7 @@ export function FaturamentoTable({
         size: 60,
       }),
       col.accessor('valor_total', {
-        header: 'Valor Contrato',
+        header: 'Valor Acordo',
         cell: (info) => <span className="font-semibold">{formatCurrency(info.getValue())}</span>,
         size: 130,
       }),
@@ -124,7 +124,7 @@ export function FaturamentoTable({
         size: 160,
       }),
       col.accessor('perc_executado', {
-        header: '% Exec.',
+        header: '% Real.',
         cell: (info) => <PercBar perc={info.getValue()} />,
         size: 130,
       }),

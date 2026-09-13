@@ -32,10 +32,10 @@ const schemaPost = z.object({
 // Previsão de execução — obrigatória no envio (não bloqueia edição de
 // propostas antigas via PUT, só a criação/reenvio via POST).
 function validarPrevisaoExecucao(d: { data_prevista_inicio_execucao?: string; data_prevista_fim_execucao?: string }): string | null {
-  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da execução é obrigatória'
-  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da execução é obrigatória'
+  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da realização é obrigatória'
+  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da realização é obrigatória'
   if (new Date(d.data_prevista_fim_execucao) < new Date(d.data_prevista_inicio_execucao)) {
-    return 'Data prevista de fim da execução não pode ser anterior à data de início'
+    return 'Data prevista de fim da realização não pode ser anterior à data de início'
   }
   return null
 }
@@ -238,7 +238,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ? (d.data_prevista_fim_execucao ? new Date(d.data_prevista_fim_execucao) : null)
     : latest.data_prevista_fim_execucao
   if (novaDataInicioExec && novaDataFimExec && novaDataFimExec < novaDataInicioExec) {
-    return NextResponse.json({ data: null, error: 'Data prevista de fim da execução não pode ser anterior à data de início' }, { status: 400 })
+    return NextResponse.json({ data: null, error: 'Data prevista de fim da realização não pode ser anterior à data de início' }, { status: 400 })
   }
 
   const proposta = await prisma.$transaction(async (tx) => {
@@ -296,11 +296,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const antesInicio = latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null
     const depoisInicio = novaDataInicioExec?.toISOString().split('T')[0] ?? null
     if (antesInicio !== depoisInicio)
-      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Início Execução`, valor_de: antesInicio, valor_para: depoisInicio, ...autoria })
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Início Realização`, valor_de: antesInicio, valor_para: depoisInicio, ...autoria })
     const antesFim = latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null
     const depoisFim = novaDataFimExec?.toISOString().split('T')[0] ?? null
     if (antesFim !== depoisFim)
-      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Fim Execução`, valor_de: antesFim, valor_para: depoisFim, ...autoria })
+      fabHistEntries.push({ solicitacao_id: id, campo: `Proposta Fabricação ${rev} — Previsão Fim Realização`, valor_de: antesFim, valor_para: depoisFim, ...autoria })
   }
 
   if (fabHistEntries.length > 0) {

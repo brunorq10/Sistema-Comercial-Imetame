@@ -93,7 +93,7 @@ export function NfRegistroTable({ nfs, onEditar, onInativar, onExcluir, canEdita
     }),
     col.accessor((row) => row.contrato.indice, {
       id: 'contrato',
-      header: 'Contrato',
+      header: 'Acordo',
       cell: (info) => (
         <span className="bg-gray-100 text-gray-700 rounded px-1.5 py-0.5 text-[10px] font-semibold">
           {info.getValue()}

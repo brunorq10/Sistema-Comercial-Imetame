@@ -252,7 +252,7 @@ export function TransferenciaModal({ open, onClose, onSuccess, usuarios, tipo }:
         <div className="space-y-1.5">
           <p>Esta ação altera o responsável dos itens selecionados{dataEfetivacao > todayInput() ? ` a partir de ${formatDate(dataEfetivacao)}` : ' imediatamente'} e não pode ser desfeita pelo fluxo normal.</p>
           <p className="font-semibold text-gray-800">
-            {resumo.nSol} solicitação(ões) e {resumo.nCt} contrato(s) — {tipo === 'TROCA' ? `entre ${origem?.nome} e ${destino?.nome}` : `de ${origem?.nome} para ${destino?.nome}`}.
+            {resumo.nSol} solicitação(ões) e {resumo.nCt} acordo(s) — {tipo === 'TROCA' ? `entre ${origem?.nome} e ${destino?.nome}` : `de ${origem?.nome} para ${destino?.nome}`}.
           </p>
         </div>
       }
@@ -300,7 +300,7 @@ function EscopoColuna({
             )}
             {escopo.contratos.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase px-2.5 pt-2">Contratos</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase px-2.5 pt-2">Acordos</p>
                 {escopo.contratos.map((i) => (
                   <ItemLinha key={`c${i.id}`} label={`${i.indice} — ${i.cliente}`} k={key('CONTRATO', i.id)} item={i} selecionados={selecionados} onToggle={onToggle} />
                 ))}

@@ -36,11 +36,11 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       return
     }
     if (!dataPrevistaInicio || !dataPrevistaFim) {
-      setError('Data prevista de início e de fim da execução são obrigatórias')
+      setError('Data prevista de início e de fim da realização são obrigatórias')
       return
     }
     if (dataPrevistaFim < dataPrevistaInicio) {
-      setError('Data prevista de fim da execução não pode ser anterior à data de início')
+      setError('Data prevista de fim da realização não pode ser anterior à data de início')
       return
     }
     setLoading(true)
@@ -131,7 +131,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Previsão de execução — início *">
+        <Field label="Previsão de realização — início *">
           <input
             type="date"
             value={dataPrevistaInicio}
@@ -139,7 +139,7 @@ export function RegistrarTecnicaModal({ open, onClose, onSuccess, solicitacaoId,
             className="w-full px-2.5 py-[7px] border border-gray-300 rounded text-xs text-gray-900 bg-white outline-none focus:border-green-primary transition-colors"
           />
         </Field>
-        <Field label="Previsão de execução — fim *">
+        <Field label="Previsão de realização — fim *">
           <input
             type="date"
             value={dataPrevistaFim}

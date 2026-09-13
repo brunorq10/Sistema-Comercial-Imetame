@@ -394,9 +394,9 @@ export function LancarNFContratoModal({ open, onClose, onSuccess, contrato, subi
       {aba === 'multas' && (
         <>
           <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
-            <p className="text-[9px] text-gray-400 uppercase">Contrato</p>
+            <p className="text-[9px] text-gray-400 uppercase">Acordo</p>
             <p className="text-[12px] font-bold text-green-dark">{contrato.indice} · {contrato.cliente.nome}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">O lançamento é por contrato (não vinculado a um evento de medição específico).</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">O lançamento é por acordo (não vinculado a um evento de medição específico).</p>
           </div>
           <MultaForm
             contratoId={contrato.id}

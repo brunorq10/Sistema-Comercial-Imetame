@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!parsed.success) return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
 
   const contrato = await prisma.contrato.findUnique({ where: { id: contratoId }, select: { hh_fechada_em: true } })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
   if (!contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Obra não está fechada' }, { status: 409 })
 
   const userId = Number(session.user.id)

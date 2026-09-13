@@ -76,7 +76,7 @@ export function AcordoCard({ item, onVerNFs, onLancarNF, canLancarNF }: Props) {
 
       {/* Body */}
       <div className="grid grid-cols-5 gap-2 text-[11px] mb-2.5">
-        <CardField label="Valor Contrato">
+        <CardField label="Valor Acordo">
           <span className="font-semibold">{formatCurrency(item.valor_total)}</span>
         </CardField>
 
@@ -84,7 +84,7 @@ export function AcordoCard({ item, onVerNFs, onLancarNF, canLancarNF }: Props) {
           <span className="text-auto-value font-semibold">{formatCurrency(item.total_faturado)}</span>
         </CardField>
 
-        <CardField label="% Executado">
+        <CardField label="% Realizado">
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className="w-14 bg-gray-200 rounded-full h-1.5">
               <div

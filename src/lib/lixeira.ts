@@ -11,12 +11,12 @@ export const LIXEIRA_RETENCAO_DIAS = 15
 export type TipoLixeira = 'nf' | 'subindice' | 'multa' | 'ocorrencia' | 'informacao' | 'contrato' | 'hh'
 
 export const TIPO_LABELS: Record<TipoLixeira, string> = {
-  nf: 'NF de contrato',
+  nf: 'NF de acordo',
   subindice: 'Evento de medição',
   multa: 'Multa/Penalidade',
   ocorrencia: 'Ocorrência contratual',
   informacao: 'Informação da solicitação',
-  contrato: 'Contrato de faturamento',
+  contrato: 'Acordo de faturamento',
   hh: 'Acompanhamento de HH',
 }
 

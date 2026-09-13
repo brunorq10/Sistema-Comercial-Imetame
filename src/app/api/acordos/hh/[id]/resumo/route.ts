@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       fabricacao_itens: { include: { meses: true, realizados: true } },
     },
   })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
 
   let hhPrevistoTotal: number | null = null
   let hhRealizadoTotal: number | null = null

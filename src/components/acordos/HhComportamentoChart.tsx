@@ -70,7 +70,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
 
   const blocoBarras = (
     <div className="w-full lg:flex-1 min-w-0 flex flex-col">
-      <p className="text-[13px] font-bold text-gray-700 mb-0.5">{titulo ?? (variant === 'contrato' ? 'Total do contrato' : 'Total selecionado')}</p>
+      <p className="text-[13px] font-bold text-gray-700 mb-0.5">{titulo ?? (variant === 'contrato' ? 'Total do acordo' : 'Total selecionado')}</p>
       <p className="text-[11px] text-gray-400 mb-3">Previsto x Planejado x Realizado</p>
       <div style={{ height: HEIGHT }} className="flex flex-col">
         <div className="flex-1 flex flex-col justify-evenly">
@@ -160,7 +160,7 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
         <div className="w-full lg:flex-1 min-w-0 flex flex-col">
           <p className="text-[13px] font-bold text-gray-700 mb-0.5">Evolução acumulada</p>
           <p className="text-[11px] text-gray-400 mb-3">
-            {variant === 'contrato' ? 'Progressão acumulada ao longo do contrato' : 'Progressão acumulada ao longo do período selecionado'}
+            {variant === 'contrato' ? 'Progressão acumulada ao longo do acordo' : 'Progressão acumulada ao longo do período selecionado'}
           </p>
           <div style={{ height: HEIGHT }}><Line data={chartData} options={chartOpts} /></div>
         </div>

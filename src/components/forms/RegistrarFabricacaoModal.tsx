@@ -101,10 +101,10 @@ export function RegistrarFabricacaoModal({
   const handleSubmit = async () => {
     const equipsValidos = equipamentos.filter((e) => e.descricao.trim() && Number(e.peso_ton) > 0)
     if (equipsValidos.length === 0) { setError('Adicione ao menos um equipamento com descrição e peso'); return }
-    if (!dataBase) { setError('Informe a Data base do contrato'); return }
+    if (!dataBase) { setError('Informe a Data base do acordo'); return }
     if (!dataEnvio) { setError('Data de envio é obrigatória'); return }
-    if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da execução são obrigatórias'); return }
-    if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da execução não pode ser anterior à data de início'); return }
+    if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da realização são obrigatórias'); return }
+    if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da realização não pode ser anterior à data de início'); return }
 
     setLoading(true)
     setError(null)
@@ -397,18 +397,18 @@ export function RegistrarFabricacaoModal({
         </>
       )}
 
-      <Field label="Data base do contrato *" className="mb-4 max-w-[200px]">
+      <Field label="Data base do acordo *" className="mb-4 max-w-[200px]">
         <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
       </Field>
 
-      {/* ── Seção 6: Previsão de execução ─────────────────────────── */}
-      <ModalSection>6. Previsão de execução</ModalSection>
-      <p className="text-[11px] text-gray-500 mb-2.5">Período em que o serviço/fabricação seria executado, caso a proposta seja ganha.</p>
+      {/* ── Seção 6: Previsão de realização ─────────────────────────── */}
+      <ModalSection>6. Previsão de realização</ModalSection>
+      <p className="text-[11px] text-gray-500 mb-2.5">Período em que o serviço/fabricação seria realizado, caso a proposta seja ganha.</p>
       <div className="grid grid-cols-2 gap-2.5 mb-4">
-        <Field label="Previsão de execução — início *">
+        <Field label="Previsão de realização — início *">
           <Input type="date" value={dataPrevistaInicio} onChange={(e) => setDataPrevistaInicio(e.target.value)} />
         </Field>
-        <Field label="Previsão de execução — fim *">
+        <Field label="Previsão de realização — fim *">
           <Input type="date" value={dataPrevistaFim} onChange={(e) => setDataPrevistaFim(e.target.value)} />
         </Field>
       </div>

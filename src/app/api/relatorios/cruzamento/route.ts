@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
           { label: 'Orçamentista atribuído', data: c.solicitacao.data_atribuicao?.toISOString() ?? null },
           { label: 'Proposta técnica enviada', data: tec?.data_envio?.toISOString() ?? null },
           { label: 'Proposta comercial enviada', data: (isFab ? fab?.data_envio : com?.data_envio)?.toISOString() ?? null },
-          { label: 'Contrato criado (Acordos)', data: c.created_at.toISOString() },
+          { label: 'Acordo criado (Acordos)', data: c.created_at.toISOString() },
           { label: 'Primeira NF', data: primeiraNf?.data_emissao.toISOString() ?? null },
           { label: 'Última NF', data: ultimaNf?.data_emissao.toISOString() ?? null },
         ],

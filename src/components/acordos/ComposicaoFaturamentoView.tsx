@@ -79,7 +79,7 @@ export function ComposicaoFaturamentoView({ ano, clienteId, clienteFinalId, ramo
             <table className="w-full text-[12px] border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-gray-600 text-[11px] border-b border-gray-200">
-                  <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">Contrato</th>
+                  <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">Acordo</th>
                   <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">Cliente</th>
                   <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">Cliente Final</th>
                   <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">Cidade</th>
@@ -111,7 +111,7 @@ export function ComposicaoFaturamentoView({ ano, clienteId, clienteFinalId, ramo
               </tbody>
               <tfoot>
                 <tr className="bg-green-primary text-white font-bold text-[12px]">
-                  <td className="px-4 py-2.5" colSpan={6}>Total ({linhas.length} contrato{linhas.length !== 1 ? 's' : ''})</td>
+                  <td className="px-4 py-2.5" colSpan={6}>Total ({linhas.length} acordo{linhas.length !== 1 ? 's' : ''})</td>
                   {TIPOS.map((t) => (
                     <td key={t} className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(totaisPorTipo[t])}</td>
                   ))}

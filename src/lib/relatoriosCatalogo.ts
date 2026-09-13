@@ -14,7 +14,7 @@ export const TERRITORIOS: { key: string; label: string }[] = [
   { key: 'comercial', label: 'Comercial' },
   { key: 'clientes', label: 'Clientes' },
   { key: 'faturamento', label: 'Faturamento' },
-  { key: 'contratos', label: 'Contratos e Execução' },
+  { key: 'contratos', label: 'Acordos e Realização' },
   { key: 'ocorrencias', label: 'Eventos Contratuais' },
   { key: 'cruzamento', label: 'Análises Cruzadas (Comercial × Acordos)' },
   { key: 'gestao', label: 'Gestão e Capacidade' },
@@ -31,36 +31,36 @@ export const CATALOGO: RelatorioMeta[] = [
 
   // ── Clientes ───────────────────────────────────────────────────────────────
   { codigo: 'cli-01', titulo: 'Concentração de Carteira', descricao: 'Curva ABC de clientes por faturamento, com % acumulado.', territorio: 'clientes' },
-  { codigo: 'cli-02', titulo: 'Ficha do Cliente', descricao: 'Histórico completo de um cliente — solicitações, contratos, faturamento, ocorrências e multas.', territorio: 'clientes' },
+  { codigo: 'cli-02', titulo: 'Ficha do Cliente', descricao: 'Histórico completo de um cliente — solicitações, acordos, faturamento, ocorrências e multas.', territorio: 'clientes' },
   { codigo: 'cli-03', titulo: 'Ranking por Segmento e Ramo', descricao: 'Faturamento por ramo de atuação e solicitações por segmento.', territorio: 'clientes' },
   { codigo: 'cli-04', titulo: 'Clientes Recorrentes x Novos', descricao: 'Quantos clientes são novos no período e quanto de receita vem de cada grupo.', territorio: 'clientes' },
 
   // ── Faturamento ────────────────────────────────────────────────────────────
   { codigo: 'fat-01', titulo: 'Previsto x Realizado do Ano', descricao: 'Faturamento previsto e realizado, mês a mês, com percentual de atingimento.', territorio: 'faturamento' },
-  { codigo: 'fat-02', titulo: 'Saldo a Faturar', descricao: 'Cada contrato ativo, valor total, faturado e saldo pendente.', territorio: 'faturamento' },
+  { codigo: 'fat-02', titulo: 'Saldo a Faturar', descricao: 'Cada acordo ativo, valor total, faturado e saldo pendente.', territorio: 'faturamento' },
   { codigo: 'fat-03', titulo: 'Evolução Multi-Ano', descricao: 'Faturamento mês a mês comparado entre os últimos anos.', territorio: 'faturamento' },
   { codigo: 'fat-04', titulo: 'Faturamento por Classificação', descricao: 'De onde vem o faturamento — Obras, Paradas, Fabricação ou Óleo e Gás.', territorio: 'faturamento' },
-  { codigo: 'fat-05', titulo: 'Aderência da Previsão', descricao: 'Previsto x faturado de um mês específico, contrato a contrato.', territorio: 'faturamento' },
+  { codigo: 'fat-05', titulo: 'Aderência da Previsão', descricao: 'Previsto x faturado de um mês específico, acordo a acordo.', territorio: 'faturamento' },
   { codigo: 'fat-06', titulo: 'NFs Pendentes de Aprovação', descricao: 'Lançamentos e edições de NF esperando aprovação, com dias em espera.', territorio: 'faturamento' },
 
   // ── Contratos e Execução ───────────────────────────────────────────────────
-  { codigo: 'ctr-01', titulo: 'Carteira Ativa de Contratos', descricao: 'Todos os contratos ativos, com valor, classificação e responsável.', territorio: 'contratos' },
-  { codigo: 'ctr-02', titulo: 'Aderência de HH', descricao: 'Homem-hora previsto x realizado, por contrato de Obras e Paradas.', territorio: 'contratos' },
+  { codigo: 'ctr-01', titulo: 'Carteira Ativa de Acordos', descricao: 'Todos os acordos ativos, com valor, classificação e responsável.', territorio: 'contratos' },
+  { codigo: 'ctr-02', titulo: 'Aderência de HH', descricao: 'Homem-hora previsto x realizado, por acordo de Obras e Paradas.', territorio: 'contratos' },
   { codigo: 'ctr-03', titulo: 'Avanço de Fabricação', descricao: 'Peso e HH previsto x realizado, por item de fabricação.', territorio: 'contratos' },
-  { codigo: 'ctr-04', titulo: 'R$/HH por Contrato (UCR)', descricao: 'Rentabilidade operacional dos contratos de Parada e a faixa UCR de cada um.', territorio: 'contratos' },
-  { codigo: 'ctr-05', titulo: 'Contratos Encerrando', descricao: 'Contratos com data de fim próxima, cruzado com propostas em andamento do mesmo cliente.', territorio: 'contratos' },
+  { codigo: 'ctr-04', titulo: 'R$/HH por Acordo (UCR)', descricao: 'Rentabilidade operacional dos acordos de Parada e a faixa UCR de cada um.', territorio: 'contratos' },
+  { codigo: 'ctr-05', titulo: 'Acordos Encerrando', descricao: 'Acordos com data de fim próxima, cruzado com propostas em andamento do mesmo cliente.', territorio: 'contratos' },
 
   // ── Eventos Contratuais ────────────────────────────────────────────────────
-  { codigo: 'ocm-01', titulo: 'Ocorrências Contratuais', descricao: 'Lista de ocorrências por contrato, tipo e responsabilidade.', territorio: 'ocorrencias' },
+  { codigo: 'ocm-01', titulo: 'Ocorrências Contratuais', descricao: 'Lista de ocorrências por acordo, tipo e responsabilidade.', territorio: 'ocorrencias' },
   { codigo: 'ocm-02', titulo: 'Multas e Penalidades', descricao: 'Lista de multas, glosas e reembolsos lançados, com valor.', territorio: 'ocorrencias' },
-  { codigo: 'ocm-03', titulo: 'Reincidência por Cliente', descricao: 'Ocorrências e multas por cliente, normalizado pelo nº de contratos ativos.', territorio: 'ocorrencias' },
+  { codigo: 'ocm-03', titulo: 'Reincidência por Cliente', descricao: 'Ocorrências e multas por cliente, normalizado pelo nº de acordos ativos.', territorio: 'ocorrencias' },
 
   // ── Análises Cruzadas ──────────────────────────────────────────────────────
-  { codigo: 'crz-01', titulo: 'Orçado x Executado', descricao: 'HH orçado na proposta comparado ao HH realizado na execução, por contrato.', territorio: 'cruzamento' },
-  { codigo: 'crz-02', titulo: 'Rentabilidade Real', descricao: 'R$/HH vendido na proposta x R$/HH realizado na execução.', territorio: 'cruzamento' },
-  { codigo: 'crz-03', titulo: 'Ciclo de Vida do Negócio', descricao: 'Linha do tempo de um contrato, da solicitação de origem ao encerramento.', territorio: 'cruzamento' },
+  { codigo: 'crz-01', titulo: 'Orçado x Realizado', descricao: 'HH orçado na proposta comparado ao HH realizado depois, por acordo.', territorio: 'cruzamento' },
+  { codigo: 'crz-02', titulo: 'Rentabilidade Real', descricao: 'R$/HH vendido na proposta x R$/HH realizado depois.', territorio: 'cruzamento' },
+  { codigo: 'crz-03', titulo: 'Ciclo de Vida do Negócio', descricao: 'Linha do tempo de um acordo, da solicitação de origem ao encerramento.', territorio: 'cruzamento' },
 
   // ── Gestão e Capacidade ────────────────────────────────────────────────────
-  { codigo: 'gst-01', titulo: 'Carga de Trabalho', descricao: 'Solicitações e contratos ativos sob responsabilidade de cada pessoa.', territorio: 'gestao' },
+  { codigo: 'gst-01', titulo: 'Carga de Trabalho', descricao: 'Solicitações e acordos ativos sob responsabilidade de cada pessoa.', territorio: 'gestao' },
   { codigo: 'gst-02', titulo: 'Projeção de Faturamento Futuro', descricao: 'Valor já garantido para os próximos anos e pipeline ainda em negociação.', territorio: 'gestao' },
 ]

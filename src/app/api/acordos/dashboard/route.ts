@@ -140,6 +140,8 @@ export async function GET(req: Request) {
   const porRamoHhPrevisto = new Map<string, number>()
   const porRamoHhReal     = new Map<string, number>()
   const porCliente = new Map<number, { nome: string; valor: number }>()
+  const porClientePrevisto = new Map<number, number>()
+  const clienteNomes = new Map<number, string>()
   const previstoSubPorMes = new Array<number>(12).fill(0)
   const faturadoPorMes    = new Array<number>(12).fill(0)
 
@@ -150,6 +152,7 @@ export async function GET(req: Request) {
     let contratoTotal = 0          // valor total do contrato (soma dos sub-índices)
     let contratoNFsAno = 0         // faturado no ano de referência
     let contratoPrevistoAno = 0    // previsto no ano de referência
+    clienteNomes.set(contrato.cliente.id, contrato.cliente.nome)
 
     for (const sub of contrato.subindices) {
       const subRec = sub as unknown as Record<string, unknown>
@@ -171,6 +174,10 @@ export async function GET(req: Request) {
         // "Faturamento por mercado") — mesmo critério de ano do faturado.
         const ramoPrev = contrato.cliente.ramo_atuacao ?? 'OUTROS'
         porRamoPrevisto.set(ramoPrev, (porRamoPrevisto.get(ramoPrev) ?? 0) + mensalSub)
+
+        // Previsto por cliente (toggle Previsto/Real de "Participação de cada
+        // empresa no faturamento do ano atual").
+        porClientePrevisto.set(contrato.cliente.id, (porClientePrevisto.get(contrato.cliente.id) ?? 0) + mensalSub)
       }
       if (anoSub > anoAtual) faturamentoProxAnos += valorSub
       if (anoSub === anoMesProx)  prevProxMes  += getMonthValue(subRec, mesProximo)
@@ -263,12 +270,17 @@ export async function GET(req: Request) {
     previsto: porRamoHhPrevisto.get(ramo) ?? 0,
   }))
 
-  // Cliente (treemap)
-  const totalCliente = Array.from(porCliente.values()).reduce((a, b) => a + b.valor, 0)
-  const porClienteData = Array.from(porCliente.values())
-    .map((c) => ({ ...c, percentual: totalCliente > 0 ? (c.valor / totalCliente) * 100 : 0 }))
-    .sort((a, b) => b.valor - a.valor)
-    .slice(0, 12)
+  // Participação de cada empresa no faturamento do ano — união de quem tem
+  // faturado (real) e/ou previsto no ano, para suportar o toggle Real/Previsto.
+  const idsClientes = new Set<number>([...Array.from(porCliente.keys()), ...Array.from(porClientePrevisto.keys())])
+  const porClienteData = Array.from(idsClientes)
+    .map((id) => ({
+      id,
+      nome: clienteNomes.get(id) ?? porCliente.get(id)?.nome ?? '—',
+      real: porCliente.get(id)?.valor ?? 0,
+      previsto: porClientePrevisto.get(id) ?? 0,
+    }))
+    .sort((a, b) => b.real - a.real)
 
   // Por mês: usa consolidado quando disponível, senão usa previsto dos subíndices
   const MES_LABEL_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']

@@ -305,18 +305,18 @@ export default function ContratoFabricacaoPage() {
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {itens.length === 0 ? (
           <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-4 py-3 rounded-md">
-            Nenhum item de fabricação cadastrado ainda para este contrato.
+            Nenhum item de fabricação cadastrado ainda para este acordo.
             {podeEditarItens && ' Clique em "Editar itens" para cadastrar o primeiro item.'}
           </div>
         ) : (
           <>
             {/* ── Cards — fileira Peso ── */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <IndicadorCard label="Peso Previsto" value={`${fmtPeso(totals.pesoPrev)} t`} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="contrato completo" />
+              <IndicadorCard label="Peso Previsto" value={`${fmtPeso(totals.pesoPrev)} t`} color="#185FA5" bg="#DBEAFE" iconPath={ICONS.doc} sub="acordo completo" />
               <IndicadorCard label="Peso Realizado" value={`${fmtPeso(totals.pesoReal)} t`} color="#16A34A" bg="#DCFCE7" iconPath={ICONS.trend} sub="acumulado lançado"
                 bar={{ titulo: '% do Previsto', pct: pctPeso }} />
-              <IndicadorCard label="% Avanço do Contrato" value={fmtPct(pctPeso)} color="#7C3AED" bg="#EDE9FE" iconPath={ICONS.target} sub="peso realizado ÷ previsto" />
-              <IndicadorCard label="Itens no Contrato" value={String(itens.length)} color="#334155" bg="#F1F5F9" iconPath={ICONS.list}
+              <IndicadorCard label="% Avanço do Acordo" value={fmtPct(pctPeso)} color="#7C3AED" bg="#EDE9FE" iconPath={ICONS.target} sub="peso realizado ÷ previsto" />
+              <IndicadorCard label="Itens no Acordo" value={String(itens.length)} color="#334155" bg="#F1F5F9" iconPath={ICONS.list}
                 extra={<p className="text-[10px] text-gray-400 mt-1.5 line-clamp-2">{itens.map((it) => it.descricao).join(', ')}</p>} />
             </div>
 
@@ -335,9 +335,9 @@ export default function ContratoFabricacaoPage() {
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
               <div className="flex items-center justify-between mb-0.5 flex-wrap gap-2">
                 <div>
-                  <p className="text-[13px] font-bold text-gray-700">Acumulado do Contrato</p>
+                  <p className="text-[13px] font-bold text-gray-700">Acumulado do Acordo</p>
                   <p className="text-[11px] text-gray-400">
-                    {metrica === 'hh' ? 'Progressão acumulada de HH ao longo do contrato' : 'Progressão acumulada de peso (t) ao longo do contrato'}
+                    {metrica === 'hh' ? 'Progressão acumulada de HH ao longo do acordo' : 'Progressão acumulada de peso (t) ao longo do acordo'}
                   </p>
                 </div>
                 <div className="inline-flex bg-gray-100 rounded-full p-0.5 flex-shrink-0">

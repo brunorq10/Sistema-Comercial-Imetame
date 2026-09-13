@@ -110,8 +110,8 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
       if (pesoTotal <= 0) { setError('Informe o peso de ao menos uma categoria'); return }
       if (!hhTotal || numHh <= 0) { setError('Informe o HH Total'); return }
       if (!dataEnvio) { setError('Informe a data de envio'); return }
-      if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da execução são obrigatórias'); return }
-      if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da execução não pode ser anterior à data de início'); return }
+      if (!dataPrevistaInicio || !dataPrevistaFim) { setError('Data prevista de início e de fim da realização são obrigatórias'); return }
+      if (dataPrevistaFim < dataPrevistaInicio) { setError('Data prevista de fim da realização não pode ser anterior à data de início'); return }
     }
 
     setLoading(true); setError(null)
@@ -224,10 +224,10 @@ function TabTecnica({ solicitacaoId, onSuccess, onClose }: TabTecnicaProps) {
             <div />
           </div>
           <div className="grid grid-cols-2 gap-2.5 mb-5">
-            <Field label="Previsão de execução — início *">
+            <Field label="Previsão de realização — início *">
               <Input type="date" value={dataPrevistaInicio} onChange={(e) => setDataPrevistaInicio(e.target.value)} />
             </Field>
-            <Field label="Previsão de execução — fim *">
+            <Field label="Previsão de realização — fim *">
               <Input type="date" value={dataPrevistaFim} onChange={(e) => setDataPrevistaFim(e.target.value)} />
             </Field>
           </div>
@@ -299,7 +299,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
     if (!naoAplicavel) {
       if (!tecnicaId) { setError('Selecione a revisão técnica de referência'); return }
       if (!valorMontagem || numMontagem <= 0) { setError('Informe o Valor da Montagem'); return }
-      if (!dataBase) { setError('Informe a Data base do contrato'); return }
+      if (!dataBase) { setError('Informe a Data base do acordo'); return }
       if (!dataEnvio) { setError('Informe a data de envio'); return }
     }
 
@@ -517,7 +517,7 @@ function TabComercial({ solicitacaoId, propostasTecnicas, onSuccess, onClose }: 
         )}
       </div>
 
-      <Field label="Data base do contrato *" className="mb-4 max-w-[200px]">
+      <Field label="Data base do acordo *" className="mb-4 max-w-[200px]">
         <Input type="date" value={dataBase} onChange={(e) => setDataBase(e.target.value)} />
       </Field>
 

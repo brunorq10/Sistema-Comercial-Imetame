@@ -186,7 +186,7 @@ function toCumulativePct(
 
 function buildTimeline(contrato: ContratoDetalhe, historico: HistoricoEntry[]): TimelineEvent[] {
   const events: TimelineEvent[] = [{
-    data: contrato.created_at, tipo: 'CONTRATO', titulo: 'Contrato criado',
+    data: contrato.created_at, tipo: 'CONTRATO', titulo: 'Acordo criado',
     descricao: [
       contrato.descricao ?? contrato.indice,
       contrato.responsavel ? `Responsável: ${contrato.responsavel.nome}` : null,
@@ -348,7 +348,7 @@ export default function ContratoVisaoGeralPage() {
     contrato ? buildTimeline(contrato, historico) : [], [contrato, historico])
 
   if (loading) return <div className="p-6 max-w-7xl mx-auto text-center py-20 text-gray-400">Carregando...</div>
-  if (!contrato) return <div className="p-6 max-w-7xl mx-auto text-center py-20 text-gray-400">Contrato não encontrado.</div>
+  if (!contrato) return <div className="p-6 max-w-7xl mx-auto text-center py-20 text-gray-400">Acordo não encontrado.</div>
 
   const statusInfo = STATUS_FAT_MAP[contrato.status] ?? STATUS_FAT_MAP.A_FATURAR
 
@@ -409,7 +409,7 @@ export default function ContratoVisaoGeralPage() {
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">▣ Resumo Financeiro</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <SummaryCard label="Valor total do contrato" value={formatCurrency(totalContrato)} color="text-blue-600" sub="valor contratado total" />
+          <SummaryCard label="Valor total do acordo" value={formatCurrency(totalContrato)} color="text-blue-600" sub="valor contratado total" />
           <SummaryCard label="Total faturado" value={formatCurrency(totalFaturado)} color="text-green-700" sub="NFs ativas lançadas" />
           <SummaryCard label="Saldo a faturar" value={formatCurrency(Math.max(0, saldo))} color={saldo > 0 ? 'text-orange-600' : 'text-green-600'} sub="valor restante" />
           <SummaryCard label="% realizado" value={`${percRealizado.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`} color="text-gray-800" sub="do valor total" />
@@ -430,7 +430,7 @@ export default function ContratoVisaoGeralPage() {
         <section>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">⛏ Controle de HH</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="HH Total Previsto" value={hhPrevistoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color="text-blue-600" sub="contrato completo" />
+            <SummaryCard label="HH Total Previsto" value={hhPrevistoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color="text-blue-600" sub="acordo completo" />
             <SummaryCard label="HH Total Realizado" value={(hhRealizadoTotal ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color="text-green-700" sub="lançado até o momento" />
             <SummaryCard label="HH Total Restante" value={Math.max(0, hhSaldo ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} color={(hhSaldo ?? 0) > 0 ? 'text-orange-600' : 'text-green-600'} sub="previsto − realizado" />
             <SummaryCard label="% Realizado" value={hhPercRealizado != null ? `${hhPercRealizado.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'} color="text-gray-800" sub="realizado / previsto" />
@@ -558,7 +558,7 @@ export default function ContratoVisaoGeralPage() {
       {/* Histórico + Ocorrências + Negociação (abas) */}
       <section className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
-          {([['historico', 'Histórico do Contrato'], ['ocorrencias', 'Eventos Contratuais'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
+          {([['historico', 'Histórico do Acordo'], ['ocorrencias', 'Eventos Contratuais'], ['negociacao', 'Linha do Tempo da Negociação']] as const).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setAbaHist(val)}
@@ -606,7 +606,7 @@ export default function ContratoVisaoGeralPage() {
               canSupervise={false}
             />
           ) : (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhuma proposta/negociação vinculada a este contrato.</p>
+            <p className="text-sm text-gray-400 text-center py-6">Nenhuma proposta/negociação vinculada a este acordo.</p>
           )
         )}
       </section>
@@ -650,7 +650,7 @@ function EventosMedicaoTable({ contrato, totalContrato }: { contrato: ContratoDe
       {sumMismatch && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-3 py-2 rounded mb-2 flex items-center gap-1.5">
           <span>⚠</span>
-          <span>A soma dos eventos de medição difere do valor total do contrato.</span>
+          <span>A soma dos eventos de medição difere do valor total do acordo.</span>
         </div>
       )}
       <div className="border border-gray-200 rounded-md overflow-x-auto">

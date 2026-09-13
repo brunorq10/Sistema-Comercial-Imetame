@@ -57,7 +57,7 @@ export function PainelAcordosTable({ contratos, mesAtual }: Props) {
   const L = isDesktop ? LD : EMPTY_L
 
   if (contratos.length === 0) {
-    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum contrato atribuído a você neste ano.</p>
+    return <p className="text-center text-gray-400 py-10 text-sm">Nenhum acordo atribuído a você neste ano.</p>
   }
 
   const TH  = 'sticky top-[33px] bg-green-primary text-white px-2 py-[7px] text-left font-semibold text-[10px] whitespace-nowrap select-none border-b border-green-dark'

@@ -50,10 +50,10 @@ function validarObrigatoriosParada(d: z.infer<typeof schema>): string | null {
 // Previsão de execução — obrigatória no envio (não bloqueia edição de propostas
 // antigas via PUT, só a criação/reenvio via POST).
 function validarPrevisaoExecucao(d: z.infer<typeof schema>): string | null {
-  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da execução é obrigatória'
-  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da execução é obrigatória'
+  if (!d.data_prevista_inicio_execucao) return 'Data prevista de início da realização é obrigatória'
+  if (!d.data_prevista_fim_execucao) return 'Data prevista de fim da realização é obrigatória'
   if (new Date(d.data_prevista_fim_execucao) < new Date(d.data_prevista_inicio_execucao)) {
-    return 'Data prevista de fim da execução não pode ser anterior à data de início'
+    return 'Data prevista de fim da realização não pode ser anterior à data de início'
   }
   return null
 }
@@ -221,7 +221,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     ? (d.data_prevista_fim_execucao ? new Date(d.data_prevista_fim_execucao) : null)
     : latest.data_prevista_fim_execucao
   if (novaDataInicioExec && novaDataFimExec && novaDataFimExec < novaDataInicioExec) {
-    return NextResponse.json({ data: null, error: 'Data prevista de fim da execução não pode ser anterior à data de início' }, { status: 400 })
+    return NextResponse.json({ data: null, error: 'Data prevista de fim da realização não pode ser anterior à data de início' }, { status: 400 })
   }
 
   const proposta = await prisma.propostaTecnica.update({
@@ -265,8 +265,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const strFields: StrField[] = [
     { label: 'Turno', before: latest.turno, after: d.turno ?? null },
     { label: 'Data Envio Tec.', before: latest.data_envio?.toISOString().split('T')[0] ?? null, after: d.data_envio ?? null },
-    { label: 'Previsão Início Execução', before: latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null, after: novaDataInicioExec?.toISOString().split('T')[0] ?? null },
-    { label: 'Previsão Fim Execução', before: latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null, after: novaDataFimExec?.toISOString().split('T')[0] ?? null },
+    { label: 'Previsão Início Realização', before: latest.data_prevista_inicio_execucao?.toISOString().split('T')[0] ?? null, after: novaDataInicioExec?.toISOString().split('T')[0] ?? null },
+    { label: 'Previsão Fim Realização', before: latest.data_prevista_fim_execucao?.toISOString().split('T')[0] ?? null, after: novaDataFimExec?.toISOString().split('T')[0] ?? null },
   ]
   const boolFields: BoolField[] = [
     { label: 'Finais de Semana', before: latest.finais_de_semana, after: d.finais_de_semana ?? null },

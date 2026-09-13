@@ -24,7 +24,7 @@ const MES_W = 74
 // ── Altura: acompanha a área disponível na tela (o wrapper do page.tsx já
 // reserva espaço para caber ~20 linhas de lançamento antes de precisar rolar).
 
-const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Contrato', PROPOSTA: 'Proposta' }
+const ORIGEM_LABEL: Record<string, string> = { CONTRATO: 'Acordo', PROPOSTA: 'Proposta' }
 
 interface Props {
   linhas: CenarioLinha[]

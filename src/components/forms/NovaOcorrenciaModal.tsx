@@ -92,7 +92,7 @@ export function NovaOcorrenciaModal({ open, onClose, onSuccess, contratoId, nume
       {/* Código (read-only) */}
       <div className="mb-4 bg-green-light/60 border border-green-200 rounded-md px-3 py-2">
         <span className="text-[15px] font-bold text-green-dark">{proximoCodigo}</span>
-        <p className="text-[10px] text-gray-500 mt-0.5">Gerado automaticamente ao salvar — sequencial por contrato</p>
+        <p className="text-[10px] text-gray-500 mt-0.5">Gerado automaticamente ao salvar — sequencial por acordo</p>
       </div>
 
       {/* 1. Tipo */}
@@ -180,7 +180,7 @@ export function NovaOcorrenciaModal({ open, onClose, onSuccess, contratoId, nume
       <Field label="Data de Notificação ao Cliente (opcional)" className="mb-1">
         <Input type="date" value={dataNotif} onChange={(e) => setDataNotif(e.target.value)} />
       </Field>
-      <p className="text-[10px] text-gray-400 mb-4">Importante registrar, já que muitos contratos exigem aviso formal dentro de um prazo a partir do evento.</p>
+      <p className="text-[10px] text-gray-400 mb-4">Importante registrar, já que muitos acordos exigem aviso formal dentro de um prazo a partir do evento.</p>
 
       {/* 7. Anexos */}
       <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.04em] mb-1.5 block">Evidências / Anexos</label>

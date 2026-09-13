@@ -101,7 +101,7 @@ export function GerenciarLancamentosCenarioModal({ open, onClose, onSuccess, abr
                       className="text-[9px] rounded px-1.5 py-0.5 font-bold"
                       style={{ background: l.origem === 'CONTRATO' ? '#E3F0FB' : '#FEF3E2', color: l.origem === 'CONTRATO' ? '#1565C0' : '#B45309' }}
                     >
-                      {l.origem === 'CONTRATO' ? 'Contrato' : 'Proposta'}
+                      {l.origem === 'CONTRATO' ? 'Acordo' : 'Proposta'}
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-500 mt-0.5 truncate">{l.escopo ?? '—'}</p>
@@ -122,7 +122,7 @@ export function GerenciarLancamentosCenarioModal({ open, onClose, onSuccess, abr
       <ConfirmDialog
         open={!!excluindo}
         title="Excluir lançamento do Cenário"
-        message="Isto remove apenas o lançamento do Cenário — a proposta ou o contrato de origem não são afetados e a proposta volta disponível para um novo lançamento."
+        message="Isto remove apenas o lançamento do Cenário — a proposta ou o acordo de origem não são afetados e a proposta volta disponível para um novo lançamento."
         variant="danger"
         confirmLabel="Confirmar exclusão"
         input={{ label: 'Motivo da exclusão', required: true, multiline: true }}

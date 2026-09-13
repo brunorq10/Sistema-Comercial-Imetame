@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     where: { id: contratoId },
     select: { hh_fechada_em: true },
   })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
   if (contrato.hh_fechada_em) return NextResponse.json({ data: null, error: 'Esta Fabricação já está fechada' }, { status: 409 })
 
   const userId = Number(session.user.id)

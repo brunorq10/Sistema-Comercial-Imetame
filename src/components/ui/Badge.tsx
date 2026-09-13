@@ -31,7 +31,7 @@ export function StatusBadge({ status }: { status: StatusSolicitacao }) {
     AGUARDANDO_ANALISE: { label: 'Ag. análise', variant: 'amber' },
     EM_ELABORACAO: { label: 'Em elaboração', variant: 'blue' },
     PROPOSTA_ENVIADA: { label: 'Prop. enviada', variant: 'green' },
-    CONTRATO_GANHO: { label: 'Contrato ganho', variant: 'green' },
+    CONTRATO_GANHO: { label: 'Acordo ganho', variant: 'green' },
     RECUSADA: { label: 'Recusada', variant: 'red' },
     CANCELADA: { label: 'Cancelada', variant: 'gray' },
     SUSPENSA: { label: 'Suspensa', variant: 'amber' },

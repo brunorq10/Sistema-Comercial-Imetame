@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     where: { id },
     include: FAB_CONTRATO_INCLUDE,
   })
-  if (!contrato) return NextResponse.json({ data: null, error: 'Contrato não encontrado' }, { status: 404 })
+  if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
 
   return NextResponse.json({ data: mapContratoFab(contrato), error: null })
 }

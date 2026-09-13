@@ -290,7 +290,7 @@ export default function ContratoObrasHhPage() {
         <button
           onClick={() => { if (modo !== 'leitura') handleCancelarEdicao(); else router.push('/acordos/hh?tab=obras') }}
           className="flex items-center gap-1 text-gray-500 hover:text-gray-700 flex-shrink-0"
-          title={modo !== 'leitura' ? 'Voltar ao contrato' : 'Voltar à lista'}
+          title={modo !== 'leitura' ? 'Voltar ao acordo' : 'Voltar à lista'}
         >
           <ArrowLeft size={18} />
         </button>
@@ -394,7 +394,7 @@ export default function ContratoObrasHhPage() {
                   <span className="text-[11px] text-blue-700">
                     {lancamentos.length > 0
                       ? `— salvar criará automaticamente a revisão ${formatRev((lancAtual?.versao ?? 0) + 1)}`
-                      : '— primeiro lançamento de HH deste contrato'}
+                      : '— primeiro lançamento de HH deste acordo'}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 mb-3">
@@ -437,7 +437,7 @@ export default function ContratoObrasHhPage() {
               />
             ) : mesData.length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 text-[11px] px-4 py-3 rounded-md">
-                Nenhum lançamento de HH registrado ainda para este contrato.
+                Nenhum lançamento de HH registrado ainda para este acordo.
                 {podeEditar && modo === 'leitura' && ' Clique em "Editar Previsto/Planejado" para cadastrar o primeiro lançamento.'}
               </div>
             ) : (
@@ -453,7 +453,7 @@ export default function ContratoObrasHhPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-normal text-gray-500 mb-1">HH Previsto</p>
                       <p className="text-[30px] font-bold text-[#185FA5] leading-none tracking-tight">{totPrev > 0 ? loc(totPrev) : '—'}</p>
-                      <p className="text-[11px] text-gray-400 mt-1.5">contrato completo</p>
+                      <p className="text-[11px] text-gray-400 mt-1.5">acordo completo</p>
                     </div>
                   </div>
 

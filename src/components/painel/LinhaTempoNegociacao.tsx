@@ -83,7 +83,7 @@ export function LinhaTempoNegociacao({ solicitacaoId, numero, cliente, escopo, c
               canSupervise={false}
             />
           ) : (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhum contrato vinculado a esta proposta.</p>
+            <p className="text-sm text-gray-400 text-center py-6">Nenhum acordo vinculado a esta proposta.</p>
           )
         )}
       </div>

@@ -31,7 +31,7 @@ function CoberturaNota({ data }: { data: CruzamentoData }) {
   const pct = data.cobertura.total_contratos_ativos > 0 ? (data.cobertura.com_vinculo_solicitacao / data.cobertura.total_contratos_ativos) * 100 : 0
   return (
     <p className="text-[11px] text-gray-500 mb-2">
-      Cobertura: {data.cobertura.com_vinculo_solicitacao} de {data.cobertura.total_contratos_ativos} contratos ativos ({pct.toFixed(0)}%) têm o vínculo com a solicitação de origem preenchido — só esses entram na lista abaixo.
+      Cobertura: {data.cobertura.com_vinculo_solicitacao} de {data.cobertura.total_contratos_ativos} acordos ativos ({pct.toFixed(0)}%) têm o vínculo com a solicitação de origem preenchido — só esses entram na lista abaixo.
     </p>
   )
 }
@@ -41,7 +41,7 @@ export function Crz01OrcadoExecutado() {
   const rows = data?.crz01_orcado_executado ?? []
 
   const columns: DataColumn<CrzRow>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -53,12 +53,12 @@ export function Crz01OrcadoExecutado() {
 
   return (
     <ReportShell
-      titulo="Orçado x Executado" descricao="O que a gente vendeu em HH bate com o que foi realmente executado depois."
-      onExport={() => exportToExcel(columns, rows, `orcado-x-executado_${todayInput()}.xlsx`, 'Orçado x Executado')}
+      titulo="Orçado x Realizado" descricao="O que a gente vendeu em HH bate com o que foi de fato realizado depois."
+      onExport={() => exportToExcel(columns, rows, `orcado-x-realizado_${todayInput()}.xlsx`, 'Orçado x Realizado')}
       exportDisabled={loading}
     >
       {data && <CoberturaNota data={data} />}
-      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum contrato vinculado tem HH orçado e realizado suficientes ainda." />}
+      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum acordo vinculado tem HH orçado e realizado suficientes ainda." />}
     </ReportShell>
   )
 }
@@ -68,7 +68,7 @@ export function Crz02Rentabilidade() {
   const rows = data?.crz02_rentabilidade ?? []
 
   const columns: DataColumn<CrzRow>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -82,12 +82,12 @@ export function Crz02Rentabilidade() {
 
   return (
     <ReportShell
-      titulo="Rentabilidade Real" descricao="O negócio que fechamos por R$/HH X está sendo executado com a margem que imaginamos."
+      titulo="Rentabilidade Real" descricao="O negócio que fechamos por R$/HH X está sendo realizado com a margem que imaginamos."
       onExport={() => exportToExcel(columns, rows, `rentabilidade-real_${todayInput()}.xlsx`, 'Rentabilidade')}
       exportDisabled={loading}
     >
       {data && <CoberturaNota data={data} />}
-      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum contrato vinculado tem R$/HH de venda e de execução suficientes ainda." />}
+      {loading ? <p className="text-center text-gray-400 py-10">Carregando...</p> : <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} emptyLabel="Nenhum acordo vinculado tem R$/HH de venda e de realização suficientes ainda." />}
     </ReportShell>
   )
 }
@@ -107,13 +107,13 @@ export function Crz03Timeline() {
 
   return (
     <ReportShell
-      titulo="Ciclo de Vida do Negócio" descricao="Da solicitação ao encerramento do contrato, quanto tempo passou e quantas etapas teve."
+      titulo="Ciclo de Vida do Negócio" descricao="Da solicitação ao encerramento do acordo, quanto tempo passou e quantas etapas teve."
       onExport={data?.crz03_timeline ? () => exportToExcel(columns, rows, `ciclo-vida-${data.crz03_timeline!.contrato.indice}_${todayInput()}.xlsx`, 'Ciclo de Vida') : undefined}
       exportDisabled={!data?.crz03_timeline}
       filtros={
         <>
-          <Field label="Contrato" className="w-64">
-            <SearchableSelect value={contratoId} onChange={setContratoId} options={data?.filtros.contratos_vinculados.map((c) => ({ value: String(c.id), label: `${c.indice} — ${c.cliente}` })) ?? []} placeholder="Buscar contrato..." emptyLabel="Selecione um contrato vinculado" />
+          <Field label="Acordo" className="w-64">
+            <SearchableSelect value={contratoId} onChange={setContratoId} options={data?.filtros.contratos_vinculados.map((c) => ({ value: String(c.id), label: `${c.indice} — ${c.cliente}` })) ?? []} placeholder="Buscar acordo..." emptyLabel="Selecione um acordo vinculado" />
           </Field>
           <FilterActions onAplicar={() => setContratoIdAplicado(contratoId)} onLimpar={() => { setContratoId(''); setContratoIdAplicado('') }} />
         </>
@@ -121,7 +121,7 @@ export function Crz03Timeline() {
     >
       {data && <CoberturaNota data={data} />}
       {!contratoIdAplicado ? (
-        <p className="text-[12px] text-gray-400 text-center py-10 border border-dashed border-gray-200 rounded-md">Selecione, acima, um contrato que já tenha a solicitação de origem vinculada.</p>
+        <p className="text-[12px] text-gray-400 text-center py-10 border border-dashed border-gray-200 rounded-md">Selecione, acima, um acordo que já tenha a solicitação de origem vinculada.</p>
       ) : loading ? (
         <p className="text-center text-gray-400 py-10">Carregando...</p>
       ) : (

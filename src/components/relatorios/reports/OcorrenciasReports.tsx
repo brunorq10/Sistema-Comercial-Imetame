@@ -44,7 +44,7 @@ export function Ocm01Ocorrencias() {
 
   const columns: DataColumn<OcorrenciasData['ocm01_lista'][number]>[] = [
     { key: 'codigo', header: 'Código', type: 'text', value: (r) => r.codigo },
-    { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'contrato', header: 'Acordo', type: 'text', value: (r) => r.contrato },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -56,7 +56,7 @@ export function Ocm01Ocorrencias() {
 
   return (
     <ReportShell
-      titulo="Ocorrências Contratuais" descricao="O que mais atrapalha a execução dos contratos, e de quem é a responsabilidade."
+      titulo="Ocorrências Contratuais" descricao="O que mais atrapalha a realização dos acordos, e de quem é a responsabilidade."
       onExport={() => exportToExcel(columns, rows, `ocorrencias-contratuais_${todayInput()}.xlsx`, 'Ocorrências')}
       exportDisabled={loading}
       filtros={
@@ -88,7 +88,7 @@ export function Ocm02Multas() {
   const rows = data?.ocm02_lista ?? []
 
   const columns: DataColumn<OcorrenciasData['ocm02_lista'][number]>[] = [
-    { key: 'contrato', header: 'Contrato', type: 'text', value: (r) => r.contrato },
+    { key: 'contrato', header: 'Acordo', type: 'text', value: (r) => r.contrato },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'cliente', header: 'Cliente', type: 'text', value: (r) => r.cliente },
@@ -122,9 +122,9 @@ export function Ocm03Reincidencia() {
 
   const columns: DataColumn<OcorrenciasData['ocm03'][number]>[] = [
     { key: 'nome', header: 'Cliente', type: 'text', value: (r) => r.nome },
-    { key: 'ativos', header: 'Contratos Ativos', type: 'number', value: (r) => r.contratos_ativos },
+    { key: 'ativos', header: 'Acordos Ativos', type: 'number', value: (r) => r.contratos_ativos },
     { key: 'ocorrencias', header: 'Ocorrências', type: 'number', value: (r) => r.ocorrencias, totalizer: 'sum' },
-    { key: 'por_contrato', header: 'Ocorrências/Contrato', type: 'number', value: (r) => Number(r.ocorrencias_por_contrato.toFixed(2)) },
+    { key: 'por_contrato', header: 'Ocorrências/Acordo', type: 'number', value: (r) => Number(r.ocorrencias_por_contrato.toFixed(2)) },
     { key: 'multas', header: 'Valor de Multas', type: 'currency', value: (r) => r.valor_multas, totalizer: 'sum' },
   ]
 

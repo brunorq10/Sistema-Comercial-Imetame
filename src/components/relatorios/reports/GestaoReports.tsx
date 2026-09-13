@@ -35,7 +35,7 @@ export function Gst01Carga() {
 
   return (
     <ReportShell
-      titulo="Carga de Trabalho" descricao="Quantas solicitações e contratos cada pessoa está tocando agora."
+      titulo="Carga de Trabalho" descricao="Quantas solicitações e acordos cada pessoa está tocando agora."
       onExport={() => exportToExcel(columns, rows, `carga-de-trabalho_${todayInput()}.xlsx`, 'Carga')}
       exportDisabled={loading}
     >

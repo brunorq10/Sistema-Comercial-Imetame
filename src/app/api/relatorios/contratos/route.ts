@@ -173,7 +173,7 @@ export async function GET(req: NextRequest) {
 
     ctr05_encerrando: {
       janela_dias: janelaDias,
-      cobertura: `${totalContratosComFim} de ${ativos.length} contratos ativos têm data de encerramento preenchida`,
+      cobertura: `${totalContratosComFim} de ${ativos.length} acordos ativos têm data de encerramento preenchida`,
       contratos: encerrando.map((c) => ({
         id: c.id, indice: c.indice, escopo: c.descricao, cidade: c.cidade, cliente: c.cliente.nome, classificacao: c.classificacao,
         data_fim: c.data_fim!.toISOString(),

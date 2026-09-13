@@ -385,7 +385,7 @@ export default function MeuPainelAcordosPage() {
               sub={`${(indicators.prevAnoAtual > 0 ? (indicators.fatAnoAtual / indicators.prevAnoAtual) * 100 : 0).toFixed(1).replace('.', ',')}% da previsão`} />
             <KpiCard label="Previsão de faturamento no ano" value={fmtM(indicators.prevAnoAtual)} accent="#1565C0" sub="meta anual de receita" />
             <KpiCard label="Falta faturar no ano" value={fmtM(Math.max(0, indicators.prevAnoAtual - indicators.fatAnoAtual))} accent="#D97706" sub="saldo até dezembro" />
-            <KpiCard label="Previsão anos seguintes" value={fmtM(indicators.prevAnosSeguintes)} accent="#475569" sub="contratos multi-ano" />
+            <KpiCard label="Previsão anos seguintes" value={fmtM(indicators.prevAnosSeguintes)} accent="#475569" sub="acordos multi-ano" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard label={`Faturado mês atual (${indicators.mesAtualLabel})`} value={fmtM(indicators.fatMesAtual)} accent="#16A34A" />
@@ -397,7 +397,7 @@ export default function MeuPainelAcordosPage() {
 
         {!loading && (
           <p className="text-[11px] text-gray-500 mb-2">
-            {indicators.totalContratos} contrato{indicators.totalContratos !== 1 ? 's' : ''} · {indicators.totalSubindices} sub-índice{indicators.totalSubindices !== 1 ? 's' : ''}
+            {indicators.totalContratos} acordo{indicators.totalContratos !== 1 ? 's' : ''} · {indicators.totalSubindices} sub-índice{indicators.totalSubindices !== 1 ? 's' : ''}
           </p>
         )}
       </div>
@@ -409,8 +409,8 @@ export default function MeuPainelAcordosPage() {
         ) : filteredContratos.length === 0 ? (
           <div className="text-center py-10 text-gray-400 text-sm">
             {!responsavelId
-              ? 'Nenhum contrato encontrado.'
-              : 'Nenhum contrato vinculado a este responsável.'}
+              ? 'Nenhum acordo encontrado.'
+              : 'Nenhum acordo vinculado a este responsável.'}
           </div>
         ) : (
           <PainelTable
@@ -623,7 +623,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
             {sh('data_inicio', 'Dt. Início')}
             {sh('data_fim', 'Dt. Fim')}
             {sh('status', 'Status Fat.')}
-            {sh('valor_total', 'Valor Total Contrato')}
+            {sh('valor_total', 'Valor Total Acordo')}
             {sh('valor_faturado', 'Valor Total Faturado')}
             {sh('saldo', 'Saldo a Faturar')}
             {sh('responsavel', 'Responsável')}
@@ -666,7 +666,7 @@ function PainelTable({ contratos, expandidos, onToggle, canEdit, onEditar, onHis
                     className="flex items-center gap-1 font-bold text-green-dark hover:text-green-primary">
                     <span className="text-[9px]">{expanded ? '▼' : '▶'}</span>
                     {contrato.indice}
-                    {sumMismatch && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do contrato">⚠</span>}
+                    {sumMismatch && <span className="text-[8px] text-red-500 font-normal ml-1" title="Soma dos eventos difere do valor total do acordo">⚠</span>}
                   </button>
                 </td>
                 <td className={mF()} style={{ left: L.cliente, background: ctBg }}>

@@ -85,14 +85,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: null, error: `${destino.nome} precisa ter o perfil Orçamentista para receber solicitações.` }, { status: 400 })
   }
   if (precisaAcordos(destino)) {
-    return NextResponse.json({ data: null, error: `${destino.nome} precisa ter o perfil Acordos para receber contratos.` }, { status: 400 })
+    return NextResponse.json({ data: null, error: `${destino.nome} precisa ter o perfil Acordos para receber acordos.` }, { status: 400 })
   }
   if (tipo === 'TROCA') {
     if (precisaOrcamentista(origem)) {
       return NextResponse.json({ data: null, error: `${origem.nome} precisa ter o perfil Orçamentista para receber solicitações.` }, { status: 400 })
     }
     if (precisaAcordos(origem)) {
-      return NextResponse.json({ data: null, error: `${origem.nome} precisa ter o perfil Acordos para receber contratos.` }, { status: 400 })
+      return NextResponse.json({ data: null, error: `${origem.nome} precisa ter o perfil Acordos para receber acordos.` }, { status: 400 })
     }
   }
 

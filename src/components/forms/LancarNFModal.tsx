@@ -78,7 +78,7 @@ export function LancarNFModal({ open, onClose, onSuccess, acordo }: Props) {
         <span className="text-gray-400">Saldo disponível: </span>
         <span className="font-bold text-green-primary">{formatCurrency(acordo.saldo)}</span>
         <span className="text-gray-300 mx-2">|</span>
-        <span className="text-gray-400">Contrato: </span>
+        <span className="text-gray-400">Acordo: </span>
         <span className="font-semibold">{formatCurrency(acordo.valor_total)}</span>
       </div>
 

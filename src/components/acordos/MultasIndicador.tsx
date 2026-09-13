@@ -156,7 +156,7 @@ export function MultasIndicador({ clienteId, cidade, responsavelId, tipo, period
                         <td colSpan={11} className="px-4 py-3">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
                             <Det label="Tipo" valor={cfg?.label ?? m.tipo} />
-                            <Det label="Contrato" valor={m.contrato_indice} />
+                            <Det label="Acordo" valor={m.contrato_indice} />
                             <Det label="Cliente" valor={m.cliente_nome} />
                             <Det label="Cidade/UF" valor={[m.cidade, m.estado].filter(Boolean).join(' / ') || '—'} />
                             <Det label="Responsável" valor={m.responsavel_nome} />

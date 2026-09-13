@@ -24,7 +24,7 @@ export const STATUS_LABELS: Record<StatusSolicitacao, string> = {
   AGUARDANDO_ANALISE: 'Ag. análise',
   EM_ELABORACAO: 'Em elaboração',
   PROPOSTA_ENVIADA: 'Prop. enviada',
-  CONTRATO_GANHO: 'Contrato ganho',
+  CONTRATO_GANHO: 'Acordo ganho',
   RECUSADA: 'Recusada',
   CANCELADA: 'Cancelada',
   SUSPENSA: 'Suspensa',

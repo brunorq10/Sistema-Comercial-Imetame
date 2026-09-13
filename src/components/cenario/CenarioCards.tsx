@@ -42,7 +42,7 @@ export function CenarioCards({ ind, filtro, onFiltroChange }: Props) {
       <Card
         label="Itens"
         value={String(ind.totalItens)}
-        sub={`${ind.totalContratos} contrato${ind.totalContratos === 1 ? '' : 's'} · ${ind.totalPropostas} proposta${ind.totalPropostas === 1 ? '' : 's'}`}
+        sub={`${ind.totalContratos} acordo${ind.totalContratos === 1 ? '' : 's'} · ${ind.totalPropostas} proposta${ind.totalPropostas === 1 ? '' : 's'}`}
         active={onFiltroChange ? filtro == null : undefined}
         onClick={onFiltroChange ? () => onFiltroChange(null) : undefined}
       />

@@ -125,7 +125,7 @@ export function AcordoModal({ open, onClose, onSuccess, editando }: Props) {
           />
         </Field>
 
-        <Field label="Valor Total do Contrato (R$)">
+        <Field label="Valor Total do Acordo (R$)">
           <Input
             type="number"
             placeholder="Ex: 5000000"

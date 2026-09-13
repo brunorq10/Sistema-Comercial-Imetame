@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!parsed.success) return NextResponse.json({ data: null, error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }, { status: 400 })
 
   const config = await prisma.paradaHhConfig.findUnique({ where: { contrato_id: contratoId }, select: { id: true, fechada_em: true } })
-  if (!config) return NextResponse.json({ data: null, error: 'Nenhum acompanhamento de HH lançado para este contrato ainda' }, { status: 400 })
+  if (!config) return NextResponse.json({ data: null, error: 'Nenhum acompanhamento de HH lançado para este acordo ainda' }, { status: 400 })
   if (!config.fechada_em) return NextResponse.json({ data: null, error: 'Esta Parada não está fechada' }, { status: 409 })
 
   const userId = Number(session.user.id)

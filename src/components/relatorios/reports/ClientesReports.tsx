@@ -84,7 +84,7 @@ export function Cli02Ficha() {
     { key: 'faturado', header: 'Total Faturado', type: 'currency', value: (r) => r.total_faturado },
     { key: 'multas', header: 'Total Multas', type: 'currency', value: (r) => r.total_multas },
     { key: 'ocorrencias', header: 'Ocorrências', type: 'number', value: (r) => r.total_ocorrencias },
-    { key: 'ativos', header: 'Contratos Ativos', type: 'number', value: (r) => r.contratos_ativos },
+    { key: 'ativos', header: 'Acordos Ativos', type: 'number', value: (r) => r.contratos_ativos },
   ]
 
   const solColumns: DataColumn<Ficha['solicitacoes'][number]>[] = [
@@ -97,7 +97,7 @@ export function Cli02Ficha() {
   ]
 
   const ctrColumns: DataColumn<Ficha['contratos'][number]>[] = [
-    { key: 'indice', header: 'Contrato', type: 'text', value: (r) => r.indice },
+    { key: 'indice', header: 'Acordo', type: 'text', value: (r) => r.indice },
     { key: 'escopo', header: 'Escopo', type: 'text', value: (r) => r.escopo ?? '—' },
     { key: 'cidade', header: 'Cidade', type: 'text', value: (r) => r.cidade ?? '—' },
     { key: 'classif', header: 'Classificação', type: 'text', value: (r) => r.classificacao ?? '—' },
@@ -109,8 +109,8 @@ export function Cli02Ficha() {
 
   return (
     <ReportShell
-      titulo="Ficha do Cliente" descricao="Tudo que já aconteceu com este cliente — solicitações, contratos, faturamento, ocorrências e multas."
-      onExport={ficha ? () => exportToExcel(ctrColumns, ficha.contratos, `ficha-cliente-${ficha.cliente.nome}_${todayInput()}.xlsx`, 'Contratos') : undefined}
+      titulo="Ficha do Cliente" descricao="Tudo que já aconteceu com este cliente — solicitações, acordos, faturamento, ocorrências e multas."
+      onExport={ficha ? () => exportToExcel(ctrColumns, ficha.contratos, `ficha-cliente-${ficha.cliente.nome}_${todayInput()}.xlsx`, 'Acordos') : undefined}
       exportDisabled={!ficha}
       filtros={
         <>
@@ -138,7 +138,7 @@ export function Cli02Ficha() {
             <DataTable columns={solColumns} rows={ficha.solicitacoes} rowKey={(r) => r.id} />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-gray-400 uppercase mb-1.5">Contratos</p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase mb-1.5">Acordos</p>
             <DataTable columns={ctrColumns} rows={ficha.contratos} rowKey={(r) => r.id} />
           </div>
         </div>

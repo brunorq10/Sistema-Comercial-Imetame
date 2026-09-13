@@ -7,7 +7,7 @@ import { exigirPermissao } from '@/lib/permissaoApi'
 
 const CAMPO_LABELS: Record<string, string> = {
   num_os: 'Nº OS', num_acordo: 'Nº Acordo', num_proposta: 'Nº Proposta',
-  descricao: 'Descrição', classificacao: 'Classificação', valor_contrato: 'Valor do Contrato',
+  descricao: 'Descrição', classificacao: 'Classificação', valor_contrato: 'Valor do Acordo',
   data_inicio: 'Data Início', data_fim: 'Data Fim', ano_referencia: 'Ano Referência',
   status: 'Status', responsavel_id: 'Responsável',
 }
@@ -342,7 +342,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const qtSubindices = await prisma.subIndiceFaturamento.count({ where: { contrato_id: id } })
   if (qtSubindices > 0) {
     return NextResponse.json(
-      { data: null, error: `Não é possível cancelar: o contrato ainda possui ${qtSubindices} sub-índice(s). Exclua-os antes de cancelar o contrato.` },
+      { data: null, error: `Não é possível cancelar: o acordo ainda possui ${qtSubindices} sub-índice(s). Exclua-os antes de cancelar o acordo.` },
       { status: 422 },
     )
   }
