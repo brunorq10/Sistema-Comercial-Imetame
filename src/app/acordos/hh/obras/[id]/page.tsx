@@ -11,6 +11,8 @@ import { RealizadoDiarioObras } from '@/components/acordos/RealizadoDiarioObras'
 import { HhComportamentoChart } from '@/components/acordos/HhComportamentoChart'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { HistoricoFaturamentoModal } from '@/components/forms/HistoricoFaturamentoModal'
+import { AseLancamentoModal } from '@/components/acordos/AseLancamentoModal'
+import { Modal } from '@/components/ui/Modal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,7 @@ interface ContratoInfo {
   data_inicio: string | null; data_fim: string | null
   hh_fechada_em: string | null; hh_fechada_por_nome: string | null
   realizados: Realizado[]
+  ase_total_horas: number; ase_total_count: number
 }
 
 type Modo = 'leitura' | 'previsto_planejado' | 'realizado'
@@ -108,6 +111,10 @@ export default function ContratoObrasHhPage() {
   const [confirmReabrir, setConfirmReabrir] = useState(false)
   const [reabrirLoading, setReabrirLoading] = useState(false)
   const [reabrirErro, setReabrirErro] = useState<string | null>(null)
+
+  // ── Lançar Realizado: escolha entre Horas Escopo (fluxo existente) e Horas ASE ──
+  const [showEscolhaLancamento, setShowEscolhaLancamento] = useState(false)
+  const [showAse, setShowAse] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -198,6 +205,9 @@ export default function ContratoObrasHhPage() {
   const pctRealPrev = totPrev > 0 && totReal != null ? (totReal / totPrev) * 100 : null
   const pctRealPlan = totPlan > 0 && totReal != null ? (totReal / totPlan) * 100 : null
   const pctExtraReal = totReal != null && totReal > 0 && totExtra != null ? (totExtra / totReal) * 100 : null
+  const aseTotalHoras = contrato?.ase_total_horas ?? 0
+  const aseTotalCount = contrato?.ase_total_count ?? 0
+  const pctAseReal = totReal != null && totReal > 0 && aseTotalHoras > 0 ? (aseTotalHoras / totReal) * 100 : null
 
   const cumPrev = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlan = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.planejado] }, [])
@@ -335,7 +345,7 @@ export default function ContratoObrasHhPage() {
                 Editar Previsto/Planejado
               </button>
               {lancamentos.length > 0 && (
-                <button onClick={handleAbrirEdicaoReal}
+                <button onClick={() => setShowEscolhaLancamento(true)}
                   className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-[11px] font-semibold text-green-dark hover:bg-green-100 transition-colors">
                   Lançar Realizado
                 </button>
@@ -443,7 +453,7 @@ export default function ContratoObrasHhPage() {
             ) : (
               <>
                 {/* ── KPI Cards ── */}
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2.2fr)] gap-3 items-stretch">
                   <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
                     <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                       <svg className="w-6 h-6" fill="none" stroke="#185FA5" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -481,67 +491,103 @@ export default function ContratoObrasHhPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6" fill="none" stroke="#16A34A" strokeWidth={1.8} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-normal text-gray-500 mb-1">HH Realizado Acumulado</p>
-                      <p className="text-[30px] font-bold text-[#16A34A] leading-none tracking-tight">{totReal != null ? loc(totReal) : '—'}</p>
-                      <p className="text-[11px] text-gray-400 mt-1.5">{totReal != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}</p>
-                      {(pctRealPrev != null || pctRealPlan != null) && (
-                        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
-                          {pctRealPrev != null && (
-                            <div>
-                              <div className="flex justify-between items-center mb-1.5">
-                                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Previsto</span>
-                                <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPrev).text }}>{pctRealPrev.toFixed(1)}%</span>
-                              </div>
-                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPrev, 100)}%`, backgroundColor: barColors(pctRealPrev).bg }} />
-                              </div>
-                            </div>
-                          )}
-                          {pctRealPlan != null && (
-                            <div>
-                              <div className="flex justify-between items-center mb-1.5">
-                                <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Planejado</span>
-                                <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPlan).text }}>{pctRealPlan.toFixed(1)}%</span>
-                              </div>
-                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPlan, 100)}%`, backgroundColor: barColors(pctRealPlan).bg }} />
-                              </div>
+                  {/* Composição do Realizado — HH Realizado + detalhamento (Extras/ASE já
+                      contidos nele, nunca somam a mais). Agrupados visualmente para deixar
+                      claro que os dois cards menores são um detalhamento do maior. */}
+                  <div className="bg-slate-50/60 border border-slate-200 rounded-xl p-3 flex flex-col gap-2">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-1">Composição do Realizado</span>
+                    <div className="flex flex-col md:flex-row gap-3 items-stretch">
+                      <div className="flex-[1.4] bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-6 h-6" fill="none" stroke="#16A34A" strokeWidth={1.8} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-normal text-gray-500 mb-1">HH Realizado Acumulado</p>
+                          <p className="text-[30px] font-bold text-[#16A34A] leading-none tracking-tight">{totReal != null ? loc(totReal) : '—'}</p>
+                          <p className="text-[11px] text-gray-400 mt-1.5">{totReal != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}</p>
+                          {(pctRealPrev != null || pctRealPlan != null) && (
+                            <div className="mt-3 pt-3 border-t border-slate-100 space-y-2.5">
+                              {pctRealPrev != null && (
+                                <div>
+                                  <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Previsto</span>
+                                    <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPrev).text }}>{pctRealPrev.toFixed(1)}%</span>
+                                  </div>
+                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPrev, 100)}%`, backgroundColor: barColors(pctRealPrev).bg }} />
+                                  </div>
+                                </div>
+                              )}
+                              {pctRealPlan != null && (
+                                <div>
+                                  <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Planejado</span>
+                                    <span className="text-[11px] font-bold" style={{ color: barColors(pctRealPlan).text }}>{pctRealPlan.toFixed(1)}%</span>
+                                  </div>
+                                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${Math.min(pctRealPlan, 100)}%`, backgroundColor: barColors(pctRealPlan).bg }} />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Card 4 — Horas Extras */}
-                  <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6" fill="none" stroke="#EA580C" strokeWidth={1.8} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-normal text-gray-500 mb-1">Horas Extras</p>
-                      <p className="text-[30px] font-bold text-[#EA580C] leading-none tracking-tight">{totExtra != null ? loc(totExtra) : '—'}</p>
-                      <p className="text-[11px] text-gray-400 mt-1.5">{totExtra != null ? 'acumulado até o último lançamento' : 'sem lançamento realizado'}</p>
-                      {pctExtraReal != null && (
-                        <div className="mt-3 pt-3 border-t border-slate-100">
-                          <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">% do Realizado</span>
-                            <span className="text-[11px] font-bold text-[#EA580C]">{pctExtraReal.toFixed(1)}%</span>
-                          </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-[#EA580C]" style={{ width: `${Math.min(pctExtraReal, 100)}%` }} />
-                          </div>
+                      {/* Horas Extras — detalhamento (compacto), já contido no Realizado */}
+                      <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5" fill="none" stroke="#EA580C" strokeWidth={1.8} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
-                      )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-normal text-gray-500 mb-0.5">Horas Extras</p>
+                          <p className="text-[22px] font-bold text-[#EA580C] leading-none tracking-tight">{totExtra != null ? loc(totExtra) : '—'}</p>
+                          <p className="text-[9px] text-gray-400 italic mt-1">já contido no Realizado</p>
+                          {pctExtraReal != null && (
+                            <div className="mt-2 pt-2 border-t border-slate-100">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide">% do Realizado</span>
+                                <span className="text-[10px] font-bold text-[#EA580C]">{pctExtraReal.toFixed(1)}%</span>
+                              </div>
+                              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[#EA580C]" style={{ width: `${Math.min(pctExtraReal, 100)}%` }} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Horas ASE — detalhamento (compacto), já contido no Realizado */}
+                      <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5" fill="none" stroke="#7C3AED" strokeWidth={1.8} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-normal text-gray-500 mb-0.5">Horas ASE</p>
+                          <p className="text-[22px] font-bold text-[#7C3AED] leading-none tracking-tight">{aseTotalHoras > 0 ? loc(Math.round(aseTotalHoras)) : '—'}</p>
+                          <p className="text-[9px] text-gray-400 italic mt-1">já contido no Realizado</p>
+                          {pctAseReal != null && (
+                            <div className="mt-2 pt-2 border-t border-slate-100">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide">% do Realizado</span>
+                                <span className="text-[10px] font-bold text-[#7C3AED]">{pctAseReal.toFixed(1)}%</span>
+                              </div>
+                              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[#7C3AED]" style={{ width: `${Math.min(pctAseReal, 100)}%` }} />
+                              </div>
+                            </div>
+                          )}
+                          {aseTotalCount > 0 && (
+                            <p className="text-[9px] text-gray-400 mt-1.5">{aseTotalCount} serviço{aseTotalCount > 1 ? 's' : ''} registrado{aseTotalCount > 1 ? 's' : ''}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -770,6 +816,49 @@ export default function ContratoObrasHhPage() {
         itemId={Number(id)}
         titulo={`Obra ${contrato?.indice ?? ''}`}
       />
+      <EscolhaLancamentoModal
+        open={showEscolhaLancamento}
+        onClose={() => setShowEscolhaLancamento(false)}
+        onEscolherEscopo={() => { setShowEscolhaLancamento(false); handleAbrirEdicaoReal() }}
+        onEscolherAse={() => { setShowEscolhaLancamento(false); setShowAse(true) }}
+      />
+      <AseLancamentoModal
+        open={showAse}
+        onClose={() => setShowAse(false)}
+        contratoId={Number(id)}
+        onSalvo={fetchData}
+      />
     </div>
+  )
+}
+
+// ─── Escolha ao clicar em "Lançar Realizado" ────────────────────────────────
+
+function EscolhaLancamentoModal({ open, onClose, onEscolherEscopo, onEscolherAse }: {
+  open: boolean; onClose: () => void; onEscolherEscopo: () => void; onEscolherAse: () => void
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title="Lançar Realizado" subtitle="Escolha o tipo de lançamento">
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={onEscolherEscopo}
+          className="flex flex-col items-start gap-1.5 rounded-lg border border-gray-200 bg-white p-4 text-left transition-colors hover:border-green-300 hover:bg-green-50/50"
+        >
+          <span className="text-[13px] font-bold text-gray-700">Horas Escopo</span>
+          <span className="text-[11px] text-gray-500 leading-snug">
+            Lançamento diário de horas normais e extras — calendário do mês, como hoje.
+          </span>
+        </button>
+        <button
+          onClick={onEscolherAse}
+          className="flex flex-col items-start gap-1.5 rounded-lg border border-gray-200 bg-white p-4 text-left transition-colors hover:border-purple-300 hover:bg-purple-50/50"
+        >
+          <span className="text-[13px] font-bold text-gray-700">Horas ASE</span>
+          <span className="text-[11px] text-gray-500 leading-snug">
+            Registro de serviço extra escopo — informativo, já contido no realizado.
+          </span>
+        </button>
+      </div>
+    </Modal>
   )
 }

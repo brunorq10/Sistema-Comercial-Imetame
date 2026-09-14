@@ -213,6 +213,8 @@ model User {
   clientes_historico             ClienteHistorico[]         @relation("ClienteHistCriador")
   hh_realizado_dia_historico     HhRealizadoDiaHistorico[]  @relation("HhRealizadoDiaHistCriador")
   parada_hh_dia_historico        ParadaHhDiaHistorico[]     @relation("ParadaHhDiaHistCriador")
+  hh_ase_lancamentos_criados     HhAseLancamento[]          @relation("HhAseCriador")
+  hh_ase_historico               HhAseLancamentoHistorico[] @relation("HhAseHistCriador")
 
   @@map("users")
 }
@@ -1091,6 +1093,8 @@ model Contrato {
   deletado_por               User?                           @relation("ContratoDeletadoPor", fields: [deleted_by], references: [id])
   hh_cancelador              User?                           @relation("ContratoHhCanceladoPor", fields: [hh_cancelado_por], references: [id])
   hh_realizado_dia_historico HhRealizadoDiaHistorico[]
+  hh_ase_lancamentos         HhAseLancamento[]
+  hh_ase_historico           HhAseLancamentoHistorico[]
 
   @@index([cliente_id])
   @@index([cliente_final_id])
@@ -1875,6 +1879,50 @@ model HhRealizadoDiaHistorico {
   @@index([contrato_id])
   @@index([contrato_id, data])
   @@map("hh_realizado_dia_historico")
+}
+
+// Lançamentos de ASE (serviço extra escopo) — Obras. Puramente informativo:
+// o volume aqui NUNCA soma ao HH realizado (que continua vindo só de
+// HhRealizadoDia) — serve apenas para segmentar quanto do realizado já
+// lançado foi consumido em serviços fora do escopo original.
+model HhAseLancamento {
+  id               Int      @id @default(autoincrement())
+  contrato_id      Int
+  data_servico     DateTime @db.Date
+  data_aprovacao   DateTime @db.Date
+  descricao        String
+  volume_horas     Decimal  @db.Decimal(10, 2)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  created_by       Int
+  substituto_de_id Int?
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  criador  User     @relation("HhAseCriador", fields: [created_by], references: [id])
+
+  @@index([contrato_id])
+  @@index([contrato_id, data_servico])
+  @@map("hh_ase_lancamentos")
+}
+
+// Histórico de criação/edição/exclusão de HhAseLancamento — referencia o
+// CONTRATO (não o lançamento) de propósito, mesmo padrão de
+// HhRealizadoDiaHistorico acima: a exclusão do ASE é hard delete, então uma
+// FK para o próprio lançamento apagaria o rastro da exclusão junto com ele.
+model HhAseLancamentoHistorico {
+  id          Int      @id @default(autoincrement())
+  contrato_id Int
+  campo       String
+  valor_de    String?
+  valor_para  String?
+  created_at  DateTime @default(now())
+  created_by  Int
+
+  contrato Contrato @relation(fields: [contrato_id], references: [id], onDelete: Cascade)
+  usuario  User     @relation("HhAseHistCriador", fields: [created_by], references: [id])
+
+  @@index([contrato_id])
+  @@map("hh_ase_lancamentos_historico")
 }
 
 // Mesma ideia acima, para o lançamento diário de Paradas (ParadaHhDia).

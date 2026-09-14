@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const contratoId = parseInt(params.id, 10)
   if (isNaN(contratoId)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  const [fechamentos, lancamentos, diasHistorico] = await Promise.all([
+  const [fechamentos, lancamentos, diasHistorico, aseHistorico] = await Promise.all([
     prisma.contratoHhFechamentoHistorico.findMany({
       where: { contrato_id: contratoId },
       orderBy: { created_at: 'desc' },
@@ -34,6 +34,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       select: { id: true, versao: true, motivo: true, created_at: true, criador: { select: { nome: true } } },
     }),
     prisma.hhRealizadoDiaHistorico.findMany({
+      where: { contrato_id: contratoId },
+      orderBy: { created_at: 'desc' },
+      select: { id: true, campo: true, valor_de: true, valor_para: true, created_at: true, usuario: { select: { nome: true } } },
+    }),
+    prisma.hhAseLancamentoHistorico.findMany({
       where: { contrato_id: contratoId },
       orderBy: { created_at: 'desc' },
       select: { id: true, campo: true, valor_de: true, valor_para: true, created_at: true, usuario: { select: { nome: true } } },
@@ -72,6 +77,17 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       valor_para: d.valor_para,
       alterado_em: d.created_at.toISOString(),
       alterado_por: d.usuario.nome,
+    })
+  }
+
+  for (const a of aseHistorico) {
+    eventos.push({
+      id: `ase-${a.id}`,
+      campo: a.campo,
+      valor_de: a.valor_de,
+      valor_para: a.valor_para,
+      alterado_em: a.created_at.toISOString(),
+      alterado_por: a.usuario.nome,
     })
   }
 

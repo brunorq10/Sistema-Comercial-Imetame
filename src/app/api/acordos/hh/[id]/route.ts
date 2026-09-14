@@ -14,20 +14,29 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const id = Number(params.id)
   if (isNaN(id)) return NextResponse.json({ data: null, error: 'ID inválido' }, { status: 400 })
 
-  const contrato = await prisma.contrato.findUnique({
-    where: { id },
-    include: {
-      cliente:       { select: { id: true, nome: true } },
-      cliente_final: { select: { id: true, nome: true } },
-      responsavel:   { select: { id: true, nome: true } },
-      quemFechouHh:  { select: { nome: true } },
-      hh_realizados: { orderBy: [{ ano: 'asc' }, { mes: 'asc' }] },
-    },
-  })
+  const [contrato, aseAgg] = await Promise.all([
+    prisma.contrato.findUnique({
+      where: { id },
+      include: {
+        cliente:       { select: { id: true, nome: true } },
+        cliente_final: { select: { id: true, nome: true } },
+        responsavel:   { select: { id: true, nome: true } },
+        quemFechouHh:  { select: { nome: true } },
+        hh_realizados: { orderBy: [{ ano: 'asc' }, { mes: 'asc' }] },
+      },
+    }),
+    prisma.hhAseLancamento.aggregate({
+      where: { contrato_id: id },
+      _sum: { volume_horas: true },
+      _count: true,
+    }),
+  ])
   if (!contrato) return NextResponse.json({ data: null, error: 'Acordo não encontrado' }, { status: 404 })
 
   return NextResponse.json({
     data: {
+      ase_total_horas: Number(aseAgg._sum.volume_horas ?? 0),
+      ase_total_count: aseAgg._count,
       id: contrato.id, indice: contrato.indice, num_os: contrato.num_os,
       classificacao: contrato.classificacao,
       cliente: contrato.cliente, cliente_final: contrato.cliente_final ?? null,
