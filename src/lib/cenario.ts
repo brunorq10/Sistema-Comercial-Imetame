@@ -32,6 +32,8 @@ export interface CenarioLinha {
   /** Efetivo por mês ("AAAA-MM" -> valor) — Obras/Fabricações/Óleo e Gás. Null = usa `efetivo` em todos os meses (Paradas ou lançamento sem detalhamento). */
   efetivo_mensal: Record<string, number> | null
   observacao: string | null
+  /** Número da solicitação/proposta de origem (ex.: "IME-O-0001.26") — ausente em retratos antigos (não persistido no snapshot). */
+  numero_proposta?: string | null
 }
 
 export interface MesRef { ano: number; mes: number } // mes: 1-12
@@ -183,7 +185,7 @@ export function computeOrigem(resultado: string | null): OrigemCenario {
 // Usados pelas rotas de API de Cenário — ficam aqui (não em route.ts) porque um
 // Route Handler só pode exportar as funções de método HTTP.
 export const CENARIO_LANCAMENTO_INCLUDE = {
-  proposta_comercial: { select: { id: true, resultado: true } },
+  proposta_comercial: { select: { id: true, resultado: true, solicitacao: { select: { numero: true } } } },
 } as const
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,5 +206,6 @@ export function toLinha(l: any): CenarioLinha {
     efetivo: l.efetivo,
     efetivo_mensal: (l.efetivo_mensal as Record<string, number> | null) ?? null,
     observacao: l.observacao,
+    numero_proposta: l.proposta_comercial.solicitacao?.numero ?? null,
   }
 }

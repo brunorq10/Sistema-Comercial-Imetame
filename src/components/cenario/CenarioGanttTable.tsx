@@ -11,14 +11,14 @@ const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Se
 // identificação rolam junto com a linha do tempo.
 const W = {
   cliente: 150, cidade: 110, escopo: 220, classificacao: 90, orcamentista: 130,
-  origem: 90, inicio: 85, fim: 85, efetivo: 90,
+  numeroProposta: 110, origem: 90, inicio: 85, fim: 85, efetivo: 90,
 }
 const L = {
   cliente: 0,
   cidade: W.cliente,
   escopo: W.cliente + W.cidade,
 }
-const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.orcamentista + W.origem + W.inicio + W.fim + W.efetivo
+const ID_TOTAL_WIDTH = W.cliente + W.cidade + W.escopo + W.classificacao + W.orcamentista + W.numeroProposta + W.origem + W.inicio + W.fim + W.efetivo
 const MES_W = 74
 
 // ── Altura: acompanha a área disponível na tela (o wrapper do page.tsx já
@@ -63,7 +63,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
       <table className="border-separate text-[11px]" style={{ borderSpacing: 0, tableLayout: 'fixed', minWidth: ID_TOTAL_WIDTH + periodo.length * MES_W }}>
         <colgroup>
           <col style={{ width: W.cliente }} /><col style={{ width: W.cidade }} /><col style={{ width: W.escopo }} />
-          <col style={{ width: W.classificacao }} /><col style={{ width: W.orcamentista }} /><col style={{ width: W.origem }} /><col style={{ width: W.inicio }} />
+          <col style={{ width: W.classificacao }} /><col style={{ width: W.orcamentista }} /><col style={{ width: W.numeroProposta }} /><col style={{ width: W.origem }} /><col style={{ width: W.inicio }} />
           <col style={{ width: W.fim }} /><col style={{ width: W.efetivo }} />
           {periodo.map((m) => <col key={mesKey(m)} style={{ width: MES_W }} />)}
         </colgroup>
@@ -76,6 +76,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
             <th className={cn(th, 'z-[30] shadow-[2px_0_4px_rgba(0,0,0,0.08)]')} style={{ top: 0, left: L.escopo }} rowSpan={2}>Escopo</th>
             <th className={th} rowSpan={2}>Classif.</th>
             <th className={th} rowSpan={2}>Orçamentista</th>
+            <th className={th} rowSpan={2}>Nº Proposta</th>
             <th className={th} rowSpan={2}>Origem</th>
             <th className={th} rowSpan={2}>Início prev.</th>
             <th className={th} rowSpan={2}>Fim prev.</th>
@@ -126,6 +127,9 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
                 <td className={cn(td, 'text-gray-600')}>
                   {l.orcamentista_nome ?? '—'}
                 </td>
+                <td className={cn(td, 'text-gray-500')}>
+                  {l.numero_proposta ?? '—'}
+                </td>
                 <td className={td}>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: origemBg, color: origemCor }}>
                     {ORIGEM_LABEL[l.origem]}
@@ -167,7 +171,7 @@ export function CenarioGanttTable({ linhas, periodo, totais, editavel, onEditar,
           {/* ── TOTAL COMPROMETIDO ── */}
           <tr>
             <td className={cn(td, tdF, 'bg-gray-100 font-bold text-gray-700 border-t-2 border-t-gray-300')} style={{ left: L.cliente }} colSpan={3}>TOTAL COMPROMETIDO</td>
-            <td className={cn(td, 'bg-gray-100 border-t-2 border-t-gray-300')} colSpan={6} />
+            <td className={cn(td, 'bg-gray-100 border-t-2 border-t-gray-300')} colSpan={7} />
             {totais.map((t) => (
               <td key={mesKey(t)} className="px-1 py-[5px] text-center text-[10px] font-bold bg-gray-100 text-gray-700 border-t-2 border-t-gray-300">
                 {t.total.toLocaleString('pt-BR')}

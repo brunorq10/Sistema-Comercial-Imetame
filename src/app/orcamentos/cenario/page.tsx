@@ -20,6 +20,7 @@ interface CenarioData {
     cidade: string | null; estado: string | null; escopo: string | null; orcamentista_nome: string | null
     classificacao: 'OBRAS' | 'PARADAS' | 'FABRICACOES' | 'OLEO_GAS'; origem: 'CONTRATO' | 'PROPOSTA'
     data_inicio: string; data_fim: string; efetivo: number; efetivo_mensal: Record<string, number> | null; observacao: string | null
+    numero_proposta: string | null
   }>
   periodo: MesRef[]
   totais: TotalMes[]

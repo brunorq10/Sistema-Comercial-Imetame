@@ -43,6 +43,7 @@ export async function GET() {
         data_inicio: r.data_inicio.toISOString(), data_fim: r.data_fim.toISOString(),
         efetivo: r.efetivo, efetivo_mensal: (r.efetivo_mensal as Record<string, number> | null) ?? null,
         observacao: r.observacao,
+        numero_proposta: r.proposta_comercial.solicitacao?.numero ?? null,
       })),
       periodo,
       totais,

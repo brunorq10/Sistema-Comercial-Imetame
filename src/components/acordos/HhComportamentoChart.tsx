@@ -107,8 +107,10 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   )
 
   // ── Curva acumulada (sempre exibida, junto com as barras) ──
+  // Previsto fica de fora deste gráfico (só aparece nas barras "Total do
+  // acordo"/"Total selecionado" à esquerda) — pedido do usuário: a curva
+  // acumulada compara só Planejado x Realizado.
   const labels = mesData.map(m => m.label)
-  const cumPrevisto  = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.previsto] }, [])
   const cumPlanejado = mesData.reduce<number[]>((acc, m) => { const l = acc.length ? acc[acc.length - 1] : 0; return [...acc, l + m.planejado] }, [])
   let parou = false
   const cumRealizado = mesData.reduce<(number | null)[]>((acc, m) => {
@@ -120,7 +122,6 @@ export function HhComportamentoChart({ variant, mesData, titulo }: HhComportamen
   const chartData = {
     labels,
     datasets: [
-      { label: 'Previsto',  data: cumPrevisto,  borderColor: COR_PREVISTO,  backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PREVISTO,  spanGaps: true },
       { label: 'Planejado', data: cumPlanejado, borderColor: COR_PLANEJADO, backgroundColor: 'transparent', borderWidth: 2, borderDash: [4, 2], tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_PLANEJADO, spanGaps: true },
       { label: 'Realizado', data: cumRealizado, borderColor: COR_REALIZADO, backgroundColor: 'transparent', borderWidth: 2.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: COR_REALIZADO, spanGaps: false },
     ],

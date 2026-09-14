@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface SubstituindoItem { id: number; titular: { id: number; nome: string }; ate: string }
@@ -35,6 +35,12 @@ export function useSubstituicoes() {
     return () => { ativo = false }
   }, [status])
 
+  // Memoizado: `.map()` cria um array novo a cada chamada, e páginas que usam
+  // `titularIds` como dependência de useCallback/useEffect (ex.: Meu Painel de
+  // Acordos) entravam em loop de re-fetch infinito — a referência mudava a
+  // cada render mesmo sem `dados` ter mudado, causando piscar contínuo da tela.
+  const titularIds = useMemo(() => dados.substituindo.map((s) => s.titular.id), [dados])
+
   return {
     loading,
     /** Titulares que o usuário substitui agora (normalmente 0 ou 1). */
@@ -42,6 +48,6 @@ export function useSubstituicoes() {
     /** Quem substitui o usuário agora (normalmente 0 ou 1). */
     sendoSubstituidoPor: dados.sendoSubstituidoPor,
     /** IDs dos titulares substituídos — usar para incluir os itens deles nas listagens. */
-    titularIds: dados.substituindo.map((s) => s.titular.id),
+    titularIds,
   }
 }

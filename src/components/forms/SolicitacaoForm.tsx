@@ -76,6 +76,7 @@ const SEGMENTO_LABELS: Record<string, string> = {
 export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribuir, canTransferir }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [orcamentistas, setOrcamentistas] = useState<Orcamentista[]>([])
+  const [listasCarregadas, setListasCarregadas] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -130,15 +131,28 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     setValue('estado', '')
   }, [clienteFinalId, clienteFinal, cidadeSelecionada, setValue])
 
+  // Carrega as listas de apoio (cliente/orçamentista) sempre que o modal abre.
+  // A população do formulário (reset) é feita num efeito separado, DEPOIS que
+  // essas listas chegam — os campos de Cliente/Cliente Final/Cidade/Orçamentista
+  // são <select> cujo valor só "gruda" se a <option> correspondente já existir
+  // no DOM no momento do reset(); chamar reset() antes das listas carregarem
+  // fazia esses campos aparecerem em branco na edição, mesmo com o dado certo.
   useEffect(() => {
     if (!open) return
-    fetch('/api/clientes')
-      .then((r) => r.json())
-      .then((r) => setClientes(r.data ?? []))
-    fetch('/api/users/orcamentistas')
-      .then((r) => r.json())
-      .then((r) => setOrcamentistas(r.data ?? []))
+    setListasCarregadas(false)
+    Promise.all([
+      fetch('/api/clientes').then((r) => r.json()),
+      fetch('/api/users/orcamentistas').then((r) => r.json()),
+    ]).then(([clientesRes, orcamentistasRes]) => {
+      setClientes(clientesRes.data ?? [])
+      setOrcamentistas(orcamentistasRes.data ?? [])
+      setListasCarregadas(true)
+    })
+  }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    if (editando && !listasCarregadas) return
     if (editando) {
       reset({
         cliente_id:         String(editando.cliente.id),
@@ -166,7 +180,7 @@ export function SolicitacaoForm({ open, onClose, onSuccess, editando, canAtribui
     } else {
       reset({})
     }
-  }, [open, editando, reset])
+  }, [open, editando, listasCarregadas, reset])
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true)
